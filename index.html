@@ -3498,7 +3498,8 @@
   const SYNCED_KEYS = [
     "spendly_expenses_v1", "spendly_incomes_v1", "spendly_savings_v1",
     "spendly_loans_given_v1", "spendly_loans_taken_v1", "spendly_investments_v1",
-    "spendly_currencies_v1", "spendly_networth_history_v1"
+    "spendly_currencies_v1", "spendly_networth_history_v1",
+    "spendly_recurring_v1"
   ];
   const TOMBSTONE_KEY = "spendly_tombstones_v1";
   // A record that leaves has to leave a mark. Without one, a delete on device A is
@@ -8414,12 +8415,12 @@
   // you left open is not something the other phone should inherit.
   function syncPayload(){
     return {
-      v: 1,
+      v: 2,
       writtenAt: new Date().toISOString(),
       expenses, incomes, savings,
       loansGiven, loansTaken, investments,
-      currencies, netWorthHistory,
-      budgets, corrections,
+      currencies, netWorthHistory, recurring,
+      budgets, corrections, categories, cryptos,
       tombstones: loadTombstones()
     };
   }
@@ -8512,6 +8513,7 @@
       investments    = mergeRecords("spendly_investments_v1",      investments,    remote.investments,    tomb);
       currencies     = mergeRecords("spendly_currencies_v1",       currencies,     remote.currencies,     tomb);
       netWorthHistory= mergeRecords("spendly_networth_history_v1", netWorthHistory, remote.netWorthHistory, tomb);
+      recurring      = mergeRecords("spendly_recurring_v1",        recurring,      remote.recurring,      tomb);
 
       // Budgets and learned categories are plain maps with no per-key history, so
       // they merge key-by-key with the incoming side filling gaps rather than
@@ -8519,11 +8521,36 @@
       Object.keys(remote.budgets || {}).forEach(k=>{ if (budgets[k] === undefined) budgets[k] = remote.budgets[k]; });
       Object.keys(remote.corrections || {}).forEach(k=>{ if (corrections[k] === undefined) corrections[k] = remote.corrections[k]; });
 
+      // The category list is an ordered list of plain strings, not records, so there
+      // is no id to merge on: this device keeps its own order and anything it has
+      // never seen is appended. Without this a synced phone cannot name the
+      // categories its own expenses are filed under.
+      if (Array.isArray(remote.categories)){
+        remote.categories.forEach(c=>{
+          if (typeof c === "string" && c && categories.indexOf(c) === -1) categories.push(c);
+        });
+      }
+
+      // Crypto is keyed by its ticker, not an id. The newer lastUpdated wins, so the
+      // device that actually synced prices most recently is the one that supplies
+      // them rather than whichever happened to press Sync last.
+      if (Array.isArray(remote.cryptos)){
+        const byCode = {};
+        cryptos.forEach(c=>{ if (c && c.code) byCode[c.code] = c; });
+        remote.cryptos.forEach(c=>{
+          if (!c || !c.code) return;
+          const ex = byCode[c.code];
+          if (!ex || String(c.lastUpdated || "") > String(ex.lastUpdated || "")) byCode[c.code] = c;
+        });
+        cryptos = Object.keys(byCode).map(k=>byCode[k]);
+      }
+
       saveTombstones(tomb);
       saveExpenses(expenses); saveIncomes(incomes); saveSavings(savings);
       saveLoansGiven(loansGiven); saveLoansTaken(loansTaken); saveInvestments(investments);
       saveCurrencies(currencies); saveNetWorthHistory(netWorthHistory);
       saveBudgets(budgets); saveCorrections(corrections);
+      saveRecurring(recurring); saveCategories(categories); saveCrypto(cryptos);
 
       const after = expenses.length + incomes.length + savings.length +
                     loansGiven.length + loansTaken.length + investments.length;
@@ -8544,6 +8571,9 @@
     renderDashboardSummary(); renderHistory(); renderIncomeHistory();
     renderSavingsList(); renderLoansGiven(); renderLoansTaken(); renderInvestments();
     renderTotalMoneyBar();
+    // The category dropdowns are built once from the list, so a pulled category is
+    // invisible until they are rebuilt.
+    renderCategoryOptions(); renderRecurringList(); renderCryptoList();
     return { pulled: pulled };
   }
 
