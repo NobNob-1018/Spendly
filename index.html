@@ -3787,9 +3787,58 @@
   function loadCategories(){ return categoriesStore.load(); }
   function saveCategories(list){ categoriesStore.save(list); }
 
+  /* When each key of a plain map was last written. Budgets and learned corrections are
+     objects, not records, so they carry no updatedAt of their own and a merge had no
+     way to tell a change from an absence. Stamped by diffing on save, so no call site
+     has to remember to do it. */
+  const MAP_TIMES_KEY = "spendly_map_times_v1";
+  const mapTimesStore = makeStore(MAP_TIMES_KEY, {}, false);
+  let mapTimes = mapTimesStore.load();
+  const mapSnapshot = {};
+  function stampMap(name, obj){
+    const prev = mapSnapshot[name] || {};
+    const now = new Date().toISOString();
+    mapTimes[name] = mapTimes[name] || {};
+    let changed = false;
+    Object.keys(obj || {}).forEach(k=>{
+      if (prev[k] === undefined || prev[k] !== JSON.stringify(obj[k])){
+        mapTimes[name][k] = now; changed = true;
+      }
+      prev[k] = JSON.stringify(obj[k]);
+    });
+    // A key that has gone is a change too, and the time it went is what lets the
+    // other device tell a deletion from a key it has simply never seen.
+    Object.keys(prev).forEach(k=>{
+      if (obj && obj[k] === undefined){ mapTimes[name][k] = now; delete prev[k]; changed = true; }
+    });
+    mapSnapshot[name] = prev;
+    if (changed) mapTimesStore.save(mapTimes);
+  }
+  // Seed the snapshot at boot so the first real edit is what gets stamped, not the load.
+  function primeMapSnapshot(name, obj){
+    const p = {};
+    Object.keys(obj || {}).forEach(k=>{ p[k] = JSON.stringify(obj[k]); });
+    mapSnapshot[name] = p;
+  }
+
+  function mergeStampedMap(name, local, remote, remoteTimes){
+    const lt = (mapTimes[name] || {});
+    const rt = (remoteTimes && remoteTimes[name]) || {};
+    Object.keys(remote || {}).forEach(k=>{
+      const mine = lt[k] || "", theirs = rt[k] || "";
+      // Unseen key, or one they wrote more recently than we did.
+      if (local[k] === undefined || theirs > mine){
+        local[k] = remote[k];
+        if (theirs) lt[k] = theirs;
+      }
+    });
+    mapTimes[name] = lt;
+    return local;
+  }
+
   const budgetsStore = makeStore(BUDGET_KEY, {}, true);
   function loadBudgets(){ return budgetsStore.load(); }
-  function saveBudgets(obj){ budgetsStore.save(obj); }
+  function saveBudgets(obj){ stampMap("budgets", obj); budgetsStore.save(obj); }
 
   const recurringStore = makeStore(RECURRING_KEY, [], true);
   function loadRecurring(){ return recurringStore.load(); }
@@ -3797,7 +3846,7 @@
 
   const correctionsStore = makeStore(CORRECTIONS_KEY, {}, false);
   function loadCorrections(){ return correctionsStore.load(); }
-  function saveCorrections(obj){ correctionsStore.save(obj); }
+  function saveCorrections(obj){ stampMap("corrections", obj); correctionsStore.save(obj); }
 
   function getLastBackup(){
     return localStorage.getItem(BACKUP_KEY);
@@ -3908,6 +3957,11 @@
   let budgets = loadBudgets();
   let recurring = loadRecurring();
   let corrections = loadCorrections();
+  // Seed the diff snapshots from what was just loaded, so the first genuine edit is
+  // what gets stamped rather than the act of starting the app — otherwise this device
+  // would claim to have written every key just now and win merges it should not.
+  primeMapSnapshot("budgets", budgets);
+  primeMapSnapshot("corrections", corrections);
   let loansGiven = loadLoansGiven();
   let loansTaken = loadLoansTaken();
   let investments = loadInvestments();
@@ -5663,7 +5717,10 @@
       if (today.getDate() < r.dayOfMonth) return; // not due yet this month
 
       const newEntry = {
-        id: (r.type === "income" ? "i_" : "e_") + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+        // Derived from the template and the month, NOT from the clock and a random
+        // suffix: two devices posting the same month's charge must produce the same
+        // id, or the merge keeps both and you are charged twice.
+        id: (r.type === "income" ? "i_rec_" : "e_rec_") + r.id + "_" + currentMonthKey,
         description: r.description,
         amount: r.amount,
         category: r.category,
@@ -8729,6 +8786,7 @@
       loansGiven, loansTaken, investments,
       currencies, netWorthHistory, recurring,
       budgets, corrections, categories, cryptos,
+      mapTimes,
       tombstones: loadTombstones()
     };
   }
@@ -8753,6 +8811,28 @@
       if (rec && String(rec.updatedAt || "") <= String(graves[id])) delete byId[id];
     });
     return Object.keys(byId).map(id=>byId[id]);
+  }
+
+  // Not every record type has an id. A net-worth point is identified by its date and
+  // a tracked currency by its code — and mergeRecords drops anything without an id,
+  // so passing these through it silently emptied both lists on every sync that
+  // merged. They merge on their own natural key instead.
+  function mergeByKey(mine, theirs, keyField, timeField){
+    const byKey = {};
+    (Array.isArray(mine) ? mine : []).forEach(r=>{
+      if (r && r[keyField] != null) byKey[r[keyField]] = r;
+    });
+    (Array.isArray(theirs) ? theirs : []).forEach(r=>{
+      if (!r || r[keyField] == null) return;
+      const ex = byKey[r[keyField]];
+      if (!ex){ byKey[r[keyField]] = r; return; }
+      // With a timestamp the newer side wins; without one the local copy stands,
+      // because for these types both devices compute the same value anyway.
+      if (timeField && String(r[timeField] || "") > String(ex[timeField] || "")){
+        byKey[r[keyField]] = r;
+      }
+    });
+    return Object.keys(byKey).map(k=>byKey[k]);
   }
 
   function mergeTombstones(a, b){
@@ -8819,15 +8899,19 @@
       loansGiven     = mergeRecords("spendly_loans_given_v1",      loansGiven,     remote.loansGiven,     tomb);
       loansTaken     = mergeRecords("spendly_loans_taken_v1",      loansTaken,     remote.loansTaken,     tomb);
       investments    = mergeRecords("spendly_investments_v1",      investments,    remote.investments,    tomb);
-      currencies     = mergeRecords("spendly_currencies_v1",       currencies,     remote.currencies,     tomb);
-      netWorthHistory= mergeRecords("spendly_networth_history_v1", netWorthHistory, remote.netWorthHistory, tomb);
+      // Keyed by code and by date, not by id — see mergeByKey.
+      currencies      = mergeByKey(currencies, remote.currencies, "code", "lastUpdated");
+      netWorthHistory = mergeByKey(netWorthHistory, remote.netWorthHistory, "date", null)
+        .sort((x,y)=> String(x.date).localeCompare(String(y.date)))
+        .slice(-365);   // the same ceiling the daily snapshot keeps
       recurring      = mergeRecords("spendly_recurring_v1",        recurring,      remote.recurring,      tomb);
 
-      // Budgets and learned categories are plain maps with no per-key history, so
-      // they merge key-by-key with the incoming side filling gaps rather than
-      // overwriting a value this device has set.
-      Object.keys(remote.budgets || {}).forEach(k=>{ if (budgets[k] === undefined) budgets[k] = remote.budgets[k]; });
-      Object.keys(remote.corrections || {}).forEach(k=>{ if (corrections[k] === undefined) corrections[k] = remote.corrections[k]; });
+      // Budgets and learned categories are plain maps. They now carry a per-key record
+      // of when each was last written, so a CHANGED budget reaches the other device
+      // instead of being mistaken for one it already has.
+      budgets     = mergeStampedMap("budgets", budgets, remote.budgets, remote.mapTimes);
+      corrections = mergeStampedMap("corrections", corrections, remote.corrections, remote.mapTimes);
+      mapTimesStore.save(mapTimes);
 
       // The category list is an ordered list of plain strings, not records, so there
       // is no id to merge on: this device keeps its own order and anything it has
@@ -8891,10 +8975,23 @@
     return { pulled: pulled, pushed: true };
   }
 
+  // What counts as "nothing changed", and therefore whether a push is skipped. The
+  // first version compared length plus the first 4,000 characters — but a real payload
+  // runs to tens of thousands, so editing an amount deep in the list produced an
+  // IDENTICAL fingerprint, the push was skipped, and that edit never left the device.
+  // A hash has to see all of the bytes or it is not answering the question.
   function fingerprint(payload){
     // writtenAt changes every call, so it cannot be part of what "changed" means.
     const copy = Object.assign({}, payload); delete copy.writtenAt;
-    return JSON.stringify(copy).length + ":" + JSON.stringify(copy).slice(0, 4000);
+    const str = JSON.stringify(copy);
+    // FNV-1a, 32-bit. Cheap, dependency-free, and every byte moves the result.
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++){
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    // Length alongside the hash: two payloads must collide on both to be called equal.
+    return str.length + ":" + h.toString(16);
   }
 
   function refreshAfterSync(){
@@ -9428,6 +9525,8 @@
   renderCategoryOptions();
   document.getElementById("in-category").value = "Other";
   restoreDraft();
+  // The control says what it will do before it is first used, not only after.
+  paintSyncButton();
   processRecurringExpenses();
   processSavingsInterest();
   renderRecurringList();
