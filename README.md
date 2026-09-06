@@ -1,10 +1,10 @@
 # Spendly — Single-File Personal Finance Tracker
 
 A self-contained personal finance app. **One HTML file, no build step, no dependencies to install.**
-Open `spend-tracker.html` in a browser and it runs.
+Open `index.html` in a browser and it runs.
 
-- **~6,390 lines total** — ~1,490 CSS, ~4,320 JS, rest HTML
-- **157 functions**, all in one inline `<script>`
+- **~9,140 lines total** — ~2,720 CSS, ~5,770 JS, ~645 HTML (602 KB)
+- **203 functions**, all in one inline `<script>`
 - **Only external dependency:** Chart.js, lazy-loaded from CDN on first visit to Charts
 - **All data lives in `localStorage` on the user's device.** Nothing is sent anywhere
   *unless you explicitly turn on device sync* (Settings → Sync), which is off by default.
@@ -118,6 +118,43 @@ invisible on elements already using it as a background.
 
 ---
 
+## Install and updates
+
+The file is also a **PWA**, which is the answer to "I don't want to keep sending myself
+the file". Published to GitHub Pages, a phone can add it to the home screen, and after
+that it updates itself.
+
+| File | Job |
+|---|---|
+| `manifest.webmanifest` | Name, icon, colours, and `display: standalone` so it opens without browser chrome |
+| `icon.svg` | The home-screen mark. Maskable, so Android's circle crop does not cut the glyph |
+| `sw.js` | The update engine and the offline copy |
+| `.nojekyll` | Stops Pages running the files through Jekyll |
+
+**How an update reaches the phone.** The service worker serves the shell
+*stale-while-revalidate*: you get the cached copy immediately, which is what makes a
+602 KB file open instantly, and a fresh copy is fetched in the background. So a change
+pushed to `main` lands on the phone at its **next open**, silently. Push, wait for Pages,
+open the app twice.
+
+Bump `VERSION` in `sw.js` on a release you want to be certain about — the `activate`
+handler deletes every cache not in the current set, so the bump is also the eviction.
+
+**The worker only registers on https and localhost.** It cannot register from `file://`,
+which is still how the desktop copy is opened, so the registration is guarded and its
+failure is caught. The app runs identically with no worker at all.
+
+**Chart.js is cached separately and cache-first**, because the URL is version-pinned and
+SRI-checked and therefore immutable. Requests to the GitHub API (device sync) are never
+cached — handing back a stale copy of your own records is the one thing this must not do.
+
+> **`localStorage` is scoped to the origin.** The hosted copy
+> (`https://<user>.github.io/spendly/`) is a *different origin* from a local `file://`
+> copy, so records do not carry across on their own. Export a backup from the old copy
+> and import it once on the new one; after that, Settings → Sync keeps devices together.
+
+---
+
 ## Known open items
 
 - **#2 from an earlier list:** fixed column-width proportions across the five tables
@@ -132,13 +169,13 @@ Useful sanity checks after edits:
 
 ```bash
 # Extract JS and syntax-check
-python3 -c "import re;h=open('spend-tracker.html').read();open('/tmp/a.js','w').write(re.findall(r'<script>(.*?)</script>',h,re.S)[-1])"
+python3 -c "import re;h=open('index.html').read();open('/tmp/a.js','w').write(re.findall(r'<script>(.*?)</script>',h,re.S)[-1])"
 node -c /tmp/a.js
 
 # Tag/brace balance
-grep -c '<div' spend-tracker.html; grep -c '</div>' spend-tracker.html
+grep -c '<div' index.html; grep -c '</div>' index.html
 
 # Money symmetry (should be equal)
-grep -c 'depositToSavings(' spend-tracker.html
-grep -c 'withdrawFromSavings(' spend-tracker.html
+grep -c 'depositToSavings(' index.html
+grep -c 'withdrawFromSavings(' index.html
 ```
