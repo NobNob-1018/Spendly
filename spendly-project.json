@@ -1,0 +1,403 @@
+{
+  "project": "Spendly",
+  "artifact": "spend-tracker.html",
+  "description": "Single-file portable HTML personal finance tracker. No build step, no dependencies except Chart.js lazy-loaded from CDN. All data in browser localStorage.",
+  "compiled_on": "2026-08-23",
+  "source_note": "Sessions 1-2 reconstructed from saved transcripts in /mnt/transcripts/. Session 3 compiled from the live conversation (not yet written to disk). Metrics verified against the file, not recalled.",
+  "starter_prompt": {
+    "usage": "Paste the 'text' value below as your first message to Claude Code. It requests analysis only — no changes.",
+    "text": "I'm handing you an existing project: spend-tracker.html, a single-file personal finance app (~6,390 lines: inline CSS, inline JS, no build step, no dependencies except Chart.js from CDN). Read PROJECT_HISTORY.json first — it covers the architecture, the money invariants, the full change history, and the constraints I want preserved.\n\nDo not change anything yet. For this first pass I want you to build an accurate mental model and report back. Specifically:\n\n1. Map the structure. The six tabs, the 18 localStorage stores and which state variable each backs, and how activateTab() drives rendering.\n\n2. Trace the money paths end to end. Every place a balance changes must route through depositToSavings() / withdrawFromSavings(). Confirm each add has a matching reverse for delete, undo, loan status change, and account relink. Tell me if that symmetry is broken anywhere.\n\n3. Verify export/import round-trips. Confirm every key in the JSON backup payload has a working import handler, that 'Replace' clears everything it restores, and that the sectioned CSV export is correctly rejected by importCSV.\n\n4. Find genuine redundancy. Compare function bodies structurally, not just identical lines — near-duplicates that differ only in naming (expense/income, given/taken) are the pattern to look for. For each, say whether merging would actually improve things or just add indirection.\n\n5. Flag correctness risks, ranked by consequence: silent data loss first, incorrect money math second, broken UI last.\n\nHow I want you to work:\n- Verify claims against the code, don't assert from memory. If you say something is unused, show the search that proves it.\n- Tell me when you're uncertain rather than presenting a guess confidently.\n- Push back if something I ask for would break an invariant listed in the JSON.\n- Prefer extending the existing shared helpers over writing new one-off code.\n- After any edit, re-run the verification_commands — especially the deposit/withdraw parity check.\n\nStart with a concise findings report. I'll pick what to act on from there."
+  },
+  "constraints": [
+    "Must remain a single portable HTML file — no bundler, no npm, no module split",
+    "Vanilla JS/CSS only — no React/Vue/Tailwind",
+    "Data integrity outranks features; this is the user's only copy of their records",
+    "All animations must respect prefers-reduced-motion"
+  ],
+  "current_state": {
+    "total_lines": 6392,
+    "css_lines": 1487,
+    "js_lines": 4320,
+    "functions": 157,
+    "localstorage_keys": 18,
+    "tabs": [
+      "dashboard",
+      "charts",
+      "history",
+      "loans",
+      "savings",
+      "settings"
+    ],
+    "external_deps": [
+      "Chart.js (CDN, lazy-loaded on Charts tab)"
+    ],
+    "apis_used": [
+      "Frankfurter (currency rates, optional)",
+      "CoinGecko (BTC/ETH prices, optional)"
+    ],
+    "verification_status": {
+      "js_syntax": "pass",
+      "css_brace_balance": "423/423",
+      "div_tag_balance": "328/328",
+      "dangling_element_refs": 0,
+      "undefined_css_vars": 0,
+      "orphaned_css_classes": 0,
+      "unused_functions": 0,
+      "malformed_svgs": 0,
+      "money_call_parity": "19 depositToSavings / 19 withdrawFromSavings"
+    }
+  },
+  "architecture": {
+    "storage_layer": {
+      "factory": "makeStore(KEY, defaultValue, notify)",
+      "api": [
+        "load() — returns a clone of the default if unset",
+        "save(v) — returns true/false, guarded against quota errors"
+      ],
+      "key_prefix": "spendly_*_v1",
+      "key_count": 18,
+      "keys": [
+        "expenses",
+        "incomes",
+        "categories",
+        "budgets",
+        "recurring",
+        "savings",
+        "loans_given",
+        "loans_taken",
+        "investments",
+        "currencies",
+        "crypto",
+        "networth_history",
+        "corrections",
+        "ui_prefs",
+        "draft",
+        "balance",
+        "last_backup",
+        "welcome_dismissed"
+      ],
+      "failure_handling": "save() is wrapped in try/catch. A full or blocked localStorage shows a persistent red 'Not saved' indicator instead of falsely reporting success."
+    },
+    "tabs": {
+      "names": [
+        "dashboard",
+        "charts",
+        "history",
+        "loans",
+        "savings",
+        "settings"
+      ],
+      "switching": "activateTab(name)"
+    },
+    "money_invariants": [
+      {
+        "rule": "All money math routes through round2()",
+        "call_sites": 57,
+        "evidence": "1,000 chained +0.10 operations stay exact with round2; drift to 99.9999999999986 without it"
+      },
+      {
+        "rule": "depositToSavings() / withdrawFromSavings() are the only ways balances change",
+        "parity": "19 lines each — every add has a matching reverse (delete, undo, status flip, account relink)",
+        "action_required": "If you add a money path, add its reversal too"
+      },
+      {
+        "rule": "withdrawFromSavings() clamps at zero and reports a shortfall rather than going negative"
+      },
+      {
+        "rule": "Settled records do not reverse",
+        "detail": "Deleting a repaid loan or a sold investment must not move money — that transaction already closed"
+      },
+      {
+        "rule": "Total Money = liquid cash only (savings + unsold investments)",
+        "detail": "Outstanding loans are shown separately, deliberately. computeNetWorth() is the fuller figure used by the trend chart."
+      }
+    ],
+    "shared_helpers": [
+      {
+        "name": "paginate(list, page, size)",
+        "purpose": "Pagination plus renders the bar",
+        "call_sites": 5
+      },
+      {
+        "name": "buildThFilter(...)",
+        "purpose": "Filter dropdown fused into a table header",
+        "call_sites": 12
+      },
+      {
+        "name": "buildSortableTh(...)",
+        "purpose": "Sortable column header",
+        "call_sites": 8
+      },
+      {
+        "name": "wireNotes(...)",
+        "purpose": "Full notes lifecycle for a row or card",
+        "call_sites": 4
+      },
+      {
+        "name": "setupCollapseToggle(...)",
+        "purpose": "Collapsible section, persists state",
+        "call_sites": 4
+      },
+      {
+        "name": "showUndoToast(msg, fn)",
+        "purpose": "Destructive action with undo",
+        "call_sites": 8
+      },
+      {
+        "name": "emptyStateHtml(...)",
+        "purpose": "Consistent empty states",
+        "call_sites": 13
+      },
+      {
+        "name": "convertToPHP(amt, code)",
+        "purpose": "Currency conversion for entry",
+        "call_sites": 2
+      },
+      {
+        "name": "fmtMoney",
+        "purpose": "Plain-text money formatting",
+        "call_sites": 48
+      },
+      {
+        "name": "fmtMoneyRich",
+        "purpose": "HTML money formatting with de-emphasised currency symbol and cents",
+        "call_sites": 20
+      }
+    ],
+    "formatting_footgun": {
+      "issue": "fmtMoneyRich returns HTML and is only safe where markup renders",
+      "rule": "Toasts, tooltips, and anything set via textContent must use plain fmtMoney"
+    },
+    "design_tokens": {
+      "location": "CSS custom properties at the top of <style>",
+      "scales": [
+        "spacing --sp-1..--sp-6",
+        "radius --r-sm/md/lg/pill",
+        "tracking --track-caps/--track-tight"
+      ],
+      "critical_note": "--hover and --selected are deliberately distinct from --accent-light. --accent-light is a STATIC tinted surface; using it for hover made hover feedback invisible on elements already using it as a background."
+    },
+    "backup_and_restore": {
+      "json_export": "The real backup. 13 keys, full round-trip verified byte-identical.",
+      "csv_export": "Read-only. Sectioned multi-table, opens in Excel/Sheets. Cannot be imported back — importCSV explicitly detects and rejects it.",
+      "import_modes": "Replace or Merge. Replace must clear everything it restores, including currencies, crypto, net worth history and corrections."
+    }
+  },
+  "verification_commands": [
+    {
+      "purpose": "Extract JS and syntax-check",
+      "command": "python3 -c \"import re;h=open('spend-tracker.html').read();open('/tmp/a.js','w').write(re.findall(r'<script>(.*?)</script>',h,re.S)[-1])\" && node -c /tmp/a.js"
+    },
+    {
+      "purpose": "Tag balance",
+      "command": "grep -c '<div' spend-tracker.html; grep -c '</div>' spend-tracker.html",
+      "expected": "equal"
+    },
+    {
+      "purpose": "Money symmetry",
+      "command": "grep -c 'depositToSavings(' spend-tracker.html; grep -c 'withdrawFromSavings(' spend-tracker.html",
+      "expected": "equal (currently 19/19)"
+    }
+  ],
+  "known_open_items": [
+    "Fixed column-width proportions across the five tables (currently auto-sized, so widths shift between pages)",
+    "--sp-1 and --sp-6 defined but unused — intentional scale endpoints",
+    "migrateLegacyBalance and initRecurringDayOptions are self-invoking IIFEs; static analysis reports them as unused but they must not be deleted"
+  ],
+  "deliberate_decisions_not_to_change": [
+    {
+      "item": "loadExpenses/loadIncomes, saveExpenses/saveIncomes and the loan equivalents remain separate",
+      "reason": "1-2 line wrappers over distinct stores; merging would thread a 'which store' parameter through dozens of call sites to save ~8 lines while making saves harder to trace"
+    },
+    {
+      "item": "'Stop tracking a currency' has no undo, unlike every other delete",
+      "reason": "No financial record is lost and it is re-addable from a dropdown in seconds; undo there would be inconsistent noise"
+    },
+    {
+      "item": "UI preferences excluded from backups",
+      "reason": "Which panels were open is local display state, not data worth moving between devices"
+    },
+    {
+      "item": "No keyboard shortcuts, no print stylesheet",
+      "reason": "Explicitly declined by the user"
+    }
+  ],
+  "sessions": [
+    {
+      "id": 1,
+      "date": "2026-08-05",
+      "transcript": "/mnt/transcripts/2026-08-05-05-09-24-spendly-finance-app-build.txt",
+      "focus": "Initial build and core feature set",
+      "themes": [
+        "Core expense tracking, categories, budgets, recurring entries",
+        "Savings accounts with tiered interest and PH withholding tax",
+        "Loans given/taken, investments with fee-adjusted profit",
+        "Charts (bar/donut) with date-range tabs",
+        "JSON/CSV export and import"
+      ]
+    },
+    {
+      "id": 2,
+      "date": "2026-08-13",
+      "transcript": "/mnt/transcripts/2026-08-13-11-55-49-spendly-finance-app-build.txt",
+      "focus": "UI revamp toward a reference design, plus the money-flow architecture",
+      "user_requests_verbatim": [
+        "Revamp the UI into something more professionally made; apply reference colour scheme and sidebar",
+        "Keep main page centred, sidebar adjusted, quick-add moved to sidebar",
+        "Add a third right-hand column like the reference's 'Cryptoline' panel",
+        "Add currency tracker with sparkline graphs and manual sync",
+        "Add crypto tracker (BTC/ETH only), keep refresh buttons consistent",
+        "Right column only on dashboard and settings tabs",
+        "Make dashboard money overview reflect the current month"
+      ],
+      "bugs_reported_by_user": [
+        {
+          "report": "Total money isn't refreshing when I add income",
+          "root_cause": "Income was not wired into the total-money computation",
+          "fix": "Income logged to a bank now auto-deposits into that savings account; total derives from savings"
+        },
+        {
+          "report": "Deleting an income or expense entry doesn't update total money",
+          "fix": "Delete handlers reverse the original deposit/withdrawal"
+        },
+        {
+          "report": "Adding an expense doesn't reduce the total",
+          "fix": "Expenses linked to a bank now auto-withdraw"
+        },
+        {
+          "report": "Changing a loan to outstanding increases my money / marking repaid decreases it",
+          "root_cause": "Loan status transitions applied the money movement in the wrong direction",
+          "fix": "applyLoanStatusChange() made direction-aware, computed before mutating status"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "date": "2026-08-23",
+      "transcript": "live conversation — not yet on disk",
+      "focus": "Feature completion, data-integrity hardening, systematic visual design, final audits",
+      "work": [
+        {
+          "area": "Total Money redefinition",
+          "change": "Redefined as liquid cash only (savings + unsold investments). Outstanding loans now reported separately rather than folded in.",
+          "reason": "User observed the total (350k) exceeded their actual accessible money (314k) because receivables were included."
+        },
+        {
+          "area": "Loan partial payments",
+          "change": "Added per-loan payment logging that reduces the outstanding balance, moves the matching money, and auto-marks Repaid at zero. Optional note appended to the History entry.",
+          "design_note": "loan.amount is treated as the current remaining balance throughout, so existing status/delete/relink logic kept working unchanged."
+        },
+        {
+          "area": "Investments money movement",
+          "change": "Buying withdraws from a linked account; selling deposits net proceeds. Uses a snapshot reverse-then-reapply pattern since amount, bank, sale price and fee can each change independently."
+        },
+        {
+          "area": "Edit-amount adjustment",
+          "change": "Editing an expense/income amount now adjusts the linked account by the delta. Previously only add and delete moved money."
+        },
+        {
+          "area": "Net worth over time",
+          "change": "Daily snapshots stored (365-day cap), rendered as a gradient-filled line chart. Distinct from Total Money: includes loans and investments."
+        },
+        {
+          "area": "Multi-currency entry",
+          "change": "Entries can be logged in any tracked currency or crypto; converted to PHP at the tracked rate, with the original preserved and shown in History."
+        },
+        {
+          "area": "Undo on delete",
+          "change": "All 6 single-delete paths plus both bulk deletes now show an undo toast that restores the record AND re-applies the reversed money movement in the correct direction per type. All confirm() dialogs removed except the import replace/merge choice."
+        },
+        {
+          "area": "Table system",
+          "change": "Pagination (10/page history, 5/page loans+investments), column filters fused into table headers, sortable Amount/Deadline/Description columns, filter counts with clear-all, sticky headers, zebra striping, selected-row states."
+        },
+        {
+          "area": "Filter/collapse persistence",
+          "change": "Collapse states and all loan/history filters and sorts persist across reloads via a separate spendly_ui_prefs_v1 store, deliberately excluded from backups (local display state)."
+        },
+        {
+          "area": "Design system",
+          "change": "Spacing scale (--sp-1..6), radius scale (46 values snapped), tracking tokens (17 values normalised), elevation level (--raised), dimmer text tone (--ink-dim), tabular figures on all numerics, split --hover/--selected from --accent-light.",
+          "reason_for_token_split": "--accent-light served as static surface, hover AND selected simultaneously, making hover feedback invisible on ~16 elements already using it as a background."
+        },
+        {
+          "area": "Icon language",
+          "change": "All 17 emoji card headers and all 16 emoji stat badges converted to SVG line icons matching the sidebar. Only the Welcome card greeting emoji remains, by user choice."
+        }
+      ],
+      "bugs_found_and_fixed": [
+        {
+          "severity": "critical",
+          "bug": "localStorage.setItem was unguarded — a full or blocked store threw while the UI still displayed 'Saved', silently losing data",
+          "fix": "All saves wrapped in try/catch; failure shows a persistent red 'Not saved — storage full' indicator plus a one-time toast urging a backup"
+        },
+        {
+          "severity": "critical",
+          "bug": "JSON backup omitted currencies, crypto, net worth history, and learned category corrections — a restore silently lost all four",
+          "fix": "Payload extended to 13 keys with matching import handlers; round-trip verified byte-identical"
+        },
+        {
+          "severity": "high",
+          "bug": "'Replace everything' on import did not clear currencies, crypto, net worth history or corrections — they merged instead, mixing two devices' data",
+          "fix": "Replace branch now clears all four (crypto resets to placeholder BTC/ETH rows since loadCrypto expects them present)"
+        },
+        {
+          "severity": "high",
+          "bug": "Import appended rather than replaced, silently doubling every record when restoring onto existing data",
+          "fix": "Import now offers an explicit Replace or Merge choice"
+        },
+        {
+          "severity": "high",
+          "bug": "CSV import would parse the new sectioned spreadsheet export as a flat expense list, turning section headers and income rows into garbage expenses",
+          "fix": "importCSV detects and rejects the app's own export format",
+          "note": "Self-inflicted — introduced when the CSV export was expanded, caught in the same session"
+        },
+        {
+          "severity": "medium",
+          "bug": "CSV export marked the user as 'backed up', silencing the backup reminder despite being unrestorable",
+          "fix": "setLastBackup() removed from the CSV path; buttons relabelled to distinguish backup from spreadsheet export"
+        },
+        {
+          "severity": "medium",
+          "bug": "makeStore returned object defaults by reference, so mutating a loaded store polluted the default for later loads in the same session",
+          "fix": "Defaults deep-cloned on load"
+        },
+        {
+          "severity": "medium",
+          "bug": "Progressive disclosure hid the recurring checkbox and tags inside a collapsed panel, so restoring a draft or duplicating an entry set values invisibly",
+          "fix": "Panel auto-expands when it contains restored values"
+        },
+        {
+          "severity": "medium",
+          "bug": "Custom tooltips read attr(title) while the elements also had native title attributes, producing two overlapping tooltips",
+          "fix": "Switched to data-tip with aria-label preserved"
+        },
+        {
+          "severity": "low",
+          "bug": "Stray white background on inactive range-tab pills in an otherwise dark theme",
+          "fix": "Repointed to a theme token"
+        },
+        {
+          "severity": "low",
+          "bug": "Filter changes did not reset pagination, stranding the user on an empty page after narrowing results",
+          "fix": "All filters reset to page 1; paginate() also clamps out-of-range pages"
+        }
+      ],
+      "refactors": [
+        "daysAgoLabel() — consolidated 5 duplicated date-formatting blocks",
+        "wireNotes() — consolidated 4 duplicated note-wiring blocks",
+        "buildLoanRowHtml() / buildThFilter() / buildSortableTh() — shared table markup",
+        "setupCollapseToggle() — one collapse implementation for 4 sections",
+        "convertToPHP() — extracted duplicated currency logic from addExpense/addIncome",
+        "updateBulkBar(kind) — merged updateExpenseBulkBar/updateIncomeBulkBar",
+        "Removed dead code: statusPillHtml(), isOverdue(), 4 orphaned CSS rule sets, unused onPageChange param"
+      ],
+      "corrections_to_my_own_claims": [
+        "Claimed recurring entries fired silently and recommended adding feedback — verified they already report via toast. Recommendation withdrawn without building anything.",
+        "Claimed a broken optional-chaining expression was a crash bug — tested it and found the original was safe. Kept the rewrite for consistency but corrected the claim.",
+        "Claimed 'no more redundancy' after a line-based scan — a structural comparison of function bodies then found 5 duplicate pairs the scan had missed.",
+        "Claimed export/import were 'verified' after only matching payload keys to handlers — a real round-trip test then exposed the incomplete Replace bug."
+      ]
+    }
+  ]
+}
