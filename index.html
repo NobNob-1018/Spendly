@@ -2769,8 +2769,14 @@
       border-bottom: 1px solid var(--line);
       border-radius: 0;
       margin-bottom: 0;
-      padding: var(--sp-5) var(--sp-2);
+      /* Proximity is the whole trick here. The two lines of one record were 15px apart
+         while neighbouring records were separated by nothing but a hairline — so the
+         eye had no way to tell which date belonged to which description, and a tidy
+         list read as a wall. The gap INSIDE a record is now the smallest in the layout
+         and the space BETWEEN records is the largest, which is what makes a row a row. */
+      padding: var(--sp-7) var(--sp-2);
       gap: var(--sp-1) var(--sp-3);
+      row-gap: var(--sp-2);
     }
     [id$="-table-wrap"] tbody tr:last-child{ border-bottom:none; }
 
@@ -4566,10 +4572,8 @@
     return !btn || getComputedStyle(btn).display !== "none";
   }
 
-  function activateTab(tabName, fromHistory){
+  function activateTab(tabName){
     if (!tabIsAvailable(tabName)) tabName = "dashboard";
-    // Announced after the panel is up, at the end of this function.
-    const changed = tabName !== (typeof currentTabName === "function" ? currentTabName() : null);
     tabButtons.forEach(b=>{
       const on = b.dataset.tab === tabName;
       b.classList.toggle("active", on);
@@ -4615,10 +4619,6 @@
     if (tabName === "add" && !window.matchMedia("(pointer: coarse)").matches){
       const amt = document.getElementById("in-amount");
       if (amt) amt.focus();
-    }
-    // Only a real change, and only when the user drove it, leaves a history entry.
-    if (changed && !fromHistory){
-      document.dispatchEvent(new CustomEvent("spendly:tabchange", { detail: tabName }));
     }
   }
   tabButtons.forEach(btn=>{
@@ -4747,18 +4747,45 @@
     const open = [...document.querySelectorAll(".tab-panel")].find(p=>p.style.display !== "none");
     return open ? open.id.replace("tab-", "") : "dashboard";
   }
-  function stepTab(delta){
+  function stepTab(delta, cameFrom){
     const names = visibleTabNames();
     const i = names.indexOf(currentTabName());
     if (i === -1) return;
     const next = names[i + delta];
-    if (next) activateTab(next);      // deliberately no wraparound: the ends are a
-  }                                   // useful edge, and looping surprises people
+    if (!next) return;                // deliberately no wraparound: the ends are a
+    activateTab(next);                // useful edge, and looping surprises people
 
+    // The arriving panel comes in from the side the finger came from, so the swipe
+    // reads as moving through a row of tabs rather than as a screen being replaced.
+    if (!cameFrom || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const panel = document.getElementById("tab-" + next);
+    if (!panel) return;
+    panel.style.transition = "none";
+    panel.style.transform = "translate3d(" + (cameFrom === "left" ? "26px" : "-26px") + ",0,0)";
+    panel.style.opacity = "0.55";
+    requestAnimationFrame(()=>{
+      panel.style.transition = "transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)";
+      panel.style.transform = "";
+      panel.style.opacity = "";
+      setTimeout(()=>{ panel.style.transition = ""; }, 240);
+    });
+  }
+
+  /* A gesture that does nothing until you let go does not read as a gesture — it reads
+     as a screen that changed by itself. The panel follows the finger at about a third
+     of its travel (enough to say "I heard you", not so much that a mis-swipe hides the
+     page), resists at the ends of the row, and either carries through or settles back.
+     Transform and opacity only, so it stays on the GPU. */
   (function wireSwipe(){
     if (!window.matchMedia("(pointer: coarse)").matches) return;
-    let x0 = 0, y0 = 0, t0 = 0, tracking = false;
+    let x0 = 0, y0 = 0, t0 = 0, tracking = false, decided = false, horizontal = false, panel = null;
     const app = document.querySelector(".app") || document.body;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const openPanel = ()=> [...document.querySelectorAll(".tab-panel")].find(p=>p.style.display !== "none");
+    function letGo(el){
+      if (!el) return;
+      el.style.transition = ""; el.style.transform = ""; el.style.opacity = "";
+    }
 
     /* The screen edges belong to the operating system. Android and iOS both put the
        system back gesture in a strip a few millimetres wide down each side, and a
@@ -4786,61 +4813,86 @@
         if (el.scrollWidth > el.clientWidth + 4){ tracking = false; return; }
         el = el.parentElement;
       }
-      x0 = x; y0 = e.touches[0].clientY; t0 = Date.now(); tracking = true;
+      x0 = x; y0 = e.touches[0].clientY; t0 = Date.now();
+      tracking = true; decided = false; horizontal = false;
+      panel = openPanel();
+      if (panel) panel.style.transition = "none";
     }, { passive: true });
+
+    // Not passive: once the drag is committed to horizontal, the page must stop
+    // scrolling under it. The listener does nothing at all until then.
+    app.addEventListener("touchmove", (e)=>{
+      if (!tracking || !panel) return;
+      const dx = e.touches[0].clientX - x0;
+      const dy = e.touches[0].clientY - y0;
+      if (!decided){
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;   // too early to tell
+        decided = true;
+        horizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
+        if (!horizontal){ tracking = false; letGo(panel); panel = null; return; }
+      }
+      if (!horizontal) return;
+      e.preventDefault();
+      if (reduce.matches) return;      // no travel for people who asked for less motion
+      const names = visibleTabNames();
+      const i = names.indexOf(currentTabName());
+      const atEnd = (dx < 0 && i === names.length - 1) || (dx > 0 && i === 0);
+      panel.style.transform = "translate3d(" + (dx * (atEnd ? 0.16 : 0.34)) + "px,0,0)";
+    }, { passive: false });
 
     app.addEventListener("touchend", (e)=>{
       if (!tracking) return;
       tracking = false;
+      const leaving = panel; panel = null;
       const t = e.changedTouches[0];
       const dx = t.clientX - x0, dy = t.clientY - y0, dt = Date.now() - t0;
-      // Horizontal has to clearly win, or every slightly-diagonal scroll changes tab.
-      if (dt > 700) return;
-      if (Math.abs(dx) < 70) return;
-      if (Math.abs(dx) < Math.abs(dy) * 1.8) return;
-      stepTab(dx < 0 ? 1 : -1);
+      const winsHorizontally = Math.abs(dx) > Math.abs(dy) * 1.2;
+      // Either a deliberate drag past a fifth of the screen, or a quick flick.
+      const carried = Math.abs(dx) > Math.max(64, window.innerWidth * 0.18);
+      const flicked = dt < 300 && Math.abs(dx) > 40;
+
+      if (winsHorizontally && (carried || flicked)){
+        letGo(leaving);
+        stepTab(dx < 0 ? 1 : -1, dx < 0 ? "left" : "right");
+        return;
+      }
+      // The gesture did not carry: put it back rather than leaving it mid-drag.
+      if (leaving){
+        leaving.style.transition = "transform var(--dur-base) var(--ease-out)";
+        leaving.style.transform = "";
+        setTimeout(()=>letGo(leaving), 220);
+      }
     }, { passive: true });
   })();
 
   (function wireBack(){
     let exitArmed = false, exitTimer = null;
 
-    // A guard entry to land on, so the first back press has something to consume
-    // rather than closing the app outright.
-    try{ history.replaceState({ spendly: "root" }, ""); }catch(e){}
+    // An entry of OUR OWN for the first back to consume. This has to be pushState:
+    // replaceState swaps the current entry and creates nothing, so the first swipe
+    // went straight past the app and left — no question asked, which is the exact
+    // thing this is here to prevent.
+    try{ history.pushState({ spendly: "guard" }, ""); }catch(e){}
 
-    // Every tab change leaves a trail to walk back along.
-    document.addEventListener("spendly:tabchange", (e)=>{
-      try{ history.pushState({ spendly: "tab", name: e.detail }, ""); }catch(err){}
-    });
-
-    window.addEventListener("popstate", (ev)=>{
-      const st = ev.state;
-      if (st && st.spendly === "tab" && st.name){
-        // Walking back through tabs. activateTab must not push again or back would
-        // never make progress.
-        activateTab(st.name, true);
-        return;
-      }
-      // The bottom of the trail. The tab you started on never pushed an entry of its
-      // own, so landing here while somewhere else means there is still one step back
-      // to take inside the app before leaving it is the right thing to offer.
-      if (currentTabName() !== "dashboard"){
-        activateTab("dashboard", true);
-        try{ history.pushState({ spendly: "root" }, ""); }catch(e){}
-        return;
-      }
-
-      // Now there is genuinely nowhere left to go. Ask once, and mean it.
+    window.addEventListener("popstate", ()=>{
+      // Leaving is always a two-step: the first back asks, the second one goes. Walking
+      // out through the tabs first was tidier in theory and confusing in practice — you
+      // swipe to leave, the app changes tab instead, and you swipe again not knowing how
+      // many more it will take.
       if (!exitArmed){
         exitArmed = true;
-        try{ history.pushState({ spendly: "root" }, ""); }catch(e){}
-        showToast("Press back again to leave Spendly.");
+        // Put the guard back, or there is nothing for the second swipe to land on.
+        try{ history.pushState({ spendly: "guard" }, ""); }catch(e){}
+        showToast("Leave Spendly? Swipe back again to exit.");
         clearTimeout(exitTimer);
         exitTimer = setTimeout(()=>{ exitArmed = false; }, 2500);
         return;
       }
-      // Second press inside the window: let it through and the app closes.
+      // Answered inside the window. Stop guarding and go back once more for real: at
+      // the root of an installed app that is what closes it.
+      exitArmed = false;
+      clearTimeout(exitTimer);
+      history.back();
     });
   })();
 
