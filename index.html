@@ -1448,17 +1448,6 @@
   }
 
   /* Backup banner */
-  #backup-banner{
-    display:none;
-    align-items:center; justify-content:space-between; gap: var(--sp-6);
-    background:var(--caution-surface); border:1px solid var(--caution-line); color:var(--caution);
-    border-radius:var(--r-md); padding: var(--sp-6) var(--sp-8); margin-bottom:18px; font-size:var(--fs-md);
-  }
-  #backup-banner.show{ display:flex; }
-  #backup-banner button{
-    border:none; background:var(--caution); color:var(--caution-surface); padding: var(--sp-3) var(--sp-7); border-radius:var(--r-sm);
-    font-size:var(--fs-sm); font-weight:700; cursor:pointer; white-space:nowrap;
-  }
 
   /* Save status */
   #save-status{
@@ -1480,7 +1469,7 @@
   }
 
   /* Global search */
-  #btn-global-search, #btn-data-panel{
+  #btn-global-search, #btn-sync{
     border:1.5px solid var(--line-strong);
     background: var(--card);
     color: var(--ink);
@@ -1491,7 +1480,7 @@
     display:flex; align-items:center; justify-content:center;
     flex-shrink:0;
   }
-  #btn-global-search:hover, #btn-data-panel:hover{ border-color: var(--accent); }
+  #btn-global-search:hover, #btn-sync:hover{ border-color: var(--accent); }
 
   /* Floating quick-add button */
   #btn-fab-add{
@@ -1527,7 +1516,7 @@
     }
   }
 
-  #search-overlay, #data-overlay{
+  #search-overlay{
     display:none;
     position:fixed; inset:0;
     background: rgba(0,0,0,0.6);
@@ -1536,7 +1525,7 @@
     justify-content:center;
     padding: 8vh 16px 16px;
   }
-  #search-overlay.show, #data-overlay.show{
+  #search-overlay.show{
     display:flex;
     animation: overlayFadeIn var(--dur-base) var(--ease-out) both;
   }
@@ -1546,7 +1535,7 @@
   }
   /* The panel scales up slightly as the backdrop fades — a full-screen modal
      appearing instantly is the most jarring transition left in the app. */
-  #search-overlay.show .search-panel, #data-overlay.show .search-panel{
+  #search-overlay.show .search-panel{
     animation: panelPopIn .2s var(--ease-out) both;
   }
   @keyframes panelPopIn{
@@ -1554,8 +1543,7 @@
     to{ opacity:1; transform: translateY(0) scale(1); }
   }
   @media (prefers-reduced-motion: reduce){
-    #search-overlay.show, #data-overlay.show,
-    #search-overlay.show .search-panel, #data-overlay.show .search-panel{ animation:none; }
+    #search-overlay.show, #search-overlay.show .search-panel{ animation:none; }
   }
   .search-panel{
     width:100%; max-width:560px;
@@ -1610,7 +1598,7 @@
   .range-tabs button svg{ vertical-align:-2px; margin-right: var(--sp-3); }
   .loan-payment-link svg{ vertical-align:-2px; margin-right: var(--sp-2); }
   .btn svg{ vertical-align:-2px; margin-right: var(--sp-3); }
-  .btn.ico svg, #btn-sync-currencies-side svg, #btn-sync-crypto-side svg{ margin-right:0; }
+  .btn.ico svg, #btn-sync svg, #btn-sync-currencies-side svg, #btn-sync-crypto-side svg{ margin-right:0; }
   .onboard-tick svg{ vertical-align:-1px; }
   h2 svg{ vertical-align:-3px; margin-right: var(--sp-3); color: var(--accent); }
   .search-result .sr-body{ flex:1; min-width:0; }
@@ -1799,9 +1787,15 @@
 
   /* The reminder keeps its full voice where there is room for it and hands the job
      to a marker on the control that performs it everywhere else. */
-  #backup-banner.show.on-secondary{ display:none; }
-  #btn-data-panel{ position:relative; }
-  #btn-data-panel.needs-backup::after{
+  /* The header control reports sync, which is the only thing in this app that happens
+     without you. Idle it is just an icon; mid-sync the arrows turn and go accent; if a
+     sync failed it shows a caution dot whose title says what went wrong. */
+  #btn-sync{ position:relative; }
+  #btn-sync.is-syncing{ color: var(--accent); }
+  #btn-sync.is-syncing svg{ animation: syncSpin 900ms linear infinite; }
+  @keyframes syncSpin{ to{ transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce){ #btn-sync.is-syncing svg{ animation:none; } }
+  #btn-sync.has-error::after{
     content:""; position:absolute; top:5px; right:5px;
     width:7px; height:7px; border-radius:50%;
     background: var(--caution);
@@ -2581,7 +2575,7 @@
       min-height:44px;
     }
     /* Icon-only controls need width as well as height. */
-    .btn.ico, .row-action, [data-action="duplicate"], [data-action="delete"]{
+    .btn.ico, .row-action, #btn-sync, [data-action="duplicate"], [data-action="delete"]{
       min-width:44px; min-height:44px;
     }
     /* Table cells hold several of these; give them room to sit apart rather than
@@ -2589,7 +2583,7 @@
     .cell-actions{ display:flex; gap: var(--sp-3); align-items:center; }
 
     /* Icon-only chrome buttons were 38x38. */
-    #btn-global-search, #btn-data-panel, button.ico{
+    #btn-global-search, #btn-sync, button.ico{
       min-width:44px; min-height:44px;
     }
 
@@ -2602,6 +2596,28 @@
     [id$="-table-wrap"] tbody td select{
       min-height:32px;
     }
+  }
+
+  /* ================= What a phone shows =================
+     A dashboard is a wall to read; a phone is a thing you pull out to log what you
+     just spent. The overview, the insight strip and the month highlights are all
+     derived reading — none of them is why the app is open on a phone — so the small
+     screen keeps the balance, the quick summary and recent activity, and drops the
+     rest. Nothing is deleted: the same data is one rotation or one desktop away.
+
+     Charts goes entirely. Its range control alone needs five buttons on one line,
+     and a chart small enough to fit a phone is a chart you cannot read. */
+  @media (max-width: 720px){
+    #money-overview-card,
+    #insights-card,
+    #recap-card{ display:none !important; }
+
+    /* The bento is a 12-column grid; with two of its cards gone the survivors
+       should own the full width rather than sit in half of it. */
+    .bento > .card{ grid-column: 1 / -1; }
+
+    nav.tabs button[data-tab="charts"]{ display:none; }
+    #tab-charts{ display:none !important; }
   }
 
   /* ================= Mobile history =================
@@ -2691,6 +2707,91 @@
     [id$="-table-wrap"] tbody tr:last-child{ margin-bottom: 84px; }
   }
 
+  /* ================= History on a phone =================
+     Measured at 390x844: 556px of chrome sat above the first entry and each row was
+     161px, so exactly ONE record was visible on a screen whose whole job is showing
+     records. The chrome was all justified individually and indefensible in total:
+     a card title repeating the tab name, a hint about clicking fields you tap, a
+     search box and a date filter each taking a full row, and a header bar wrapping
+     onto two lines. */
+  @media (max-width: 720px){
+    /* The tab is called History and the toggle right above says Expenses or Income.
+       The heading was saying it a third time. */
+    #history-expense-card > h2,
+    #history-income-card > h2,
+    #history-expense-card > .sub,
+    #history-income-card > .sub{ display:none; }
+
+    /* Search and date range share one line instead of stacking. */
+    .history-toolbar{
+      flex-wrap:nowrap; gap: var(--sp-3); margin-bottom: var(--sp-5);
+    }
+    .history-toolbar input[type=text]{ flex:1 1 auto; min-width:0; }
+    .history-toolbar select{ flex:0 0 auto; max-width:42%; }
+    /* The custom-range pickers do need their own line when they appear. */
+    .history-toolbar input[type=date]{ flex:1 1 100%; }
+
+    /* The header bar was four block elements stacking onto two lines. It is a row of
+       controls, so it lays out as one. */
+    [id$="-table-wrap"] thead,
+    [id$="-table-wrap"] thead tr{
+      display:flex; align-items:center; flex-wrap:nowrap;
+      gap: var(--sp-3); width:100%;
+    }
+    [id$="-table-wrap"] thead th{
+      display:inline-flex; align-items:center; flex:0 1 auto; min-width:0;
+      padding:0; border:none; background:none;
+    }
+    [id$="-table-wrap"] thead th .th-sort,
+    [id$="-table-wrap"] thead th .th-filter{
+      font-size: var(--fs-2xs); padding: var(--sp-1) var(--sp-2);
+      max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+
+    /* Rows: the same three lines, with the air taken out. */
+    [id$="-table-wrap"] tbody tr{
+      padding: var(--sp-3) var(--sp-4);
+      gap: var(--sp-1) var(--sp-3);
+    }
+    [id$="-table-wrap"] tbody td[data-label="Description"] input{ padding:0; }
+    [id$="-table-wrap"] tbody td.num .amount-cell input{ padding-top:0; padding-bottom:0; }
+    /* The actions had a line of their own, which cost a full row of height on every
+       card for two icons. They belong on the end of the detail line, where there is
+       already space to the right of date and category. Dropping that line is worth
+       more than any amount of padding trimming. */
+    [id$="-table-wrap"] tbody tr::after{ display:none; }
+    [id$="-table-wrap"] tbody td.cell-actions{
+      order:7; flex:0 0 auto; margin-left:auto;
+      display:flex; gap: var(--sp-2);
+    }
+    /* Tags gives up the space, since it is the one field that is often empty. */
+    [id$="-table-wrap"] tbody td[data-label="Tags"]{ order:6; flex:1 1 0; min-width:0; }
+    [id$="-table-wrap"] tbody td[data-label="Tags"] input{ width:100% !important; min-width:0; }
+
+    /* The date field was 119px of a 330px line, and roughly a quarter of that was the
+       browser's own calendar button — which is pure decoration on a touch screen,
+       where tapping the field opens the picker anyway. Reclaiming it is what lets the
+       actions sit on this line instead of forcing a third one. */
+    [id$="-table-wrap"] tbody td[data-label="Date"] input::-webkit-calendar-picker-indicator{
+      display:none;
+    }
+    [id$="-table-wrap"] tbody td[data-label="Date"] input{
+      -webkit-appearance:none; appearance:none;
+    }
+    [id$="-table-wrap"] tbody td[data-label="Category"]{ order:5; }
+    [id$="-table-wrap"] tbody td[data-label="Date"]{ order:4; }
+
+    /* 44px of touch, 34px of paint. The min-height in the coarse-pointer block is
+       what was forcing the box itself to 44, so it has to be answered here. */
+    [id$="-table-wrap"] tbody .row-action{
+      height:34px; min-height:34px; width:34px; min-width:34px; position:relative;
+    }
+    [id$="-table-wrap"] tbody .row-action::after{
+      content:""; position:absolute; left:50%; top:50%;
+      transform:translate(-50%,-50%); width:44px; height:44px;
+    }
+  }
+
   /* ================= Bottom nav =================
      Seven unlabeled icons at 47x37 — under the touch floor, and two of them
      (Loans, Backup) are near-identical arrow pairs with nothing to tell them apart. */
@@ -2753,7 +2854,7 @@
     <div style="display:flex; align-items:center; gap: var(--sp-7);">
       <div id="save-status"><span class="dot"></span><span id="save-status-text">Saved</span></div>
       <button id="btn-global-search" title="Search everything"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
-      <button id="btn-data-panel" title="Backup & restore" aria-label="Backup and restore"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><line x1="8" y1="3" x2="8" y2="21"/><polyline points="4 7 8 3 12 7"/><line x1="16" y1="21" x2="16" y2="3"/><polyline points="20 17 16 21 12 17"/></svg></button>
+      <button id="btn-sync" title="Sync now" aria-label="Sync now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg></button>
     </div>
   </header>
 
@@ -2767,28 +2868,7 @@
     </div>
   </div>
 
-  <div id="data-overlay">
-    <div class="search-panel">
-      <div class="search-panel-header">
-        <span class="data-panel-title">Backup &amp; restore</span>
-        <button id="btn-close-data" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-      </div>
-      <div class="data-panel-body">
-        <p class="hint">Your data lives only on this device.</p>
-        <button class="btn btn-primary btn-sm" id="btn-export-json"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><path d="M12 20V6"/><path d="M6 12l6-6 6 6"/></svg>Back up everything (JSON)</button>
-        <p class="hint" style="margin:-4px 0 6px;">The complete backup — use this one to restore or move devices.</p>
-        <button class="btn btn-outline btn-sm" id="btn-export-csv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></svg>Export for Excel / Sheets</button>
-        <p class="hint" style="margin:-4px 0 6px;">All your data as a spreadsheet, for viewing and analysis. Can't be imported back.</p>
-        <button class="btn btn-outline btn-sm" id="btn-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><path d="M12 4v14"/><path d="M6 12l6 6 6-6"/></svg>Import backup</button>
-        <input type="file" id="file-import" accept=".json,.csv" style="display:none;">
-      </div>
-    </div>
-  </div>
 
-  <div id="backup-banner">
-    <span id="backup-banner-text"></span>
-    <button id="backup-banner-btn">Back up now</button>
-  </div>
 
   <div class="sticky-top">
     <div id="total-money-bar" class="tm-hero" title="Savings + unsold investments + money lent out − money you owe">
@@ -2949,14 +3029,14 @@
         <div class="insights-strip" id="insights-strip"></div>
       </div>
 
-      <div class="card bento-span-7">
+      <div class="card bento-span-7" id="money-overview-card">
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="7"/><line x1="16" y1="20" x2="16" y2="10"/><line x1="20" y1="20" x2="20" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span>Money overview</h2>
         <p class="sub">Your total money right now, and how this month is going.</p>
         <div class="stat-row two" id="money-overview-row"></div>
         <p class="hint" id="money-overview-loan-note" style="display:none; margin-top: var(--sp-6); margin-bottom:0;"></p>
       </div>
 
-      <div class="card bento-span-5">
+      <div class="card bento-span-5" id="summary-card">
         <div class="range-tabs" id="summary-toggle">
           <button class="active" data-summary="activity">Activity</button>
           <button data-summary="spending">Spending</button>
@@ -3231,6 +3311,7 @@
       <button data-settings="sync">Sync</button>
       <button data-settings="budgeting">Budgets</button>
       <button data-settings="trackers">Trackers</button>
+      <button data-settings="backup">Backup</button>
       <button data-settings="info">About</button>
     </div>
 
@@ -3315,6 +3396,20 @@
       </div>
       <p class="hint" id="crypto-sync-status"></p>
       <div id="crypto-list"></div>
+    </div>
+
+    <p class="settings-section-label" data-settings-group="backup">Backup &amp; restore</p>
+    <div class="card">
+      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>Backup &amp; restore</h2>
+      <p class="sub">Sync keeps your devices holding the same records. A backup is the copy you keep
+         yourself — for moving somewhere new, or for the day something goes wrong.</p>
+      <p class="hint">Your data lives only on this device.</p>
+      <button class="btn btn-primary btn-sm" id="btn-export-json"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><path d="M12 20V6"/><path d="M6 12l6-6 6 6"/></svg>Back up everything (JSON)</button>
+      <p class="hint" style="margin:-4px 0 6px;">The complete backup — use this one to restore or move devices.</p>
+      <button class="btn btn-outline btn-sm" id="btn-export-csv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></svg>Export for Excel / Sheets</button>
+      <p class="hint" style="margin:-4px 0 6px;">All your data as a spreadsheet, for viewing and analysis. Can't be imported back.</p>
+      <button class="btn btn-outline btn-sm" id="btn-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><path d="M12 4v14"/><path d="M6 12l6 6 6-6"/></svg>Import backup</button>
+      <input type="file" id="file-import" accept=".json,.csv" style="display:none;">
     </div>
 
     <p class="settings-section-label" data-settings-group="info">App info</p>
@@ -3602,6 +3697,12 @@
           }
           localStorage.setItem(key, JSON.stringify(value));
           if (notify) flashSaveStatus();
+          // Every write to a synced store schedules a push. Hooking it here rather
+          // than at the call sites means no future feature can forget to sync.
+          if (SYNCED_KEYS.indexOf(key) !== -1 || key === TOMBSTONE_KEY ||
+              key === CATEGORY_KEY || key === BUDGET_KEY || key === CRYPTO_KEY){
+            if (typeof scheduleAutoSync === "function") scheduleAutoSync();
+          }
           return true;
         }catch(err){
           // Storage full, or blocked (private browsing / disabled). Saying
@@ -4341,7 +4442,17 @@
 
   /* ---------- Tabs ---------- */
   const tabButtons = document.querySelectorAll("nav.tabs button");
-  function activateTab(tabName){
+  // Charts is hidden below 720px, so a stored tab, a keyboard shortcut or a rotation
+  // could otherwise leave the app on a panel with nothing in it.
+  function tabIsAvailable(name){
+    const btn = document.querySelector(`nav.tabs button[data-tab="${name}"]`);
+    return !btn || getComputedStyle(btn).display !== "none";
+  }
+
+  function activateTab(tabName, fromHistory){
+    if (!tabIsAvailable(tabName)) tabName = "dashboard";
+    // Announced after the panel is up, at the end of this function.
+    const changed = tabName !== (typeof currentTabName === "function" ? currentTabName() : null);
     tabButtons.forEach(b=>{
       const on = b.dataset.tab === tabName;
       b.classList.toggle("active", on);
@@ -4364,8 +4475,7 @@
     const onDashboard = tabName === "dashboard";
     const hero = document.getElementById("total-money-bar");
     if (hero) hero.classList.toggle("is-compact", !onDashboard);
-    const nag = document.getElementById("backup-banner");
-    if (nag) nag.classList.toggle("on-secondary", !onDashboard);
+
     document.querySelectorAll(".tab-panel").forEach(p=>{ p.style.display="none"; p.classList.remove("is-active"); });
     const panel = document.getElementById("tab-" + tabName);
     panel.style.display = "";
@@ -4388,6 +4498,10 @@
     if (tabName === "add" && !window.matchMedia("(pointer: coarse)").matches){
       const amt = document.getElementById("in-amount");
       if (amt) amt.focus();
+    }
+    // Only a real change, and only when the user drove it, leaves a history entry.
+    if (changed && !fromHistory){
+      document.dispatchEvent(new CustomEvent("spendly:tabchange", { detail: tabName }));
     }
   }
   tabButtons.forEach(btn=>{
@@ -4455,7 +4569,7 @@
     if (e.target.id === "search-overlay") closeSearchOverlay();
   });
   document.addEventListener("keydown", (e)=>{
-    if (e.key === "Escape"){ closeSearchOverlay(); closeDataOverlay(); }
+    if (e.key === "Escape"){ closeSearchOverlay(); }
     const isTyping = ["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName);
     if (e.key === "/" && !isTyping){
       e.preventDefault();
@@ -4464,8 +4578,12 @@
     // Digits jump between destinations, guarded by the same isTyping check the
     // "/" shortcut already uses so they never steal a keystroke from an amount field.
     if (!isTyping && !e.metaKey && !e.ctrlKey && !e.altKey && /^[1-6]$/.test(e.key)){
-      const btn = document.querySelectorAll("nav.tabs button")[+e.key - 1];
-      if (btn && btn.dataset.tab){ e.preventDefault(); activateTab(btn.dataset.tab); }
+      // Count only the tabs this screen actually offers, so the numbers still match
+      // what you can see when Charts is hidden.
+      const visible = [...document.querySelectorAll("nav.tabs button")]
+        .filter(b=>b.dataset.tab && getComputedStyle(b).display !== "none");
+      const btn = visible[+e.key - 1];
+      if (btn){ e.preventDefault(); activateTab(btn.dataset.tab); }
     }
     // The palette listed results you could only reach with a mouse. Arrow keys move
     // the selection, Enter runs it; the click handler stays the single source of truth.
@@ -4493,25 +4611,137 @@
     if (first) first.classList.add("is-highlighted");
   });
 
-  /* ---------- Data (backup/restore) overlay ---------- */
-  function openDataOverlay(){
-    const overlay = document.getElementById("data-overlay");
-    overlay.classList.add("show");
-    openDialog(overlay);
-    // Focus the panel itself so the reader announces the dialog rather than leaving
-    // focus on the button behind it.
-    const panel = overlay.querySelector(".search-panel");
-    if (panel){ panel.setAttribute("tabindex", "-1"); panel.focus(); }
+  /* ================= Swipe between tabs, and a back that asks =================
+     On a phone the tab bar is six small targets at the bottom of the screen; a
+     sideways swipe is how people already expect to move between them.
+
+     Back is the other half. In a standalone PWA there is no browser chrome, so the
+     system back gesture goes straight to closing the app — one careless swipe and
+     you are out of what you were typing. Each tab now leaves a history entry, so
+     back walks you out through the tabs you came from, and only at the end does it
+     offer to leave, once, with a way to change your mind. */
+
+  function visibleTabNames(){
+    return [...document.querySelectorAll("nav.tabs button")]
+      .filter(b=>b.dataset.tab && getComputedStyle(b).display !== "none")
+      .map(b=>b.dataset.tab);
   }
-  function closeDataOverlay(){
-    const overlay = document.getElementById("data-overlay");
-    overlay.classList.remove("show");
-    closeDialog(overlay);
+  function currentTabName(){
+    const open = [...document.querySelectorAll(".tab-panel")].find(p=>p.style.display !== "none");
+    return open ? open.id.replace("tab-", "") : "dashboard";
   }
-  document.getElementById("btn-data-panel").addEventListener("click", openDataOverlay);
-  document.getElementById("btn-close-data").addEventListener("click", closeDataOverlay);
-  document.getElementById("data-overlay").addEventListener("click", (e)=>{
-    if (e.target.id === "data-overlay") closeDataOverlay();
+  function stepTab(delta){
+    const names = visibleTabNames();
+    const i = names.indexOf(currentTabName());
+    if (i === -1) return;
+    const next = names[i + delta];
+    if (next) activateTab(next);      // deliberately no wraparound: the ends are a
+  }                                   // useful edge, and looping surprises people
+
+  (function wireSwipe(){
+    if (!window.matchMedia("(pointer: coarse)").matches) return;
+    let x0 = 0, y0 = 0, t0 = 0, tracking = false;
+    const app = document.querySelector(".app") || document.body;
+
+    app.addEventListener("touchstart", (e)=>{
+      if (e.touches.length !== 1) return;
+      // Never steal a gesture from something that scrolls sideways itself, or from
+      // a control being operated.
+      const t = e.target;
+      if (t.closest("input, select, textarea, button, a, .search-panel")) { tracking = false; return; }
+      let el = t;
+      while (el && el !== app){
+        if (el.scrollWidth > el.clientWidth + 4){ tracking = false; return; }
+        el = el.parentElement;
+      }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); tracking = true;
+    }, { passive: true });
+
+    app.addEventListener("touchend", (e)=>{
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - x0, dy = t.clientY - y0, dt = Date.now() - t0;
+      // Horizontal has to clearly win, or every slightly-diagonal scroll changes tab.
+      if (dt > 700) return;
+      if (Math.abs(dx) < 70) return;
+      if (Math.abs(dx) < Math.abs(dy) * 1.8) return;
+      stepTab(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  })();
+
+  (function wireBack(){
+    let exitArmed = false, exitTimer = null;
+
+    // A guard entry to land on, so the first back press has something to consume
+    // rather than closing the app outright.
+    try{ history.replaceState({ spendly: "root" }, ""); }catch(e){}
+
+    // Every tab change leaves a trail to walk back along.
+    document.addEventListener("spendly:tabchange", (e)=>{
+      try{ history.pushState({ spendly: "tab", name: e.detail }, ""); }catch(err){}
+    });
+
+    window.addEventListener("popstate", (ev)=>{
+      const st = ev.state;
+      if (st && st.spendly === "tab" && st.name){
+        // Walking back through tabs. activateTab must not push again or back would
+        // never make progress.
+        activateTab(st.name, true);
+        return;
+      }
+      // The bottom of the trail. The tab you started on never pushed an entry of its
+      // own, so landing here while somewhere else means there is still one step back
+      // to take inside the app before leaving it is the right thing to offer.
+      if (currentTabName() !== "dashboard"){
+        activateTab("dashboard", true);
+        try{ history.pushState({ spendly: "root" }, ""); }catch(e){}
+        return;
+      }
+
+      // Now there is genuinely nowhere left to go. Ask once, and mean it.
+      if (!exitArmed){
+        exitArmed = true;
+        try{ history.pushState({ spendly: "root" }, ""); }catch(e){}
+        showToast("Press back again to leave Spendly.");
+        clearTimeout(exitTimer);
+        exitTimer = setTimeout(()=>{ exitArmed = false; }, 2500);
+        return;
+      }
+      // Second press inside the window: let it through and the app closes.
+    });
+  })();
+
+  /* ---------- The sync control in the header ---------- */
+  // Looks the element up each call rather than closing over it, so it is safe to call
+  // from the automatic sync loop, which is defined earlier in the file.
+  function paintSyncButton(state, message){
+    const b = document.getElementById("btn-sync");
+    if (!b) return;
+    b.classList.toggle("is-syncing", state === "syncing");
+    b.classList.toggle("has-error", state === "error");
+    b.title = message || (ghTok() ? "Sync now" : "Set up sync");
+  }
+
+  document.getElementById("btn-sync").addEventListener("click", async ()=>{
+    // With no token this button cannot do its job, so it takes you to where the job
+    // gets set up. A control that silently does nothing is worse than one that moves you.
+    if (!ghTok()){
+      activateTab("settings");
+      const st = document.querySelector('#settings-nav button[data-settings="sync"]');
+      if (st) st.click();
+      return;
+    }
+    paintSyncButton("syncing");
+    try{
+      const res = await syncNow(()=>{});
+      paintSyncButton("idle");
+      showToast(res.pulled ? `Synced — ${res.pulled} new record(s) came in.` : "Synced. Both devices match.");
+      if (typeof renderSyncPanel === "function") renderSyncPanel();
+    }catch(err){
+      paintSyncButton("error", err.message);
+      showToast("Sync failed — " + err.message);
+    }
   });
 
   function jumpToHistoryMode(mode){
@@ -8557,8 +8787,18 @@
       pulled = Math.max(0, after - before);
     }
 
+    const outgoing = syncPayload();
+    const print = fingerprint(outgoing);
+    if (id && print === lastPushedPrint){
+      // Nothing of ours is missing from the gist. A poll that finds no local changes
+      // should cost one read, not a write.
+      try{ localStorage.setItem(GH_SYNCED_AT, new Date().toISOString()); }catch(e){}
+      refreshAfterSync();
+      return { pulled: pulled, pushed: false };
+    }
+
     say("Sending…");
-    const files = {}; files[GIST_FILE] = { content: JSON.stringify(syncPayload()) };
+    const files = {}; files[GIST_FILE] = { content: JSON.stringify(outgoing) };
     const body = JSON.stringify({ description: GIST_DESC, public: false, files: files });
     if (id){
       await ghCall("/gists/" + id, { method: "PATCH", body: body });
@@ -8566,16 +8806,79 @@
       const made = await ghCall("/gists", { method: "POST", body: body });
       if (made && made.id) try{ localStorage.setItem(GH_GIST_KEY, made.id); }catch(e){}
     }
+    lastPushedPrint = print;
     try{ localStorage.setItem(GH_SYNCED_AT, new Date().toISOString()); }catch(e){}
 
+    refreshAfterSync();
+    return { pulled: pulled, pushed: true };
+  }
+
+  function fingerprint(payload){
+    // writtenAt changes every call, so it cannot be part of what "changed" means.
+    const copy = Object.assign({}, payload); delete copy.writtenAt;
+    return JSON.stringify(copy).length + ":" + JSON.stringify(copy).slice(0, 4000);
+  }
+
+  function refreshAfterSync(){
     renderDashboardSummary(); renderHistory(); renderIncomeHistory();
     renderSavingsList(); renderLoansGiven(); renderLoansTaken(); renderInvestments();
     renderTotalMoneyBar();
     // The category dropdowns are built once from the list, so a pulled category is
     // invisible until they are rebuilt.
     renderCategoryOptions(); renderRecurringList(); renderCryptoList();
-    return { pulled: pulled };
   }
+
+  /* ================= Automatic sync =================
+     Pressing a button on both devices is not syncing, it is filing. This closes the
+     loop: a change here is pushed a couple of seconds later, and the other device
+     picks it up when it comes back to the foreground or on a slow poll while it is
+     already there. Everything below stays silent — an automatic sync that toasts is
+     worse than one that does not run.
+
+     Cost, since this talks to someone else's API: a poll is one GET, and the write is
+     skipped unless the fingerprint moved. At a 12s poll that is ~300 requests an hour
+     against an authenticated limit of 5,000. */
+  let autoPushTimer = null;
+  let syncInFlight = false;
+  let lastPushedPrint = "";
+
+  async function quietSync(){
+    if (!ghTok() || syncInFlight || !navigator.onLine) return;
+    syncInFlight = true;
+    if (typeof paintSyncButton === "function") paintSyncButton("syncing");
+    try{
+      await syncNow(()=>{});
+      if (typeof paintSyncButton === "function") paintSyncButton("idle");
+      if (typeof renderSyncPanel === "function") renderSyncPanel();
+    }catch(e){
+      if (typeof paintSyncButton === "function") paintSyncButton("error", e.message);
+      // Offline, rate-limited, or a refused token. The manual button is where those
+      // are reported; a background attempt failing must not interrupt anything.
+    }finally{ syncInFlight = false; }
+  }
+
+  // A burst of edits (typing an amount, fixing a category, deleting a row) is one
+  // sync, not five, so the timer restarts on every save.
+  function scheduleAutoSync(){
+    if (!ghTok()) return;
+    clearTimeout(autoPushTimer);
+    autoPushTimer = setTimeout(quietSync, 2500);
+  }
+
+  // Rotating or resizing onto a screen too small for the tab you are on.
+  window.addEventListener("resize", ()=>{
+    const open = [...document.querySelectorAll(".tab-panel")].find(p=>p.style.display !== "none");
+    if (!open) return;
+    const name = open.id.replace("tab-", "");
+    if (!tabIsAvailable(name)) activateTab("dashboard");
+  });
+
+  // The moment that matters most: you put the phone down and pick up the desktop.
+  document.addEventListener("visibilitychange", ()=>{ if (!document.hidden) quietSync(); });
+  window.addEventListener("focus", quietSync);
+  window.addEventListener("online", quietSync);
+  // And a slow poll for the case where both are open and visible at once.
+  setInterval(()=>{ if (!document.hidden) quietSync(); }, 12000);
 
   function renderSyncPanel(){
     const wrap = document.getElementById("sync-body");
@@ -9039,37 +9342,9 @@
   }
 
   /* ---------- Backup reminder ---------- */
-  // One decision, two expressions: the banner where there is room, and a marker on
-  // the header control that performs the action everywhere else. Both read the same
-  // message, so they can never disagree about whether a backup is due.
-  function updateBackupBanner(){
-    const banner = document.getElementById("backup-banner");
-    const textEl = document.getElementById("backup-banner-text");
-    const btn = document.getElementById("btn-data-panel");
-
-    let message = "";
-    if (expenses.length){
-      const last = getLastBackup();
-      if (!last){
-        message = "You haven't backed up your data yet. Export a backup so you never lose it.";
-      } else {
-        const daysSince = Math.floor((Date.now() - new Date(last).getTime()) / (1000*60*60*24));
-        if (daysSince >= 14) message = `Last backup was ${daysSince} days ago. Consider exporting a fresh one.`;
-      }
-    }
-
-    textEl.textContent = message;
-    banner.classList.toggle("show", !!message);
-    if (btn){
-      btn.classList.toggle("needs-backup", !!message);
-      // The dot is decoration on its own; the title is what actually says why it is there.
-      btn.title = message || "Backup & restore";
-    }
-  }
-
-  document.getElementById("backup-banner-btn").addEventListener("click", ()=>{
-    document.getElementById("btn-export-json").click();
-  });
+  // Kept as a no-op hook: the export path still calls it after a successful backup,
+  // and there is nothing left for it to update now that the nag is gone.
+  function updateBackupBanner(){}
 
   /* ---------- Init ---------- */
   renderCategoryOptions();
