@@ -859,10 +859,15 @@
   }
   td input[type=number]{ -moz-appearance:textfield; }
   tbody tr{ transition: background-color var(--dur-fast) var(--ease-out); }
-  tbody tr:hover td{ background: var(--hover); }
-  /* Left accent marker on hover — drawn with box-shadow on the first cell so it
-     doesn't shift the row's layout the way a real border would. */
-  tbody tr:hover td:first-child{ box-shadow: inset 3px 0 0 var(--accent); }
+  /* Hover is a pointer affordance. A touch screen has no pointer but still matches
+     :hover, and the paint sticks after a tap until something else is tapped — so on a
+     phone the last row you touched kept a box drawn round every one of its fields. */
+  @media (hover: hover){
+    tbody tr:hover td{ background: var(--hover); }
+    /* Left accent marker on hover — drawn with box-shadow on the first cell so it
+       doesn't shift the row's layout the way a real border would. */
+    tbody tr:hover td:first-child{ box-shadow: inset 3px 0 0 var(--accent); }
+  }
 
   /* Row entrance deleted. It re-fired on every filter, sort, page change and
      re-render of the most-repeated screen in the app — at which point motion stops
@@ -1183,8 +1188,10 @@
   #income-history-table-wrap tbody tr td:first-child{
     box-shadow: inset 3px 0 0 rgba(74,222,128,0.45);
   }
-  #income-history-table-wrap tbody tr:hover td:first-child{
-    box-shadow: inset 3px 0 0 var(--positive);
+  @media (hover: hover){
+    #income-history-table-wrap tbody tr:hover td:first-child{
+      box-shadow: inset 3px 0 0 var(--positive);
+    }
   }
 
   .side-upcoming-item{
@@ -2435,7 +2442,9 @@
   /* --- Table rows pick up an accent edge on hover, matching the overdue treatment
          so the language is consistent. --- */
   tbody tr{ transition: background var(--dur-fast) var(--ease-out); }
-  tbody tr:hover{ box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+  @media (hover: hover){
+    tbody tr:hover{ box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+  }
 
   /* --- Inputs get a soft ring rather than only a border colour change. --- */
   input:focus, select:focus, textarea:focus{
@@ -2748,10 +2757,64 @@
       max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     }
 
-    /* Rows: the same three lines, with the air taken out. */
+    /* A list of records should read as a list. Every row was a raised, bordered,
+       rounded card sitting inside another card, and each one carried a checkbox, a
+       dropdown arrow, an em-dash where tags would go, and two icons — so five rows
+       put roughly twenty five pieces of furniture on screen and the descriptions and
+       amounts had to compete with all of it. The box becomes a hairline, and the
+       furniture goes quiet until it is wanted. */
     [id$="-table-wrap"] tbody tr{
-      padding: var(--sp-3) var(--sp-4);
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      margin-bottom: 0;
+      padding: var(--sp-5) var(--sp-2);
       gap: var(--sp-1) var(--sp-3);
+    }
+    [id$="-table-wrap"] tbody tr:last-child{ border-bottom:none; }
+
+    /* The banding that helps you track across a wide desktop row is painted on the
+       CELLS. In a table that is one continuous stripe. Here the cells are separate
+       flex items with gaps between them, so the same rule drew a discrete box around
+       every field of every fourth row — which is most of what made this screen look
+       busy. There is nothing to track across on a phone, and the dividers already
+       separate the rows, so the banding simply goes. */
+    [id$="-table-wrap"] tbody tr:nth-of-type(4n+3) td,
+    [id$="-table-wrap"] tbody tr:nth-of-type(4n+3) + .loan-payment-tr td{
+      background: transparent;
+    }
+    /* Selection still has to be legible without a box to tint. */
+    [id$="-table-wrap"] tbody tr.is-selected{
+      background: var(--selected);
+      box-shadow: inset 2px 0 0 var(--accent);
+    }
+
+    /* The placeholder marked every tagless row with an em-dash. Absence does not
+       need a symbol; the gap says it. The field is still there and still tappable. */
+    [id$="-table-wrap"] tbody td[data-label="Tags"] input::placeholder{ color:transparent; }
+
+    /* The category dropdown arrow repeated down the column for a control whose whole
+       row is tappable anyway. */
+    [id$="-table-wrap"] tbody td[data-label="Category"] select{
+      -webkit-appearance:none; appearance:none; background-image:none; padding-right:0;
+    }
+
+    /* The checkbox was a bright square on every row for an action most people take
+       once a month. It stays, quietly, and brightens when it is actually used. */
+    [id$="-table-wrap"] tbody input[type=checkbox]{
+      width:15px; height:15px; opacity:.4;
+      transition: opacity var(--dur-fast) var(--ease-out);
+    }
+    [id$="-table-wrap"] tbody input[type=checkbox]:checked,
+    [id$="-table-wrap"] tbody tr.is-selected input[type=checkbox]{ opacity:1; }
+
+    /* Same for the row actions: present, not shouting. */
+    [id$="-table-wrap"] tbody .row-action{ opacity:.5; }
+    [id$="-table-wrap"] tbody .row-action:active{ opacity:1; }
+
+    @media (prefers-reduced-motion: reduce){
+      [id$="-table-wrap"] tbody input[type=checkbox]{ transition:none; }
     }
     [id$="-table-wrap"] tbody td[data-label="Description"] input{ padding:0; }
     [id$="-table-wrap"] tbody td.num .amount-cell input{ padding-top:0; padding-bottom:0; }
@@ -4643,8 +4706,23 @@
     let x0 = 0, y0 = 0, t0 = 0, tracking = false;
     const app = document.querySelector(".app") || document.body;
 
+    /* The screen edges belong to the operating system. Android and iOS both put the
+       system back gesture in a strip a few millimetres wide down each side, and a
+       swipe that starts there is the user reaching for "go back / leave", not for the
+       next tab. Competing with it means the two gestures fire together and neither
+       does what was meant. So the edges are left alone: a swipe starting there falls
+       through to the system, which triggers back, which lands on the popstate handler
+       below and walks out through the tabs before offering to leave.
+
+       28px is a little wider than the system strip on both platforms, which is the
+       safe direction to be wrong in: an edge swipe that does nothing here is still
+       handled by the OS, while one caught here would fight it. */
+    const EDGE = 28;
+
     app.addEventListener("touchstart", (e)=>{
       if (e.touches.length !== 1) return;
+      const x = e.touches[0].clientX;
+      if (x <= EDGE || x >= window.innerWidth - EDGE){ tracking = false; return; }
       // Never steal a gesture from something that scrolls sideways itself, or from
       // a control being operated.
       const t = e.target;
@@ -4654,7 +4732,7 @@
         if (el.scrollWidth > el.clientWidth + 4){ tracking = false; return; }
         el = el.parentElement;
       }
-      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); tracking = true;
+      x0 = x; y0 = e.touches[0].clientY; t0 = Date.now(); tracking = true;
     }, { passive: true });
 
     app.addEventListener("touchend", (e)=>{
