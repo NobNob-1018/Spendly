@@ -3824,7 +3824,41 @@
 
   const categoriesStore = makeStore(CATEGORY_KEY, DEFAULT_CATEGORIES, true);
   function loadCategories(){ return categoriesStore.load(); }
-  function saveCategories(list){ categoriesStore.save(list); }
+  // A list of names, seen as a map, so it can carry per-name write times. Only the
+  // presence of a name is data here - the value never varies - so a change is always
+  // an add or a remove, which is precisely what needs a timestamp.
+  function categoryMap(list){
+    const m = {};
+    (list || []).forEach(c=>{ if (typeof c === "string" && c) m[c] = true; });
+    return m;
+  }
+  function saveCategories(list){
+    stampMap("categories", categoryMap(list));
+    categoriesStore.save(list);
+  }
+
+  // What this device should show after a sync. Order is the user's: names already
+  // here keep their positions and anything new is appended. A removal on either side
+  // is ordered against writes on the other, which a plain union could not do - a name
+  // taken off one device came straight back from the other, the way currencies did.
+  function mergeCategoryList(localList, remoteList, remoteTimes){
+    const local = Array.isArray(localList) ? localList : [];
+    const remoteMap = categoryMap(remoteList);
+    const mergedMap = mergeStampedMap("categories", categoryMap(local), remoteMap, remoteTimes);
+    // The other direction. mergeStampedMap only walks the keys THEY sent, so a name
+    // they removed - and therefore did not send - would never be reconsidered here.
+    const lt = mapTimes.categories || {};
+    const rt = (remoteTimes && remoteTimes.categories) || {};
+    Object.keys(mergedMap).forEach(name=>{
+      if (remoteMap[name] === undefined && String(rt[name] || "") > String(lt[name] || "")){
+        delete mergedMap[name];
+        lt[name] = rt[name];
+      }
+    });
+    mapTimes.categories = lt;
+    return local.filter(c=>mergedMap[c] !== undefined)
+      .concat(Object.keys(mergedMap).filter(c=>local.indexOf(c) === -1));
+  }
 
   /* When each key of a plain map was last written. Budgets and learned corrections are
      objects, not records, so they carry no updatedAt of their own and a merge had no
@@ -3865,8 +3899,11 @@
     const rt = (remoteTimes && remoteTimes[name]) || {};
     Object.keys(remote || {}).forEach(k=>{
       const mine = lt[k] || "", theirs = rt[k] || "";
-      // Unseen key, or one they wrote more recently than we did.
-      if (local[k] === undefined || theirs > mine){
+      // Genuinely never seen: no write time of our own AND nothing here now. If we
+      // DO have a write time then the key is not unknown, it is one we removed, and
+      // that removal is a write like any other - only a later one beats it.
+      const neverSeen = !mine && local[k] === undefined;
+      if (neverSeen || theirs > mine){
         local[k] = remote[k];
         if (theirs) lt[k] = theirs;
       }
@@ -3999,6 +4036,7 @@
   // Seed the diff snapshots from what was just loaded, so the first genuine edit is
   // what gets stamped rather than the act of starting the app — otherwise this device
   // would claim to have written every key just now and win merges it should not.
+  primeMapSnapshot("categories", categoryMap(categories));
   primeMapSnapshot("budgets", budgets);
   primeMapSnapshot("corrections", corrections);
   let loansGiven = loadLoansGiven();
@@ -9034,14 +9072,14 @@
       corrections = mergeStampedMap("corrections", corrections, remote.corrections, remote.mapTimes);
       mapTimesStore.save(mapTimes);
 
-      // The category list is an ordered list of plain strings, not records, so there
-      // is no id to merge on: this device keeps its own order and anything it has
-      // never seen is appended. Without this a synced phone cannot name the
-      // categories its own expenses are filed under.
+      // Categories are plain strings, so the merge runs on the map of names and their
+      // write times rather than on the list. Order is the user's, so it is preserved:
+      // names this device already shows keep their positions and anything new is
+      // appended. Without any of this a synced phone cannot name the categories its
+      // own expenses are filed under - and a name removed here came back on the very
+      // next sync.
       if (Array.isArray(remote.categories)){
-        remote.categories.forEach(c=>{
-          if (typeof c === "string" && c && categories.indexOf(c) === -1) categories.push(c);
-        });
+        categories = mergeCategoryList(categories, remote.categories, remote.mapTimes);
       }
 
       // Crypto is keyed by its ticker, not an id. The newer lastUpdated wins, so the
