@@ -181,5 +181,71 @@ console.log("\n--- a clobbered entry comes back instead of being lost forever --
         writes + " writes over 12 idle polls - each device reads the other order as a change");
 }
 
+console.log("\n--- removing a tracked currency stays removed ---");
+{
+  // A currency has no id - it IS its code - so it fell straight through
+  // stampAndTombstone, which only ever looked at rec.id. Never stamped, never
+  // tombstoned: removing one left no trace and the next sync unioned it back in
+  // from the other device.
+  const cstore = {};
+  global.localStorage = {
+    getItem: k => (k in cstore ? cstore[k] : null),
+    setItem: (k,v) => { cstore[k] = String(v); },
+    removeItem: k => { delete cstore[k]; }
+  };
+  const KEY = "spendly_currencies_v1";
+  global.SYNCED_KEYS = [KEY];
+  global.TOMBSTONE_KEY = "spendly_tombstones_v1";
+  const decl = "const RECORD_KEY_FIELD = ";
+  const rkfAt = SRC.indexOf(decl);
+  check("index.html declares which field names a record", rkfAt > 0);
+  global.RECORD_KEY_FIELD = eval("(" + SRC.slice(rkfAt + decl.length, SRC.indexOf("};", rkfAt) + 1) + ")");
+  check("currencies are declared as keyed by code", RECORD_KEY_FIELD[KEY] === "code");
+  global.keyFieldFor = key => RECORD_KEY_FIELD[key] || "id";
+  global.lastSaved = {};
+  eval(["loadTombstones","saveTombstones","stampAndTombstone","primeSyncBaseline"].map(grab).join("\n"));
+
+  let mine = [{ code:"PHP", rate:1, lastUpdated:"2026-09-01" },
+              { code:"USD", rate:58.2, lastUpdated:"2026-09-01" }];
+  const theirs = JSON.parse(JSON.stringify(mine));   // the other device still has both
+  cstore[KEY] = JSON.stringify(mine);
+  primeSyncBaseline();
+
+  mine = mine.filter(c => c.code !== "USD");         // exactly what Remove does
+  stampAndTombstone(KEY, mine);
+  const graves = loadTombstones()[KEY] || {};
+  check("removing a currency writes a tombstone", !!graves.USD,
+        "no grave -> nothing tells the other device it was removed");
+
+  const merged = mergeByKey(mine, theirs, "code", "lastUpdated", KEY, loadTombstones());
+  check("it is still gone after syncing with a device that has it",
+        !merged.some(c => c.code === "USD"),
+        "it came back - the removal did not survive the union");
+  check("removing one currency does not take the others with it",
+        merged.some(c => c.code === "PHP"));
+
+  // lastUpdated is only a date, so it could not tell "removed this morning" from
+  // "added again this afternoon". updatedAt carries a time, which is why the
+  // tombstone check prefers it.
+  const readded = mine.concat([{ code:"USD", rate:58.9, lastUpdated:"2026-09-07" }]);
+  stampAndTombstone(KEY, readded);
+  check("adding it back the same day sticks",
+        mergeByKey(readded, [], "code", "lastUpdated", KEY, loadTombstones()).some(c=>c.code==="USD"),
+        "the tombstone outranks the new record and you cannot re-add it that day");
+
+  // The baseline has to name records the same way the stamper does, or currencies
+  // look brand new every boot and re-stamp themselves as the freshest edit - the bug
+  // that reverted a category and an amount.
+  const OLD = "2026-09-01T08:00:00.000Z";
+  const held = [{ code:"PHP", rate:1, lastUpdated:"2026-09-01", updatedAt: OLD }];
+  cstore[KEY] = JSON.stringify(held);
+  global.lastSaved = {};
+  primeSyncBaseline();
+  stampAndTombstone(KEY, held);
+  check("an untouched currency is not re-stamped on the next save",
+        held[0].updatedAt === OLD,
+        "re-stamped to " + held[0].updatedAt + " -> it would win every merge it joins");
+}
+
 console.log("\n" + (fail ? "FAILURES: " + fail : "all " + pass + " checks passed"));
 process.exit(fail ? 1 : 0);

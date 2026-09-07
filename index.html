@@ -3665,6 +3665,16 @@
     "spendly_currencies_v1", "spendly_networth_history_v1",
     "spendly_recurring_v1"
   ];
+  // Not every synced store identifies a record by `id`. A tracked currency IS its
+  // code, and without saying so here it fell straight through stampAndTombstone -
+  // never stamped, never tombstoned - so removing one left no trace and the next
+  // sync pulled it back from the other device.
+  // netWorthHistory is deliberately absent even though it is keyed by date: nothing
+  // deletes a point by hand, and the rolling 365-day trim would write a grave for
+  // every day that ages out.
+  const RECORD_KEY_FIELD = { "spendly_currencies_v1": "code" };
+  const keyFieldFor = key => RECORD_KEY_FIELD[key] || "id";
+
   const TOMBSTONE_KEY = "spendly_tombstones_v1";
   // A record that leaves has to leave a mark. Without one, a delete on device A is
   // indistinguishable from a record device B has not seen yet, and every sync
@@ -3681,22 +3691,31 @@
   const lastSaved = {};
   function stampAndTombstone(key, arr){
     const now = new Date().toISOString();
+    const idField = keyFieldFor(key);
     const prev = lastSaved[key] || {};
     const seen = {};
     arr.forEach(rec=>{
-      if (!rec || !rec.id) return;
-      seen[rec.id] = true;
+      if (!rec || rec[idField] == null) return;
+      seen[rec[idField]] = true;
       const shape = JSON.stringify(Object.assign({}, rec, { updatedAt: undefined }));
       // New, or genuinely different from the last save. Re-stamping every record on
       // every save would make an untouched entry look like the freshest edit and win
       // every merge it took part in.
-      if (!prev[rec.id] || prev[rec.id] !== shape) rec.updatedAt = now;
-      prev[rec.id] = shape;
+      if (!prev[rec[idField]] || prev[rec[idField]] !== shape) rec.updatedAt = now;
+      prev[rec[idField]] = shape;
     });
     // Anything that was there last save and is gone now was deleted here.
     const tomb = loadTombstones();
     tomb[key] = tomb[key] || {};
     let changed = false;
+    // And anything that is here is, self-evidently, not deleted. Without this a record
+    // put back after being removed can be undone by its own grave - the two timestamps
+    // tie, and a tie goes to the deletion. It also stops graves accumulating for keys
+    // that have long since come back. A grave the OTHER device still holds survives
+    // this: mergeTombstones brings it back, and then the timestamps decide.
+    Object.keys(seen).forEach(id=>{
+      if (tomb[key][id] !== undefined){ delete tomb[key][id]; changed = true; }
+    });
     Object.keys(prev).forEach(id=>{
       if (!seen[id]){
         tomb[key][id] = now;
@@ -3715,8 +3734,11 @@
       try{ arr = JSON.parse(localStorage.getItem(key)) || []; }catch(e){ arr = []; }
       if (!Array.isArray(arr)) return;
       const snap = {};
+      const idField = keyFieldFor(key);
       arr.forEach(rec=>{
-        if (rec && rec.id) snap[rec.id] = JSON.stringify(Object.assign({}, rec, { updatedAt: undefined }));
+        if (rec && rec[idField] != null){
+          snap[rec[idField]] = JSON.stringify(Object.assign({}, rec, { updatedAt: undefined }));
+        }
       });
       lastSaved[key] = snap;
     });
@@ -8904,7 +8926,7 @@
   // a tracked currency by its code — and mergeRecords drops anything without an id,
   // so passing these through it silently emptied both lists on every sync that
   // merged. They merge on their own natural key instead.
-  function mergeByKey(mine, theirs, keyField, timeField){
+  function mergeByKey(mine, theirs, keyField, timeField, storeKey, tomb){
     const byKey = {};
     (Array.isArray(mine) ? mine : []).forEach(r=>{
       if (r && r[keyField] != null) byKey[r[keyField]] = r;
@@ -8918,6 +8940,17 @@
       if (timeField && String(r[timeField] || "") > String(ex[timeField] || "")){
         byKey[r[keyField]] = r;
       }
+    });
+    // A removal has to survive the union, or taking a currency off one device just
+    // means the other one hands it back. The comparison prefers updatedAt, which is
+    // stamped on every save and carries a time: lastUpdated is only a date, so it
+    // could not tell "removed this morning" from "added again this afternoon".
+    const graves = (storeKey && tomb && tomb[storeKey]) || {};
+    Object.keys(graves).forEach(k=>{
+      const rec = byKey[k];
+      if (!rec) return;
+      const when = String(rec.updatedAt || (timeField && rec[timeField]) || "");
+      if (when <= String(graves[k])) delete byKey[k];
     });
     return Object.keys(byKey).map(k=>byKey[k]);
   }
@@ -8987,7 +9020,8 @@
       loansTaken     = mergeRecords("spendly_loans_taken_v1",      loansTaken,     remote.loansTaken,     tomb);
       investments    = mergeRecords("spendly_investments_v1",      investments,    remote.investments,    tomb);
       // Keyed by code and by date, not by id — see mergeByKey.
-      currencies      = mergeByKey(currencies, remote.currencies, "code", "lastUpdated");
+      currencies      = mergeByKey(currencies, remote.currencies, "code", "lastUpdated",
+                                   "spendly_currencies_v1", tomb);
       netWorthHistory = mergeByKey(netWorthHistory, remote.netWorthHistory, "date", null)
         .sort((x,y)=> String(x.date).localeCompare(String(y.date)))
         .slice(-365);   // the same ceiling the daily snapshot keeps
