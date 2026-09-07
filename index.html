@@ -3721,6 +3721,10 @@
       lastSaved[key] = snap;
     });
   }
+  // Immediately, not in Init. Anything that saves during boot - a recurring charge
+  // posting, monthly interest - would otherwise find no baseline, read every existing
+  // record as new, and re-stamp the whole device as freshly edited.
+  primeSyncBaseline();
 
   // Fields whose type the renderers rely on. A backup edited by hand, or a record
   // written by an older version, can carry the right name with the wrong type; that
@@ -3770,7 +3774,14 @@
           // than at the call sites means no future feature can forget to sync.
           if (SYNCED_KEYS.indexOf(key) !== -1 || key === TOMBSTONE_KEY ||
               key === CATEGORY_KEY || key === BUDGET_KEY || key === CRYPTO_KEY){
-            if (typeof scheduleAutoSync === "function") scheduleAutoSync();
+            // Deliberately swallowed, and only here: the data is on disk by now, so a
+            // push that could not be scheduled is not a failed save and must not be
+            // reported as one. The only way to land here is a save during boot, before
+            // the sync helpers below have initialised - and the next save, the 12-second
+            // poll, or coming back to the tab all sync anyway.
+            try{
+              if (typeof scheduleAutoSync === "function") scheduleAutoSync();
+            }catch(e){}
           }
           return true;
         }catch(err){
@@ -8799,6 +8810,11 @@
     let r;
     try{
       r = await fetch(GH_API + path, Object.assign({
+        // GitHub sends Cache-Control: private, max-age=60. Without this the browser
+        // answers a poll from its own cache and the device merges against a gist that
+        // is up to a minute stale - which is how a push ends up erasing an entry the
+        // other device had already sent.
+        cache: "no-store",
         headers: {
           "Authorization": "Bearer " + ghTok(),
           "Accept": "application/vnd.github+json",
@@ -8830,14 +8846,33 @@
 
   // What travels. Device preferences and the draft deliberately do not: which panels
   // you left open is not something the other phone should inherit.
+  // Records carry no meaningful order - a merge lists your own first and appends what
+  // is new, so two devices holding identical data still write it differently. Now that
+  // a push is decided by comparing our payload with the gist, that difference alone
+  // would look like a change and the two would overwrite each other forever. Sorting
+  // makes the payload a function of the data and nothing else. `categories` is left
+  // alone deliberately: the user arranged that list, so its order IS data.
+  function sortedBy(arr, field){
+    return Array.isArray(arr)
+      ? arr.slice().sort((a,b)=> String((a && a[field]) || "").localeCompare(String((b && b[field]) || "")))
+      : arr;
+  }
+
   function syncPayload(){
     return {
       v: 2,
       writtenAt: new Date().toISOString(),
-      expenses, incomes, savings,
-      loansGiven, loansTaken, investments,
-      currencies, netWorthHistory, recurring,
-      budgets, corrections, categories, cryptos,
+      expenses:        sortedBy(expenses, "id"),
+      incomes:         sortedBy(incomes, "id"),
+      savings:         sortedBy(savings, "id"),
+      loansGiven:      sortedBy(loansGiven, "id"),
+      loansTaken:      sortedBy(loansTaken, "id"),
+      investments:     sortedBy(investments, "id"),
+      currencies:      sortedBy(currencies, "code"),
+      netWorthHistory: sortedBy(netWorthHistory, "date"),
+      recurring:       sortedBy(recurring, "id"),
+      cryptos:         sortedBy(cryptos, "code"),
+      budgets, corrections, categories,
       mapTimes,
       tombstones: loadTombstones()
     };
@@ -8930,7 +8965,7 @@
         let raw = f.content;
         // GitHub truncates large files inline and gives a URL for the rest.
         if (f.truncated && f.raw_url){
-          try{ raw = await (await fetch(f.raw_url)).text(); }
+          try{ raw = await (await fetch(f.raw_url, { cache: "no-store" })).text(); }
           catch(e){ throw new Error("Your data is there but too large to read back in one piece. Nothing here changed."); }
         }
         try{ remote = JSON.parse(raw); }
@@ -9003,9 +9038,14 @@
 
     const outgoing = syncPayload();
     const print = fingerprint(outgoing);
-    if (id && print === lastPushedPrint){
-      // Nothing of ours is missing from the gist. A poll that finds no local changes
-      // should cost one read, not a write.
+    // Against the gist we just read, NOT against what we last pushed. Those two come
+    // apart the moment another device overwrites the file with a payload missing our
+    // records: we would see nothing changed on our side, skip, and they would never
+    // come back. Comparing with the remote means a device whose entries were clobbered
+    // notices on its very next poll and sends them again.
+    if (id && remote && print === fingerprint(remote)){
+      // The gist already holds exactly this. A poll that finds nothing to say should
+      // cost one read, not a write.
       try{ localStorage.setItem(GH_SYNCED_AT, new Date().toISOString()); }catch(e){}
       refreshAfterSync();
       return { pulled: pulled, pushed: false };
@@ -9020,7 +9060,6 @@
       const made = await ghCall("/gists", { method: "POST", body: body });
       if (made && made.id) try{ localStorage.setItem(GH_GIST_KEY, made.id); }catch(e){}
     }
-    lastPushedPrint = print;
     try{ localStorage.setItem(GH_SYNCED_AT, new Date().toISOString()); }catch(e){}
 
     refreshAfterSync();
@@ -9035,7 +9074,17 @@
   function fingerprint(payload){
     // writtenAt changes every call, so it cannot be part of what "changed" means.
     const copy = Object.assign({}, payload); delete copy.writtenAt;
-    const str = JSON.stringify(copy);
+    // Key order is not data either. Tombstones in particular get their keys in
+    // whatever order a merge happened to visit them, and JSON.stringify would call
+    // that a difference. Sorting keys asks the question that was actually meant.
+    const stable = (v)=>{
+      if (Array.isArray(v)) return "[" + v.map(stable).join(",") + "]";
+      if (v && typeof v === "object"){
+        return "{" + Object.keys(v).sort().map(k=> JSON.stringify(k) + ":" + stable(v[k])).join(",") + "}";
+      }
+      return JSON.stringify(v === undefined ? null : v);
+    };
+    const str = stable(copy);
     // FNV-1a, 32-bit. Cheap, dependency-free, and every byte moves the result.
     let h = 0x811c9dc5;
     for (let i = 0; i < str.length; i++){
@@ -9067,7 +9116,6 @@
      against an authenticated limit of 5,000. */
   let autoPushTimer = null;
   let syncInFlight = false;
-  let lastPushedPrint = "";
 
   async function quietSync(){
     if (!ghTok() || syncInFlight || !navigator.onLine) return;
@@ -9604,7 +9652,6 @@
     }
   })();
 
-  primeSyncBaseline();
   populateBankOptions("in-bank", "— Select an account —");
   populateBankOptions("expense-bulk-bank", "— No account —");
 

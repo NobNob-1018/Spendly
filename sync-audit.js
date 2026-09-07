@@ -100,5 +100,86 @@ console.log("\n--- fingerprint: does it notice every real change? ---");
         fingerprint(base) === fingerprint(same));
 }
 
+/* ---- The three failures reported from real two-device use, 2026-09-07 ---- */
+
+console.log("\n--- the boot baseline is primed before anything can save ---");
+{
+  // processRecurringExpenses() and processSavingsInterest() save a synced store when
+  // they post. If primeSyncBaseline() has not run yet, stampAndTombstone sees an empty
+  // baseline, reads every existing record as new, and re-stamps the whole device as
+  // edited just now - so it wins every merge and reverts the other device edits.
+  const primed   = SRC.indexOf("\n  primeSyncBaseline();");
+  const posts    = SRC.indexOf("\n  processRecurringExpenses();");
+  const interest = SRC.indexOf("\n  processSavingsInterest();");
+  check("primeSyncBaseline() is called at all", primed > 0);
+  check("it runs before processRecurringExpenses()", primed > 0 && posts > 0 && primed < posts,
+        "a boot that posts a recurring charge re-stamps every record and wins every merge");
+  check("it runs before processSavingsInterest()", primed > 0 && interest > 0 && primed < interest,
+        "a boot that posts monthly interest does the same");
+}
+
+console.log("\n--- GitHub reads are never served from the browser cache ---");
+{
+  // GitHub answers an authenticated GET with Cache-Control: private, max-age=60, and
+  // the fetch() default honours it - so a poll can merge against a minute-old gist.
+  const callAt = SRC.indexOf("async function ghCall(");
+  const call = SRC.slice(callAt, callAt + 900);
+  check("ghCall passes cache: no-store", call.indexOf("cache: \"no-store\"") > 0,
+        "a cached read merges against a stale gist, and the push that follows erases");
+  check("the truncated-file read is uncached too",
+        SRC.indexOf("fetch(f.raw_url, { cache: \"no-store\" })") > 0);
+}
+
+console.log("\n--- a clobbered entry comes back instead of being lost forever ---");
+{
+  // The old gate compared our payload with what WE last pushed. A push replaces the
+  // whole gist file, so once another device overwrote it without our records we saw
+  // no local change, skipped, and never sent them again.
+  const gateAt = SRC.indexOf("const outgoing = syncPayload();");
+  const gate = SRC.slice(gateAt, gateAt + 900);
+  check("the push gate compares against the gist that was just read",
+        gate.indexOf("print === fingerprint(remote)") > 0,
+        "comparing against our own last push loses any record another device overwrote");
+  check("lastPushedPrint is gone", SRC.indexOf("lastPushedPrint") === -1);
+
+  // And end to end, with the real merge and the real fingerprint.
+  eval(grab("sortedBy"));
+  let gist = null;
+  const dev = (expenses)=>({ expenses,
+    sync(stale){
+      const remote = stale !== undefined ? stale : gist;
+      if (remote) this.expenses = mergeRecords("spendly_expenses_v1", this.expenses, remote.expenses, {});
+      const out = { v:2, writtenAt:new Date().toISOString(), expenses: sortedBy(this.expenses, "id") };
+      if (gist && fingerprint(out) === fingerprint(gist)) return "skipped";
+      gist = JSON.parse(JSON.stringify(out)); return "pushed";
+    }});
+  const base = [{ id:"e_1", amount:250, updatedAt:T(1) }];
+  const phone = dev(JSON.parse(JSON.stringify(base)));
+  const desk  = dev(JSON.parse(JSON.stringify(base)));
+  phone.sync(); desk.sync();
+  const staleCopy = JSON.parse(JSON.stringify(gist));
+  phone.expenses.push({ id:"e_new", amount:640, updatedAt:T(9) });
+  phone.sync();
+  desk.sync(staleCopy);                 // reads a stale gist and overwrites the file
+  check("a stale-read push does drop the entry from the gist (the hazard is real)",
+        !gist.expenses.some(e=>e.id==="e_new"));
+  phone.sync();                         // fresh read: notices the gist is missing it
+  desk.sync();
+  check("the owning device notices and sends it again",
+        gist.expenses.some(e=>e.id==="e_new"));
+  check("the other device ends up with it",
+        desk.expenses.some(e=>e.id==="e_new"),
+        "still missing -> an entry logged on the phone never reaches the desktop");
+
+  let writes = 0; gist = null;
+  const A = dev([{id:"e_1",amount:250,updatedAt:T(1)},{id:"e_2",amount:180,updatedAt:T(1)}]);
+  const B = dev([{id:"e_2",amount:180,updatedAt:T(1)},{id:"e_1",amount:250,updatedAt:T(1)}]);
+  if (A.sync() === "pushed") writes++;
+  for (let i=0;i<6;i++){ if (B.sync()==="pushed") writes++; if (A.sync()==="pushed") writes++; }
+  check("two idle devices listing the same data differently do not write forever",
+        writes === 1,
+        writes + " writes over 12 idle polls - each device reads the other order as a change");
+}
+
 console.log("\n" + (fail ? "FAILURES: " + fail : "all " + pass + " checks passed"));
 process.exit(fail ? 1 : 0);
