@@ -12,7 +12,7 @@
 
    Bump VERSION on release. The activate handler deletes every cache that is not in
    the current set, so a bump is also the cache eviction. */
-const VERSION = 'spendly-v2';
+const VERSION = 'spendly-v3';
 const SHELL   = VERSION + '-shell';
 const VENDOR  = VERSION + '-vendor';
 
@@ -26,9 +26,23 @@ self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(SHELL);
     /* './' and './index.html' are the same page on Pages, but a request can arrive
-       as either, so both are primed. */
-    try { await c.addAll(['./', './index.html', './manifest.webmanifest', './icon.svg']); }
-    catch (err) { try { await c.add('./'); } catch (e2) {} }
+       as either, so both are primed.
+
+       Not addAll(): it fetches with the default cache mode, so a brand new install
+       can be primed straight from the browser's HTTP cache - with the very bytes the
+       install exists to replace. Observed: a fresh install still served the previous
+       build, and only the revalidation on the NEXT open corrected it. 'reload' skips
+       the HTTP cache outright, which is what a first install wants.
+
+       One request per file rather than all-or-nothing, so a single failure does not
+       leave the shell empty and the app unopenable offline. */
+    const shellUrls = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
+    await Promise.all(shellUrls.map(async url => {
+      try {
+        const res = await fetch(new Request(url, { cache: 'reload', credentials: 'same-origin' }));
+        if (res && res.ok) await c.put(url, res);
+      } catch (err) { /* offline mid-install; the fetch handler will fill this in */ }
+    }));
     self.skipWaiting();
   })());
 });
