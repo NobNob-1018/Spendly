@@ -5198,7 +5198,14 @@
     // the history category filters are built into their table headers instead.
     const addSelect = document.getElementById("in-category");
     const activeList = entryMode === "income" ? INCOME_CATEGORIES : categories;
+    // Replacing the options resets the select to its first entry, which is "Food".
+    // This runs on every sync, so without holding on to the choice a background poll
+    // landing mid-entry quietly refiled what you were typing. Switching between
+    // expense and income still resets, and should: the name will not be in the new
+    // list.
+    const chosen = addSelect.value;
     addSelect.innerHTML = activeList.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+    if (chosen && activeList.indexOf(chosen) !== -1) addSelect.value = chosen;
   }
 
   function escapeHtml(s){
@@ -5287,16 +5294,29 @@
     }catch(e){ /* ignore corrupt draft */ }
   }
 
+  // Whether the category on screen is this entry's own choice or just our guess.
+  // Reset when the form is cleared, so the next entry starts being guessed again.
+  let categoryChosenByHand = false;
+
   document.getElementById("in-desc").addEventListener("input", (e)=>{
     if (entryMode === "expense"){
+      const sel = document.getElementById("in-category");
       const guess = guessCategory(e.target.value);
-      document.getElementById("in-category").value = guess;
-      document.getElementById("add-hint").textContent = e.target.value.trim() ? `Guessed category: ${guess}` : "";
+      // Only fill in what the user has not already decided. This fired on every
+      // keystroke, so choosing a category and then going back to fix a typo in the
+      // description silently put the guess back - and the correction the app would
+      // have learned from that choice was lost with it.
+      if (!categoryChosenByHand) sel.value = guess;
+      document.getElementById("add-hint").textContent = !e.target.value.trim() ? ""
+        : (categoryChosenByHand ? `Filed under ${sel.value}.` : `Guessed category: ${guess}`);
     }
     scheduleDraftSave();
   });
   document.getElementById("in-amount").addEventListener("input", scheduleDraftSave);
-  document.getElementById("in-category").addEventListener("change", scheduleDraftSave);
+  document.getElementById("in-category").addEventListener("change", ()=>{
+    categoryChosenByHand = true;
+    scheduleDraftSave();
+  });
   document.getElementById("in-recurring-day").addEventListener("change", scheduleDraftSave);
 
   function handleAddEntry(){
@@ -5366,6 +5386,7 @@
 
     document.getElementById("in-desc").value = "";
     document.getElementById("in-amount").value = "";
+    categoryChosenByHand = false;   // the next entry gets guessed again
     document.getElementById("in-currency").value = "PHP";
     document.getElementById("in-currency-preview").style.display = "none";
     document.getElementById("in-tags").value = "";
@@ -5621,6 +5642,7 @@
 
     document.getElementById("in-desc").value = "";
     document.getElementById("in-amount").value = "";
+    categoryChosenByHand = false;   // the next entry gets guessed again
     document.getElementById("in-currency").value = "PHP";
     document.getElementById("in-currency-preview").style.display = "none";
     document.getElementById("in-tags").value = "";
