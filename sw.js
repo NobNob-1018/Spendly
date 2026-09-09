@@ -12,7 +12,7 @@
 
    Bump VERSION on release. The activate handler deletes every cache that is not in
    the current set, so a bump is also the cache eviction. */
-const VERSION = 'spendly-v1';
+const VERSION = 'spendly-v2';
 const SHELL   = VERSION + '-shell';
 const VENDOR  = VERSION + '-vendor';
 
@@ -70,7 +70,13 @@ self.addEventListener('fetch', e => {
   e.respondWith((async () => {
     const c = await caches.open(SHELL);
     const hit = await c.match(req, { ignoreSearch: true });
-    const net = fetch(req).then(res => {
+    /* Deliberately NOT fetch(req): a navigation carries the default cache mode, so the
+       browser's own HTTP cache answered the revalidation with the same stale bytes the
+       worker already held - and the worker wrote them straight back. The app could not
+       update itself at all. 'no-cache' revalidates with the server instead, so an
+       unchanged file costs a 304 rather than 650 KB. */
+    const fresh = new Request(req.url, { cache: 'no-cache', credentials: 'same-origin' });
+    const net = fetch(fresh).then(res => {
       if (res && res.ok) c.put(req, res.clone());
       return res;
     }).catch(() => null);
