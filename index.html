@@ -3485,6 +3485,9 @@
     <div class="card is-supporting">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"/></svg></span>About</h2>
       <p class="sub">Spendly is a single self-contained file — everything you enter stays on this device only. Use the ⇅ button in the sidebar any time to export a backup or import one.</p>
+      <p class="hint" style="margin-bottom:10px;">This build: <strong id="app-build">—</strong></p>
+      <button class="btn btn-outline btn-sm" id="btn-check-update"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg>Check for a newer version</button>
+      <p class="hint" id="update-status" style="margin:-4px 0 0;">The app keeps itself up to date in the background, so a new version usually arrives on your next open. This fetches it now.</p>
     </div>
   </section>
 
@@ -3600,6 +3603,11 @@
   // shorter, distinct list from SAVINGS_PROVIDERS since this is about where money
   // actually moves day-to-day, not every way someone might categorize a savings account.
   const BANK_OPTIONS = ["Cash / Physical wallet", "Maya Bank", "BPI", "Security Bank", "Maribank", "GoTyme", "GCash"];
+
+  /* Which build this file is. Bumped on release; the update check compares it with
+     whatever the server is serving, so it is what makes "am I current?" answerable
+     rather than a guess. */
+  const APP_BUILD = "2026-09-09";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   const INCOME_CATEGORIES = ["Salary", "Freelance", "Bonus", "Business", "Gift", "Other Income"];
@@ -9714,6 +9722,75 @@
   // Kept as a no-op hook: the export path still calls it after a successful backup,
   // and there is nothing left for it to update now that the nag is gone.
   function updateBackupBanner(){}
+
+  /* ---------- Getting the newest version on purpose ----------
+     The worker serves the cached copy first and fetches a fresh one behind it, which
+     is what makes a 600 KB file open instantly - but it also means a new build lands
+     one open later than you would expect. Waiting two opens is fine when you did not
+     know a fix existed and maddening when you did, so this asks for it now. */
+
+  async function fetchServerBuild(){
+    // A cache-buster cannot get past the worker: it matches the shell with
+    // ignoreSearch, so ./index.html?anything still hits the cached copy. Dropping the
+    // shell cache is what actually forces the next request onto the network - and it
+    // leaves a fresh copy behind either way, which is the point.
+    if (window.caches){
+      const names = await caches.keys();
+      await Promise.all(names.filter(k=>k.indexOf("-shell") !== -1).map(k=>caches.delete(k)));
+    }
+    const res = await fetch("./index.html", { cache: "no-store" });
+    if (!res || !res.ok) throw new Error("bad response");
+    const text = await res.text();
+    const at = text.indexOf("APP_BUILD = \"");
+    if (at < 0) return "";
+    const from = at + "APP_BUILD = \"".length;
+    return text.slice(from, text.indexOf("\"", from));
+  }
+
+  (function wireUpdateCheck(){
+    const btn = document.getElementById("btn-check-update");
+    const out = document.getElementById("update-status");
+    const now = document.getElementById("app-build");
+    if (now) now.textContent = APP_BUILD;
+    if (!btn || !out) return;
+
+    btn.addEventListener("click", async ()=>{
+      // Opened straight off the disk, where there is no server to ask and fetch is
+      // blocked by the file:// origin anyway.
+      if (location.protocol === "file:"){
+        out.textContent = "This copy was opened from a file, so there is nothing to update from. The installed app updates itself.";
+        return;
+      }
+      btn.disabled = true;
+      out.textContent = "Checking…";
+      try{
+        // Picks up a changed sw.js too, which the shell fetch below would not.
+        if ("serviceWorker" in navigator){
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) await reg.update();
+        }
+        const latest = await fetchServerBuild();
+        if (!latest){
+          out.textContent = "Couldn't read the version on the server. You are still on " + APP_BUILD + " and nothing was changed.";
+          btn.disabled = false;
+          return;
+        }
+        if (latest === APP_BUILD){
+          out.textContent = "You are on the latest build (" + APP_BUILD + ").";
+          btn.disabled = false;
+          return;
+        }
+        // The fresh copy is already cached by the fetch above, so the reload paints it.
+        out.textContent = "Build " + latest + " is ready — reloading…";
+        setTimeout(()=>location.reload(), 700);
+      }catch(e){
+        out.textContent = navigator.onLine
+          ? "Couldn't reach the server. You are still on " + APP_BUILD + "."
+          : "No connection. You are still on " + APP_BUILD + ".";
+        btn.disabled = false;
+      }
+    });
+  })();
 
   /* ---------- Init ---------- */
   renderCategoryOptions();
