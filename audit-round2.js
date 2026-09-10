@@ -231,5 +231,49 @@ console.log("\n--- the category list ---");
         "got " + ordered.join(","));
 }
 
+/* ---- Live UI state destroyed by an unbidden re-render ----
+   Three bugs in this family so far: the category select rebuilding to "Food", the
+   History row being replaced while you typed in it, and a selection surviving a
+   filter that no longer contains it. These are DOM-shaped, so what is checked here is
+   that the guards are still wired in - the behaviour itself is verified in a browser. */
+
+console.log("\n--- a sync cannot pull live UI out from under the user ---");
+{
+  const at = SRC.indexOf("function refreshAfterSync(");
+  const body = SRC.slice(at, SRC.indexOf("\n  }", at));
+  check("the post-sync repaint waits while a field is focused",
+        body.indexOf("editingATableField()") > 0,
+        "a repaint mid-edit destroys the input, the caret and the on-screen keyboard");
+  check("something releases the held repaint",
+        SRC.indexOf("refreshHeldForEditing") > 0 && SRC.indexOf("focusout") > 0,
+        "held and never released means the table stops updating altogether");
+  check("it only repaints the tab on screen",
+        body.indexOf("onScreen(\"tab-history\")") > 0,
+        "rebuilding tables nobody is looking at, every twelve seconds, on a phone");
+  check("rebuilding the category list keeps the chosen category",
+        SRC.indexOf("if (chosen && activeList.indexOf(chosen) !== -1)") > 0,
+        "replacing a select's options selects its first entry, which is Food");
+  check("the guess never overrides a category picked by hand",
+        SRC.indexOf("if (!categoryChosenByHand) sel.value = guess;") > 0);
+}
+
+console.log("\n--- a selection cannot outlive the filter that made it ---");
+{
+  check("both history tables prune their selection",
+        SRC.split("pruneSelection(").length - 1 >= 3,
+        "expected the helper plus a call in each of the two renderers");
+  // And the rule itself, run for real.
+  eval(grab("pruneSelection"));
+  const sel = new Set(["a","b","c"]);
+  pruneSelection(sel, [{id:"a"},{id:"c"}]);
+  check("what the filter still shows stays selected",
+        sel.has("a") && sel.has("c"));
+  check("what it no longer shows is dropped", !sel.has("b"),
+        "the bar would read 3 selected with two rows on screen, and Delete would take a record the user could not see");
+  const empty = new Set();
+  pruneSelection(empty, []);
+  check("an empty selection is left alone", empty.size === 0);
+}
+
 console.log("\n" + (fail ? fail + " issue(s): " + found.join("; ") : "all " + pass + " checks passed"));
 process.exit(0);

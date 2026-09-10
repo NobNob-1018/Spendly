@@ -3607,7 +3607,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-10";
+  const APP_BUILD = "2026-09-10b";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   const INCOME_CATEGORIES = ["Salary", "Freelance", "Bonus", "Business", "Gift", "Other Income"];
@@ -4057,6 +4057,16 @@
   let netWorthHistory = loadNetWorthHistory();
   let entryMode = "expense";   // "expense" or "income" — which form the Add tab shows
   let historyMode = "expense"; // "expense" or "income" — which table the History tab shows
+  // Drops anything the current filter no longer shows. Called from both history
+  // renderers with the fully filtered list, before the bulk bar is drawn, so the count
+  // on screen is always the number of records the filter can actually reach.
+  function pruneSelection(set, list){
+    if (!set.size) return;
+    const present = new Set(list.map(r=>r.id));
+    // Copied first: deleting from a Set while iterating it is legal but reads as a bug.
+    Array.from(set).forEach(id=>{ if (!present.has(id)) set.delete(id); });
+  }
+
   let selectedExpenseIds = new Set();
   let selectedIncomeIds = new Set();
 
@@ -6449,6 +6459,13 @@
     list = filterByDateRange(list, rangeVal, fromVal, toVal);
     list = sortEntries(list, expenseSort);
 
+    // A selection belongs to the set it was made in. Filter to a different set and the
+    // count stayed while nothing on screen was ticked - "10 selected" with no visible
+    // selection, and Delete selected would have taken ten rows the user could not see.
+    // Paging is only a window onto the same set so those survive; a filter, search or
+    // date range is a different set, so what is no longer in it goes.
+    pruneSelection(selectedExpenseIds, list);
+
     // Bulk recategorize dropdown stays in sync with the current category list
     const bulkCatSelect = document.getElementById("expense-bulk-category");
     bulkCatSelect.innerHTML = categories.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
@@ -6756,6 +6773,8 @@
     );
     list = filterByDateRange(list, rangeVal, fromVal, toVal);
     list = sortEntries(list, incomeSort);
+
+    pruneSelection(selectedIncomeIds, list);   // see renderHistory
 
     const bulkCatSelect = document.getElementById("income-bulk-category");
     bulkCatSelect.innerHTML = INCOME_CATEGORIES.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
@@ -9228,12 +9247,23 @@
   function refreshAfterSync(){
     if (editingATableField()){ refreshHeldForEditing = true; return; }
     refreshHeldForEditing = false;
-    renderDashboardSummary(); renderHistory(); renderIncomeHistory();
-    renderSavingsList(); renderLoansGiven(); renderLoansTaken(); renderInvestments();
-    renderTotalMoneyBar();
+    // Switching to a tab re-renders that tab's own tables (see activateTab), so
+    // rebuilding tables nobody is looking at buys nothing - it is DOM work and battery
+    // every twelve seconds, on a phone, for rows that are not on screen. Same test
+    // scheduleDerivedRefresh already uses.
+    const onScreen = (id)=>{ const el = document.getElementById(id); return el && el.style.display !== "none"; };
+
+    renderTotalMoneyBar();        // page chrome: on screen whatever tab you are on
     // The category dropdowns are built once from the list, so a pulled category is
-    // invisible until they are rebuilt.
-    renderCategoryOptions(); renderRecurringList(); renderCryptoList();
+    // invisible until they are rebuilt - and the add form is reachable from every tab.
+    renderCategoryOptions();
+    // Side panel and the add form, neither of them tab-scoped.
+    renderRecurringList(); renderCryptoList();
+
+    if (onScreen("tab-dashboard")) renderDashboardSummary();
+    if (onScreen("tab-history")){ renderHistory(); renderIncomeHistory(); }
+    if (onScreen("tab-savings")) renderSavingsList();
+    if (onScreen("tab-loans")){ renderLoansGiven(); renderLoansTaken(); renderInvestments(); }
   }
 
   /* ================= Automatic sync =================
