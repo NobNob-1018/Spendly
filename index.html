@@ -3607,7 +3607,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-10b";
+  const APP_BUILD = "2026-09-10c";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   const INCOME_CATEGORIES = ["Salary", "Freelance", "Bonus", "Business", "Gift", "Other Income"];
@@ -3671,7 +3671,7 @@
     "spendly_expenses_v1", "spendly_incomes_v1", "spendly_savings_v1",
     "spendly_loans_given_v1", "spendly_loans_taken_v1", "spendly_investments_v1",
     "spendly_currencies_v1", "spendly_networth_history_v1",
-    "spendly_recurring_v1"
+    "spendly_recurring_v1", "spendly_balance_ops_v1"
   ];
   // Not every synced store identifies a record by `id`. A tracked currency IS its
   // code, and without saying so here it fell straight through stampAndTombstone -
@@ -3682,6 +3682,10 @@
   // every day that ages out.
   const RECORD_KEY_FIELD = { "spendly_currencies_v1": "code" };
   const keyFieldFor = key => RECORD_KEY_FIELD[key] || "id";
+
+  // Every movement of money in or out of an account, each with its own id so the
+  // merge unions them instead of choosing between them.
+  const BALANCE_OPS_KEY = "spendly_balance_ops_v1";
 
   const TOMBSTONE_KEY = "spendly_tombstones_v1";
   // A record that leaves has to leave a mark. Without one, a delete on device A is
@@ -5440,21 +5444,71 @@
   // creates a new one (rate left at 0 — the user fills that in later in Savings,
   // same as any manually-added account) if none exists yet. Used both for a fresh
   // income deposit, and for giving money back when a withdrawal is undone.
+  const balanceOpsStore = makeStore(BALANCE_OPS_KEY, [], false);
+  let balanceOps = balanceOpsStore.load();
+
+  function saveBalanceOps(list){ balanceOpsStore.save(list); }
+
+  /* The balance of an account is its opening figure plus everything that has moved
+     since. Nothing else may write `amount` - it is a cached answer, recomputed here,
+     and any direct assignment would simply be overwritten the next time this runs. */
+  function recomputeBalances(){
+    const moved = {};
+    balanceOps.forEach(op=>{
+      if (!op || !op.account) return;
+      moved[op.account] = round2((moved[op.account] || 0) + (Number(op.delta) || 0));
+    });
+    savings.forEach(a=>{
+      const opening = Number(a.opening) || 0;
+      a.amount = round2(opening + (moved[a.provider] || 0));
+    });
+  }
+
+  /* Accounts that predate this carry a balance and no opening figure. Their balance
+     IS their opening figure: everything before now is already baked into it, and the
+     movements start from here. Done once, and it leaves every balance exactly as the
+     user last saw it. */
+  function adoptOpeningBalances(){
+    let changed = false;
+    savings.forEach(a=>{
+      if (a.opening === undefined || a.opening === null){
+        a.opening = round2(Number(a.amount) || 0);
+        changed = true;
+      }
+    });
+    if (changed) saveSavings(savings);
+  }
+
+  function recordMovement(provider, delta, note){
+    if (!provider || !delta) return;
+    balanceOps.push({
+      id: "bo_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+      account: provider,
+      delta: round2(delta),
+      note: note || "",
+      at: new Date().toISOString()
+    });
+    saveBalanceOps(balanceOps);
+  }
+
   function depositToSavings(provider, amount){
     if (!provider) return;
     let account = savings.find(a=>a.provider === provider);
-    if (account){
-      account.amount = round2(account.amount + amount);
-    } else {
+    if (!account){
+      // A brand new account starts empty and receives the money as its first
+      // movement, so the arithmetic is the same as for one that has always existed.
       savings.push({
         id: "sv_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
         provider,
-        amount: round2(amount),
+        opening: 0,
+        amount: 0,
         rate: 0,
         taxRate: 20,
         dateAdded: todayISO()
       });
     }
+    recordMovement(provider, amount, "in");
+    recomputeBalances();
     saveSavings(savings);
     renderSavingsList();
   }
@@ -5476,14 +5530,19 @@
       return { ok: false, reason: `no "${provider}" savings account found — nothing to adjust` };
     }
     if (account.amount >= amount){
-      account.amount = round2(account.amount - amount);
+      recordMovement(provider, -amount, "out");
+      recomputeBalances();
       saveSavings(savings);
       renderSavingsList();
       return { ok: true };
     }
+    // Not enough in the account. Unchanged behaviour - it is zeroed rather than sent
+    // negative - but the movement recorded is the part that actually came out, so the
+    // arithmetic still adds up to what is on screen.
     const shortfall = round2(amount - account.amount);
     const hadBefore = account.amount;
-    account.amount = 0;
+    recordMovement(provider, -hadBefore, "out (short)");
+    recomputeBalances();
     saveSavings(savings);
     renderSavingsList();
     return { ok: false, reason: `${provider} only had ${fmtMoney(hadBefore)} left, so it was zeroed out instead of going negative — ${fmtMoney(shortfall)} of this looks like it was already spent or moved` };
@@ -7999,7 +8058,11 @@
           const v = parseFloat(input.value);
           if (input.dataset.field === "amount"){
             if (isNaN(v) || v <= 0){ showToast("Amount must be greater than 0."); input.value = item.amount; return; }
-            item.amount = round2(v);
+            // Typing a balance says "the truth is this", which is a correction of a
+            // known size - and a correction is a movement like any other. Setting the
+            // total directly would be the very thing that could not be merged.
+            recordMovement(item.provider, round2(v) - round2(item.amount), "correction");
+            recomputeBalances();
           } else if (input.dataset.field === "rate"){
             item.rate = isNaN(v) ? 0 : round2(v);
           } else if (input.dataset.field === "taxRate"){
@@ -8974,6 +9037,7 @@
       expenses:        sortedBy(expenses, "id"),
       incomes:         sortedBy(incomes, "id"),
       savings:         sortedBy(savings, "id"),
+      balanceOps:      sortedBy(balanceOps, "id"),
       loansGiven:      sortedBy(loansGiven, "id"),
       loansTaken:      sortedBy(loansTaken, "id"),
       investments:     sortedBy(investments, "id"),
@@ -9113,6 +9177,9 @@
         .sort((x,y)=> String(x.date).localeCompare(String(y.date)))
         .slice(-365);   // the same ceiling the daily snapshot keeps
       recurring      = mergeRecords("spendly_recurring_v1",        recurring,      remote.recurring,      tomb);
+      // The whole point. These union by id, so a movement made on the phone and one
+      // made on the desktop both survive instead of one replacing the other.
+      balanceOps      = mergeRecords("spendly_balance_ops_v1",      balanceOps,     remote.balanceOps,     tomb);
 
       // Budgets and learned categories are plain maps. They now carry a per-key record
       // of when each was last written, so a CHANGED budget reaches the other device
@@ -9145,7 +9212,12 @@
         cryptos = Object.keys(byCode).map(k=>byCode[k]);
       }
 
+      // Before the accounts are written, so the balance that gets saved is the one
+      // the merged movements add up to rather than whichever device wrote last.
+      recomputeBalances();
+
       saveTombstones(tomb);
+      saveBalanceOps(balanceOps);
       saveExpenses(expenses); saveIncomes(incomes); saveSavings(savings);
       saveLoansGiven(loansGiven); saveLoansTaken(loansTaken); saveInvestments(investments);
       saveCurrencies(currencies); saveNetWorthHistory(netWorthHistory);
@@ -9417,7 +9489,7 @@
       version: 3,
       tombstones: loadTombstones(),
       expenses, incomes, categories, budgets, recurring,
-      savings, loansGiven, loansTaken, investments,
+      savings, balanceOps, loansGiven, loansTaken, investments,
       currencies, cryptos, netWorthHistory, corrections,
       exportedAt: new Date().toISOString()
     };
@@ -9586,6 +9658,13 @@
       saveRecurring(recurring);
       renderRecurringList();
     }
+    // Restored before the accounts, so recomputing at the end has them to work from.
+    // An older backup has none, and its accounts keep the balance it recorded because
+    // adoptOpeningBalances treats that balance as the opening figure.
+    if (Array.isArray(data.balanceOps)){
+      balanceOps = mergeRecords(BALANCE_OPS_KEY, balanceOps, data.balanceOps, loadTombstones());
+      saveBalanceOps(balanceOps);
+    }
     if (Array.isArray(data.savings)){
       savings = savings.concat(data.savings);
       saveSavings(savings);
@@ -9707,6 +9786,15 @@
     renderInvestments();
     renderSideUpcoming();
     renderQuickStats();
+
+    // Anything restored from a backup that predates the ledger arrives with a balance
+    // and no opening figure, so adopt one for it; then every balance is worked out
+    // from the movements that came back with it.
+    adoptOpeningBalances();
+    recomputeBalances();
+    saveSavings(savings);
+    renderSavingsList();
+    renderTotalMoneyBar();
     // Report the full picture — the old message named only expenses, which made
     // a complete restore look like a partial one.
     const parts = [];
@@ -9858,6 +9946,14 @@
   restoreDraft();
   // The control says what it will do before it is first used, not only after.
   paintSyncButton();
+
+  // An account that predates the ledger has a balance and no opening figure; its
+  // balance IS its opening figure. Then work out every balance from the movements.
+  // Both before anything posts, or the first charge of the month would be counted
+  // against a balance that had not been established yet.
+  adoptOpeningBalances();
+  recomputeBalances();
+
   processRecurringExpenses();
   processSavingsInterest();
   renderRecurringList();
