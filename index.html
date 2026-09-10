@@ -3607,7 +3607,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-09c";
+  const APP_BUILD = "2026-09-10";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   const INCOME_CATEGORIES = ["Salary", "Freelance", "Bonus", "Business", "Gift", "Other Income"];
@@ -9197,7 +9197,37 @@
     return str.length + ":" + h.toString(16);
   }
 
+  /* Rebuilding a table replaces the row you are editing. The input element is
+     destroyed and a new one put in its place, so the caret, the on-screen keyboard and
+     anything half-typed go with it - the field simply snaps back to its old value.
+     Sync repaints every table, and it runs every twelve seconds and again a couple of
+     seconds after any save, so on a phone it lands mid-edit almost every time. Typing
+     an amount became a race you usually lost.
+
+     Only the repaint waits. The merge has already happened and nothing is dropped;
+     the new rows are drawn the moment the field is done with. */
+  let refreshHeldForEditing = false;
+
+  function editingATableField(){
+    const el = document.activeElement;
+    // Every editable cell in every table carries data-field; nothing outside one does.
+    return !!(el && el.getAttribute && el.getAttribute("data-field") !== null);
+  }
+
+  document.addEventListener("focusout", ()=>{
+    if (!refreshHeldForEditing) return;
+    // focusout arrives before the next element takes focus, so the decision has to
+    // wait a tick: moving from the amount to the note in the same row is still
+    // editing, and repainting there would be just as rude.
+    setTimeout(()=>{
+      if (!refreshHeldForEditing || editingATableField()) return;
+      refreshAfterSync();
+    }, 0);
+  });
+
   function refreshAfterSync(){
+    if (editingATableField()){ refreshHeldForEditing = true; return; }
+    refreshHeldForEditing = false;
     renderDashboardSummary(); renderHistory(); renderIncomeHistory();
     renderSavingsList(); renderLoansGiven(); renderLoansTaken(); renderInvestments();
     renderTotalMoneyBar();
