@@ -3607,7 +3607,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-13";
+  const APP_BUILD = "2026-09-13b";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   const INCOME_CATEGORIES = ["Salary", "Freelance", "Bonus", "Business", "Gift", "Other Income"];
@@ -4130,7 +4130,10 @@
     }
     if (rangeValue === "month"){
       const monthKey = todayISO().slice(0,7);
-      return list.filter(e=>e.date.slice(0,7) === monthKey);
+      // Same reason the sort coerces: a record imported without a date column has no
+      // date at all, and .slice on undefined throws inside the renderer - which blanks
+      // the table rather than merely mis-filtering one row.
+      return list.filter(e=>String(e.date || "").slice(0,7) === monthKey);
     }
     // "recent" = today + yesterday (2 days); otherwise a numeric day count
     const days = rangeValue === "recent" ? 2 : parseInt(rangeValue, 10);
@@ -4421,10 +4424,15 @@
   // description compare as strings — ISO dates sort correctly that way.
   function sortEntries(list, sort){
     const dir = sort.dir === "asc" ? 1 : -1;
+    // Coerced, because an imported row can arrive with no description or no date at
+    // all, and calling localeCompare on undefined throws - inside the renderer, which
+    // would leave the entire table blank rather than merely mis-sorted.
+    const str = v => String(v == null ? "" : v);
+    const num = v => Number(v) || 0;
     return list.slice().sort((a,b)=>{
-      if (sort.key === "amount") return (a.amount - b.amount) * dir;
-      if (sort.key === "description") return a.description.localeCompare(b.description) * dir;
-      return a.date.localeCompare(b.date) * dir;
+      if (sort.key === "amount") return (num(a.amount) - num(b.amount)) * dir;
+      if (sort.key === "description") return str(a.description).localeCompare(str(b.description)) * dir;
+      return str(a.date).localeCompare(str(b.date)) * dir;
     });
   }
 
