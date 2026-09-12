@@ -3607,10 +3607,13 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-13c";
+  const APP_BUILD = "2026-09-13d";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
-  const INCOME_CATEGORIES = ["Salary", "Freelance", "Bonus", "Business", "Gift", "Other Income"];
+  // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
+  // of this list meant the row's dropdown had no option matching its own record -
+  // and touching that row would quietly refile it as something else.
+  const INCOME_CATEGORIES = ["Salary", "Freelance", "Bonus", "Business", "Gift", "Loan repayment", "Other Income"];
   const INVESTMENT_CATEGORIES = ["Stocks", "Mutual Fund / UITF", "Crypto", "Real Estate", "Business", "Other"];
   // Common currencies to track against PHP — just a name list for the dropdown.
   // Rates are never pre-filled here (same reasoning as savings rates): type in what
@@ -9709,11 +9712,8 @@
       saveBudgets(budgets);
     }
     if (Array.isArray(data.recurring)){
-      data.recurring.forEach(r=>{
-        if (r && r.description && r.amount != null && r.dayOfMonth){
-          recurring.push(r);
-        }
-      });
+      const usable = data.recurring.filter(r=>r && r.description && r.amount != null && r.dayOfMonth);
+      recurring = mergeRecords("spendly_recurring_v1", recurring, usable, {});
       saveRecurring(recurring);
       renderRecurringList();
     }
@@ -9724,8 +9724,14 @@
       balanceOps = mergeRecords(BALANCE_OPS_KEY, balanceOps, data.balanceOps, loadTombstones());
       saveBalanceOps(balanceOps);
     }
+    /* Merging used to append. Re-import the backup you are already holding and every
+       account, loan and entry appeared twice - and the totals with them. These carry
+       ids, so they can be unioned on id instead: what you already have stays, what the
+       backup adds arrives, and a record in both is kept once. Deliberately no
+       tombstones: restoring a backup is an explicit request for what is in it, and an
+       old deletion should not quietly overrule that. */
     if (Array.isArray(data.savings)){
-      savings = savings.concat(data.savings);
+      savings = mergeRecords("spendly_savings_v1", savings, data.savings, {});
       saveSavings(savings);
     } else if (typeof data.balance === "number"){
       // backup from an older version that only had a single balance number
@@ -9739,11 +9745,11 @@
       saveSavings(savings);
     }
     if (Array.isArray(data.loansGiven)){
-      loansGiven = loansGiven.concat(data.loansGiven);
+      loansGiven = mergeRecords("spendly_loans_given_v1", loansGiven, data.loansGiven, {});
       saveLoansGiven(loansGiven);
     }
     if (Array.isArray(data.loansTaken)){
-      loansTaken = loansTaken.concat(data.loansTaken);
+      loansTaken = mergeRecords("spendly_loans_taken_v1", loansTaken, data.loansTaken, {});
       saveLoansTaken(loansTaken);
     }
     // Currencies and crypto merge by code rather than appending, so re-importing
@@ -9788,11 +9794,17 @@
       saveNetWorthHistory(netWorthHistory);
     }
     if (Array.isArray(data.investments)){
+      const usableInv = [];
       data.investments.forEach(inv=>{
         if (!inv || !inv.name || inv.amount == null) return;
         const isOldShape = inv.category === undefined;
-        investments.push({
-          id: "inv_" + (inv.id || Date.now() + "_" + Math.random().toString(36).slice(2,7)),
+        usableInv.push(Object.assign({}, inv, {
+          // Only prefix an id that has not been prefixed already. Re-importing a
+          // backup used to produce inv_inv_… and, with a new id each time, a fresh
+          // copy of the same investment.
+          id: inv.id
+            ? (String(inv.id).indexOf("inv_") === 0 ? inv.id : "inv_" + inv.id)
+            : ("inv_" + Date.now() + "_" + Math.random().toString(36).slice(2,7)),
           name: inv.name,
           category: isOldShape ? "Other" : (inv.category || "Other"),
           amount: round2(parseFloat(inv.amount)),
@@ -9800,38 +9812,49 @@
           actualSoldPrice: isOldShape ? null : (inv.actualSoldPrice != null ? round2(inv.actualSoldPrice) : null),
           feePercent: isOldShape ? 5 : (inv.feePercent != null ? inv.feePercent : 5),
           dateAdded: inv.date || inv.dateAdded || todayISO()
-        });
+        }));
       });
+      investments = mergeRecords("spendly_investments_v1", investments, usableInv, {});
       saveInvestments(investments);
       renderInvestments();
     }
+    /* Rebuilt from five named fields, this used to drop everything else the record
+       carried - including `bank`, so a restore forgot which account every entry came
+       from, and `updatedAt`, which is what decides who wins a later merge. Copying the
+       record and correcting the fields that need it keeps the rest. */
     if (Array.isArray(data.incomes)){
+      const usableInc = [];
       data.incomes.forEach(item=>{
-        if (item && item.description && item.amount != null && item.date){
-          incomes.push({
-            id: item.id || ("i_" + Date.now() + "_" + Math.random().toString(36).slice(2,7)),
-            description: String(item.description),
-            amount: round2(parseFloat(item.amount)),
-            category: item.category || "Other Income",
-            date: item.date
-          });
-        }
+        if (!(item && item.description && item.amount != null && item.date)) return;
+        usableInc.push(Object.assign({}, item, {
+          id: item.id || ("i_" + Date.now() + "_" + Math.random().toString(36).slice(2,7)),
+          description: String(item.description),
+          amount: round2(parseFloat(item.amount)),
+          category: item.category || "Other Income",
+          date: item.date,
+          tags: Array.isArray(item.tags) ? item.tags : [],
+          bank: item.bank || null
+        }));
       });
+      incomes = mergeRecords("spendly_incomes_v1", incomes, usableInc, {});
       saveIncomes(incomes);
       renderIncomeHistory();
     }
+    const usableExp = [];
     incoming.forEach(item=>{
-      if (item && item.description && item.amount != null && item.date){
-        expenses.push({
-          id: item.id || ("e_" + Date.now() + "_" + Math.random().toString(36).slice(2,7)),
-          description: String(item.description),
-          amount: Math.round(parseFloat(item.amount)*100)/100,
-          category: item.category || guessCategory(item.description),
-          date: item.date
-        });
-        if (item.category && !categories.includes(item.category)) categories.push(item.category);
-      }
+      if (!(item && item.description && item.amount != null && item.date)) return;
+      usableExp.push(Object.assign({}, item, {
+        id: item.id || ("e_" + Date.now() + "_" + Math.random().toString(36).slice(2,7)),
+        description: String(item.description),
+        amount: round2(parseFloat(item.amount)),
+        category: item.category || guessCategory(item.description),
+        date: item.date,
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        bank: item.bank || null
+      }));
+      if (item.category && !categories.includes(item.category)) categories.push(item.category);
     });
+    expenses = mergeRecords("spendly_expenses_v1", expenses, usableExp, {});
     saveExpenses(expenses);
     saveCategories(categories);
     renderCategoryOptions();
