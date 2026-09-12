@@ -160,5 +160,61 @@ console.log("\n--- an account with no movements, and one with no account ---");
         "got " + global.savings[0].amount);
 }
 
+console.log("\n--- spending 50 must never take off 100 ---");
+{
+  // Reported from a phone. adoptOpeningBalances assumed an account with no opening
+  // figure had no movements yet - true the first time, false ever afterwards. Once a
+  // record lost its opening figure, adoption handed back the CURRENT balance and the
+  // recompute applied every movement a second time.
+  global.savings = [{ id:"s_1", provider:"BPI", amount: 950 }];   // net, no opening
+  global.balanceOps = [move("BPI", -50)];                         // the 50 is recorded
+  adoptOpeningBalances();
+  recomputeBalances();
+  check("a 50 spend still shows as 50 off, not 100",
+        global.savings[0].amount === 950,
+        "shows " + global.savings[0].amount + " - the movements were applied twice");
+  check("the opening figure was worked backwards from the balance",
+        global.savings[0].opening === 1000,
+        "got " + global.savings[0].opening + ", expected 1000");
+
+  // And doing it again changes nothing.
+  adoptOpeningBalances();
+  recomputeBalances();
+  check("adopting twice does not move the balance again", global.savings[0].amount === 950,
+        "got " + global.savings[0].amount);
+}
+
+console.log("\n--- an account written by a device on the older build ---");
+{
+  // That build knows nothing about opening figures, so a merge can hand one back
+  // without one. Treating it as opening at zero made the balance the ledger sum.
+  global.savings = [{ id:"s_1", provider:"BPI", opening: 1000, amount: 950, updatedAt:"2026-09-10T00:00:00Z" }];
+  global.balanceOps = [move("BPI", -50)];
+  const fromOldBuild = [{ id:"s_1", provider:"BPI", amount: 950, updatedAt:"2026-09-11T00:00:00Z" }];
+  global.savings = mergeRecords("spendly_savings_v1", global.savings, fromOldBuild, {});
+  check("the merge really can drop the opening figure (the hazard is real)",
+        global.savings[0].opening === undefined);
+  adoptOpeningBalances();
+  recomputeBalances();
+  check("the balance survives it", global.savings[0].amount === 950,
+        "got " + global.savings[0].amount);
+}
+
+console.log("\n--- the order the app actually does it in ---");
+{
+  // syncNow must adopt BEFORE recomputing, or a merged account looks as though it
+  // opened at zero.
+  const at = SRC.indexOf("function syncNow(");
+  const body = SRC.slice(at, SRC.indexOf("\n  }", at));
+  const adoptAt = body.indexOf("adoptOpeningBalances()");
+  const recomputeAt = body.indexOf("recomputeBalances()");
+  check("syncNow adopts before it recomputes",
+        adoptAt > 0 && recomputeAt > 0 && adoptAt < recomputeAt,
+        "adopt at " + adoptAt + ", recompute at " + recomputeAt);
+
+  const boot = SRC.indexOf("  adoptOpeningBalances();\n  recomputeBalances();");
+  check("boot does the same, before anything posts", boot > 0);
+}
+
 console.log("\n" + (fail ? fail + " FAILURE(S)" : "all " + pass + " checks passed"));
 process.exit(fail ? 1 : 0);

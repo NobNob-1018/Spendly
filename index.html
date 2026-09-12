@@ -3607,7 +3607,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-10c";
+  const APP_BUILD = "2026-09-13";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   const INCOME_CATEGORIES = ["Salary", "Freelance", "Bonus", "Business", "Gift", "Other Income"];
@@ -5470,9 +5470,18 @@
      user last saw it. */
   function adoptOpeningBalances(){
     let changed = false;
+    const moved = {};
+    balanceOps.forEach(op=>{
+      if (!op || !op.account) return;
+      moved[op.account] = round2((moved[op.account] || 0) + (Number(op.delta) || 0));
+    });
     savings.forEach(a=>{
       if (a.opening === undefined || a.opening === null){
-        a.opening = round2(Number(a.amount) || 0);
+        // Worked backwards from the balance, NOT taken from it. Taking it would apply
+        // every movement already in the ledger a second time - which is how spending
+        // 50 came off as 100. An account that has no movements yet still gets its own
+        // balance, because subtracting nothing changes nothing.
+        a.opening = round2((Number(a.amount) || 0) - (moved[a.provider] || 0));
         changed = true;
       }
     });
@@ -9212,6 +9221,10 @@
         cryptos = Object.keys(byCode).map(k=>byCode[k]);
       }
 
+      // A merge can hand back an account written by a device on the older build,
+      // which carries no opening figure - so re-establish one from its balance before
+      // anything is worked out, or the account looks as though it opened at zero.
+      adoptOpeningBalances();
       // Before the accounts are written, so the balance that gets saved is the one
       // the merged movements add up to rather than whichever device wrote last.
       recomputeBalances();
