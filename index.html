@@ -3607,7 +3607,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-13b";
+  const APP_BUILD = "2026-09-13c";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   const INCOME_CATEGORIES = ["Salary", "Freelance", "Bonus", "Business", "Gift", "Other Income"];
@@ -5460,15 +5460,53 @@
   /* The balance of an account is its opening figure plus everything that has moved
      since. Nothing else may write `amount` - it is a cached answer, recomputed here,
      and any direct assignment would simply be overwritten the next time this runs. */
-  function recomputeBalances(){
-    const moved = {};
+  // Which account a name refers to. The movers have always taken the first match, so
+  // this has to agree with them or money would move to a different account than the
+  // one that was charged.
+  function accountIdForProvider(provider){
+    const hit = savings.find(a=>a.provider === provider);
+    return hit ? hit.id : "";
+  }
+
+  /* What each account has moved by, keyed by account id. Movements written before
+     ids were recorded name only a provider; they belong to the first account with
+     that name - applying them to every account sharing it is what made one spend come
+     off twice. A movement naming an account this device does not have is left where
+     it is rather than being attributed to the wrong one. */
+  function movementsByAccount(){
+    const byId = {}, byName = {};
     balanceOps.forEach(op=>{
-      if (!op || !op.account) return;
-      moved[op.account] = round2((moved[op.account] || 0) + (Number(op.delta) || 0));
+      if (!op) return;
+      const d = Number(op.delta) || 0;
+      if (op.accountId) byId[op.accountId] = round2((byId[op.accountId] || 0) + d);
+      else if (op.account) byName[op.account] = round2((byName[op.account] || 0) + d);
     });
+    const out = {};
     savings.forEach(a=>{
-      const opening = Number(a.opening) || 0;
-      a.amount = round2(opening + (moved[a.provider] || 0));
+      let m = byId[a.id] || 0;
+      if (accountIdForProvider(a.provider) === a.id) m = round2(m + (byName[a.provider] || 0));
+      out[a.id] = m;
+    });
+    return out;
+  }
+
+  /* Stamps the account id onto movements that predate it, so the link stops depending
+     on a name that the user can change. Without this, renaming one of two accounts
+     that share a name would hand its whole history to the other one. */
+  function attachMovementsToAccounts(){
+    let changed = false;
+    balanceOps.forEach(op=>{
+      if (!op || op.accountId || !op.account) return;
+      const id = accountIdForProvider(op.account);
+      if (id){ op.accountId = id; changed = true; }
+    });
+    if (changed) saveBalanceOps(balanceOps);
+  }
+
+  function recomputeBalances(){
+    const moved = movementsByAccount();
+    savings.forEach(a=>{
+      a.amount = round2((Number(a.opening) || 0) + (moved[a.id] || 0));
     });
   }
 
@@ -5478,18 +5516,14 @@
      user last saw it. */
   function adoptOpeningBalances(){
     let changed = false;
-    const moved = {};
-    balanceOps.forEach(op=>{
-      if (!op || !op.account) return;
-      moved[op.account] = round2((moved[op.account] || 0) + (Number(op.delta) || 0));
-    });
+    const moved = movementsByAccount();
     savings.forEach(a=>{
       if (a.opening === undefined || a.opening === null){
         // Worked backwards from the balance, NOT taken from it. Taking it would apply
         // every movement already in the ledger a second time - which is how spending
         // 50 came off as 100. An account that has no movements yet still gets its own
         // balance, because subtracting nothing changes nothing.
-        a.opening = round2((Number(a.amount) || 0) - (moved[a.provider] || 0));
+        a.opening = round2((Number(a.amount) || 0) - (moved[a.id] || 0));
         changed = true;
       }
     });
@@ -5500,6 +5534,9 @@
     if (!provider || !delta) return;
     balanceOps.push({
       id: "bo_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+      // Both: the id is what the arithmetic uses, the name is what makes a movement
+      // readable in a backup.
+      accountId: accountIdForProvider(provider),
       account: provider,
       delta: round2(delta),
       note: note || "",
@@ -9232,6 +9269,7 @@
       // A merge can hand back an account written by a device on the older build,
       // which carries no opening figure - so re-establish one from its balance before
       // anything is worked out, or the account looks as though it opened at zero.
+      attachMovementsToAccounts();
       adoptOpeningBalances();
       // Before the accounts are written, so the balance that gets saved is the one
       // the merged movements add up to rather than whichever device wrote last.
@@ -9972,8 +10010,13 @@
   // balance IS its opening figure. Then work out every balance from the movements.
   // Both before anything posts, or the first charge of the month would be counted
   // against a balance that had not been established yet.
+  attachMovementsToAccounts();
   adoptOpeningBalances();
   recomputeBalances();
+  // Written down, not just held in memory. A balance corrected by this pass otherwise
+  // stays corrected on screen while the stale figure sits on disk - and the fresh
+  // updatedAt is what lets the corrected account win against the other device copy.
+  saveSavings(savings);
 
   processRecurringExpenses();
   processSavingsInterest();

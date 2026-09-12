@@ -18,7 +18,9 @@ function grab(name){
 }
 
 global.round2 = v => Math.round((Number(v) || 0) * 100) / 100;
-eval([ "recomputeBalances", "adoptOpeningBalances", "mergeRecords" ].map(grab).join("\n"));
+global.saveBalanceOps = () => {};
+eval([ "recomputeBalances", "adoptOpeningBalances", "mergeRecords",
+       "accountIdForProvider", "movementsByAccount", "attachMovementsToAccounts" ].map(grab).join("\n"));
 
 let pass = 0, fail = 0;
 function check(name, ok, detail){
@@ -214,6 +216,61 @@ console.log("\n--- the order the app actually does it in ---");
 
   const boot = SRC.indexOf("  adoptOpeningBalances();\n  recomputeBalances();");
   check("boot does the same, before anything posts", boot > 0);
+}
+
+console.log("\n--- two accounts with the SAME name ---");
+{
+  // Found in a real backup: two accounts both called "Maya Bank". Movements were
+  // filed under the NAME, so every account carrying it picked up every movement and
+  // one 50 spend came off twice. This is the doubling that was reported.
+  global.savings = [
+    { id:"s_a", provider:"Maya Bank", opening: 277572.17, amount: 0 },
+    { id:"s_b", provider:"Maya Bank", opening: 101190.60, amount: 0 }
+  ];
+  // Exactly the movements from that file, named but not yet attached to an account.
+  global.balanceOps = [180,-180,-599,-875,-360,-1100,-50,50].map((d,i)=>({
+    id: "bo_old_" + i, account: "Maya Bank", delta: d
+  }));
+
+  attachMovementsToAccounts();
+  recomputeBalances();
+  check("the movements land on ONE account, not on both",
+        savings[0].amount === 274638.17 && savings[1].amount === 101190.60,
+        "got " + savings.map(a=>a.amount).join(" and ") +
+        " - expected 274638.17 and 101190.6");
+  check("the total is right, not short by the whole ledger",
+        round2(savings[0].amount + savings[1].amount) === 375828.77,
+        "got " + round2(savings[0].amount + savings[1].amount));
+  check("they attach to the first account with that name, the one the movers charge",
+        balanceOps.every(o=>o.accountId === "s_a"));
+
+  // Reloading must not move it again.
+  recomputeBalances(); recomputeBalances();
+  check("recomputing again changes nothing",
+        round2(savings[0].amount + savings[1].amount) === 375828.77);
+
+  // And a NEW movement must charge one account only.
+  global.balanceOps.push({ id:"bo_new", accountId:"s_a", account:"Maya Bank", delta:-50 });
+  recomputeBalances();
+  check("a new 50 spend takes off 50, not 100",
+        round2(savings[0].amount + savings[1].amount) === 375778.77,
+        "total moved by " + round2(375828.77 - (savings[0].amount + savings[1].amount)));
+}
+
+console.log("\n--- renaming one of two accounts that share a name ---");
+{
+  global.savings = [
+    { id:"s_a", provider:"Maya Bank", opening: 1000, amount: 0 },
+    { id:"s_b", provider:"Maya Bank", opening: 500,  amount: 0 }
+  ];
+  global.balanceOps = [{ id:"bo_1", account:"Maya Bank", delta:-300 }];
+  attachMovementsToAccounts();          // pins it to s_a while the name still matches
+  savings[0].provider = "Maya Savings"; // the user renames it
+  recomputeBalances();
+  check("the history stays with the account it belonged to",
+        savings[0].amount === 700 && savings[1].amount === 500,
+        "got " + savings.map(a=>a.amount).join(" and ") + " - a rename handed the",
+        "history to the other account");
 }
 
 console.log("\n" + (fail ? fail + " FAILURE(S)" : "all " + pass + " checks passed"));
