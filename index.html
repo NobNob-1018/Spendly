@@ -517,6 +517,22 @@
      nothing here is essential yet. */
   #side-panel{ display:none; }
   #side-panel.side-panel-hidden{ display:none !important; }
+  /* A narrower panel for a 1280-class screen: 92 rail + 888 column + 300 panel.
+     Below this the gutter is genuinely too small and the panel stays hidden. */
+  @media (min-width: 1240px) and (max-width: 1499px){
+    .app{ margin-left: 92px; margin-right: 300px; max-width: none; }
+    #side-panel{
+      display:block;
+      position: fixed;
+      top: 0; right: 0; bottom: 0;
+      width: 300px;
+      padding: var(--sp-10) var(--sp-8);
+      border-left: 1px solid var(--line);
+      background: var(--card);
+      overflow-y: auto;
+    }
+  }
+
   @media (min-width: 1500px){
     .app{ margin-left: calc(50vw - 629px); margin-right: 0; }
     #side-panel{
@@ -1015,8 +1031,6 @@
     .stat-row.two{ grid-template-columns: 1fr; }
   }
 
-  @media (max-width: 860px){
-    }
   .dash-subhead{
     font-size:var(--fs-md); font-weight:700; color:var(--ink-soft);
     text-transform:uppercase; letter-spacing:var(--track-caps);
@@ -1331,12 +1345,11 @@
   /* The column was money and never said so. The symbol sits in its own lane at the
      left of the cell while the digits stay right-aligned, which is how a ledger column
      reads: both edges line up and only the gap between them varies with the number. */
-  td.num .amount-cell{ position:relative; display:block; width:112px; margin-left:auto; }
-  td.num .amount-cell .amount-cur{
-    position:absolute; left:3px; top:50%; transform:translateY(-50%);
-    color:var(--ink-dim); font-size:.9em; pointer-events:none;
-  }
-  td.num .amount-cell input{ width:100% !important; padding-left:15px; }
+  /* The mark sits next to the digits, not in a lane at the far left — a short value
+     used to render as "₱          100" with the sign stranded. */
+  td.num .amount-cell{ display:flex; align-items:center; justify-content:flex-end; gap:2px; width:112px; margin-left:auto; }
+  td.num .amount-cell .amount-cur{ color:var(--ink-dim); font-size:.9em; pointer-events:none; flex:0 0 auto; }
+  td.num .amount-cell input{ flex:1 1 auto; min-width:0; width:auto !important; text-align:right; padding-left:2px; }
 
   /* Filter status bar */
   .filter-status{
@@ -3711,7 +3724,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-14e";
+  const APP_BUILD = "2026-09-14f";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4401,6 +4414,18 @@
     const d = new Date(iso + "T00:00:00");
     return d.toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" });
   }
+  /* Strips grouping and the currency mark before any arithmetic. parseFloat stops at
+     the first comma, so "1,150.00" would otherwise read as 1. */
+  /* Grouped digits only. The cell draws its own ₱ beside the field, so fmtMoney —
+     which prefixes one — would put two in the box. */
+  function fmtAmountField(v){
+    return Number(v || 0).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+
+  function parseMoneyInput(raw){
+    return parseFloat(String(raw == null ? "" : raw).replace(/[^0-9.\-]/g, ""));
+  }
+
   function fmtMoney(n){
     return "₱" + Number(n).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 });
   }
@@ -6717,6 +6742,25 @@
     });
   }
 
+  /* A money field shows the formatted figure until you are actually editing it. Bound
+     to the document rather than to rows, because the rows are rebuilt constantly and a
+     per-row listener would pile up one copy per render. */
+  (function wireMoneyFields(){
+    document.addEventListener("focusin", (e)=>{
+      const el = e.target;
+      if (!el || !el.dataset || el.dataset.money !== "1") return;
+      const raw = parseMoneyInput(el.value);
+      el.value = isNaN(raw) ? "" : String(raw);
+      if (typeof el.select === "function") el.select();
+    });
+    document.addEventListener("focusout", (e)=>{
+      const el = e.target;
+      if (!el || !el.dataset || el.dataset.money !== "1") return;
+      const raw = parseMoneyInput(el.value);
+      if (!isNaN(raw)) el.value = fmtAmountField(raw);
+    });
+  })();
+
   function renderHistory(){
 
     const wrap = document.getElementById("history-table-wrap");
@@ -6808,7 +6852,7 @@
           <td data-label="Description"><input type="text" value="${escapeHtml(e.description)}" data-field="description"></td>
           <td class="tags-cell" data-label="Tags"><input type="text" value="${escapeHtml((e.tags||[]).join(", "))}" data-field="tags" placeholder="—"></td>
           <td data-label="Category"><select class="status-select" data-field="category">${catOptions}</select></td>
-          <td class="num" data-label="Amount"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="number" min="0" step="0.01" value="${e.amount}" data-field="amount"></div>${e.originalCurrency ? `<div class="hint">${e.originalAmount} ${e.originalCurrency}</div>` : ""}</td>
+          <td class="num" data-label="Amount"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(e.amount)}" data-field="amount" data-money="1"></div>${e.originalCurrency ? `<div class="hint">${e.originalAmount} ${e.originalCurrency}</div>` : ""}</td>
           <td class="cell-actions" data-label=""  style="white-space:nowrap;">
             <button class="row-action" data-action="duplicate" aria-label="Duplicate this entry" title="Duplicate this entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="row-action row-action-danger" data-action="delete" aria-label="Remove this entry" title="Remove this entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
@@ -6871,8 +6915,8 @@
           if (!item) return;
           const field = input.dataset.field;
           if (field === "amount"){
-            const v = parseFloat(input.value);
-            if (isNaN(v) || v <= 0){ showToast("Amount must be greater than 0."); input.value = item.amount; return; }
+            const v = parseMoneyInput(input.value);
+            if (isNaN(v) || v <= 0){ showToast("Amount must be greater than 0."); input.value = fmtAmountField(item.amount); return; }
             const newAmount = round2(v);
             const delta = round2(newAmount - item.amount);
             item.amount = newAmount;
@@ -7126,7 +7170,7 @@
           <td data-label="Description"><input type="text" value="${escapeHtml(i.description)}" data-field="description"></td>
           <td class="tags-cell" data-label="Tags"><input type="text" value="${escapeHtml((i.tags||[]).join(", "))}" data-field="tags" placeholder="—"></td>
           <td data-label="Category"><select class="status-select" data-field="category">${catOptions}</select></td>
-          <td class="num" data-label="Amount"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="number" min="0" step="0.01" value="${i.amount}" data-field="amount"></div>${i.originalCurrency ? `<div class="hint">${i.originalAmount} ${i.originalCurrency}</div>` : ""}</td>
+          <td class="num" data-label="Amount"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(i.amount)}" data-field="amount" data-money="1"></div>${i.originalCurrency ? `<div class="hint">${i.originalAmount} ${i.originalCurrency}</div>` : ""}</td>
           <td class="cell-actions" data-label=""  style="white-space:nowrap;">
             <button class="row-action" data-action="duplicate" aria-label="Duplicate this entry" title="Duplicate this entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="row-action row-action-danger" data-action="delete" aria-label="Remove this entry" title="Remove this entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
@@ -7187,8 +7231,8 @@
           if (!item) return;
           const field = input.dataset.field;
           if (field === "amount"){
-            const v = parseFloat(input.value);
-            if (isNaN(v) || v <= 0){ showToast("Amount must be greater than 0."); input.value = item.amount; return; }
+            const v = parseMoneyInput(input.value);
+            if (isNaN(v) || v <= 0){ showToast("Amount must be greater than 0."); input.value = fmtAmountField(item.amount); return; }
             const newAmount = round2(v);
             const delta = round2(newAmount - item.amount);
             item.amount = newAmount;
