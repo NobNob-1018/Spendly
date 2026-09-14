@@ -650,6 +650,37 @@
     background-image: linear-gradient(45deg, transparent 50%, var(--accent-dark) 50%),
                       linear-gradient(135deg, var(--accent-dark) 50%, transparent 50%);
   }
+  /* The range control above a table: a label and a select reading as one thing. */
+  .range-inline{
+    display:inline-flex; align-items:center; gap: var(--sp-2);
+    font-size:var(--fs-xs); color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:var(--track-caps);
+  }
+  .range-inline select{
+    font-size:var(--fs-sm); text-transform:none; letter-spacing:0;
+    padding: var(--sp-2) var(--sp-3); border-radius:var(--r-sm);
+    border:1px solid var(--line); background:var(--card); color:var(--ink);
+  }
+
+  /* A deadline you can change, still carrying how close it is. The input is sized to
+     the date it holds so the column does not grow a form field's worth of chrome. */
+  .deadline-cell input[type="date"]{
+    font-size:var(--fs-sm); font-family:inherit;
+    padding: var(--sp-1) var(--sp-2);
+    border:1px solid transparent; border-radius:var(--r-sm);
+    background:transparent; color:inherit;
+    field-sizing: content; min-width: 7.5em;
+  }
+  @media (hover: hover){
+    .deadline-cell input[type="date"]:hover{ border-color:var(--line); background:var(--hover); }
+  }
+  .deadline-cell input[type="date"]:focus-visible{
+    outline:2px solid var(--accent); outline-offset:1px;
+  }
+  .deadline-cell.deadline-overdue input[type="date"]{ color:var(--warn); font-weight:650; }
+  .deadline-cell.deadline-soon input[type="date"]{ color:var(--accent-dark); font-weight:650; }
+  .deadline-cell.deadline-done input[type="date"]{ opacity:.6; }
+
   .th-filter option{
     background:var(--card); color:var(--ink);
     text-transform:none; letter-spacing:0; font-size:var(--fs-md);
@@ -3216,6 +3247,9 @@
           <button class="btn btn-primary" id="btn-add-loan-given">Add loan given</button>
         </div>
         <div class="table-filter-bar">
+          <label class="range-inline">Date range
+            <select id="lg-range-filter"></select>
+          </label>
           <div class="loan-summary" id="loans-given-summary" style="margin:0;"></div>
         </div>
         <p class="mobile-scroll-hint">← Scroll sideways to see all columns →</p>
@@ -3255,6 +3289,9 @@
           <button class="btn btn-primary" id="btn-add-loan-taken">Add loan taken</button>
         </div>
         <div class="table-filter-bar">
+          <label class="range-inline">Date range
+            <select id="lt-range-filter"></select>
+          </label>
           <div class="loan-summary" id="loans-taken-summary" style="margin:0;"></div>
         </div>
         <p class="mobile-scroll-hint">← Scroll sideways to see all columns →</p>
@@ -3612,7 +3649,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-14";
+  const APP_BUILD = "2026-09-14b";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -6806,10 +6843,10 @@
     });
   }
 
-  function populateRangeFilter(el, current){
+  function populateRangeFilter(el, current, options){
     if (!el) return;
     el.innerHTML = `<option value="all">All time</option>` +
-      HISTORY_DATE_OPTIONS.map(o=>`<option value="${escapeHtml(o.value)}">${escapeHtml(o.text)}</option>`).join("");
+      (options || HISTORY_DATE_OPTIONS).map(o=>`<option value="${escapeHtml(o.value)}">${escapeHtml(o.text)}</option>`).join("");
     el.value = current || "all";
   }
   function wireRangeFilter(elId, isExpense){
@@ -6824,6 +6861,20 @@
   }
   wireRangeFilter("exp-range-filter", true);
   wireRangeFilter("inc-range-filter", false);
+
+  // Date is a sort now, so the range it used to filter by lives above the table.
+  // The prefixes are written out rather than read from LOAN_CONFIG: this runs during
+  // boot, and that const is declared further down the file.
+  [["given","lg"], ["taken","lt"]].forEach(([dir, prefix])=>{
+    const el = document.getElementById(prefix + "-range-filter");
+    if (!el) return;
+    el.addEventListener("change", ()=>{
+      const v = el.value;
+      loanView[dir].date = v === "all" ? "" : v;
+      loanView[dir].page = 1;
+      renderLoans(dir);
+    });
+  });
 
   document.getElementById("filter-search").addEventListener("input", ()=>{ expensePage = 1; renderHistory(); });
   document.getElementById("filter-expense-from").addEventListener("change", ()=>{ expensePage = 1; renderHistory(); });
@@ -7202,19 +7253,28 @@
   // Renders a deadline with urgency colour so the table is scannable at a glance —
   // a loan due tomorrow shouldn't look identical to one due in six months.
   // Repaid loans are shown plainly: their deadline no longer matters.
-  function deadlineCellHtml(item){
-    if (!item.deadline) return "—";
-    const pretty = fmtDate(item.deadline);
-    if (item.status !== "outstanding") return `<span class="deadline-done">${pretty}</span>`;
-
+  // How close a deadline is, as a class and a note. Split out so the cell can show
+  // the same urgency around an editable date rather than only around a printed one.
+  function deadlineState(item){
+    if (!item.deadline) return { cls:"", note:"" };
+    if (item.status !== "outstanding") return { cls:"deadline-done", note:"" };
     const today = new Date(); today.setHours(0,0,0,0);
     const due = new Date(item.deadline + "T00:00:00");
     const days = Math.round((due - today) / (1000*60*60*24));
+    if (days < 0)   return { cls:"deadline-overdue", note: Math.abs(days) + "d overdue" };
+    if (days === 0) return { cls:"deadline-soon",    note:"Due today" };
+    if (days <= 7)  return { cls:"deadline-soon",    note:"in " + days + "d" };
+    return { cls:"", note:"" };
+  }
 
-    if (days < 0) return `<span class="deadline-overdue">${pretty}<div class="deadline-note">${Math.abs(days)}d overdue</div></span>`;
-    if (days === 0) return `<span class="deadline-soon">${pretty}<div class="deadline-note">Due today</div></span>`;
-    if (days <= 7) return `<span class="deadline-soon">${pretty}<div class="deadline-note">in ${days}d</div></span>`;
-    return pretty;
+  // Editable: a deadline is the thing most likely to move, and retyping the loan to
+  // change one was the only way to do it.
+  function deadlineCellHtml(item){
+    const st = deadlineState(item);
+    return `<div class="deadline-cell ${st.cls}">`
+      + `<input type="date" data-field="deadline" value="${escapeHtml(item.deadline || "")}" aria-label="Deadline">`
+      + (st.note ? `<div class="deadline-note">${escapeHtml(st.note)}</div>` : "")
+      + `</div>`;
   }
 
   document.getElementById("btn-add-loan-given").addEventListener("click", ()=>{
@@ -7462,6 +7522,8 @@
     const view = loanView[dir];
     const wrap = document.getElementById(cfg.wrapId);
     const summaryEl = document.getElementById(cfg.summaryId);
+    // Kept in step with the view on every render, including when a chip clears it.
+    populateRangeFilter(document.getElementById(cfg.prefix + "-range-filter"), view.date, LOAN_DATE_OPTIONS);
     const outstandingLoans = cfg.list.filter(l=>l.status === "outstanding");
     const outstanding = outstandingLoans.reduce((s,l)=>s+l.amount,0);
     summaryEl.innerHTML = `${cfg.summaryLead} <strong class="summary-figure">${fmtMoneyRich(outstanding)}</strong> across ${outstandingLoans.length} loan(s)`;
@@ -7470,9 +7532,38 @@
       wrap.innerHTML = emptyStateHtml("plus", cfg.emptyTitle, cfg.emptyBody);
       return;
     }
-    const people = [...new Set(cfg.list.map(l=>l.person))].sort((a,b)=>a.localeCompare(b));
-    const banks = [...new Set(cfg.list.map(l=>l.bank).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    /* Every dropdown offers only what survives the OTHER filters, so narrowing to
+       Outstanding leaves you with the people who actually owe you something rather
+       than everyone who ever has. Each list ignores its own filter - otherwise
+       choosing a name would reduce that list to the one name you had chosen.
+       A value you have already picked is kept in its list even when nothing matches
+       it, so the choice is visible and reversible rather than silently dropped. */
+    const survives = (l, except) =>
+      (except === "person" || !view.person || l.person === view.person) &&
+      (except === "status" || !view.status || l.status === view.status) &&
+      (except === "bank"   || !view.bank   || l.bank === view.bank) &&
+      (except === "date"   || !view.date   || matchesLoanDate(l[cfg.dateField], view.date));
+    const optionsFor = (except, pick) => {
+      const set = new Set(cfg.list.filter(l=>survives(l, except)).map(pick).filter(Boolean));
+      return set;
+    };
+
+    const peopleSet = optionsFor("person", l=>l.person);
+    if (view.person) peopleSet.add(view.person);
+    const people = [...peopleSet].sort((a,b)=>a.localeCompare(b));
+
+    const banksSet = optionsFor("bank", l=>l.bank);
+    if (view.bank) banksSet.add(view.bank);
+    const banks = [...banksSet].sort((a,b)=>a.localeCompare(b));
+
+    const statusSet = optionsFor("status", l=>l.status);
+    if (view.status) statusSet.add(view.status);
+    const statusOptions = [
+      { value:"outstanding", text:"Outstanding" },
+      { value:"repaid",      text:"Repaid" }
+    ].filter(o=>statusSet.has(o.value));
     // Drop stored selections whose value no longer exists (e.g. after a delete)
+    // Stale state from an older version, or a person whose last loan was deleted.
     if (view.person && !people.includes(view.person)) view.person = "";
     if (view.bank && !banks.includes(view.bank)) view.bank = "";
 
@@ -7485,11 +7576,11 @@
     const activeCount = [view.person, view.status, view.bank, view.date].filter(Boolean).length;
     const statusBar = buildFilterStatus(activeCount, `${cfg.prefix}-clear-filters`);
     const headerHtml = `<tr>
-      <th>${buildThFilter(`${cfg.prefix}-f-date`, "Date", LOAN_DATE_OPTIONS, view.date, "Filter by date")}</th>
+      ${buildSortableTh(`${cfg.prefix}-s-date`, "Date", "date", view.sort)}
       <th>${buildThFilter(`${cfg.prefix}-f-person`, cfg.personLabel, people, view.person, `Filter by ${cfg.personLabel.toLowerCase()}`)}</th>
       ${buildSortableTh(`${cfg.prefix}-s-amount`, "Amount", "amount", view.sort)}
       ${buildSortableTh(`${cfg.prefix}-s-deadline`, "Deadline", "deadline", view.sort)}
-      <th>${buildThFilter(`${cfg.prefix}-f-status`, "Status", [{value:"outstanding",text:"Outstanding"},{value:"repaid",text:"Repaid"}], view.status, "Filter by status")}</th>
+      <th>${buildThFilter(`${cfg.prefix}-f-status`, "Status", statusOptions, view.status, "Filter by status")}</th>
       <th>${buildThFilter(`${cfg.prefix}-f-bank`, "Account", banks, view.bank, "Filter by account")}</th>
       <th>Actions</th>
     </tr>`;
@@ -7525,6 +7616,17 @@
 
     wrap.querySelectorAll("tr[data-id]").forEach(row=>{
       const id = row.dataset.id;
+      const deadlineInput = row.querySelector('[data-field="deadline"]');
+      if (deadlineInput) deadlineInput.addEventListener("change", ()=>{
+        const item = cfg.list.find(x=>x.id === id);
+        if (!item) return;
+        item.deadline = deadlineInput.value || "";
+        cfg.save();
+        renderLoans(dir);
+        renderSideUpcoming();
+        showToast(item.deadline ? `Deadline set to ${fmtDate(item.deadline)}.` : "Deadline cleared.");
+      });
+
       row.querySelector('[data-action="status"]').addEventListener("change", (e)=>{
         const item = cfg.list.find(x=>x.id===id);
         applyLoanStatusChange(item, e.target.value, dir);
