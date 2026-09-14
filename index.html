@@ -3301,6 +3301,11 @@
         <div class="form-actions">
           <button class="btn btn-primary" id="btn-add-investment">Add investment</button>
         </div>
+        <label class="inv-count-toggle" style="display:flex;align-items:center;gap:8px;margin:10px 0 2px;cursor:pointer;">
+          <input type="checkbox" id="inv-count-in-total">
+          <span>Count unsold investments in Total Money</span>
+        </label>
+        <p class="hint" style="margin:0 0 10px;">Off by default: money you have put into something you still hold is not money you can spend, so it is listed here rather than in the headline figure. Sold investments always count, through the account the proceeds went to.</p>
         <div class="loan-summary" id="investments-summary"></div>
         <p class="mobile-scroll-hint">← Scroll sideways to see all columns →</p>
         <div id="investments-table-wrap"></div>
@@ -3607,7 +3612,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-13d";
+  const APP_BUILD = "2026-09-14";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -3879,6 +3884,12 @@
      objects, not records, so they carry no updatedAt of their own and a merge had no
      way to tell a change from an absence. Stamped by diffing on save, so no call site
      has to remember to do it. */
+  /* Choices that change what a figure MEANS have to travel. A switch like this kept
+     on one device would have the two of them showing different totals for the same
+     records, which is indistinguishable from a sync fault. Merged exactly like
+     budgets, on per-key write times, so changing it on either device sticks. */
+  const SETTINGS_KEY = "spendly_settings_v1";
+
   const MAP_TIMES_KEY = "spendly_map_times_v1";
   const mapTimesStore = makeStore(MAP_TIMES_KEY, {}, false);
   let mapTimes = mapTimesStore.load();
@@ -3926,6 +3937,16 @@
     mapTimes[name] = lt;
     return local;
   }
+
+  const settingsStore = makeStore(SETTINGS_KEY, {}, false);
+  let appSettings = settingsStore.load();
+  function setSetting(key, value){
+    appSettings[key] = value;
+    stampMap("settings", appSettings);
+    settingsStore.save(appSettings);
+  }
+  // Absent means off, so a device that has never seen this behaves like the default.
+  function settingOn(key){ return appSettings[key] === true; }
 
   const budgetsStore = makeStore(BUDGET_KEY, {}, true);
   function loadBudgets(){ return budgetsStore.load(); }
@@ -4051,6 +4072,7 @@
   // Seed the diff snapshots from what was just loaded, so the first genuine edit is
   // what gets stamped rather than the act of starting the app — otherwise this device
   // would claim to have written every key just now and win merges it should not.
+  primeMapSnapshot("settings", appSettings);
   primeMapSnapshot("categories", categoryMap(categories));
   primeMapSnapshot("budgets", budgets);
   primeMapSnapshot("corrections", corrections);
@@ -4295,13 +4317,21 @@
   function computeTotalMoney(){
     const totalSavings = savings.reduce((s,a)=>s+a.amount, 0);
     const unsoldInvestments = investments.filter(i=>i.actualSoldPrice==null).reduce((s,i)=>s+i.amount, 0);
+    /* Money put into something you still hold is not money you can spend, which is
+       the same reason outstanding loans have always been reported separately. It used
+       to be added in, so logging an investment made the total jump by the amount
+       invested - and for one bought outside a tracked account, where nothing was
+       withdrawn to pay for it, the total simply grew. Off by default; the switch is
+       in the Investments card for anyone who wants the old reading. */
+    const investedCounts = settingOn("countUnsoldInvestments");
     const outstandingLent = loansGiven.filter(l=>l.status==="outstanding").reduce((s,l)=>s+l.amount, 0);
     const outstandingOwed = loansTaken.filter(l=>l.status==="outstanding").reduce((s,l)=>s+l.amount, 0);
     return {
       // Liquid cash only — what's actually sitting in an account right now.
       // Outstanding loans are real money, but not money you can spend today, so
       // they're reported separately (below) instead of folded into this number.
-      total: totalSavings + unsoldInvestments,
+      total: round2(totalSavings + (investedCounts ? unsoldInvestments : 0)),
+      investedCounts,
       totalSavings, unsoldInvestments, outstandingLent, outstandingOwed
     };
   }
@@ -4377,8 +4407,11 @@
     }
     lastTotalMoney = b.total;
     bar.title = `Savings & cash: ${fmtMoney(b.totalSavings)}\n`
-      + `Investments (unsold): ${fmtMoney(b.unsoldInvestments)}\n\n`
-      + `Not included above (see Loans & Invest):\n`
+      + (b.investedCounts
+          ? `Investments (unsold): ${fmtMoney(b.unsoldInvestments)}\n\n`
+          : `\nNot included above (see Loans & Invest):\n`
+            + `Investments (unsold): ${fmtMoney(b.unsoldInvestments)}\n`)
+      + (b.investedCounts ? `Not included above (see Loans & Invest):\n` : ``)
       + `Money owed to you: ${fmtMoney(b.outstandingLent)}\n`
       + `Money you owe: ${fmtMoney(b.outstandingOwed)}\n\n`
       + `Income you add to a bank when logging it deposits there automatically — this figure updates right away.`;
@@ -7684,6 +7717,21 @@
     depositToSavings(inv.bank, inv.amount);
   }
 
+  (function wireInvestmentCounting(){
+    const box = document.getElementById("inv-count-in-total");
+    if (!box) return;
+    box.checked = settingOn("countUnsoldInvestments");
+    box.addEventListener("change", ()=>{
+      setSetting("countUnsoldInvestments", box.checked);
+      renderTotalMoneyBar();
+      renderInvestments();
+      if (typeof renderMoneyOverview === "function") renderMoneyOverview();
+      showToast(box.checked
+        ? "Unsold investments now count towards Total Money."
+        : "Unsold investments are listed separately from Total Money.");
+    });
+  })();
+
   document.getElementById("btn-add-investment").addEventListener("click", ()=>{
     const name = document.getElementById("inv-name").value.trim();
     const category = document.getElementById("inv-category").value || "Other";
@@ -9102,7 +9150,7 @@
       netWorthHistory: sortedBy(netWorthHistory, "date"),
       recurring:       sortedBy(recurring, "id"),
       cryptos:         sortedBy(cryptos, "code"),
-      budgets, corrections, categories,
+      budgets, corrections, categories, settings: appSettings,
       mapTimes,
       tombstones: loadTombstones()
     };
@@ -9243,6 +9291,8 @@
       // instead of being mistaken for one it already has.
       budgets     = mergeStampedMap("budgets", budgets, remote.budgets, remote.mapTimes);
       corrections = mergeStampedMap("corrections", corrections, remote.corrections, remote.mapTimes);
+      appSettings = mergeStampedMap("settings", appSettings, remote.settings, remote.mapTimes);
+      settingsStore.save(appSettings);
       mapTimesStore.save(mapTimes);
 
       // Categories are plain strings, so the merge runs on the map of names and their
@@ -9551,7 +9601,7 @@
       version: 3,
       tombstones: loadTombstones(),
       expenses, incomes, categories, budgets, recurring,
-      savings, balanceOps, loansGiven, loansTaken, investments,
+      savings, balanceOps, loansGiven, loansTaken, investments, settings: appSettings,
       currencies, cryptos, netWorthHistory, corrections,
       exportedAt: new Date().toISOString()
     };
@@ -9707,6 +9757,12 @@
 
     const incomingCats = Array.isArray(data.categories) ? data.categories : [];
     incomingCats.forEach(c=>{ if (!categories.includes(c)) categories.push(c); });
+    if (data.settings && typeof data.settings === "object"){
+      Object.assign(appSettings, data.settings);
+      settingsStore.save(appSettings);
+      const box = document.getElementById("inv-count-in-total");
+      if (box) box.checked = settingOn("countUnsoldInvestments");
+    }
     if (data.budgets && typeof data.budgets === "object"){
       Object.assign(budgets, data.budgets);
       saveBudgets(budgets);
