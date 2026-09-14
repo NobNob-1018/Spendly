@@ -273,5 +273,50 @@ console.log("\n--- renaming one of two accounts that share a name ---");
         "history to the other account");
 }
 
+console.log("\n--- money cannot be created from nothing ---");
+{
+  /* The two movers used to disagree about an account that does not exist:
+     withdrawing refused, depositing CREATED one and credited it. So an expense
+     booked to an account you never set up took nothing out, and deleting it paid
+     the refund into a brand new account. Verified in the app as 100,000 -> 218
+     richer. They must stay symmetric. */
+  eval(grab("depositToSavings"));
+  eval(grab("withdrawFromSavings"));
+  global.recordMovement = (provider, delta) => {
+    const id = accountIdForProvider(provider);
+    balanceOps.push({ id:"bo_t_"+(++seq), accountId:id, account:provider, delta:round2(delta) });
+  };
+  global.renderSavingsList = () => {};
+  global.fmtMoney = v => String(v);
+
+  global.savings = [{ id:"s_1", provider:"Maya Bank", opening:100000, amount:100000 }];
+  global.balanceOps = [];
+  recomputeBalances();
+  const startTotal = savings.reduce((s,a)=>s+a.amount,0);
+
+  // Book an expense against an account that does not exist.
+  const out = withdrawFromSavings("Security Bank", 218);
+  check("withdrawing from an account that is not there is refused", out && out.ok === false,
+        "it reported " + JSON.stringify(out));
+  check("and nothing moved", savings.reduce((s,a)=>s+a.amount,0) === startTotal);
+
+  // Now the refund that deleting it would perform.
+  const back = depositToSavings("Security Bank", 218);
+  check("refunding into an account that is not there is refused too", back && back.ok === false,
+        "it returned " + JSON.stringify(back) + " - if this creates the account, money appears from nowhere");
+  check("no account was conjured", savings.length === 1,
+        "savings now holds " + savings.map(a=>a.provider).join(", "));
+  check("the total is exactly where it started",
+        savings.reduce((s,a)=>s+a.amount,0) === startTotal,
+        "started " + startTotal + ", ended " + savings.reduce((s,a)=>s+a.amount,0));
+
+  // The pair must agree on an account that DOES exist.
+  const realOut = withdrawFromSavings("Maya Bank", 500);
+  const realIn  = depositToSavings("Maya Bank", 500);
+  check("a real account still takes money out and puts it back",
+        realOut.ok && realIn.ok && savings[0].amount === 100000,
+        "ended at " + savings[0].amount);
+}
+
 console.log("\n" + (fail ? fail + " FAILURE(S)" : "all " + pass + " checks passed"));
 process.exit(fail ? 1 : 0);

@@ -3649,7 +3649,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-14b";
+  const APP_BUILD = "2026-09-14c";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -5619,25 +5619,22 @@
   }
 
   function depositToSavings(provider, amount){
-    if (!provider) return;
-    let account = savings.find(a=>a.provider === provider);
+    if (!provider) return { ok: true };
+    const account = savings.find(a=>a.provider === provider);
+    /* Deliberately mirrors withdrawFromSavings: an account that does not exist is
+       refused and reported, not conjured. It used to create one, which made the pair
+       asymmetric - booking an expense to an account you had never set up took nothing
+       out, and deleting that expense paid the refund into a new account. That is money
+       from nowhere. Refusing also stops a mistyped provider quietly minting a second,
+       half-formed account alongside the real one. */
     if (!account){
-      // A brand new account starts empty and receives the money as its first
-      // movement, so the arithmetic is the same as for one that has always existed.
-      savings.push({
-        id: "sv_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
-        provider,
-        opening: 0,
-        amount: 0,
-        rate: 0,
-        taxRate: 20,
-        dateAdded: todayISO()
-      });
+      return { ok: false, reason: `no "${provider}" savings account found — nothing was moved` };
     }
     recordMovement(provider, amount, "in");
     recomputeBalances();
     saveSavings(savings);
     renderSavingsList();
+    return { ok: true };
   }
 
   // Reverses an auto-deposit when the income entry that created it is deleted.
@@ -5827,7 +5824,10 @@
     incomes.unshift(entry);
     saveIncomes(incomes);
 
-    if (bank) depositToSavings(bank, entry.amount);
+    if (bank){
+      const result = depositToSavings(bank, entry.amount);
+      if (!result.ok) showToast(`Saved, but ${result.reason}.`);
+    }
 
     if (isRecurring){
       recurring.push({
@@ -7706,7 +7706,10 @@
       bank: bank || null
     });
     saveLoansTaken(loansTaken);
-    if (bank) depositToSavings(bank, round2(amount));
+    if (bank){
+      const result = depositToSavings(bank, round2(amount));
+      if (!result.ok) showToast(`Saved, but ${result.reason}.`);
+    }
     document.getElementById("lt-person").value = "";
     document.getElementById("lt-amount").value = "";
     document.getElementById("lt-deadline").value = "";
