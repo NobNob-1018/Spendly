@@ -1,7 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <!-- The home-screen mark. Maskable icons get cropped to a circle on Android, so the
        glyph sits inside the safe zone (the middle 80%) and the teal runs edge to edge
-       rather than floating on a transparent field. -->
+       rather than floating on a transparent field.
+
+       The glyph is drawn, not typed. It used to be a <text> element asking for Inter —
+       but an SVG used as an icon renders in an isolated document, so it can never reach
+       the @font-face the page embeds. It fell back to whatever the launcher had, at a
+       weight that may not exist, which is a different mark on every device. Geometry
+       depends on nothing.
+
+       And it is a peso sign now. Every figure in this app is ₱; the mark was a $. -->
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#2DD4BF"/>
@@ -9,7 +17,13 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#g)"/>
-  <text x="256" y="256" fill="#0B0D10"
-        font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-        font-size="272" font-weight="800" text-anchor="middle" dominant-baseline="central">$</text>
+  <g fill="none" stroke="#0B0D10" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Stem and bowl of the P, stroked so weight is explicit rather than inherited. -->
+    <path d="M206 148 V378" stroke-width="46"/>
+    <path d="M206 148 H252 a62 62 0 0 1 0 124 H206" stroke-width="46"/>
+    <!-- The two bars that make it a peso. They cross the stem and run clear of it on
+         the left, which is what separates ₱ from a plain P at small sizes. -->
+    <path d="M150 196 H300" stroke-width="24"/>
+    <path d="M150 240 H300" stroke-width="24"/>
+  </g>
 </svg>

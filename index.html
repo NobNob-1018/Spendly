@@ -6,7 +6,9 @@
 <title>Spendly — Simple Spend Tracker</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="./icon.svg">
+<!-- iOS does not accept SVG here and falls back to a screenshot of the page, so
+     this one is a real 180x180 raster. -->
+<link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
 <!-- The phone paints its own chrome with this, so the status bar matches the app
      instead of sitting in a white strip above it. -->
 <meta name="theme-color" content="#0B0D10">
@@ -98,6 +100,12 @@
     --dur-base: 180ms;    /* the default for anything visible */
     --dur-slow: 280ms;    /* panels, overlays, larger travel */
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    /* The measured height of the bottom nav without a home indicator. Anything that
+       floats above it derives its offset from this rather than guessing; the guess
+       was 92px against an actual 61, which is how the add button ended up parked on
+       top of the amount column. env(safe-area-inset-bottom) is added by the things
+       that float, because the nav already includes it in its own padding. */
+    --nav-h: 61px;
     --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
     --track-caps: .04em;
@@ -234,7 +242,11 @@
     background: linear-gradient(155deg, var(--accent-dark), var(--accent) 70%);
     box-shadow: var(--elev-inset-hi), var(--elev-2);
     display:flex;align-items:center;justify-content:center;
-    color:white; font-weight:800; font-size:var(--fs-2xl);
+    /* Ink, not white. White on this teal measures 1.49:1 at the light end of the
+       gradient and 1.88:1 at the dark end, against 3:1 for large text - and the
+       home-screen icon already used the dark glyph, so the same mark was rendering
+       two different ways. Ink clears it at better than 10:1 in both places. */
+    color: var(--on-accent); font-weight:800; font-size:var(--fs-2xl);
     flex-shrink:0;
   }
   .brand h1{
@@ -819,8 +831,12 @@
   .hint{ font-size:var(--fs-sm); color:var(--ink-dim); line-height:1.55; }
 
   /* Toast */
+  /* Clear of the bottom nav on a phone. It had no mobile rule at all, so the undo
+     toast - the only safety net after a delete - covered the navigation for six
+     seconds. Desktop keeps the original 22px via the min-width rule below. */
   #toast{
-    position:fixed; bottom:22px; left:50%; transform: translateX(-50%) translateY(20px);
+    position:fixed; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px); left:50%; transform: translateX(-50%) translateY(20px);
+    max-width: min(92vw, 420px);
     background: var(--ink); color:var(--on-accent); padding: var(--sp-6) var(--sp-10); border-radius:var(--r-md);
     font-size:var(--fs-base); opacity:0; pointer-events:none;
     transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
@@ -830,6 +846,7 @@
   }
   /* Only interactive while visible — otherwise the hidden toast would sit on top
      of the page and swallow clicks. */
+  @media (min-width: 721px){ #toast{ bottom: 22px; } }
   #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
   .toast-undo{
     background:transparent; border:none; cursor:pointer;
@@ -1560,7 +1577,11 @@
   /* Floating quick-add button */
   #btn-fab-add{
     position: fixed;
-    right: 18px; bottom: calc(92px + 14px);
+    right: 18px;
+    /* Seated just above the nav, derived from its real height. The old offset
+       assumed 92px against an actual 61, which left the button floating inside the
+       content column on top of the amount at the bottom right. */
+    bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px);
     width: 54px; height: 54px;
     border-radius:var(--r-pill);
     background: linear-gradient(155deg, var(--accent-dark), var(--accent) 70%);
@@ -2944,7 +2965,9 @@
       max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     }
     nav.tabs button .tab-icon svg{ width:19px; height:19px; }
-    .app{ padding-bottom: 108px; }
+    /* Nav, plus the floating add button above it, plus a little air — so the last row
+       of a table can always be scrolled out from under the button. */
+    .app{ padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 78px); }
   }
 
 
@@ -2982,7 +3005,7 @@
 
   <header class="top">
     <div class="brand">
-      <div class="mark">$</div>
+      <div class="mark" aria-hidden="true">₱</div>
       <div>
         <h1>Spendly</h1>
         <p>Your money, tracked simply</p>
@@ -3688,7 +3711,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-14d";
+  const APP_BUILD = "2026-09-14e";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4099,12 +4122,19 @@
   // markup order changes, so adding a card later needs no wiring.
   // Same idea as the settings groups: one dataset at a time instead of three
   // stacked tables in a single scroll.
+  /* Marks the chosen button in a segmented control for assistive tech. The .active
+     class is paint; aria-pressed is the part that is actually announced. */
+  function markSegmented(buttons, isOn){
+    buttons.forEach(b=>b.setAttribute("aria-pressed", String(!!isOn(b))));
+  }
+
   function applyLoansGroup(group){
     document.querySelectorAll("#tab-loans [data-loans-group]").forEach(card=>{
       card.style.display = (card.dataset.loansGroup === group) ? "" : "none";
     });
     document.querySelectorAll("#loans-nav button").forEach(b=>
       b.classList.toggle("active", b.dataset.loans === group));
+    markSegmented(document.querySelectorAll("#loans-nav button"), b=>b.dataset.loans === group);
     setUiPref("loansGroup", group);
   }
 
@@ -4120,6 +4150,7 @@
     });
     document.querySelectorAll("#settings-nav button").forEach(b=>
       b.classList.toggle("active", b.dataset.settings === group));
+    markSegmented(document.querySelectorAll("#settings-nav button"), b=>b.dataset.settings === group);
     if (group === "sync" && typeof renderSyncPanel === "function") renderSyncPanel();
     setUiPref("settingsGroup", group);
   }
@@ -4129,6 +4160,7 @@
     document.body.classList.toggle("density-compact", mode === "compact");
     document.querySelectorAll("#density-toggle button").forEach(b=>
       b.classList.toggle("active", b.dataset.density === mode));
+    markSegmented(document.querySelectorAll("#density-toggle button"), b=>b.dataset.density === mode);
   }
 
   function setUiPref(key, value){
@@ -5332,6 +5364,7 @@
     btn.addEventListener("click", ()=>{
       document.querySelectorAll("#entry-mode-toggle button").forEach(b=>b.classList.remove("active"));
       btn.classList.add("active");
+      markSegmented(document.querySelectorAll("#entry-mode-toggle button"), b=>b === btn);
       applyEntryMode(btn.dataset.mode);
     });
   });
@@ -5341,6 +5374,7 @@
     btn.addEventListener("click", ()=>{
       document.querySelectorAll("#history-mode-toggle button").forEach(b=>b.classList.remove("active"));
       btn.classList.add("active");
+      markSegmented(document.querySelectorAll("#history-mode-toggle button"), b=>b === btn);
       historyMode = btn.dataset.mode;
       document.getElementById("history-expense-card").style.display = historyMode === "income" ? "none" : "";
       document.getElementById("history-income-card").style.display = historyMode === "income" ? "" : "none";
@@ -8773,6 +8807,7 @@
     btn.addEventListener("click", ()=>{
       document.querySelectorAll("#range-tabs button").forEach(b=>b.classList.remove("active"));
       btn.classList.add("active");
+      markSegmented(document.querySelectorAll("#range-tabs button"), b=>b === btn);
       currentRange = btn.dataset.range;
       document.getElementById("custom-range-row").style.display = currentRange === "custom" ? "flex" : "none";
       if (currentRange === "custom"){
@@ -8996,6 +9031,7 @@
     btn.addEventListener("click", ()=>{
       document.querySelectorAll("#summary-toggle button").forEach(b=>b.classList.remove("active"));
       btn.classList.add("active");
+      markSegmented(document.querySelectorAll("#summary-toggle button"), b=>b === btn);
       currentSummaryTab = btn.dataset.summary;
       renderSummaryContent();
       renderRecentHistory();
@@ -9734,7 +9770,7 @@
         left out of every backup, so a file you hand to someone carries no credential.</p>
         <p class="hint">Make a token at <strong>github.com/settings/tokens</strong> with
         <strong>gist</strong> access and nothing else, then paste it here.</p>
-        <input class="sync-tok" id="gh-token-input" type="password" autocomplete="off"
+        <input class="sync-tok" id="gh-token-input" type="password" autocomplete="off" aria-label="GitHub personal access token"
                placeholder="ghp_… or github_pat_…">
         <div class="form-actions"><button class="btn btn-primary btn-sm" id="btn-gh-save">Save token</button></div>
         <p class="hint" id="gh-msg" role="status" aria-live="polite"></p>`;

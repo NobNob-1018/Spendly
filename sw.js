@@ -12,7 +12,7 @@
 
    Bump VERSION on release. The activate handler deletes every cache that is not in
    the current set, so a bump is also the cache eviction. */
-const VERSION = 'spendly-v3';
+const VERSION = 'spendly-v4';
 const SHELL   = VERSION + '-shell';
 const VENDOR  = VERSION + '-vendor';
 
@@ -36,7 +36,7 @@ self.addEventListener('install', e => {
 
        One request per file rather than all-or-nothing, so a single failure does not
        leave the shell empty and the app unopenable offline. */
-    const shellUrls = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
+    const shellUrls = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-180.png'];
     await Promise.all(shellUrls.map(async url => {
       try {
         const res = await fetch(new Request(url, { cache: 'reload', credentials: 'same-origin' }));
