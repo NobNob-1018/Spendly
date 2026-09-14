@@ -681,6 +681,39 @@
   .deadline-cell.deadline-soon input[type="date"]{ color:var(--accent-dark); font-weight:650; }
   .deadline-cell.deadline-done input[type="date"]{ opacity:.6; }
 
+  /* The hero is a button now, so it must not inherit button chrome. */
+  button.tm-hero{
+    width:100%; text-align:left; font:inherit; color:inherit;
+    cursor:pointer; appearance:none; -webkit-appearance:none;
+  }
+  .tm-hint{
+    display:block; margin-top: var(--sp-2);
+    font-size:var(--fs-2xs); color:var(--ink-soft);
+    letter-spacing:var(--track-caps); text-transform:uppercase;
+  }
+  @media (hover: hover){ .tm-hint{ display:none; } }   /* a mouse gets the tooltip */
+  .tm-breakdown{
+    margin: calc(-1 * var(--sp-6)) 0 var(--sp-8);
+    padding: var(--sp-6) var(--sp-7);
+    border:1px solid var(--line); border-radius: var(--r-md);
+    background: var(--card);
+  }
+  .tm-row{
+    display:flex; justify-content:space-between; gap: var(--sp-6);
+    padding: var(--sp-3) 0; font-size:var(--fs-sm);
+    font-variant-numeric: tabular-nums;
+  }
+  .tm-row strong{ font-weight:650; }
+  .tm-row.is-total{
+    border-top:1px solid var(--line); margin-top: var(--sp-2);
+    padding-top: var(--sp-4); font-size:var(--fs-md);
+  }
+  .tm-row.is-aside{ color:var(--ink-soft); }
+  .tm-aside-label{
+    margin: var(--sp-5) 0 0; font-size:var(--fs-2xs); color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:var(--track-caps);
+  }
+
   .th-filter option{
     background:var(--card); color:var(--ink);
     text-transform:none; letter-spacing:0; font-size:var(--fs-md);
@@ -979,7 +1012,11 @@
     visibility: visible;
     transition: max-height var(--dur-slow) var(--ease-out), opacity var(--dur-base) var(--ease-out), visibility 0s linear 0s;
   }
+  /* Zeroing the padding too. Without it a collapsed panel still occupies its own
+     padding — 20px of nothing each, and four of them stack into the void under the
+     loan list. */
   .collapsible-body.is-collapsed{
+    padding-block: 0 !important;
     max-height: 0;
     opacity: 0;
     margin-top: 0 !important;
@@ -2971,16 +3008,18 @@
 
 
   <div class="sticky-top">
-    <div id="total-money-bar" class="tm-hero" title="Savings + unsold investments + money lent out − money you owe">
+    <button type="button" id="total-money-bar" class="tm-hero" aria-expanded="false" aria-controls="tm-breakdown">
       <div>
         <div class="tm-head">
           <span class="tm-label">Total money</span>
           <span class="tm-trend" id="tm-trend" style="display:none;"></span>
         </div>
         <span class="tm-value" id="total-money-value">₱0.00</span>
+        <span class="tm-hint" id="tm-hint">Tap to see what this is made of</span>
       </div>
       <div class="tm-spark" id="tm-spark" aria-hidden="true"></div>
-    </div>
+    </button>
+    <div id="tm-breakdown" class="tm-breakdown" hidden></div>
 
     <nav class="tabs">
       <button class="active" data-tab="dashboard" aria-label="Dashboard" data-tip="Dashboard"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><span class="tab-label">Dashboard</span></button>
@@ -3649,7 +3688,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-14c";
+  const APP_BUILD = "2026-09-14d";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4443,15 +4482,28 @@
       showTotalMoneyDelta(bar, wentUp, delta);
     }
     lastTotalMoney = b.total;
-    bar.title = `Savings & cash: ${fmtMoney(b.totalSavings)}\n`
-      + (b.investedCounts
-          ? `Investments (unsold): ${fmtMoney(b.unsoldInvestments)}\n\n`
-          : `\nNot included above (see Loans & Invest):\n`
-            + `Investments (unsold): ${fmtMoney(b.unsoldInvestments)}\n`)
-      + (b.investedCounts ? `Not included above (see Loans & Invest):\n` : ``)
-      + `Money owed to you: ${fmtMoney(b.outstandingLent)}\n`
-      + `Money you owe: ${fmtMoney(b.outstandingOwed)}\n\n`
-      + `Income you add to a bank when logging it deposits there automatically — this figure updates right away.`;
+    /* Composed once, rendered twice — as the inline panel the phone can open and as
+       the tooltip a mouse gets for free. They used to be written separately and had
+       drifted into contradicting each other. */
+    const rows = [
+      { label: "Savings & cash", value: b.totalSavings, inTotal: true },
+      { label: "Investments (unsold)", value: b.unsoldInvestments, inTotal: !!b.investedCounts },
+      { label: "Money owed to you", value: b.outstandingLent, inTotal: false },
+      { label: "Money you owe", value: b.outstandingOwed, inTotal: false }
+    ];
+    const counted = rows.filter(r=>r.inTotal), aside = rows.filter(r=>!r.inTotal);
+    bar.title = counted.map(r=>`${r.label}: ${fmtMoney(r.value)}`).join("\n")
+      + `\n\nNot included above (see Loans & Invest):\n`
+      + aside.map(r=>`${r.label}: ${fmtMoney(r.value)}`).join("\n");
+
+    const panel = document.getElementById("tm-breakdown");
+    if (panel){
+      panel.innerHTML =
+        counted.map(r=>`<div class="tm-row"><span>${escapeHtml(r.label)}</span><strong>${fmtMoney(r.value)}</strong></div>`).join("")
+        + `<div class="tm-row is-total"><span>Total money</span><strong>${fmtMoney(b.total)}</strong></div>`
+        + `<p class="tm-aside-label">Not counted here — see Loans &amp; Invest</p>`
+        + aside.map(r=>`<div class="tm-row is-aside"><span>${escapeHtml(r.label)}</span><strong>${fmtMoney(r.value)}</strong></div>`).join("");
+    }
     if (typeof updateWelcomeCard === "function") updateWelcomeCard();
     recordNetWorthSnapshot();
   }
@@ -5493,7 +5545,9 @@
     document.getElementById("in-currency").value = "PHP";
     document.getElementById("in-currency-preview").style.display = "none";
     document.getElementById("in-tags").value = "";
-    document.getElementById("in-bank").value = "";
+    // Pre-answered rather than blank: this is a required field on the quickest path,
+    // and the app already knows which account you used last.
+    document.getElementById("in-bank").value = lastUsedAccount();
     document.getElementById("in-recurring").checked = false;
     document.getElementById("recurring-day-row").style.display = "none";
     document.getElementById("add-hint").textContent = "";
@@ -5850,7 +5904,9 @@
     document.getElementById("in-currency").value = "PHP";
     document.getElementById("in-currency-preview").style.display = "none";
     document.getElementById("in-tags").value = "";
-    document.getElementById("in-bank").value = "";
+    // Pre-answered rather than blank: this is a required field on the quickest path,
+    // and the app already knows which account you used last.
+    document.getElementById("in-bank").value = lastUsedAccount();
     document.getElementById("in-recurring").checked = false;
     document.getElementById("recurring-day-row").style.display = "none";
     document.getElementById("add-hint").textContent = "";
@@ -7727,11 +7783,50 @@
 
   // `placeholderLabel` lets the add-entry select read as a required prompt while the
   // loan/investment selects keep "— None —", where leaving it unset is still valid.
+  /* The accounts you actually have — not a fixed list of banks. Two lists naming the
+     same thing is how an expense gets attributed to "GCash" while the account is
+     called "GCash GSave", and how money gets aimed at an account that is not there.
+     The seed list still stands in when you have no accounts yet, so a first run can
+     log something before it has been set up. */
+  function accountChoices(){
+    const mine = [...new Set(savings.map(a=>a && a.provider).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b));
+    return mine.length ? mine : BANK_OPTIONS;
+  }
+
+  /* The account used most recently, so the commonest field on the fastest path comes
+     pre-answered. Falls back to your only account when you have exactly one. */
+  function lastUsedAccount(){
+    const withBank = expenses.concat(incomes).filter(e=>e && e.bank);
+    withBank.sort((a,b)=> String(b.updatedAt || b.date || "").localeCompare(String(a.updatedAt || a.date || "")));
+    if (withBank.length && accountChoices().indexOf(withBank[0].bank) !== -1) return withBank[0].bank;
+    const mine = accountChoices();
+    return mine.length === 1 ? mine[0] : "";
+  }
+
   function populateBankOptions(selectId, placeholderLabel){
     const sel = document.getElementById(selectId);
     if (!sel) return;
+    // Replacing the options resets the select, so the current choice is put back —
+    // the same trap the category dropdown fell into.
+    const keep = sel.value;
     sel.innerHTML = `<option value="">${escapeHtml(placeholderLabel || "— None —")}</option>`
-      + BANK_OPTIONS.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join("");
+      + accountChoices().map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join("");
+    if (keep && [...sel.options].some(o=>o.value === keep)) sel.value = keep;
+  }
+
+  // Every select that names an account. Rebuilt only when the set of accounts has
+  // actually changed, so a repaint during data entry costs nothing.
+  let accountChoiceSignature = "";
+  function refreshAccountSelects(force){
+    const sig = accountChoices().join("|");
+    if (!force && sig === accountChoiceSignature) return;
+    accountChoiceSignature = sig;
+    populateBankOptions("in-bank", "— Select an account —");
+    populateBankOptions("expense-bulk-bank", "— No account —");
+    populateBankOptions("lg-bank");
+    populateBankOptions("lt-bank");
+    populateBankOptions("inv-bank");
   }
 
   // Looks up "1 unit of this code = X PHP" from whichever tracker has it — a
@@ -7911,10 +8006,14 @@
   }
   // Defaults below apply only on first visit — all of these now start collapsed
   // so the app opens compact, and stay however the user last left them.
-  setupCollapseToggle("btn-toggle-investments", "investments-body", true);
-  setupCollapseToggle("btn-toggle-loans-given", "loans-given-body", true);
-  setupCollapseToggle("btn-toggle-loans-taken", "loans-taken-body", true);
-  setupCollapseToggle("btn-toggle-budgets", "budget-list", true);
+  /* Collapsed only when there is nothing inside. A section holding two outstanding
+     loans used to present as an empty screen with a disclosure widget on it, which
+     is the opposite of what "who owes me money" needs to answer. An explicit choice
+     you have made before still wins over this. */
+  setupCollapseToggle("btn-toggle-investments", "investments-body", investments.length === 0);
+  setupCollapseToggle("btn-toggle-loans-given", "loans-given-body", loansGiven.length === 0);
+  setupCollapseToggle("btn-toggle-loans-taken", "loans-taken-body", loansTaken.length === 0);
+  setupCollapseToggle("btn-toggle-budgets", "budget-list", Object.keys(budgets).length === 0);
 
   function renderInvestments(){
     const wrap = document.getElementById("investments-table-wrap");
@@ -8152,6 +8251,8 @@
   }
 
   function renderSavingsList(){
+    // Accounts may have just appeared or gone; the selects that name them follow.
+    if (typeof refreshAccountSelects === "function") refreshAccountSelects();
     const wrap = document.getElementById("savings-table-wrap");
     const summaryEl = document.getElementById("savings-summary");
     const total = savings.reduce((s,a)=>s+a.amount, 0);
@@ -9533,6 +9634,21 @@
     }, 0);
   });
 
+  /* Opens the breakdown under the hero. Kept beside the render so the two stay
+     together; the panel content itself is rebuilt on every repaint above. */
+  (function wireTotalMoneyBreakdown(){
+    const bar = document.getElementById("total-money-bar");
+    const panel = document.getElementById("tm-breakdown");
+    const hint = document.getElementById("tm-hint");
+    if (!bar || !panel) return;
+    bar.addEventListener("click", ()=>{
+      const open = bar.getAttribute("aria-expanded") === "true";
+      bar.setAttribute("aria-expanded", open ? "false" : "true");
+      panel.hidden = open;
+      if (hint) hint.textContent = open ? "Tap to see what this is made of" : "Tap to hide";
+    });
+  })();
+
   function refreshAfterSync(){
     if (editingATableField()){ refreshHeldForEditing = true; return; }
     refreshHeldForEditing = false;
@@ -10227,8 +10343,8 @@
     }
   })();
 
-  populateBankOptions("in-bank", "— Select an account —");
-  populateBankOptions("expense-bulk-bank", "— No account —");
+  refreshAccountSelects(true);
+  document.getElementById("in-bank").value = lastUsedAccount();
 
   // Table density — a view preference, so it lives in uiPrefs alongside the
   // filter/collapse state and is deliberately excluded from backups.
@@ -10251,9 +10367,7 @@
       showToast(mode === "compact" ? "Compact spacing on." : "Comfortable spacing on.");
     });
   });
-  populateBankOptions("lg-bank");
-  populateBankOptions("lt-bank");
-  populateBankOptions("inv-bank");
+  // lg-bank / lt-bank / inv-bank are covered by refreshAccountSelects above.
   populateInCurrencyOptions();
   populateCurrencyOptions();
   renderCurrencyList();
