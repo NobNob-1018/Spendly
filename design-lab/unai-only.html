@@ -988,6 +988,30 @@
     -webkit-appearance:none; margin: 0;
   }
   td input[type=number]{ -moz-appearance:textfield; }
+  /* VUI-DEN-002: compact 40 / default 48 / comfortable 56. Set on <body> by the
+     toggle so a table never has to know which mode is current. */
+  :root{ --row-h: 48px; }
+  [id$="-table-wrap"] tbody tr{ height: var(--row-h); }
+  [id$="-table-wrap"] tbody td{
+    height: var(--row-h);
+    padding-top: 0; padding-bottom: 0;
+    vertical-align: middle;
+  }
+  /* The field is the tallest thing in the cell, so it is what actually sets the
+     row height. Derived from the same token rather than guessed alongside it. */
+  [id$="-table-wrap"] tbody td input[type=text],
+  [id$="-table-wrap"] tbody td input[type=number],
+  [id$="-table-wrap"] tbody td input[type=date],
+  [id$="-table-wrap"] tbody td select{
+    height: calc(var(--row-h) - var(--sp-5));
+    padding-top: 0; padding-bottom: 0;
+    line-height: calc(var(--row-h) - var(--sp-5));
+  }
+  #density-toggle button{ flex-direction:column; align-items:center; gap:1px; line-height:1.15; }
+  #density-toggle button small{
+    font-size: var(--fs-3xs); font-weight:700; opacity:.6;
+    text-transform:uppercase; letter-spacing: var(--track-caps);
+  }
   tbody tr{ transition: background-color var(--dur-fast) var(--ease-out); }
   /* Hover is a pointer affordance. A touch screen has no pointer but still matches
      :hover, and the paint sticks after a tap until something else is tapped — so on a
@@ -1055,11 +1079,46 @@
     background:var(--accent-light);
     color:var(--accent-dark);
   }
+  /* VUI-HIE-001: primary occupies its own column at full height; the demoted
+     metrics stack beside it as compact rows, not as peer cards. */
+  /* VUI-LAY-003: any card holding a stat row is a measurable container. */
+  .card:has(> .stat-row){
+    container-type: inline-size;
+    container-name: stat-area;
+  }
   .stat-row{
     display:grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--sp-8);
+    grid-template-columns: 1.55fr 1fr;
+    grid-auto-rows: min-content;
+    gap: var(--sp-5) var(--sp-8);
     margin-bottom: var(--sp-11);
+    /* start, not stretch: a demoted row must keep its own height or it grows to
+       match the headline and stops being demoted. */
+    align-items:start;
+  }
+  .stat-row > .stat.is-primary{ align-self:stretch; }
+  .stat-row > .stat.is-primary{ grid-column:1; grid-row:1 / -1; }
+  .stat-row > .stat:not(.is-primary){ grid-column:2; }
+  /* A row that has not nominated a headline keeps the even grid, so this rule can
+     be taken up one row at a time instead of stranding column 1 empty. */
+  .stat-row:not(:has(.is-primary)){ grid-template-columns: repeat(3, 1fr); }
+  .stat-row:not(:has(.is-primary)) > .stat{ grid-column: auto; }
+  /* VUI-LAY-003: measured on the card, not the window. 560px is where the headline
+     value and its breakdown stop fitting beside a 180px column. */
+  @container stat-area (max-width: 560px){
+    .stat-row{ grid-template-columns: 1fr; }
+    .stat-row > .stat.is-primary{ grid-column:1; grid-row:auto; }
+    .stat-row > .stat:not(.is-primary){ grid-column:1; }
+    .stat-row > .stat:not(.is-primary):first-of-type{ border-top:1px solid var(--line); }
+  }
+  /* Fallback for engines without container queries: the viewport is a worse
+     proxy, but a wrong single column beats a crushed two. */
+  @supports not (container-type: inline-size){
+    @media (max-width: 900px){
+      .stat-row{ grid-template-columns: 1fr; }
+      .stat-row > .stat.is-primary{ grid-column:1; grid-row:auto; }
+      .stat-row > .stat:not(.is-primary){ grid-column:1; }
+    }
   }
   .stat-row.two{ grid-template-columns: repeat(2, 1fr); }
   @media (max-width: 480px){
@@ -1137,9 +1196,48 @@
      instantly among otherwise-identical cards. */
   .stat.is-primary{
     border-color: var(--accent);
-    background: linear-gradient(155deg, var(--accent-light), var(--card) 180%);
+    background: var(--accent-light);   /* VUI-COL-001: the ramp said nothing */
+    flex-direction:column; align-items:stretch; justify-content:flex-start;
+    gap: var(--sp-5); padding: var(--sp-7);
   }
-  .stat.is-primary .value{ font-size:var(--fs-3xl); }
+  .stat.is-primary .stat-badge{ order:-1; }
+  .stat.is-primary .value{ font-size: var(--fs-display-3); line-height:1.05; }
+  .stat.is-primary .stat-spark{ width:100%; }
+  .stat.is-primary .stat-spark svg{ width:100%; height:44px; }
+
+  /* VUI-HIE-001: "compress the others into smaller secondary rows with inline
+     badges" - rows, so they read as a list under the headline, not as rivals. */
+  .stat-row > .stat:not(.is-primary){
+    background: transparent;
+    border:0; border-top:1px solid var(--line);
+    border-radius:0;
+    padding: var(--sp-5) 0;
+    gap: var(--sp-5);
+  }
+  .stat-row > .stat:not(.is-primary):first-of-type{ border-top:0; }
+  .stat-row > .stat:not(.is-primary):hover{ transform:none; border-color: var(--line); }
+  .stat-row > .stat:not(.is-primary) .stat-badge{ width:24px; height:24px; box-shadow:none; }
+  .stat-row > .stat:not(.is-primary) .stat-badge svg{ width:14px; height:14px; }
+  .stat-row > .stat:not(.is-primary) .value{ font-size: var(--fs-xl); }
+  .stat-row > .stat:not(.is-primary) .stat-text{ display:flex; flex-direction:column; gap:2px; }
+
+  /* The breakdown the corpus asks for beneath the headline figure. */
+  .stat-breakdown{
+    display:flex; flex-direction:column; gap: var(--sp-3);
+    padding-top: var(--sp-5);
+    border-top:1px solid var(--line);
+  }
+  .stat-breakdown-row{
+    display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-5);
+    font-size: var(--fs-md);
+  }
+  .stat-breakdown-row .bd-label{ color: var(--ink-soft); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .stat-breakdown-row .bd-value{ color: var(--ink); font-weight:700; font-variant-numeric: tabular-nums; flex:0 0 auto; }
+  .stat-breakdown-row .bd-bar{
+    flex:1 1 auto; height:3px; border-radius:2px; background: var(--line);
+    position:relative; overflow:hidden; min-width:24px;
+  }
+  .stat-breakdown-row .bd-bar i{ position:absolute; inset:0 auto 0 0; background: var(--negative); border-radius:2px; }
   .stat-badge{
     width:30px; height:30px; border-radius:var(--r-md); flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
@@ -1244,6 +1342,36 @@
 
   .row-action-bar{
     display:flex; flex-wrap:wrap; align-items:center; gap: var(--sp-4);
+  }
+  /* VUI-TBL-015: the data is what the reader came for; the tools arrive when
+     the row does. visibility, not display, so nothing moves as they appear. */
+  @media (hover: hover) and (pointer: fine){
+    [id$="-table-wrap"] tbody tr .row-action{
+      visibility:hidden; opacity:0;
+      transition: opacity var(--dur-fast) var(--ease-out);
+    }
+    [id$="-table-wrap"] tbody tr:hover .row-action,
+    [id$="-table-wrap"] tbody tr:focus-within .row-action,
+    [id$="-table-wrap"] tbody tr.is-selected .row-action{
+      visibility:visible; opacity:1;
+    }
+  }
+  /* VUI-TBL-015: hidden until the row is hovered or focused. visibility rather
+     than display, so the row does not change height as the cursor crosses it -
+     a list that reflows under the pointer is worse than the noise being fixed. */
+  @media (hover: hover) and (pointer: fine){
+    tr[data-payment-for] .row-action-bar,
+    .inv-card .row-action-bar{
+      visibility:hidden; opacity:0;
+      transition: opacity var(--dur-fast) var(--ease-out);
+    }
+    tr[data-payment-for]:hover .row-action-bar,
+    tr[data-payment-for]:focus-within .row-action-bar,
+    tr[data-payment-for].is-open .row-action-bar,
+    .inv-card:hover .row-action-bar,
+    .inv-card:focus-within .row-action-bar{
+      visibility:visible; opacity:1;
+    }
   }
   .loan-payment-link{
     display:inline-flex; align-items:center; gap: var(--sp-3);
@@ -1974,7 +2102,7 @@
   body.density-compact .tm-hero .tm-value{ font-size: var(--fs-display-2); }
   body.density-compact .settings-section-label{ margin: var(--sp-9) 0 var(--sp-4); }
   body.density-compact .empty-state{ padding: var(--sp-9) var(--sp-8); }
-  body.density-compact [id$="-table-wrap"] td{ padding-top: var(--sp-1); padding-bottom: var(--sp-1); }
+  /* Row height is the token's job now (VUI-DEN-002); this used to set it by hand. */
   body.density-compact [id$="-table-wrap"] th{ padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
   body.density-compact [id$="-table-wrap"] td input[type=text],
   body.density-compact [id$="-table-wrap"] td input[type=date],
@@ -3279,7 +3407,9 @@
       <div class="card bento-span-7" id="money-overview-card">
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="7"/><line x1="16" y1="20" x2="16" y2="10"/><line x1="20" y1="20" x2="20" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span>Money overview</h2>
         <p class="sub">Your total money right now, and how this month is going.</p>
-        <div class="stat-row two" id="money-overview-row"></div>
+        <!-- VUI-HIE-001: no longer a two-equal-column row. The .two modifier outranked
+             the hierarchy rule on specificity and quietly restored equal columns. -->
+        <div class="stat-row" id="money-overview-row"></div>
         <p class="hint" id="money-overview-loan-note" style="display:none; margin-top: var(--sp-6); margin-bottom:0;"></p>
       </div>
 
@@ -3578,8 +3708,9 @@
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>Table density</h2>
       <p class="sub">Compact tightens spacing across tables, cards and lists so more fits on screen. Your data is unchanged.</p>
       <div class="range-tabs" id="density-toggle" style="display:inline-flex;">
-        <button data-density="comfortable">Comfortable</button>
-        <button data-density="compact">Compact</button>
+        <button data-density="compact" title="40px rows - scanning a lot at once">Compact<small>Ops</small></button>
+        <button data-density="default" title="48px rows">Default<small>Everyday</small></button>
+        <button data-density="comfortable" title="56px rows - reading a few closely">Comfortable<small>Review</small></button>
       </div>
     </div>
 
@@ -4324,7 +4455,11 @@
 
   function applyDensity(mode){
 
+    // VUI-DEN-002: one variable carries the decision; the tables read it.
     document.body.classList.toggle("density-compact", mode === "compact");
+    document.body.classList.toggle("density-comfortable", mode === "comfortable");
+    document.body.style.setProperty("--row-h",
+      mode === "compact" ? "40px" : mode === "comfortable" ? "56px" : "48px");
     document.querySelectorAll("#density-toggle button").forEach(b=>
       b.classList.toggle("active", b.dataset.density === mode));
     markSegmented(document.querySelectorAll("#density-toggle button"), b=>b.dataset.density === mode);
@@ -8710,6 +8845,19 @@
         + `${up ? "▲" : "▼"} ${pct ? Math.abs(o.delta.pct).toFixed(0) + "%" : fmtMoney(Math.abs(o.delta.value))}`
         + `</span>`;
     }
+    // VUI-HIE-001: the primary metric carries its own split, so the headline
+    // number answers "made of what" without a second card being spent on it.
+    let breakdownHtml = "";
+    if (o.breakdown && o.breakdown.length){
+      const top = Math.max.apply(null, o.breakdown.map(b=>Math.abs(b.amount) || 0).concat([1]));
+      breakdownHtml = `<div class="stat-breakdown">`
+        + o.breakdown.map(b=>`<div class="stat-breakdown-row">`
+            + `<span class="bd-label">${escapeHtml(b.label)}</span>`
+            + `<span class="bd-bar"><i style="width:${Math.round((Math.abs(b.amount)/top)*100)}%"></i></span>`
+            + `<span class="bd-value">${fmtMoney(b.amount)}</span>`
+          + `</div>`).join("")
+        + `</div>`;
+    }
     let sparkHtml = "";
     if (o.series && o.series.length > 2){
       const pts = o.series.map(v=>({ v }));
@@ -8727,6 +8875,7 @@
           ${o.context ? `<div class="stat-context">${deltaHtml}<span class="stat-context-label">${escapeHtml(o.context)}</span></div>` : deltaHtml}
         </div>
         ${sparkHtml}
+        ${breakdownHtml}
       </div>`;
   }
 
@@ -8927,7 +9076,16 @@
         delta: spentLast > 0 ? { value: round2(spentThisMonth - spentLast),
                                  pct: ((spentThisMonth - spentLast)/spentLast)*100, invert:true } : null,
         context: spentLast > 0 ? "vs last month" : "",
-        series: monthlySeries(expenses, 6), sparkColor:"var(--negative)"
+        series: monthlySeries(expenses, 6), sparkColor:"var(--negative)",
+        breakdown: (()=>{
+          const byCat = {};
+          expenses.filter(e=>e.date.slice(0,7) === monthKey)
+                  .forEach(e=>{ byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
+          return Object.keys(byCat)
+            .map(k=>({ label:k, amount:byCat[k] }))
+            .sort((a,b)=>b.amount - a.amount)
+            .slice(0, 3);
+        })()
       })
     + statTileHtml({
         icon:"balance", badgeClass:"stat-badge-teal",
@@ -9407,20 +9565,25 @@
         : `No spending recorded in the ${rangeLabel}`;
     }
 
-    document.getElementById("stat-row").innerHTML = `
-      <div class="stat">
-        <div class="stat-badge stat-badge-rose">${badgeIcon("spend")}</div>
-        <div class="stat-text"><div class="label">Total spent</div><div class="value">${fmtMoneyRich(total)}</div></div>
-      </div>
-      <div class="stat">
-        <div class="stat-badge stat-badge-blue">${badgeIcon("tag")}</div>
-        <div class="stat-text"><div class="label">Top category</div><div class="value">${escapeHtml(topCat)}</div></div>
-      </div>
-      <div class="stat">
-        <div class="stat-badge stat-badge-rose">${badgeIcon("chart")}</div>
-        <div class="stat-text"><div class="label">Avg per ${bucket}</div><div class="value">${fmtMoneyRich(avg)}</div></div>
-      </div>
-    `;
+    document.getElementById("stat-row").innerHTML =
+      statTileHtml({
+        primary:true, icon:"spend", badgeClass:"stat-badge-rose",
+        label:"Total spent", value: fmtMoneyRich(total),
+        context: inRange.length ? `${inRange.length} expense${inRange.length===1?"":"s"}` : "",
+        series: null,
+        // VUI-HIE-001: the headline states what it is made of, so the reader does
+        // not have to reach the pie chart to learn where the money went.
+        breakdown: catLabels.slice(0,3).map(c=>({ label:c, amount: round2(catTotals[c]) }))
+      })
+    + statTileHtml({
+        icon:"tag", badgeClass:"stat-badge-blue",
+        // VUI-CPY-005: a category name cannot speak for itself the way a figure can.
+        label:"Top category", value: escapeHtml(topCat)
+      })
+    + statTileHtml({
+        icon:"chart", badgeClass:"stat-badge-rose",
+        label:`Avg per ${bucket}`, value: fmtMoneyRich(avg)
+      });
 
     // Charts are the only part that need Chart.js — the stats above are already visible before this resolves.
     ensureChartJs().then(()=>{
@@ -10639,7 +10802,8 @@
 
   // Table density — a view preference, so it lives in uiPrefs alongside the
   // filter/collapse state and is deliberately excluded from backups.
-  applyDensity(pref("density", "comfortable"));
+  // VUI-DEN-002: Everyday is the middle rung, so a first run lands between the two extremes.
+  applyDensity(pref("density", "default"));
 
   applySettingsGroup(pref("settingsGroup", "appearance"));
   applyLoansGroup(pref("loansGroup", "given"));
