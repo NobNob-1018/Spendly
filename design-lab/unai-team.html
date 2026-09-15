@@ -954,6 +954,21 @@
   .form-grid.form-stack label{ margin-bottom: var(--sp-4); }
   .form-grid.form-stack .amount-wrap input{ padding-left: var(--sp-9); font-size: var(--fs-lg); }
 
+
+  /* recurring as sentences */
+  .recurring-item.is-line{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-7); padding: var(--sp-6) 0; border-bottom:1px solid var(--line); }
+  .recurring-item.is-line:last-child{ border-bottom:0; }
+  .rec-sentence{ margin:0; font-size: var(--fs-md); line-height:1.7; color: var(--ink-soft); max-width: 60ch; }
+  .rec-sentence strong{ color: var(--ink); }
+  /* insights as prose */
+  .insight-prose{ max-width: 62ch; }
+  .insight-prose .insight{ display:block; padding:0 0 var(--sp-5); border:0; margin:0; }
+  .insight-prose .insight:last-child{ padding-bottom:0; }
+  .insight-prose p{ margin:0; font-size: var(--fs-md); line-height:1.7; color: var(--ink-soft); }
+  .insight-prose .insight.is-bad{ color: var(--negative); }
+  .insight-prose .insight.is-warn{ color: var(--warn); }
+  .insights-strip{ flex-direction:column; }
+
 </style>
 </head>
 
@@ -4168,28 +4183,43 @@
   });
 
   function renderRecurringList(){
+    // A ledger states a standing order as a sentence: what, how much, and when
+    // it happens again.
     const card = document.getElementById("recurring-card");
     const list = document.getElementById("recurring-list");
     if (!recurring.length){ card.style.display = "none"; return; }
     card.style.display = "";
+    const ord = n => n + (n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th");
     list.innerHTML = recurring.map(r => `
-      <div class="recurring-item" data-id="${r.id}">
-        <div class="info">
-          <div>${r.type === "income" ? ICON.in : ICON.out} ${escapeHtml(r.description)} — ${fmtMoney(r.amount)}</div>
-          <div class="meta">${escapeHtml(r.category)} · day ${r.dayOfMonth} of each month</div>
-        </div>
+      <div class="recurring-item is-line" data-id="${r.id}">
+        <p class="rec-sentence">
+          <strong>${escapeHtml(r.description)}</strong>,
+          ${r.type === "income" ? "arriving" : "going out"}
+          <strong>${fmtMoney(r.amount)}</strong>
+          on the ${ord(r.dayOfMonth)} of each month, filed under ${escapeHtml(r.category)}.
+        </p>
         <button class="btn-danger-text" data-action="delete-recurring">Stop repeating</button>
       </div>`).join("");
+    wireRecurringDelete(list);
+  }
+
+  function wireRecurringDelete(list){
     list.querySelectorAll("[data-action='delete-recurring']").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const id = btn.closest(".recurring-item").dataset.id;
+        const gone = recurring.find(r=>r.id === id);
         recurring = recurring.filter(r=>r.id !== id);
         saveRecurring(recurring);
         renderRecurringList();
-        showToast("Recurring entry stopped.");
+        // Undo, because stopping a standing order by mis-click is silent
+        // otherwise: nothing happens until the month it fails to post.
+        showUndoToast("Recurring entry stopped.", ()=>{
+          if (gone){ recurring.push(gone); saveRecurring(recurring); renderRecurringList(); }
+        });
       });
     });
   }
+
 
   // On load, add any recurring expenses/income that are due (once per month, on/after their day)
   // Posts earned interest into an account as a real income entry, once per calendar
@@ -6760,21 +6790,18 @@
   }
 
   function renderInsights(){
+    // Ledger: the observations read as a short paragraph rather than as chips.
     const wrap = document.getElementById("insights-strip");
     if (!wrap) return;
     const card = document.getElementById("insights-card");
     const items = buildInsights();
-    if (!items.length){
-      if (card) card.style.display = "none";
-      return;
-    }
+    if (!items.length){ if (card) card.style.display = "none"; return; }
     if (card) card.style.display = "";
-    wrap.innerHTML = items.map(i=>`
-      <div class="insight is-${i.tone}">
-        <span class="insight-icon">${badgeIcon(i.icon)}</span>
-        <span class="insight-text">${i.text}</span>
-      </div>`).join("");
+    wrap.innerHTML = '<div class="insight-prose">'
+      + items.map(i=>`<p class="insight is-${i.tone}">${i.text}</p>`).join("")
+      + '</div>';
   }
+
 
   // ================= 5. Monthly recap =================
   function renderRecap(){

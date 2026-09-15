@@ -900,6 +900,21 @@
   .form-grid.form-cols label{ margin-bottom: var(--sp-3); }
   .form-grid.form-cols .amount-wrap input{ padding-left: var(--sp-9); }
 
+
+  /* recurring as weighted cards */
+  .rec-total{ margin:0 0 var(--sp-7); font-size: var(--fs-sm); color: var(--ink-soft); }
+  .rec-total strong{ color: var(--ink); font-variant-numeric: tabular-nums; }
+  .rec-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap: var(--sp-6); }
+  .recurring-item.is-card{ display:flex; flex-direction:column; gap: var(--sp-4); padding: var(--sp-6); background: var(--sunken); border:1px solid var(--line); border-radius: var(--r-md); }
+  .rec-card-head{ display:flex; align-items:center; justify-content:space-between; gap: var(--sp-5); }
+  .rec-name{ font-size: var(--fs-sm); font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rec-amt{ font-size: var(--fs-lg); font-weight:700; font-variant-numeric: tabular-nums; }
+  .rec-amt.is-out{ color: var(--negative); } .rec-amt.is-in{ color: var(--positive); }
+  .rec-bar{ position:relative; height:4px; border-radius:2px; background: var(--line); overflow:hidden; }
+  .rec-bar i{ position:absolute; inset:0 auto 0 0; border-radius:2px; background: var(--accent); }
+  .rec-meta{ font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .insight-body{ min-width:0; }
+
 </style>
 </head>
 
@@ -4108,28 +4123,48 @@
   });
 
   function renderRecurringList(){
+    // A workspace shows standing orders as cards with their monthly weight, so
+    // the committed part of a month is visible before anything else is spent.
     const card = document.getElementById("recurring-card");
     const list = document.getElementById("recurring-list");
     if (!recurring.length){ card.style.display = "none"; return; }
     card.style.display = "";
-    list.innerHTML = recurring.map(r => `
-      <div class="recurring-item" data-id="${r.id}">
-        <div class="info">
-          <div>${r.type === "income" ? ICON.in : ICON.out} ${escapeHtml(r.description)} — ${fmtMoney(r.amount)}</div>
-          <div class="meta">${escapeHtml(r.category)} · day ${r.dayOfMonth} of each month</div>
-        </div>
-        <button class="btn-danger-text" data-action="delete-recurring">Stop repeating</button>
-      </div>`).join("");
+    const committed = round2(recurring.filter(r=>r.type !== "income").reduce((t,r)=>t+r.amount,0));
+    const max = Math.max.apply(null, recurring.map(r=>r.amount).concat([1]));
+    list.innerHTML =
+      `<p class="rec-total"><strong>${fmtMoney(committed)}</strong> a month is committed before anything else is spent.</p>`
+      + '<div class="rec-grid">'
+      + recurring.map(r => `
+        <div class="recurring-item is-card" data-id="${r.id}">
+          <div class="rec-card-head">
+            <span class="rec-name">${escapeHtml(r.description)}</span>
+            <button class="row-action row-action-danger" data-action="delete-recurring" title="Stop repeating" aria-label="Stop repeating">\u2715</button>
+          </div>
+          <span class="rec-amt ${r.type === "income" ? "is-in" : "is-out"}">${fmtMoney(r.amount)}</span>
+          <span class="rec-bar"><i style="width:${Math.round((r.amount / max) * 100)}%"></i></span>
+          <span class="rec-meta">${escapeHtml(r.category)} \u00B7 day ${r.dayOfMonth}</span>
+        </div>`).join("")
+      + '</div>';
+    wireRecurringDelete(list);
+  }
+
+  function wireRecurringDelete(list){
     list.querySelectorAll("[data-action='delete-recurring']").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const id = btn.closest(".recurring-item").dataset.id;
+        const gone = recurring.find(r=>r.id === id);
         recurring = recurring.filter(r=>r.id !== id);
         saveRecurring(recurring);
         renderRecurringList();
-        showToast("Recurring entry stopped.");
+        // Undo, because stopping a standing order by mis-click is silent
+        // otherwise: nothing happens until the month it fails to post.
+        showUndoToast("Recurring entry stopped.", ()=>{
+          if (gone){ recurring.push(gone); saveRecurring(recurring); renderRecurringList(); }
+        });
       });
     });
   }
+
 
   // On load, add any recurring expenses/income that are due (once per month, on/after their day)
   // Posts earned interest into an account as a real income entry, once per calendar
@@ -6695,21 +6730,23 @@
   }
 
   function renderInsights(){
+    // Workspace: each observation is a tile, so they sit in the grid with the
+    // charts and the KPI row rather than beside them.
     const wrap = document.getElementById("insights-strip");
     if (!wrap) return;
     const card = document.getElementById("insights-card");
     const items = buildInsights();
-    if (!items.length){
-      if (card) card.style.display = "none";
-      return;
-    }
+    if (!items.length){ if (card) card.style.display = "none"; return; }
     if (card) card.style.display = "";
     wrap.innerHTML = items.map(i=>`
       <div class="insight is-${i.tone}">
         <span class="insight-icon">${badgeIcon(i.icon)}</span>
-        <span class="insight-text">${i.text}</span>
+        <div class="insight-body">
+          <span class="insight-text">${i.text}</span>
+        </div>
       </div>`).join("");
   }
+
 
   // ================= 5. Monthly recap =================
   function renderRecap(){
