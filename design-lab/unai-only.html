@@ -1034,6 +1034,96 @@
   .quickadd-hint{ font-size: var(--fs-3xs); color: var(--ink-dim); flex-basis:100%; }
   @media (max-width: 720px){ .quickadd-hint{ display:none; } }
 
+
+  /* ---------- bulk edit, in the selection bar -------------------------------- */
+  .bulk-edit{ display:flex; align-items:center; gap: var(--sp-5); flex-wrap:wrap; margin-left: var(--sp-7); }
+  .bulk-edit select{ width:auto; min-width:140px; height:26px; font-size: var(--fs-3xs); }
+  @media (max-width: 720px){ .bulk-edit{ margin-left:0; width:100%; } }
+
+  /* ---------- paste importer -------------------------------------------------- */
+  .paster-btn{ margin-bottom: var(--sp-4); margin-right: var(--sp-4); }
+  .paster{
+    display:none; position:fixed; inset:0; z-index:9992;
+    background: rgb(4 6 9 / .72);
+    align-items:center; justify-content:center; padding: var(--sp-8);
+  }
+  .paster.show{ display:flex; }
+  .paster-panel{
+    width:100%; max-width:720px; max-height:86vh;
+    display:flex; flex-direction:column; overflow:hidden;
+    background: var(--over); border:1px solid var(--line-strong);
+  }
+  .paster-head{
+    display:flex; align-items:flex-start; justify-content:space-between; gap: var(--sp-6);
+    padding: var(--sp-8); border-bottom:1px solid var(--line);
+  }
+  .paster-kicker{
+    margin:0 0 var(--sp-2); font-size: var(--fs-3xs); font-weight:800; color: var(--ink-dim);
+    text-transform:uppercase; letter-spacing: var(--track-caps);
+  }
+  .paster-title{ margin:0; font-size: var(--fs-2xl); font-weight:700; letter-spacing:-0.02em; }
+  .paster-sub{ margin: var(--sp-3) 0 0; max-width:52ch; font-size: var(--fs-sm); color: var(--ink-soft); line-height:1.55; }
+  #paster-in{
+    margin: var(--sp-7) var(--sp-8) 0; width:auto;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: var(--fs-sm);
+    line-height:1.6; resize:vertical;
+  }
+  .paster-preview{ overflow-y:auto; padding: var(--sp-7) var(--sp-8) 0; flex:1; }
+  .paster-table{ width:100%; border-collapse:collapse; font-size: var(--fs-sm); }
+  .paster-table th{
+    text-align:left; padding: var(--sp-3) var(--sp-4);
+    font-size: var(--fs-3xs); font-weight:800; color: var(--ink-dim);
+    text-transform:uppercase; letter-spacing: var(--track-caps);
+    border-bottom:1px solid var(--line); position:sticky; top:0; background: var(--over);
+  }
+  .paster-table td{ padding: var(--sp-3) var(--sp-4); border-bottom:1px solid var(--line); }
+  .paster-table td.num{ text-align:right; font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .paster-more{ margin: var(--sp-5) 0 0; font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .paster-foot{
+    display:flex; align-items:center; justify-content:space-between; gap: var(--sp-6);
+    padding: var(--sp-7) var(--sp-8);
+    border-top:1px solid var(--line);
+    font-size: var(--fs-3xs); color: var(--ink-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- session trail ---------------------------------------------------- */
+  .trail-row{
+    display:grid; grid-template-columns: 78px 80px minmax(0,1fr);
+    align-items:baseline; gap: var(--sp-5);
+    padding: var(--sp-3) 0; border-bottom:1px solid var(--line);
+    font-size: var(--fs-sm);
+  }
+  .trail-row:last-child{ border-bottom:0; }
+  .trail-time{ font-size: var(--fs-3xs); color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+  .trail-kind{
+    font-size: var(--fs-3xs); font-weight:800;
+    text-transform:uppercase; letter-spacing: var(--track-caps);
+    color: var(--ink-dim);
+  }
+  .trail-kind.trail-expenses{ color: var(--negative); }
+  .trail-kind.trail-income{ color: var(--positive); }
+  .trail-kind.trail-session{ color: var(--accent); }
+  .trail-text{ color: var(--ink-soft); min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .trail-empty{ padding: var(--sp-7) 0; color: var(--ink-dim); font-size: var(--fs-sm); }
+
+
+  /* ---------- panel headers: one dense line ---------------------------------- */
+  .panel-head.is-console{
+    display: flex; align-items: baseline; gap: var(--sp-6);
+    flex-wrap: wrap;
+    padding-bottom: var(--sp-5);
+    margin-bottom: var(--sp-7);
+    border-bottom: 1px solid var(--line);
+  }
+  .panel-head.is-console h2{ margin: 0; flex: 0 0 auto; }
+  .panel-head.is-console .sub{
+    margin: 0; flex: 1 1 240px; min-width: 0;
+    font-size: var(--fs-3xs); color: var(--ink-dim);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .panel-head.is-console .section-head-row{ margin: 0; flex: 0 0 auto; }
+
 </style>
 </head>
 
@@ -1099,8 +1189,10 @@
     </div>
 
     <div class="card">
-      <h2 id="add-card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"/><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 13h2"/></svg>Add an expense</h2>
-      <p class="sub" id="add-card-sub">Type what you bought — we'll guess the category and today's date automatically.</p>
+      <header class="panel-head is-console">
+        <h2 id="add-card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"/><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 13h2"/></svg>Add an expense</h2>
+        <p class="sub" id="add-card-sub">Type what you bought — we'll guess the category and today's date automatically.</p>
+      </header>
       <div class="form-grid">
         <div class="full">
           <label for="in-desc" id="in-desc-label">What did you spend on?</label>
@@ -1164,8 +1256,10 @@
     </div>
 
     <div class="card" id="history-expense-card">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg></span>All expenses</h2>
-      <p class="sub">Click any field to fix the date, category, description, tags, or amount.</p>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg></span>All expenses</h2>
+        <p class="sub">Click any field to fix the date, category, description, tags, or amount.</p>
+      </header>
       <div class="history-toolbar">
         <input type="text" id="filter-search" placeholder="Search description or tags...">
         <select id="exp-range-filter" aria-label="Filter by date range"></select>
@@ -1185,8 +1279,10 @@
     </div>
 
     <div class="card" id="history-income-card" style="display:none;">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span>All income</h2>
-      <p class="sub">Click any field to fix the date, category, source, tags, or amount.</p>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span>All income</h2>
+        <p class="sub">Click any field to fix the date, category, source, tags, or amount.</p>
+      </header>
       <div class="history-toolbar">
         <input type="text" id="filter-income-search" placeholder="Search source or tags...">
         <select id="inc-range-filter" aria-label="Filter by date range"></select>
@@ -1209,8 +1305,10 @@
     <div class="card onboard" id="welcome-card" style="display:none;">
       <div class="onboard-head">
         <div>
-          <h2>Set up Spendly</h2>
-          <p class="sub">Three steps and the numbers start working. Everything stays on this device.</p>
+          <header class="panel-head is-console">
+            <h2>Set up Spendly</h2>
+            <p class="sub">Three steps and the numbers start working. Everything stays on this device.</p>
+          </header>
         </div>
         <div class="onboard-progress" id="onboard-progress" aria-hidden="true">
           <svg viewBox="0 0 44 44"><circle class="op-track" cx="22" cy="22" r="19"/><circle class="op-fill" id="onboard-ring" cx="22" cy="22" r="19"/></svg>
@@ -1229,8 +1327,10 @@
       </div>
 
       <div class="card bento-span-7" id="money-overview-card">
-        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="7"/><line x1="16" y1="20" x2="16" y2="10"/><line x1="20" y1="20" x2="20" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span>Money overview</h2>
-        <p class="sub">Your total money right now, and how this month is going.</p>
+        <header class="panel-head is-console">
+          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="7"/><line x1="16" y1="20" x2="16" y2="10"/><line x1="20" y1="20" x2="20" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span>Money overview</h2>
+          <p class="sub">Your total money right now, and how this month is going.</p>
+        </header>
         <!-- VUI-HIE-001: no longer a two-equal-column row. The .two modifier outranked
              the hierarchy rule on specificity and quietly restored equal columns. -->
         <div class="stat-row" id="money-overview-row"></div>
@@ -1282,14 +1382,18 @@
 
       <div class="charts-grid">
         <div>
-          <h2 style="font-size:var(--fs-lg);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15l4-5 3.5 3L20 7"/></svg>Spending over time</h2>
+          <header class="panel-head is-console">
+            <h2 style="font-size:var(--fs-lg);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15l4-5 3.5 3L20 7"/></svg>Spending over time</h2>
+          </header>
           <div class="chart-box">
             <div class="chart-loading" id="chart-bar-loading"><div class="chart-loading-spinner"></div>Loading chart…</div>
             <canvas id="chart-bar"></canvas>
           </div>
         </div>
         <div>
-          <h2 style="font-size:var(--fs-lg);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3.5v5"/></svg>By category</h2>
+          <header class="panel-head is-console">
+            <h2 style="font-size:var(--fs-lg);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3.5v5"/></svg>By category</h2>
+          </header>
           <div class="chart-box">
             <div class="chart-loading" id="chart-pie-loading"><div class="chart-loading-spinner"></div>Loading chart…</div>
             <canvas id="chart-pie"></canvas>
@@ -1299,8 +1403,10 @@
     </div>
 
     <div class="card">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg></span>Net worth over time</h2>
-      <p class="sub">Savings + investments + money owed to you − money you owe, snapshotted once a day.</p>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg></span>Net worth over time</h2>
+        <p class="sub">Savings + investments + money owed to you − money you owe, snapshotted once a day.</p>
+      </header>
       <div class="chart-box">
         <div class="chart-loading" id="chart-networth-loading"><div class="chart-loading-spinner"></div>Loading chart…</div>
         <canvas id="chart-networth"></canvas>
@@ -1317,10 +1423,12 @@
       <button data-loans="invest">Investments</button>
     </div>
     <div class="card" data-loans-group="given">
-      <div class="section-head-row">
+      <div class="section-head-row panel-head is-console">
         <div>
-          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span>Money you've lent to others</h2>
-          <p class="sub">Track what you've allowed people to borrow, and when you expect it back.</p>
+          <header class="panel-head is-console">
+            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span>Money you've lent to others</h2>
+            <p class="sub">Track what you've allowed people to borrow, and when you expect it back.</p>
+          </header>
         </div>
         <button class="btn btn-ghost btn-sm" id="btn-toggle-loans-given">▾ Collapse</button>
       </div>
@@ -1359,10 +1467,12 @@
     </div>
 
     <div class="card" data-loans-group="taken">
-      <div class="section-head-row">
+      <div class="section-head-row panel-head is-console">
         <div>
-          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span>Loans you've taken</h2>
-          <p class="sub">Money you've borrowed from others, and when you expect to pay it back.</p>
+          <header class="panel-head is-console">
+            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span>Loans you've taken</h2>
+            <p class="sub">Money you've borrowed from others, and when you expect to pay it back.</p>
+          </header>
         </div>
         <button class="btn btn-ghost btn-sm" id="btn-toggle-loans-taken">▾ Collapse</button>
       </div>
@@ -1401,10 +1511,12 @@
     </div>
 
     <div class="card" data-loans-group="invest">
-      <div class="section-head-row">
+      <div class="section-head-row panel-head is-console">
         <div>
-          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg></span>Investments</h2>
-          <p class="sub">Track what you've put money into, what you expect it to be worth, and — once sold — your actual profit after fees.</p>
+          <header class="panel-head is-console">
+            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg></span>Investments</h2>
+            <p class="sub">Track what you've put money into, what you expect it to be worth, and — once sold — your actual profit after fees.</p>
+          </header>
         </div>
         <button class="btn btn-ghost btn-sm" id="btn-toggle-investments">▾ Collapse</button>
       </div>
@@ -1454,8 +1566,10 @@
   <!-- SAVINGS & INVESTMENTS -->
   <section id="tab-savings" class="tab-panel" style="display:none;">
     <div class="card">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,3 21,9 3,9"/><line x1="5" y1="9" x2="5" y2="19"/><line x1="10" y1="9" x2="10" y2="19"/><line x1="14" y1="9" x2="14" y2="19"/><line x1="19" y1="9" x2="19" y2="19"/><line x1="3" y1="21" x2="21" y2="21"/></svg></span>Where is your money?</h2>
-      <p class="sub">Add every place you keep money — supports flat rates or tiered/capped rates (like Maya Savings) — and see the interest it's projected to earn each month, after tax.</p>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,3 21,9 3,9"/><line x1="5" y1="9" x2="5" y2="19"/><line x1="10" y1="9" x2="10" y2="19"/><line x1="14" y1="9" x2="14" y2="19"/><line x1="19" y1="9" x2="19" y2="19"/><line x1="3" y1="21" x2="21" y2="21"/></svg></span>Where is your money?</h2>
+        <p class="sub">Add every place you keep money — supports flat rates or tiered/capped rates (like Maya Savings) — and see the interest it's projected to earn each month, after tax.</p>
+      </header>
 
       <div class="form-grid">
         <div>
@@ -1510,7 +1624,9 @@
     </div>
 
     <div class="card">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,3 21,9 3,9"/><line x1="5" y1="9" x2="5" y2="19"/><line x1="10" y1="9" x2="10" y2="19"/><line x1="14" y1="9" x2="14" y2="19"/><line x1="19" y1="9" x2="19" y2="19"/><line x1="3" y1="21" x2="21" y2="21"/></svg></span>Your accounts</h2>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,3 21,9 3,9"/><line x1="5" y1="9" x2="5" y2="19"/><line x1="10" y1="9" x2="10" y2="19"/><line x1="14" y1="9" x2="14" y2="19"/><line x1="19" y1="9" x2="19" y2="19"/><line x1="3" y1="21" x2="21" y2="21"/></svg></span>Your accounts</h2>
+      </header>
       <div class="loan-summary" id="savings-summary" style="margin-top:0;"></div>
       <div id="savings-table-wrap"></div>
     </div>
@@ -1528,8 +1644,10 @@
     </div>
 
     <div data-settings-group="appearance" class="card">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>Table density</h2>
-      <p class="sub">Compact tightens spacing across tables, cards and lists so more fits on screen. Your data is unchanged.</p>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>Table density</h2>
+        <p class="sub">Compact tightens spacing across tables, cards and lists so more fits on screen. Your data is unchanged.</p>
+      </header>
       <div class="range-tabs" id="density-toggle" style="display:inline-flex;">
         <button data-density="compact" title="40px rows - scanning a lot at once">Compact<small>Ops</small></button>
         <button data-density="default" title="48px rows">Default<small>Everyday</small></button>
@@ -1538,16 +1656,20 @@
     </div>
 
     <div data-settings-group="sync" class="card">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span>Sync between devices</h2>
-      <p class="sub">Off by default. With it off, nothing ever leaves this device — that is still the point of Spendly.</p>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span>Sync between devices</h2>
+        <p class="sub">Off by default. With it off, nothing ever leaves this device — that is still the point of Spendly.</p>
+      </header>
       <div id="sync-body"></div>
     </div>
 
     <div data-settings-group="budgeting" class="card">
-      <div class="section-head-row">
+      <div class="section-head-row panel-head is-console">
         <div>
-          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span>Monthly budgets</h2>
-          <p class="sub">Set a monthly limit per category and see how this month is tracking.</p>
+          <header class="panel-head is-console">
+            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span>Monthly budgets</h2>
+            <p class="sub">Set a monthly limit per category and see how this month is tracking.</p>
+          </header>
         </div>
         <button class="btn btn-ghost btn-sm" id="btn-toggle-budgets">▾ Collapse</button>
       </div>
@@ -1555,14 +1677,18 @@
     </div>
 
     <div class="card" id="recurring-card" style="display:none;">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>Recurring</h2>
-      <p class="sub">These are added automatically each month on the day you chose, whenever you have Spendly open.</p>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>Recurring</h2>
+        <p class="sub">These are added automatically each month on the day you chose, whenever you have Spendly open.</p>
+      </header>
       <div class="recurring-list" id="recurring-list"></div>
     </div>
 
     <div class="card" id="manage-categories-card">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 12.6 12.6 20.6a2 2 0 0 1-2.8 0L3 13.8V4h9.8l7.8 7.8a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/></svg></span>Manage categories</h2>
-      <p class="sub">Add your own expense categories any time — they'll show up when adding expenses.</p>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 12.6 12.6 20.6a2 2 0 0 1-2.8 0L3 13.8V4h9.8l7.8 7.8a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/></svg></span>Manage categories</h2>
+        <p class="sub">Add your own expense categories any time — they'll show up when adding expenses.</p>
+      </header>
       <div style="display:flex; gap: var(--sp-5);">
         <input type="text" id="new-category" placeholder="e.g. Pets, Travel, Gifts" style="max-width:280px;">
         <button class="btn btn-ghost btn-sm" id="btn-add-category">Add category</button>
@@ -1570,10 +1696,12 @@
     </div>
 
     <div data-settings-group="trackers" class="card">
-      <div class="section-head-row">
+      <div class="section-head-row panel-head is-console">
         <div>
-          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 3 21 7 17 11"/><line x1="3" y1="7" x2="21" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="21" y1="17" x2="3" y2="17"/></svg></span>Currency tracker</h2>
-          <p class="sub">Rates against ₱ (PHP). Sync online any time, or type in a rate yourself.</p>
+          <header class="panel-head is-console">
+            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 3 21 7 17 11"/><line x1="3" y1="7" x2="21" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="21" y1="17" x2="3" y2="17"/></svg></span>Currency tracker</h2>
+            <p class="sub">Rates against ₱ (PHP). Sync online any time, or type in a rate yourself.</p>
+          </header>
         </div>
         <button class="btn btn-ghost btn-sm" id="btn-sync-currencies"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg>Sync rates</button>
       </div>
@@ -1596,10 +1724,12 @@
     </div>
 
     <div class="card">
-      <div class="section-head-row">
+      <div class="section-head-row panel-head is-console">
         <div>
-          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 8h4a2 2 0 0 1 0 4h-4m0 0h4.5a2 2 0 0 1 0 4h-4.5"/><line x1="10.5" y1="6" x2="10.5" y2="18"/></svg></span>Crypto tracker</h2>
-          <p class="sub">Bitcoin and Ethereum, priced in ₱ (PHP). Sync online any time, or type in a price yourself.</p>
+          <header class="panel-head is-console">
+            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 8h4a2 2 0 0 1 0 4h-4m0 0h4.5a2 2 0 0 1 0 4h-4.5"/><line x1="10.5" y1="6" x2="10.5" y2="18"/></svg></span>Crypto tracker</h2>
+            <p class="sub">Bitcoin and Ethereum, priced in ₱ (PHP). Sync online any time, or type in a price yourself.</p>
+          </header>
         </div>
         <button class="btn btn-ghost btn-sm" id="btn-sync-crypto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg>Sync prices</button>
       </div>
@@ -1608,9 +1738,11 @@
     </div>
 
     <div data-settings-group="backup" class="card">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>Backup &amp; restore</h2>
-      <p class="sub">Sync keeps your devices holding the same records. A backup is the copy you keep
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>Backup &amp; restore</h2>
+        <p class="sub">Sync keeps your devices holding the same records. A backup is the copy you keep
          yourself — for moving somewhere new, or for the day something goes wrong.</p>
+      </header>
       <p class="hint">Your data lives only on this device.</p>
       <button class="btn btn-primary btn-sm" id="btn-export-json"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M12 20V6"/><path d="M6 12l6-6 6 6"/></svg>Back up everything (JSON)</button>
       <p class="hint" style="margin:-4px 0 6px;">The complete backup — use this one to restore or move devices.</p>
@@ -1621,8 +1753,10 @@
     </div>
 
     <div data-settings-group="info" class="card is-supporting">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"/></svg></span>About</h2>
-      <p class="sub">Spendly is a single self-contained file — everything you enter stays on this device only. Use the ⇅ button in the sidebar any time to export a backup or import one.</p>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"/></svg></span>About</h2>
+        <p class="sub">Spendly is a single self-contained file — everything you enter stays on this device only. Use the ⇅ button in the sidebar any time to export a backup or import one.</p>
+      </header>
       <p class="hint" style="margin-bottom:10px;">This build: <strong id="app-build">—</strong></p>
       <button class="btn btn-outline btn-sm" id="btn-check-update"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg>Check for a newer version</button>
       <p class="hint" id="update-status" style="margin:-4px 0 0;">The app keeps itself up to date in the background, so a new version usually arrives on your next open. This fetches it now.</p>
@@ -1637,7 +1771,9 @@
   <div id="side-trackers">
   <div class="side-panel-head">
     <div class="side-panel-head-row">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 3 21 7 17 11"/><line x1="3" y1="7" x2="21" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="21" y1="17" x2="3" y2="17"/></svg></span>Currencies</h2>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 3 21 7 17 11"/><line x1="3" y1="7" x2="21" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="21" y1="17" x2="3" y2="17"/></svg></span>Currencies</h2>
+      </header>
       <button id="btn-sync-currencies-side" title="Sync rates" aria-label="Sync rates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg></button>
     </div>
     <p class="hint">Rates vs ₱ — manage these in Settings.</p>
@@ -1646,7 +1782,9 @@
 
   <div class="side-panel-head" style="margin-top:26px;">
     <div class="side-panel-head-row">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 8h4a2 2 0 0 1 0 4h-4m0 0h4.5a2 2 0 0 1 0 4h-4.5"/><line x1="10.5" y1="6" x2="10.5" y2="18"/></svg></span>Crypto</h2>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 8h4a2 2 0 0 1 0 4h-4m0 0h4.5a2 2 0 0 1 0 4h-4.5"/><line x1="10.5" y1="6" x2="10.5" y2="18"/></svg></span>Crypto</h2>
+      </header>
       <button id="btn-sync-crypto-side" title="Sync prices" aria-label="Sync prices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg></button>
     </div>
     <p class="hint">Prices vs ₱ — manage these in Settings.</p>
@@ -1655,7 +1793,9 @@
 
   <div class="side-panel-head" style="margin-top:26px;">
     <div class="side-panel-head-row">
-      <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span>Coming up</h2>
+      <header class="panel-head is-console">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span>Coming up</h2>
+      </header>
     </div>
     <p class="hint">Loans due in the next 30 days.</p>
   </div>
@@ -9451,6 +9591,300 @@
         searchBtn.dataset.cmdk = "1";
         searchBtn.title = "Command palette (Ctrl/⌘ K)";
       }
+    })();
+
+
+    /* ======================================================================
+       OPERATOR FEATURES, ROUND TWO — /unai console
+       Bulk edit, a paste importer, and an audit trail. All three are the same
+       idea: an operator works on many records at once and needs to see what
+       they just did to them.
+       ====================================================================== */
+    (function operatorFeaturesTwo(){
+      "use strict";
+
+      /* ---------- 1. bulk edit ---------------------------------------------
+         The app can already delete a selection. It could not CHANGE one, which
+         means recategorising thirty rows was thirty dropdowns. Every write goes
+         through the same store the row editor uses, so there is no second path
+         for a record to change. */
+      function selectedExpenseList(){
+        return expenses.filter(e => selectedExpenseIds.has(e.id));
+      }
+
+      function mountBulkEdit(){
+        const bar = document.querySelector(".bulk-bar");
+        if (!bar || bar.querySelector(".bulk-edit")) return;
+
+        const box = document.createElement("div");
+        box.className = "bulk-edit";
+        box.innerHTML = `
+          <select id="bulk-set-cat" aria-label="Set category for the selection">
+            <option value="">Set category…</option>
+            ${categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("")}
+          </select>
+          <select id="bulk-set-bank" aria-label="Set account for the selection">
+            <option value="">Set account…</option>
+            <option value="__none__">— No account —</option>
+            ${BANK_OPTIONS.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join("")}
+          </select>
+          <button class="btn btn-outline btn-sm" id="bulk-add-tag" type="button">Add a tag…</button>`;
+        bar.appendChild(box);
+
+        /* Every bulk write is one undoable step. Thirty rows changed by accident
+           and no way back is worse than not having the feature. */
+        function applyToSelection(label, mutate){
+          const picked = selectedExpenseList();
+          if (!picked.length){ showToast("Nothing is selected."); return; }
+          const before = picked.map(e => JSON.parse(JSON.stringify(e)));
+          picked.forEach(mutate);
+          saveExpenses(expenses);
+          renderHistory();
+          if (typeof renderTotalMoneyBar === "function") renderTotalMoneyBar();
+          showUndoToast(`${label} on ${picked.length} ${picked.length === 1 ? "entry" : "entries"}.`, () => {
+            before.forEach(snap => {
+              const live = expenses.find(x => x.id === snap.id);
+              if (live) Object.assign(live, snap);
+            });
+            saveExpenses(expenses);
+            renderHistory();
+            if (typeof renderTotalMoneyBar === "function") renderTotalMoneyBar();
+          });
+        }
+
+        box.querySelector("#bulk-set-cat").addEventListener("change", (e) => {
+          const cat = e.target.value;
+          e.target.value = "";
+          if (!cat) return;
+          applyToSelection(`Category set to ${cat}`, row => { row.category = cat; });
+        });
+
+        /* Account is deliberately NOT wired to move money. Re-tagging which
+           account a past expense came out of does not retroactively move pesos;
+           doing that silently across a selection is how a balance goes wrong. */
+        box.querySelector("#bulk-set-bank").addEventListener("change", (e) => {
+          const val = e.target.value;
+          e.target.value = "";
+          if (!val) return;
+          const bank = val === "__none__" ? null : val;
+          applyToSelection(bank ? `Account set to ${bank}` : "Account cleared", row => { row.bank = bank; });
+        });
+
+        box.querySelector("#bulk-add-tag").addEventListener("click", () => {
+          const picked = selectedExpenseList();
+          if (!picked.length){ showToast("Nothing is selected."); return; }
+          const tag = window.prompt(`Tag to add to ${picked.length} ${picked.length === 1 ? "entry" : "entries"}`);
+          if (!tag || !tag.trim()) return;
+          const clean = tag.trim().slice(0, 24);
+          applyToSelection(`Tagged “${clean}”`, row => {
+            const tags = Array.isArray(row.tags) ? row.tags.slice() : [];
+            if (!tags.includes(clean)) tags.push(clean);
+            row.tags = tags;
+          });
+        });
+      }
+
+      /* ---------- 2. paste importer ----------------------------------------
+         A bank statement copied out of a browser is two or three columns of
+         text. Typing it back in one row at a time is the thing a console should
+         make unnecessary. Nothing is written until the parse is shown. */
+      let importer = null;
+      function parsePasted(text){
+        const rows = [];
+        String(text || "").split(/\r?\n/).forEach(raw => {
+          const line = raw.trim();
+          if (!line) return;
+          const parts = line.split(/\t|\s{2,}|\s*[,;|]\s*/).map(p => p.trim()).filter(Boolean);
+          if (!parts.length) return;
+
+          // The amount is the last part that reads as a number; the date is any
+          // part that parses as one; the rest is the description.
+          let amount = null, date = null;
+          const words = [];
+          parts.forEach(p => {
+            const numeric = p.replace(/[^0-9.,\-]/g, "").replace(/,/g, "");
+            const asNum = parseFloat(numeric);
+            const looksNumeric = /^[₱$€£]?\s*-?[\d.,]+$/.test(p) && isFinite(asNum);
+            const asDate = /^\d{4}-\d{2}-\d{2}$/.test(p) ? p
+                         : (/^\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4}$/.test(p) ? p : null);
+            if (asDate && !date) date = normaliseDate(asDate);
+            else if (looksNumeric) amount = Math.abs(round2(asNum));
+            else words.push(p);
+          });
+          if (amount == null) return;
+          rows.push({
+            date: date || todayISO(),
+            description: words.join(" ").slice(0, 80) || "Imported entry",
+            amount,
+            category: (typeof guessCategory === "function") ? guessCategory(words.join(" ")) : "Other"
+          });
+        });
+        return rows;
+      }
+      function normaliseDate(d){
+        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+        const m = d.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})$/);
+        if (!m) return todayISO();
+        let [, a, b, y] = m;
+        if (y.length === 2) y = "20" + y;
+        // Day-first, which is how it is written locally. Ambiguous pairs stay as typed.
+        const day = String(a).padStart(2, "0"), mon = String(b).padStart(2, "0");
+        const iso = `${y}-${mon}-${day}`;
+        return isNaN(new Date(iso + "T00:00:00").getTime()) ? todayISO() : iso;
+      }
+
+      function openImporter(){
+        if (!importer){
+          importer = document.createElement("div");
+          importer.className = "paster";
+          importer.innerHTML = `
+            <div class="paster-panel" role="dialog" aria-modal="true" aria-label="Paste entries">
+              <div class="paster-head">
+                <div>
+                  <p class="paster-kicker">Import</p>
+                  <h2 class="paster-title">Paste rows</h2>
+                  <p class="paster-sub">Date, description and amount in any order — tabs, commas or two spaces between them. Nothing is saved until you confirm.</p>
+                </div>
+                <button class="btn btn-ghost btn-sm" id="paster-close" type="button">Close</button>
+              </div>
+              <textarea id="paster-in" rows="7" spellcheck="false"
+                placeholder="2026-09-14&#9;Grocery run&#9;1240.50&#10;2026-09-13&#9;Jeepney fare&#9;26"></textarea>
+              <div class="paster-preview" id="paster-preview"></div>
+              <div class="paster-foot">
+                <span id="paster-count"></span>
+                <button class="btn btn-primary btn-sm" id="paster-go" type="button" disabled>Import</button>
+              </div>
+            </div>`;
+          document.body.appendChild(importer);
+          importer.addEventListener("pointerdown", e => { if (e.target === importer) closeImporter(); });
+          importer.querySelector("#paster-close").addEventListener("click", closeImporter);
+
+          const ta = importer.querySelector("#paster-in");
+          const prev = importer.querySelector("#paster-preview");
+          const count = importer.querySelector("#paster-count");
+          const go = importer.querySelector("#paster-go");
+
+          const refresh = () => {
+            const rows = parsePasted(ta.value);
+            go.disabled = !rows.length;
+            count.textContent = rows.length
+              ? `${rows.length} row${rows.length === 1 ? "" : "s"} read, ${fmtMoney(round2(rows.reduce((t, r) => t + r.amount, 0)))} total`
+              : (ta.value.trim() ? "Nothing in that reads as a row with an amount." : "");
+            prev.innerHTML = rows.length
+              ? `<table class="paster-table"><thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="num">Amount</th></tr></thead><tbody>`
+                + rows.slice(0, 12).map(r => `<tr><td>${escapeHtml(r.date)}</td><td>${escapeHtml(r.description)}</td><td>${escapeHtml(r.category)}</td><td class="num">${fmtMoney(r.amount)}</td></tr>`).join("")
+                + `</tbody></table>`
+                + (rows.length > 12 ? `<p class="paster-more">…and ${rows.length - 12} more.</p>` : "")
+              : "";
+          };
+          ta.addEventListener("input", refresh);
+
+          go.addEventListener("click", () => {
+            const rows = parsePasted(ta.value);
+            if (!rows.length) return;
+            const made = rows.map(r => ({
+              id: "e_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+              description: r.description, amount: r.amount, category: r.category,
+              tags: ["imported"], date: r.date, bank: null,
+              originalAmount: null, originalCurrency: null
+            }));
+            made.forEach(m => expenses.unshift(m));
+            saveExpenses(expenses);
+            closeImporter();
+            ta.value = ""; refresh();
+            renderHistory();
+            if (typeof renderTotalMoneyBar === "function") renderTotalMoneyBar();
+            const ids = new Set(made.map(m => m.id));
+            showUndoToast(`Imported ${made.length} ${made.length === 1 ? "entry" : "entries"}, tagged "imported".`, () => {
+              expenses = expenses.filter(e => !ids.has(e.id));
+              saveExpenses(expenses);
+              renderHistory();
+              if (typeof renderTotalMoneyBar === "function") renderTotalMoneyBar();
+            });
+          });
+        }
+        importer.classList.add("show");
+        setTimeout(() => { const t = importer.querySelector("#paster-in"); if (t) t.focus(); }, 40);
+      }
+      function closeImporter(){ if (importer) importer.classList.remove("show"); }
+
+      function mountImporterButton(){
+        const host = document.querySelector("#history-table-wrap");
+        if (!host || !host.parentElement) return;
+        if (host.parentElement.querySelector(".paster-btn")) return;
+        const b = document.createElement("button");
+        b.className = "btn btn-outline btn-sm paster-btn";
+        b.type = "button";
+        b.textContent = "Paste rows";
+        b.addEventListener("click", openImporter);
+        const anchor = host.parentElement.querySelector(".colpick-btn") || host;
+        anchor.insertAdjacentElement("beforebegin", b);
+      }
+
+      /* ---------- 3. the audit trail ---------------------------------------
+         An operator wants to know what just happened, especially after a bulk
+         write. Held in memory only: this is a session log, not a second copy of
+         the records, and writing it to storage would mean the log itself needs
+         syncing and pruning. */
+      const trail = [];
+      function note(kind, text){
+        trail.unshift({ at: new Date(), kind, text });
+        if (trail.length > 120) trail.pop();
+        paintTrail();
+      }
+      function paintTrail(){
+        const body = document.getElementById("trail-body");
+        if (!body) return;
+        body.innerHTML = trail.length
+          ? trail.slice(0, 40).map(t => `
+              <div class="trail-row">
+                <span class="trail-time">${t.at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                <span class="trail-kind trail-${escapeHtml(t.kind)}">${escapeHtml(t.kind)}</span>
+                <span class="trail-text">${escapeHtml(t.text)}</span>
+              </div>`).join("")
+          : `<p class="trail-empty">Nothing yet this session. Actions you take will appear here.</p>`;
+      }
+      function mountTrail(){
+        const panel = document.getElementById("tab-settings");
+        if (!panel || panel.querySelector("#trail-card")) return;
+        const card = document.createElement("div");
+        card.className = "card";
+        card.id = "trail-card";
+        card.setAttribute("data-settings-group", "info");
+        card.innerHTML = `
+          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>This session</h2>
+          <p class="sub">What has happened since the app was opened. Held in memory only — it is a log, not a second copy of your records.</p>
+          <div id="trail-body"></div>`;
+        panel.appendChild(card);
+        paintTrail();
+      }
+
+      /* Wrap the two functions that actually change records, so the log records
+         writes rather than clicks. */
+      const _saveExpenses = saveExpenses;
+      saveExpenses = function(list){
+        const r = _saveExpenses.apply(this, arguments);
+        note("expenses", (list ? list.length : 0) + " expense rows written");
+        return r;
+      };
+      const _saveIncomes = (typeof saveIncomes === "function") ? saveIncomes : null;
+      if (_saveIncomes){
+        saveIncomes = function(list){
+          const r = _saveIncomes.apply(this, arguments);
+          note("income", (list ? list.length : 0) + " income rows written");
+          return r;
+        };
+      }
+      const _showToast = showToast;
+      showToast = function(msg){
+        note("note", String(msg || "").slice(0, 90));
+        return _showToast.apply(this, arguments);
+      };
+
+      function mountAll(){ mountBulkEdit(); mountImporterButton(); mountTrail(); }
+      mountAll();
+      document.addEventListener("click", () => setTimeout(mountAll, 150), true);
+      note("session", "Opened.");
     })();
 
 })();
