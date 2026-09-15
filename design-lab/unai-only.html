@@ -1143,6 +1143,42 @@
   .more-grid{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: var(--sp-6); margin-top: var(--sp-6); }
   .more-grid .full{ grid-column: 1 / -1; }
 
+
+  /* ---------- query language -------------------------------------------------- */
+  .query-hint{
+    display: none; align-items: baseline; gap: var(--sp-5);
+    margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-5);
+    background: var(--sunken); border-left: 2px solid var(--accent);
+    font-size: var(--fs-3xs);
+  }
+  .query-hint.is-on{ display: flex; }
+  .query-terms{ color: var(--ink-soft); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .query-count{
+    margin-left: auto; flex: 0 0 auto; font-weight: 800; color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .query-legend{ margin-top: var(--sp-4); font-size: var(--fs-3xs); }
+  .query-legend summary{
+    cursor: pointer; color: var(--ink-dim); font-weight: 700;
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+    list-style: none;
+  }
+  .query-legend summary::-webkit-details-marker{ display: none; }
+  .query-legend summary::before{ content: "? "; color: var(--accent); }
+  .query-legend summary:hover{ color: var(--ink); }
+  .query-legend dl{
+    margin: var(--sp-5) 0 0;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: var(--sp-3) var(--sp-7);
+  }
+  .query-legend dl > div{ display: flex; gap: var(--sp-5); align-items: baseline; }
+  .query-legend dt{
+    flex: 0 0 120px; font-family: ui-monospace, monospace;
+    color: var(--accent-dark);
+  }
+  .query-legend dd{ margin: 0; color: var(--ink-dim); }
+  .query-legend p{ margin: var(--sp-5) 0 0; color: var(--ink-dim); }
+
 </style>
 </head>
 
@@ -5071,7 +5107,11 @@
   function renderHistory(){
 
     const wrap = document.getElementById("history-table-wrap");
-    const search = document.getElementById("filter-search").value.trim().toLowerCase();
+    // A structured query is not a substring: "cat:Food >500" matches no
+    // description, so letting the plain filter see it empties the table before
+    // the predicate runs. When one is active the predicate does the whole job.
+    const search = (typeof window.__queryPredicate === "function")
+      ? "" : document.getElementById("filter-search").value.trim().toLowerCase();
     const fromVal = document.getElementById("filter-expense-from").value;
     const toVal = document.getElementById("filter-expense-to").value;
     const filterCat = expenseCat;
@@ -5083,6 +5123,10 @@
       hit(e.description, search) ||
       (e.tags || []).some(t=>t.toLowerCase().includes(search))
     );
+    // Query language, applied after the plain substring filter. Scoped to this
+        // list only: the arrays themselves are never narrowed, because Total Money,
+        // the balances and the charts all read them.
+        if (typeof window.__queryPredicate === "function") list = list.filter(window.__queryPredicate);
     list = filterByDateRange(list, rangeVal, fromVal, toVal);
     list = sortEntries(list, expenseSort);
 
@@ -5400,7 +5444,8 @@
 
   function renderIncomeHistory(){
     const wrap = document.getElementById("income-history-table-wrap");
-    const search = document.getElementById("filter-income-search").value.trim().toLowerCase();
+    const search = (typeof window.__queryPredicate === "function")
+      ? "" : document.getElementById("filter-income-search").value.trim().toLowerCase();
     const fromVal = document.getElementById("filter-income-from").value;
     const toVal = document.getElementById("filter-income-to").value;
     const filterCat = incomeCat;
@@ -5412,6 +5457,10 @@
       hit(i.description, search) ||
       (i.tags || []).some(t=>t.toLowerCase().includes(search))
     );
+    // Query language, applied after the plain substring filter. Scoped to this
+        // list only: the arrays themselves are never narrowed, because Total Money,
+        // the balances and the charts all read them.
+        if (typeof window.__queryPredicate === "function") list = list.filter(window.__queryPredicate);
     list = filterByDateRange(list, rangeVal, fromVal, toVal);
     list = sortEntries(list, incomeSort);
 
@@ -9907,6 +9956,177 @@
       mountAll();
       document.addEventListener("click", () => setTimeout(mountAll, 150), true);
       note("session", "Opened.");
+    })();
+
+
+    /* ======================================================================
+       QUERY LANGUAGE — /unai console
+       The search box takes a query instead of a substring. A console user
+       knows what they are looking for; making them click three dropdowns to
+       express "food over 500 last month" is the thing a console removes.
+
+         cat:Food            category is Food
+         bank:Maya           account contains "maya"
+         tag:work            carries that tag
+         >500  <2000  =485   amount comparisons
+         last:30             within the last 30 days
+         month:2026-09       a specific month
+         "exact phrase"      quoted, matched literally
+         -coffee             excludes anything matching
+         anything else       matched against the description
+
+       Terms combine with AND. Unparseable input falls back to a plain
+       substring search, so a query language can never make the box worse than
+       it was.
+       ====================================================================== */
+    (function queryLanguage(){
+      "use strict";
+
+      function parseQuery(raw){
+        const terms = [];
+        const src = String(raw || "").trim();
+        if (!src) return terms;
+
+        // Quoted phrases first, so the tokeniser cannot split them.
+        const re = /"([^"]+)"|(\S+)/g;
+        let m;
+        while ((m = re.exec(src))){
+          const quoted = m[1] != null;
+          let tok = quoted ? m[1] : m[2];
+          let negate = false;
+          if (!quoted && tok[0] === "-" && tok.length > 1){ negate = true; tok = tok.slice(1); }
+
+          const kv = !quoted && tok.match(/^([a-z]+):(.+)$/i);
+          if (kv){
+            const key = kv[1].toLowerCase(), val = kv[2];
+            if (["cat","category"].includes(key))      { terms.push({ t:"cat",   v:val.toLowerCase(), negate }); continue; }
+            if (["bank","account","acct"].includes(key)){ terms.push({ t:"bank",  v:val.toLowerCase(), negate }); continue; }
+            if (key === "tag")                          { terms.push({ t:"tag",   v:val.toLowerCase(), negate }); continue; }
+            if (key === "last")                         { terms.push({ t:"last",  v:parseInt(val,10)||0, negate }); continue; }
+            if (key === "month")                        { terms.push({ t:"month", v:val.slice(0,7),   negate }); continue; }
+          }
+          const cmp = !quoted && tok.match(/^([<>=])\s*([\d.,]+)$/);
+          if (cmp){
+            const n = parseFloat(String(cmp[2]).replace(/,/g,""));
+            if (isFinite(n)){ terms.push({ t:"amt", op:cmp[1], v:n, negate }); continue; }
+          }
+          terms.push({ t:"text", v:tok.toLowerCase(), negate });
+        }
+        return terms;
+      }
+
+      function matches(row, terms){
+        if (!terms.length) return true;
+        const desc = String(row.description || "").toLowerCase();
+        const cat  = String(row.category || "").toLowerCase();
+        const bank = String(row.bank || "").toLowerCase();
+        const tags = (row.tags || []).map(t => String(t).toLowerCase());
+        const amt  = Number(row.amount) || 0;
+        const date = String(row.date || "");
+
+        return terms.every(term => {
+          let hit;
+          switch (term.t){
+            case "cat":   hit = cat.includes(term.v); break;
+            case "bank":  hit = bank.includes(term.v); break;
+            case "tag":   hit = tags.some(t => t.includes(term.v)); break;
+            case "amt":
+              hit = term.op === ">" ? amt > term.v
+                  : term.op === "<" ? amt < term.v
+                  : Math.abs(amt - term.v) < 0.005;
+              break;
+            case "last": {
+              const cutoff = new Date();
+              cutoff.setDate(cutoff.getDate() - (term.v || 0));
+              hit = date >= cutoff.toISOString().slice(0,10);
+              break;
+            }
+            case "month": hit = date.slice(0,7) === term.v; break;
+            default:      hit = desc.includes(term.v) || cat.includes(term.v) || tags.some(t => t.includes(term.v));
+          }
+          return term.negate ? !hit : hit;
+        });
+      }
+
+      /* The predicate the renderers consult. The arrays are NEVER narrowed:
+         Total Money, the balance ledger, the charts and the insights all read
+         them, and a query that quietly changed what "all your money" meant
+         would be a far worse bug than no query language at all. */
+      let active = [];
+
+      function describe(terms){
+        if (!terms.length) return "";
+        return terms.map(t => {
+          const not = t.negate ? "not " : "";
+          switch (t.t){
+            case "cat":   return not + "category " + t.v;
+            case "bank":  return not + "account " + t.v;
+            case "tag":   return not + "tagged " + t.v;
+            case "amt":   return not + "amount " + t.op + " " + fmtMoney(t.v);
+            case "last":  return not + "last " + t.v + " days";
+            case "month": return not + "in " + t.v;
+            default:      return not + "“" + t.v + "”";
+          }
+        }).join(" · ");
+      }
+
+      function paintHint(terms){
+        const box = document.getElementById("query-hint");
+        if (!box) return;
+        if (!terms.length){ box.innerHTML = ""; box.classList.remove("is-on"); return; }
+        const n = expenses.filter(r => matches(r, terms)).length
+                + incomes.filter(r => matches(r, terms)).length;
+        box.classList.add("is-on");
+        box.innerHTML = `<span class="query-terms">${escapeHtml(describe(terms))}</span>`
+          + `<span class="query-count">${n} match${n === 1 ? "" : "es"}</span>`;
+      }
+
+      function apply(raw){
+        active = parseQuery(raw);
+        window.__queryPredicate = active.length ? (row => matches(row, active)) : null;
+        paintHint(active);
+        renderHistory();
+        if (typeof renderIncomeHistory === "function") renderIncomeHistory();
+      }
+
+      function mount(){
+        const input = document.getElementById("filter-search");
+        if (!input || input.dataset.query) return;
+        input.dataset.query = "1";
+        input.placeholder = 'cat:Food >500 last:30  — or just type';
+        input.setAttribute("spellcheck", "false");
+
+        const hint = document.createElement("div");
+        hint.className = "query-hint";
+        hint.id = "query-hint";
+        input.insertAdjacentElement("afterend", hint);
+
+        let timer = null;
+        input.addEventListener("input", () => {
+          clearTimeout(timer);
+          timer = setTimeout(() => apply(input.value), 140);
+        });
+
+        // A legend, because a query language nobody is told about is a secret.
+        const legend = document.createElement("details");
+        legend.className = "query-legend";
+        legend.innerHTML = `<summary>Query syntax</summary>
+          <dl>
+            <div><dt>cat:Food</dt><dd>category is Food</dd></div>
+            <div><dt>bank:Maya</dt><dd>account contains Maya</dd></div>
+            <div><dt>tag:work</dt><dd>carries that tag</dd></div>
+            <div><dt>&gt;500 &lt;2000 =485</dt><dd>amount comparisons</dd></div>
+            <div><dt>last:30</dt><dd>within the last 30 days</dd></div>
+            <div><dt>month:2026-09</dt><dd>a specific month</dd></div>
+            <div><dt>"exact phrase"</dt><dd>matched literally</dd></div>
+            <div><dt>-coffee</dt><dd>excludes matches</dd></div>
+          </dl>
+          <p>Terms combine with AND. Anything unrecognised is matched against the description.</p>`;
+        hint.insertAdjacentElement("afterend", legend);
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 150), true);
     })();
 
 })();
