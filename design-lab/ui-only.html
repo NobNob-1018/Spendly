@@ -833,6 +833,62 @@
 
 
 
+
+  /* ---------- forecast --------------------------------------------------------- */
+  .fc{ display: flex; flex-direction: column; gap: 0; }
+  .fc-row{
+    display: grid; grid-template-columns: minmax(0,1fr) auto;
+    grid-template-areas: "label value" "note note";
+    gap: var(--sp-3) var(--sp-6);
+    padding: var(--sp-5) 0; border-bottom: 1px solid var(--line);
+  }
+  .fc-row:last-of-type{ border-bottom: 0; }
+  .fc-label{ grid-area: label; font-size: var(--fs-sm); color: var(--ink-soft); }
+  .fc-value{
+    grid-area: value; font-size: var(--fs-lg); font-weight: 700;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .fc-note{ grid-area: note; font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .fc-row.is-lead{
+    margin-top: var(--sp-4); padding: var(--sp-6);
+    background: var(--accent-light); border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+    border-radius: var(--r-md);
+  }
+  .fc-row.is-lead .fc-label{ color: var(--accent); font-weight: 700; }
+  .fc-row.is-lead .fc-value{ font-size: var(--fs-2xl); }
+  .fc-foot{ margin: var(--sp-7) 0 0; font-size: var(--fs-sm); color: var(--ink-soft); line-height: 1.6; }
+  .fc-foot strong{ color: var(--ink); }
+  .fc-method{
+    margin: var(--sp-6) 0 0; padding-top: var(--sp-6);
+    border-top: 1px solid var(--line);
+    font-size: var(--fs-3xs); color: var(--ink-dim); line-height: 1.6;
+  }
+  .fc-method strong{ color: var(--ink-soft); }
+
+  /* ---------- outliers ---------------------------------------------------------- */
+  .out-list{ display: flex; flex-direction: column; gap: var(--sp-5); }
+  .out-row{
+    padding: var(--sp-6); background: var(--sunken);
+    border: 1px solid var(--line); border-left: 3px solid var(--warn);
+    border-radius: var(--r-md);
+  }
+  .out-main{ display: flex; align-items: center; gap: var(--sp-5); flex-wrap: wrap; }
+  .out-desc{ font-size: var(--fs-md); font-weight: 600; min-width: 0; }
+  .out-cat{
+    font-size: var(--fs-3xs); font-weight: 700; padding: 1px var(--sp-5);
+    border-radius: var(--r-pill); background: var(--raised); color: var(--ink-soft);
+  }
+  .out-figures{ display: flex; align-items: baseline; gap: var(--sp-6); margin-top: var(--sp-4); }
+  .out-amt{ font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .out-ratio{ font-size: var(--fs-3xs); font-weight: 700; color: var(--warn); }
+  .out-why{ margin: var(--sp-4) 0 0; font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .out-empty{ padding: var(--sp-8) 0; color: var(--ink-soft); font-size: var(--fs-sm); line-height: 1.6; }
+  .out-method{
+    margin: var(--sp-7) 0 0; padding-top: var(--sp-6);
+    border-top: 1px solid var(--line);
+    font-size: var(--fs-3xs); color: var(--ink-dim); line-height: 1.6;
+  }
+
 </style>
 </head>
 
@@ -8925,6 +8981,195 @@
       // Repaint when the panel is shown or the mode flips between expense/income.
       document.addEventListener("click", () => setTimeout(paint, 90), true);
       paint();
+    })();
+
+
+    /* ======================================================================
+       ANALYTICAL FEATURES, ROUND TWO — /ui workspace
+       A forecast that says what it assumes, and an outlier finder that says
+       why something is unusual. Both state their own method, because an
+       analytical surface that shows a number without its basis is asking to
+       be trusted rather than read.
+       ====================================================================== */
+    (function workspaceFeaturesTwo(){
+      "use strict";
+
+      const monthKeyOf = d => String(d).slice(0, 7);
+      const sumOf = list => round2(list.reduce((t, r) => t + (Number(r.amount) || 0), 0));
+
+      /* Complete months only. The current month is partial, and averaging a
+         half month into a baseline drags every projection down. */
+      function completeMonths(n){
+        const now = new Date();
+        const keys = [];
+        for (let i = 1; i <= n; i++){
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          keys.push(d.toISOString().slice(0, 7));
+        }
+        return keys;
+      }
+
+      function monthlyTotals(keys){
+        return keys.map(k => ({
+          key: k,
+          spent: sumOf(expenses.filter(e => monthKeyOf(e.date) === k)),
+          earned: sumOf(incomes.filter(i => monthKeyOf(i.date) === k))
+        })).filter(m => m.spent > 0 || m.earned > 0);
+      }
+
+      /* ---------- forecast -------------------------------------------------
+         Two estimates, deliberately, because they disagree in a useful way:
+         run-rate says what the month is doing, the average says what months
+         like this usually do. Showing one alone hides the uncertainty. */
+      function buildForecast(){
+        const now = new Date();
+        const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const dayOf = now.getDate();
+        const k = monthKeyOf(todayISO());
+
+        const spentSoFar = sumOf(expenses.filter(e => monthKeyOf(e.date) === k));
+        const earnedSoFar = sumOf(incomes.filter(i => monthKeyOf(i.date) === k));
+
+        const hist = monthlyTotals(completeMonths(6));
+        const avgSpend = hist.length ? round2(hist.reduce((t, m) => t + m.spent, 0) / hist.length) : 0;
+
+        const runRate = dayOf > 0 ? round2(spentSoFar / dayOf * daysIn) : 0;
+        // Weighted toward the run rate as the month fills up: early on the
+        // history knows more than four days of data do.
+        const confidence = Math.min(1, dayOf / daysIn);
+        const blended = hist.length
+          ? round2(runRate * confidence + avgSpend * (1 - confidence))
+          : runRate;
+
+        const spread = hist.length > 1
+          ? round2(Math.max.apply(null, hist.map(m => m.spent)) - Math.min.apply(null, hist.map(m => m.spent)))
+          : null;
+
+        const rows = [
+          { label: "Spent so far", value: spentSoFar, note: `day ${dayOf} of ${daysIn}` },
+          { label: "At this run rate", value: runRate, note: "if the rest of the month matches the days so far" },
+          { label: hist.length ? `Average of ${hist.length} past month${hist.length === 1 ? "" : "s"}` : "No history yet",
+            value: avgSpend, note: hist.length ? "complete months only" : "" },
+          { label: "Best estimate", value: blended, note: `run rate weighted ${Math.round(confidence * 100)}%`, lead: true }
+        ];
+
+        return `
+          <div class="fc">
+            ${rows.map(r => `
+              <div class="fc-row${r.lead ? " is-lead" : ""}">
+                <span class="fc-label">${escapeHtml(r.label)}</span>
+                <span class="fc-value">${fmtMoney(r.value)}</span>
+                <span class="fc-note">${escapeHtml(r.note || "")}</span>
+              </div>`).join("")}
+            ${earnedSoFar > 0 ? `
+              <p class="fc-foot">Against <strong>${fmtMoney(earnedSoFar)}</strong> received this month, that
+                 leaves about <strong>${fmtMoney(round2(earnedSoFar - blended))}</strong>.</p>` : ""}
+            ${spread !== null ? `
+              <p class="fc-method">Past months ranged over <strong>${fmtMoney(spread)}</strong> between the
+                 lightest and the heaviest, so treat any single figure as the middle of a range rather
+                 than a prediction.</p>` : `
+              <p class="fc-method">There is not enough history yet for a range; this is the run rate alone.</p>`}
+          </div>`;
+      }
+
+      /* ---------- outliers -------------------------------------------------
+         "Unusual" has to mean something. Here it is: more than twice the median
+         of its own category, over the last six months, with at least four
+         comparable entries. Median rather than mean, so one large purchase does
+         not raise the bar enough to hide the next one. */
+      function median(nums){
+        if (!nums.length) return 0;
+        const s = nums.slice().sort((a, b) => a - b);
+        const mid = Math.floor(s.length / 2);
+        return s.length % 2 ? s[mid] : round2((s[mid - 1] + s[mid]) / 2);
+      }
+
+      function findOutliers(){
+        const cutoff = new Date();
+        cutoff.setMonth(cutoff.getMonth() - 6);
+        const since = cutoff.toISOString().slice(0, 10);
+        const recent = expenses.filter(e => String(e.date) >= since);
+
+        const byCat = {};
+        recent.forEach(e => { (byCat[e.category] = byCat[e.category] || []).push(e); });
+
+        const found = [];
+        Object.keys(byCat).forEach(cat => {
+          const rows = byCat[cat];
+          if (rows.length < 4) return;              // too few to have a normal
+          const med = median(rows.map(r => r.amount));
+          if (med <= 0) return;
+          rows.forEach(r => {
+            const ratio = r.amount / med;
+            if (ratio >= 2) found.push({ row: r, cat, med, ratio });
+          });
+        });
+
+        return found.sort((a, b) => b.ratio - a.ratio).slice(0, 8);
+      }
+
+      function buildOutliers(){
+        const found = findOutliers();
+        if (!found.length){
+          return `<p class="out-empty">Nothing stands out. Every entry in the last six months is within
+                  twice the usual size for its category.</p>`;
+        }
+        return `
+          <div class="out-list">
+            ${found.map(f => `
+              <div class="out-row">
+                <div class="out-main">
+                  <span class="out-desc">${escapeHtml(f.row.description || "(no description)")}</span>
+                  <span class="out-cat is-drillable">${escapeHtml(f.cat)}</span>
+                </div>
+                <div class="out-figures">
+                  <span class="out-amt">${fmtMoney(f.row.amount)}</span>
+                  <span class="out-ratio">${f.ratio.toFixed(1)}× usual</span>
+                </div>
+                <p class="out-why">Typical ${escapeHtml(f.cat)} entry is ${fmtMoney(f.med)} · ${fmtDate(f.row.date)}</p>
+              </div>`).join("")}
+          </div>
+          <p class="out-method">Unusual means more than twice the median of its own category over the last
+             six months, counting only categories with at least four entries. Median, not average, so one
+             large purchase does not raise the bar enough to hide the next one.</p>`;
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-dashboard");
+        if (!panel) return;
+        const bento = panel.querySelector(".bento") || panel;
+
+        if (!panel.querySelector("#fc-card")){
+          const card = document.createElement("div");
+          card.className = "card bento-span-5";
+          card.id = "fc-card";
+          card.innerHTML = `
+            <header class="panel-head is-toolbar">
+              <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></span>Where the month lands</h2>
+              <p class="sub">Two estimates that disagree usefully.</p>
+            </header>
+            <div id="fc-body"></div>`;
+          bento.appendChild(card);
+          card.querySelector("#fc-body").innerHTML = buildForecast();
+        }
+
+        if (!panel.querySelector("#out-card")){
+          const card = document.createElement("div");
+          card.className = "card bento-span-7";
+          card.id = "out-card";
+          card.innerHTML = `
+            <header class="panel-head is-toolbar">
+              <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="16.5" r="1" fill="currentColor" stroke="none"/></svg></span>Unusual for you</h2>
+              <p class="sub">Measured against your own history, not a generic threshold.</p>
+            </header>
+            <div id="out-body"></div>`;
+          bento.appendChild(card);
+          card.querySelector("#out-body").innerHTML = buildOutliers();
+        }
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 190), true);
     })();
 
 })();
