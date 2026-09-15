@@ -927,6 +927,23 @@
   }
   .margin-jump:hover{ color: var(--accent); border-color: var(--accent-deep); }
 
+
+  /* ---------- the entry form -------------------------------------------------
+     Stacked and labelled, each field carrying the sentence that explains it.
+     A form you fill in, not a grid you decode. */
+  .entry-form{ display: flex; flex-direction: column; gap: var(--sp-9); }
+  .entry-block{ display: flex; flex-direction: column; gap: var(--sp-4); }
+  .entry-block.is-pair{ display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-7); }
+  @media (max-width: 600px){ .entry-block.is-pair{ grid-template-columns: 1fr; } }
+  .entry-block label{ margin: 0; font-size: var(--fs-3xs); }
+  .entry-aside{
+    margin: 0; font-size: var(--fs-sm); color: var(--ink-dim); line-height: 1.6;
+    max-width: 56ch;
+  }
+  .entry-block .amount-wrap input{ padding-left: var(--sp-9); font-size: var(--fs-lg); }
+  .more-grid{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: var(--sp-7); margin-top: var(--sp-7); }
+  .more-grid .full{ grid-column: 1 / -1; }
+
 </style>
 </head>
 
@@ -994,43 +1011,52 @@
     <div class="card">
       <header class="panel-head is-chapter">
         <h2 id="add-card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"/><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 13h2"/></svg>Add an expense</h2>
-        <p class="sub" id="add-card-sub">Type what you bought — we'll guess the category and today's date automatically.</p>
+        <p class="sub" id="add-card-sub">Write it down while you remember it. The category is guessed from what
+           you type and the date is today unless you say otherwise.</p>
       </header>
-      <div class="form-grid">
-        <div class="full">
+
+      <!-- Stacked and labelled, each field with the sentence that explains it:
+           a form you fill in rather than a grid you decode. -->
+      <div class="entry-form">
+        <div class="entry-block">
           <label for="in-desc" id="in-desc-label">What did you spend on?</label>
-          <input type="text" id="in-desc" placeholder="e.g. Grab ride, Netflix, Groceries at SM">
+          <input type="text" id="in-desc" placeholder="e.g. Grab ride, Netflix, groceries at SM">
+          <p class="entry-aside">Write it the way you would say it. The category follows from the words.</p>
         </div>
-        <div>
-          <label for="in-amount">Amount</label>
-          <div class="amount-wrap">
-            <span id="currency-sign">₱</span>
-            <input type="number" id="in-amount" placeholder="0.00" min="0" step="0.01">
+
+        <div class="entry-block is-pair">
+          <div>
+            <label for="in-amount">How much?</label>
+            <div class="amount-wrap">
+              <span id="currency-sign">₱</span>
+              <input type="number" id="in-amount" placeholder="0.00" min="0" step="0.01">
+            </div>
+          </div>
+          <div>
+            <label for="in-category">Filed under</label>
+            <select id="in-category"></select>
           </div>
         </div>
-        <div>
-          <label for="in-category">Category</label>
-          <select id="in-category"></select>
-        </div>
-        <div class="full" id="in-bank-row">
-          <label for="in-bank" id="in-bank-label">Pay from which account?</label>
+
+        <div class="entry-block" id="in-bank-row">
+          <label for="in-bank" id="in-bank-label">Paid from which account?</label>
           <select id="in-bank"></select>
-          <p class="hint" id="in-bank-hint" style="margin-top:6px;">Required — this amount is withdrawn from the account you pick, and your Total Money updates right away.</p>
+          <p class="entry-aside" id="in-bank-hint">The amount is withdrawn from the account you pick, and your
+             Total Money changes the moment you add it.</p>
         </div>
       </div>
 
-      <button type="button" class="add-more-toggle" id="btn-toggle-more-options">+ More options — currency, tags, recurring</button>
-
+      <button type="button" class="add-more-toggle" id="btn-toggle-more-options">+ More — currency, tags, recurring</button>
       <div id="add-more-options" class="collapsible-body is-collapsed">
-        <div class="form-grid" style="margin-top:14px;">
+        <div class="more-grid">
           <div>
             <label for="in-currency">Currency</label>
             <select id="in-currency"><option value="PHP">₱ PHP</option></select>
             <p class="hint" id="in-currency-preview" style="display:none; margin-top: var(--sp-3);"></p>
           </div>
           <div class="full">
-            <label for="in-tags">Tags (optional, comma-separated)</label>
-            <input type="text" id="in-tags" placeholder="e.g. reimbursable, trip:Japan, tax-deductible">
+            <label for="in-tags">Tags</label>
+            <input type="text" id="in-tags" placeholder="reimbursable, trip:Japan, tax-deductible">
           </div>
         </div>
         <div class="checkbox-row">

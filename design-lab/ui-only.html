@@ -798,6 +798,41 @@
   }
   .panel-head.is-toolbar .section-head-row{ margin: 0; margin-left: auto; flex: 0 0 auto; }
 
+
+  /* ---------- the entry split: form and live preview -------------------------
+     A workspace shows the record before it becomes one. The preview is the row
+     that is about to be written, not a decoration. */
+  .entry-split{ display: grid; grid-template-columns: minmax(0,1.5fr) minmax(220px, 0.9fr); gap: var(--sp-9); align-items: start; }
+  @media (max-width: 900px){ .entry-split{ grid-template-columns: 1fr; } }
+  .entry-side{ min-width: 0; }
+  .entry-preview{ position: sticky; top: calc(var(--bar-h) + var(--sp-7)); }
+  .entry-preview-kicker{
+    margin: 0 0 var(--sp-5); font-size: var(--fs-3xs); font-weight: 700;
+    color: var(--ink-dim); text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  .entry-preview-card{
+    padding: var(--sp-7); background: var(--sunken);
+    border: 1px dashed var(--line-strong); border-radius: var(--r-md);
+  }
+  .entry-preview-card.is-ready{ border-style: solid; border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+  .epc-desc{ margin: 0 0 var(--sp-4); font-size: var(--fs-md); font-weight: 600; color: var(--ink); word-break: break-word; }
+  .epc-amount{
+    margin: 0 0 var(--sp-5); font-size: var(--fs-2xl); font-weight: 700;
+    letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  }
+  .epc-meta{ margin: 0 0 var(--sp-3); display: flex; gap: var(--sp-5); flex-wrap: wrap; }
+  .epc-cat, .epc-bank{
+    font-size: var(--fs-3xs); font-weight: 700; padding: 2px var(--sp-5);
+    border-radius: var(--r-pill); background: var(--raised); color: var(--ink-soft);
+  }
+  .epc-cat{ background: var(--accent-light); color: var(--accent); }
+  .epc-bank:empty{ display: none; }
+  .epc-date{ margin: 0; font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .more-grid{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: var(--sp-6); margin-top: var(--sp-6); }
+  .more-grid .full{ grid-column: 1 / -1; }
+
+
+
 </style>
 </head>
 
@@ -863,44 +898,48 @@
 
     <div class="card">
       <header class="panel-head is-toolbar">
-        <h2 id="add-card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="17" height="17"><path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"/><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 13h2"/></svg>Add an expense</h2>
-        <p class="sub" id="add-card-sub">Type what you bought — we'll guess the category and today's date automatically.</p>
+        <h2 id="add-card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"/><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 13h2"/></svg>Add an expense</h2>
+        <p class="sub" id="add-card-sub">The record is previewed as you type.</p>
       </header>
-      <div class="form-grid">
-        <div class="full">
-          <label for="in-desc" id="in-desc-label">What did you spend on?</label>
-          <input type="text" id="in-desc" placeholder="e.g. Grab ride, Netflix, Groceries at SM">
-        </div>
-        <div>
-          <label for="in-amount">Amount</label>
-          <div class="amount-wrap">
-            <span id="currency-sign">₱</span>
-            <input type="number" id="in-amount" placeholder="0.00" min="0" step="0.01">
+
+      <!-- Two columns: the form, and the row that is about to be written. A
+           workspace shows you the record before it becomes one. -->
+      <div class="entry-split">
+        <div class="entry-side">
+          <div class="form-grid">
+            <div class="full">
+              <label for="in-desc" id="in-desc-label">Description</label>
+              <input type="text" id="in-desc" placeholder="Grab ride, Netflix, groceries at SM">
+            </div>
+            <div>
+              <label for="in-amount">Amount</label>
+              <div class="amount-wrap">
+                <span id="currency-sign">₱</span>
+                <input type="number" id="in-amount" placeholder="0.00" min="0" step="0.01">
+              </div>
+            </div>
+            <div>
+              <label for="in-category">Category</label>
+              <select id="in-category"></select>
+            </div>
+            <div class="full" id="in-bank-row">
+              <label for="in-bank" id="in-bank-label">Account</label>
+              <select id="in-bank"></select>
+              <p class="hint" id="in-bank-hint">Withdrawn from this account; Total Money updates immediately.</p>
+            </div>
           </div>
-        </div>
-        <div>
-          <label for="in-category">Category</label>
-          <select id="in-category"></select>
-        </div>
-        <div class="full" id="in-bank-row">
-          <label for="in-bank" id="in-bank-label">Pay from which account?</label>
-          <select id="in-bank"></select>
-          <p class="hint" id="in-bank-hint" style="margin-top:6px;">Required — this amount is withdrawn from the account you pick, and your Total Money updates right away.</p>
-        </div>
-      </div>
 
-      <button type="button" class="add-more-toggle" id="btn-toggle-more-options">+ More options — currency, tags, recurring</button>
-
+      <button type="button" class="add-more-toggle" id="btn-toggle-more-options">+ More — currency, tags, recurring</button>
       <div id="add-more-options" class="collapsible-body is-collapsed">
-        <div class="form-grid" style="margin-top:14px;">
+        <div class="more-grid">
           <div>
             <label for="in-currency">Currency</label>
             <select id="in-currency"><option value="PHP">₱ PHP</option></select>
             <p class="hint" id="in-currency-preview" style="display:none; margin-top: var(--sp-3);"></p>
           </div>
           <div class="full">
-            <label for="in-tags">Tags (optional, comma-separated)</label>
-            <input type="text" id="in-tags" placeholder="e.g. reimbursable, trip:Japan, tax-deductible">
+            <label for="in-tags">Tags</label>
+            <input type="text" id="in-tags" placeholder="reimbursable, trip:Japan, tax-deductible">
           </div>
         </div>
         <div class="checkbox-row">
@@ -914,9 +953,21 @@
         </div>
       </div>
 
-      <div class="form-actions">
-        <button class="btn btn-primary" id="btn-add">Add Expense</button>
-        <span class="hint" id="add-hint"></span>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btn-add">Add Expense</button>
+            <span class="hint" id="add-hint"></span>
+          </div>
+        </div>
+
+        <aside class="entry-preview" id="entry-preview" aria-live="polite">
+          <p class="entry-preview-kicker">Will be logged as</p>
+          <div class="entry-preview-card" id="entry-preview-card">
+            <p class="epc-desc">—</p>
+            <p class="epc-amount">₱0.00</p>
+            <p class="epc-meta"><span class="epc-cat">—</span><span class="epc-bank"></span></p>
+            <p class="epc-date"></p>
+          </div>
+        </aside>
       </div>
     </div>
   </section>
@@ -8811,6 +8862,69 @@
       function mountAll(){ renderViewBar(); mountCompare(); wireDrill(); }
       mountAll();
       document.addEventListener("click", () => setTimeout(mountAll, 180), true);
+    })();
+
+
+    /* ======================================================================
+       LIVE ENTRY PREVIEW — /ui workspace
+       The Add panel now carries a preview pane; this is what fills it. It
+       mirrors the record that is ABOUT to be written, using the same category
+       guess the save path uses, so what you see is what gets stored rather
+       than an approximation of it.
+       ====================================================================== */
+    (function entryPreview(){
+      "use strict";
+
+      const card = () => document.getElementById("entry-preview-card");
+      const el = id => document.getElementById(id);
+
+      function paint(){
+        const box = card();
+        if (!box) return;
+
+        const desc = (el("in-desc") || {}).value || "";
+        const rawAmt = (el("in-amount") || {}).value || "";
+        const amount = parseFloat(rawAmt);
+        const picked = (el("in-category") || {}).value || "";
+        const bank = (el("in-bank") || {}).value || "";
+        const tags = ((el("in-tags") || {}).value || "").split(",").map(t => t.trim()).filter(Boolean);
+
+        // The category the record will actually get: whatever the select says,
+        // falling back to the same guess the save path makes from the words.
+        const category = picked
+          || (desc && typeof guessCategory === "function" ? guessCategory(desc) : "");
+
+        const ready = !!desc.trim() && isFinite(amount) && amount > 0;
+        box.classList.toggle("is-ready", ready);
+
+        box.querySelector(".epc-desc").textContent = desc.trim() || "—";
+        box.querySelector(".epc-amount").innerHTML =
+          isFinite(amount) && amount > 0 ? fmtMoneyRich(round2(amount)) : "₱0.00";
+        box.querySelector(".epc-cat").textContent = category || "—";
+        box.querySelector(".epc-bank").textContent = bank || "";
+
+        const recurring = (el("in-recurring") || {}).checked;
+        const dayPick = (el("in-recurring-day") || {}).value;
+        box.querySelector(".epc-date").textContent =
+          (recurring && dayPick ? "Every month on day " + dayPick + " · " : "")
+          + "Dated " + fmtDate(todayISO())
+          + (tags.length ? " · " + tags.map(t => "#" + t).join(" ") : "");
+      }
+
+      /* One delegated listener rather than one per field: the Add panel rebuilds
+         its selects whenever categories or accounts change, and per-field
+         listeners would be lost each time that happened. */
+      ["input", "change"].forEach(evt => {
+        document.addEventListener(evt, (e) => {
+          const t = e.target;
+          if (!t || !t.id) return;
+          if (/^in-(desc|amount|category|bank|tags|recurring|recurring-day)$/.test(t.id)) paint();
+        }, true);
+      });
+
+      // Repaint when the panel is shown or the mode flips between expense/income.
+      document.addEventListener("click", () => setTimeout(paint, 90), true);
+      paint();
     })();
 
 })();

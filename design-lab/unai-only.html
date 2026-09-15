@@ -1124,6 +1124,25 @@
   }
   .panel-head.is-console .section-head-row{ margin: 0; flex: 0 0 auto; }
 
+
+  /* ---------- the entry line -------------------------------------------------
+     One row, left to right, in the order the fields are thought of. Wraps only
+     when it genuinely cannot fit, so the common case is a single pass. */
+  .entry-line{
+    display: flex; align-items: flex-end; gap: var(--sp-5);
+    flex-wrap: wrap;
+  }
+  .entry-field{ display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+  .entry-field label{ margin: 0; }
+  .entry-field.is-desc{ flex: 4 1 260px; }
+  .entry-field.is-amount{ flex: 0 0 150px; }
+  .entry-field.is-cat{ flex: 1 1 140px; }
+  .entry-field.is-bank{ flex: 1 1 160px; }
+  .entry-field.is-go{ flex: 0 0 auto; }
+  .entry-field .amount-wrap input{ padding-left: var(--sp-9); }
+  .more-grid{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: var(--sp-6); margin-top: var(--sp-6); }
+  .more-grid .full{ grid-column: 1 / -1; }
+
 </style>
 </head>
 
@@ -1191,43 +1210,49 @@
     <div class="card">
       <header class="panel-head is-console">
         <h2 id="add-card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"/><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 13h2"/></svg>Add an expense</h2>
-        <p class="sub" id="add-card-sub">Type what you bought — we'll guess the category and today's date automatically.</p>
+        <p class="sub" id="add-card-sub">One line, left to right. Tab moves on; Enter commits.</p>
       </header>
-      <div class="form-grid">
-        <div class="full">
-          <label for="in-desc" id="in-desc-label">What did you spend on?</label>
-          <input type="text" id="in-desc" placeholder="e.g. Grab ride, Netflix, Groceries at SM">
+
+      <!-- A console logs a record in one pass across the keyboard. The fields
+           sit in the order they are thought of, not in a grid of boxes. -->
+      <div class="entry-line">
+        <div class="entry-field is-desc">
+          <label for="in-desc" id="in-desc-label">What</label>
+          <input type="text" id="in-desc" placeholder="Grab ride, Netflix, groceries…">
         </div>
-        <div>
+        <div class="entry-field is-amount">
           <label for="in-amount">Amount</label>
           <div class="amount-wrap">
             <span id="currency-sign">₱</span>
             <input type="number" id="in-amount" placeholder="0.00" min="0" step="0.01">
           </div>
         </div>
-        <div>
+        <div class="entry-field is-cat">
           <label for="in-category">Category</label>
           <select id="in-category"></select>
         </div>
-        <div class="full" id="in-bank-row">
-          <label for="in-bank" id="in-bank-label">Pay from which account?</label>
+        <div class="entry-field is-bank" id="in-bank-row">
+          <label for="in-bank" id="in-bank-label">Account</label>
           <select id="in-bank"></select>
-          <p class="hint" id="in-bank-hint" style="margin-top:6px;">Required — this amount is withdrawn from the account you pick, and your Total Money updates right away.</p>
+        </div>
+        <div class="entry-field is-go">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" id="btn-add">Add Expense</button>
         </div>
       </div>
+      <p class="hint" id="in-bank-hint">Withdrawn from the account you pick; Total Money updates immediately.</p>
 
-      <button type="button" class="add-more-toggle" id="btn-toggle-more-options">+ More options — currency, tags, recurring</button>
-
+      <button type="button" class="add-more-toggle" id="btn-toggle-more-options">+ More — currency, tags, recurring</button>
       <div id="add-more-options" class="collapsible-body is-collapsed">
-        <div class="form-grid" style="margin-top:14px;">
+        <div class="more-grid">
           <div>
             <label for="in-currency">Currency</label>
             <select id="in-currency"><option value="PHP">₱ PHP</option></select>
             <p class="hint" id="in-currency-preview" style="display:none; margin-top: var(--sp-3);"></p>
           </div>
           <div class="full">
-            <label for="in-tags">Tags (optional, comma-separated)</label>
-            <input type="text" id="in-tags" placeholder="e.g. reimbursable, trip:Japan, tax-deductible">
+            <label for="in-tags">Tags</label>
+            <input type="text" id="in-tags" placeholder="reimbursable, trip:Japan, tax-deductible">
           </div>
         </div>
         <div class="checkbox-row">
@@ -1241,10 +1266,7 @@
         </div>
       </div>
 
-      <div class="form-actions">
-        <button class="btn btn-primary" id="btn-add">Add Expense</button>
-        <span class="hint" id="add-hint"></span>
-      </div>
+      <p class="hint" id="add-hint"></p>
     </div>
   </section>
 
