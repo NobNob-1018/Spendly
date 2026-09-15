@@ -3729,8 +3729,24 @@
     return _fetch.apply(this, arguments);
   };
 
-  /* 3. No service worker. The live one has scope over the whole site and would cache
-        these pages, which is the opposite of what a test copy is for. */
+  /* 3. No service worker. Hiding the object stops THIS page registering one, but an
+        already-registered worker from the live app has scope over the whole origin and
+        goes on serving these pages from its shell cache -- and it matches with
+        ignoreSearch, so a ?v= cache-buster does not touch it. Evict first, hide second.
+        Cost of getting this wrong: you redesign a file and the browser shows you the
+        version from twenty minutes ago, which is a very convincing way to waste an hour. */
+  try{
+    if (navigator.serviceWorker){
+      navigator.serviceWorker.getRegistrations().then(function(rs){
+        rs.forEach(function(r){ r.unregister(); });
+      }).catch(function(){});
+    }
+    if (window.caches && caches.keys){
+      caches.keys().then(function(ks){
+        ks.forEach(function(k){ if (k.indexOf("spendly") === 0) caches.delete(k); });
+      }).catch(function(){});
+    }
+  }catch(e){}
   try{
     Object.defineProperty(navigator, "serviceWorker", { configurable: true, get: function(){ return undefined; } });
   }catch(e){}
