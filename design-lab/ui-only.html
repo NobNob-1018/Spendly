@@ -747,6 +747,38 @@
   .drill-table td.num{ text-align: right; font-variant-numeric: tabular-nums; font-weight: 650; white-space: nowrap; }
   .drill-more{ margin: var(--sp-6) 0 0; font-size: var(--fs-3xs); color: var(--ink-dim); }
 
+
+  /* Category bands in the workspace table. */
+  tr.cat-head td{
+    padding: var(--sp-5) var(--sp-6);
+    background: var(--sunken);
+    border-bottom: 1px solid var(--line);
+  }
+  tr.cat-head{ height: auto; }
+  tr.cat-head td{ display: flex; align-items: center; gap: var(--sp-6); }
+  .cat-head-name{
+    flex: 0 0 140px;
+    font-size: var(--fs-3xs); font-weight: 700; color: var(--ink);
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  .cat-head-bar{ flex: 1; position: relative; height: 5px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .cat-head-bar i{ position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--accent); }
+  .cat-head-total{
+    flex: 0 0 auto; font-size: var(--fs-3xs); font-weight: 700;
+    color: var(--ink-soft); font-variant-numeric: tabular-nums;
+  }
+
+
+  /* A header cell carrying both a filter and a sort. */
+  th.th-dual{ white-space: nowrap; }
+  th.th-dual .th-filter{ max-width: 120px; }
+  .th-sort-cat{
+    margin-left: var(--sp-3); padding: 0 var(--sp-3);
+    font-size: 10px; color: var(--ink-dim);
+    background: transparent; border: 0; cursor: pointer;
+  }
+  .th-sort-cat.active{ color: var(--accent); }
+
 </style>
 </head>
 
@@ -2426,6 +2458,11 @@
     return list.slice().sort((a,b)=>{
       if (sort.key === "amount") return (num(a.amount) - num(b.amount)) * dir;
       if (sort.key === "description") return str(a.description).localeCompare(str(b.description)) * dir;
+      // Category, then amount within it, so a band reads largest-first inside itself.
+      if (sort.key === "category"){
+        const c = str(a.category).localeCompare(str(b.category)) * dir;
+        return c !== 0 ? c : (num(b.amount) - num(a.amount));
+      }
       return str(a.date).localeCompare(str(b.date)) * dir;
     });
   }
@@ -4638,7 +4675,7 @@
             ${buildSortableTh("exp-s-date", "Date", "date", expenseSort)}
             ${buildSortableTh("exp-s-desc", "Description", "description", expenseSort)}
             <th>Tags</th>
-            <th>${buildThFilter("exp-f-cat", "Category", categories, expenseCat, "Filter by category")}</th>
+            <th class="th-dual">${buildThFilter("exp-f-cat", "Category", categories, expenseCat, "Filter by category")}<button class="th-sort th-sort-cat${expenseSort.key === "category" ? " active" : ""}" id="exp-s-cat" title="Sort by category" aria-label="Sort by category">${expenseSort.key === "category" ? (expenseSort.dir === "asc" ? "\u25B2" : "\u25BC") : "\u21C5"}</button></th>
             ${buildSortableTh("exp-s-amount", "Amount", "amount", expenseSort)}
             <th>Actions</th>
           </tr>`;
@@ -4674,7 +4711,29 @@
     const visibleIds = pageList.map(e=>e.id);
     const allVisibleSelected = visibleIds.every(id=>selectedExpenseIds.has(id));
 
+    // Category bands with subtotals, drawn only when the table is in category
+    // order. Sorted by anything else the band would restate itself every row.
+    const groupByCat = expenseSort && expenseSort.key === "category";
+    let lastCat = null;
+    const catTotals = {};
+    if (groupByCat) pageList.forEach(e=>{ catTotals[e.category] = round2((catTotals[e.category] || 0) + e.amount); });
+    const catMax = Math.max.apply(null, Object.keys(catTotals).map(k=>catTotals[k]).concat([1]));
+
     const rows = pageList.map(e=>{
+      let head = "";
+      if (groupByCat && e.category !== lastCat){
+        lastCat = e.category;
+        const t = catTotals[e.category] || 0;
+        head = `<tr class="cat-head"><td colspan="7">
+          <span class="cat-head-name">${escapeHtml(e.category)}</span>
+          <span class="cat-head-bar"><i style="width:${Math.round((t / catMax) * 100)}%"></i></span>
+          <span class="cat-head-total">${fmtMoney(t)}</span>
+        </td></tr>`;
+      }
+      return head + rowFor(e);
+    }).join("");
+
+    function rowFor(e){
       const catOptions = categories.map(c=>`<option value="${escapeHtml(c)}" ${c===e.category?"selected":""}>${escapeHtml(c)}</option>`).join("");
       return `
         <tr data-id="${e.id}" class="${selectedExpenseIds.has(e.id) ? "is-selected" : ""}">
@@ -4689,7 +4748,7 @@
             <button class="row-action row-action-danger" data-action="delete" aria-label="Remove this entry" title="Remove this entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
           </td>
         </tr>`;
-    }).join("");
+    }
 
     wrap.innerHTML = `
       ${expStatusBar}
@@ -4700,6 +4759,20 @@
       ${paged.barHtml}`;
 
     wireHistoryHeader(wrap, "expense");
+
+    // The category sort, wired alongside the filter that shares its header cell.
+    const catSortBtn = wrap.querySelector("#exp-s-cat");
+    if (catSortBtn){
+      catSortBtn.addEventListener("click", ()=>{
+        if (expenseSort.key === "category"){
+          expenseSort = { key: "category", dir: expenseSort.dir === "asc" ? "desc" : "asc" };
+        } else {
+          expenseSort = { key: "category", dir: "asc" };
+        }
+        setUiPref("expSort", expenseSort.key + ":" + expenseSort.dir);
+        renderHistory();
+      });
+    }
 
     wrap.querySelectorAll("[data-page-action]").forEach(btn=>{
       btn.addEventListener("click", ()=>{
