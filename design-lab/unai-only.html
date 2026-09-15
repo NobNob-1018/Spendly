@@ -3213,6 +3213,364 @@
   .card:focus-within{ border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
   tbody tr:focus-within{ background: var(--hover); }
   tbody tr:focus-within td{ background: transparent; }
+
+  /* ==========================================================================
+     /unai — THE CORPUS, WORKED TO EXHAUSTION
+     Appended last on purpose: this file refines rules in a second block further
+     down the sheet at equal specificity, so anything written earlier loses. The
+     design layer goes at the end where it actually wins.
+
+     Direction, taken from the corpus's own thesis rather than from a layer above:
+     "a real interface accounts for its own behaviour." That is an operator's
+     console — tight, complete, every state named, nothing decorative.
+     ========================================================================== */
+
+  /* --- VUI-RAD-001: radius follows element size, on ONE scale ---------------
+     The anti-pattern is "border-radius: 8px applied to everything, so a chip and
+     a modal share a corner." This file had five steps at 8/12/18/22/999 and spent
+     --r-md (12px) 24 times on buttons and cards alike. The corpus's scale is one
+     rung tighter at every step and maps each step to an element CLASS, which is
+     the part that was missing: sm 4 chip/badge, md 8 button/input, lg 12 card,
+     xl 16 modal/sheet, full 9999 avatar/toggle. */
+  :root{
+    --r-sm: 4px;    /* chip, badge, tag */
+    --r-md: 8px;    /* button, input, select */
+    --r-lg: 12px;   /* card, panel, table wrap */
+    --r-xl: 16px;   /* modal, sheet, hero */
+    --r-pill: 9999px;
+  }
+
+  /* VUI-RAD-003: full radius is a SHAPE, not a number — one line only. A pill on
+     a multi-line box curves inward far enough to eat the content. */
+  .card, .stat, .tm-hero, .search-panel, .insights-strip,
+  [id$="-table-wrap"], .sv-card, .inv-card{ border-radius: var(--r-lg); }
+  .tm-hero, .search-panel{ border-radius: var(--r-xl); }
+  .filter-chip, .stat-badge, .tag, .badge, .th-filter, .range-tabs button{
+    border-radius: var(--r-pill);
+  }
+
+  /* VUI-RAD-002: a nested corner is concentric — inner = outer minus the padding
+     between them. A tray inheriting its card's radius bulges against the outer
+     curve. Card is 12 with 12 of padding, so anything sitting flush inside it
+     takes 12 - 12 = 0 and anything inset by 4 takes 8. Derived, not guessed. */
+  .card > [id$="-table-wrap"]{ border-radius: 0; }
+  .card .stat-breakdown-row .bd-bar{ border-radius: 2px; }
+  .stat-row > .stat:not(.is-primary){
+    /* inset by --sp-5 (12) inside a 12-radius card: 12 - 12 = 0, so it squares off
+       and reads as a list rather than a floating tile. */
+    border-radius: 0;
+    border-left: 0; border-right: 0;
+  }
+
+  /* VUI-RAD-004: an edge-flush element has no corner on that edge. */
+  .bulk-bar{ border-radius: var(--r-lg) var(--r-lg) 0 0; }
+  nav.tabs{ border-radius: 0; }
+  #side-panel{ border-radius: 0; }
+
+  /* VUI-RAD-005: a surrounding ring flips the formula — outer = inner + gap.
+     The focus ring sits 2px outside a control, so it must be 2px larger or the
+     corner pinches against the element it is meant to be wrapping. */
+  button:focus-visible, input[type=checkbox]:focus-visible, a:focus-visible{
+    border-radius: calc(var(--r-md) + 2px);
+  }
+  .filter-chip:focus-visible, .range-tabs button:focus-visible{
+    border-radius: var(--r-pill);
+  }
+
+  /* VUI-RAD-006: the container clips a bleed element; the child gets no radius. */
+  .chart-box{ overflow: hidden; border-radius: var(--r-lg); }
+  .chart-box canvas{ border-radius: 0; }
+
+
+  /* --- Tables. Seventeen rules, and this app is mostly tables ---------------- */
+
+  /* VUI-TBL-002: rank columns by use, not by position. Identity and value are P1
+     and take the room; status and metadata are P2 and give it up first. Amount is
+     the reason anyone opens this screen, so it is never the column that shrinks. */
+  [id$="-table-wrap"] th.num, [id$="-table-wrap"] td.num{ width: 1%; white-space: nowrap; }
+  [id$="-table-wrap"] td:nth-child(3){ width: 40%; }   /* description: identity, P1 */
+  [id$="-table-wrap"] td.tags-cell{ width: 12%; }      /* metadata, P2, yields first */
+
+  /* VUI-TBL-014: numbers never truncate. A clipped figure is a wrong figure, and
+     this is money. */
+  [id$="-table-wrap"] td.num, [id$="-table-wrap"] td.num *,
+  .amount-cell, .amount-cell *, .bd-value, .stat .value{
+    text-overflow: clip;
+    overflow: visible;
+    white-space: nowrap;
+  }
+
+  /* VUI-TBL-013 + VUI-TXT-001: prose truncates with the full text on hover, and a
+     flex child needs min-width:0 before it will ever truncate at all. */
+  [id$="-table-wrap"] td.desc-cell{ max-width: 0; }
+  [id$="-table-wrap"] td.desc-cell > *{
+    min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* VUI-TBL-008: one hairline between rows, hover lights the row. No zebra —
+     already true here, checked and left. */
+  [id$="-table-wrap"] tbody tr{ border-bottom: 1px solid var(--line); }
+  [id$="-table-wrap"] tbody tr:last-child{ border-bottom: 0; }
+
+  /* VUI-TBL-011 + VUI-SCR-002/003: the header is sticky, so anything scrolled to
+     must clear it or it lands underneath. One variable, both jobs. */
+  :root{ --stuck-h: 42px; }
+  [id$="-table-wrap"] tbody tr{ scroll-margin-top: var(--stuck-h); }
+  [id$="-table-wrap"] thead th{ z-index: 4; }
+
+  /* VUI-TBL-010: pin the identity columns when the table scrolls sideways, so the
+     record stays named while its later columns move. Pointer and width only. */
+  @media (min-width: 900px) and (pointer: fine){
+    [id$="-table-wrap"]{ overflow-x: auto; }
+    [id$="-table-wrap"] thead th:nth-child(-n+2),
+    [id$="-table-wrap"] tbody td:nth-child(-n+2){
+      position: sticky; left: 0; z-index: 2; background: var(--card);
+    }
+    [id$="-table-wrap"] thead th:nth-child(2),
+    [id$="-table-wrap"] tbody td:nth-child(2){ left: 34px; }
+    [id$="-table-wrap"] thead th:nth-child(-n+2){ z-index: 5; }
+    [id$="-table-wrap"] tbody tr:hover td:nth-child(-n+2){ background: var(--hover); }
+  }
+
+  /* VUI-TBL-007: demoted fields stay reachable, tiered by weight. The row keeps
+     P1 and P2 on screen; P3 lives in a drawer the row opens rather than being
+     deleted from the design. */
+  [id$="-table-wrap"] tr.row-detail td{
+    padding: var(--sp-5) var(--sp-6);
+    background: var(--sunken);
+    border-bottom: 1px solid var(--line);
+  }
+  .row-detail-grid{
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--sp-3) var(--sp-7);
+    font-size: var(--fs-sm);
+  }
+  .row-detail-grid dt{
+    color: var(--ink-dim); font-weight: 700;
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+    font-size: var(--fs-3xs);
+  }
+  .row-detail-grid dd{ margin: 0 0 var(--sp-3); color: var(--ink); }
+
+  /* VUI-TBL-016: touch has no hover, so it gets a kebab rather than actions that
+     can never be revealed. */
+  .row-kebab{ display: none; }
+  @media (hover: none), (pointer: coarse){
+    .row-kebab{
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: var(--r-md);
+      background: transparent; border: 1px solid var(--line);
+      color: var(--ink-soft); cursor: pointer;
+    }
+    [id$="-table-wrap"] tbody tr .row-action{ display: none; }
+  }
+
+
+  /* --- VUI-STA-001: the whole selectable region shows selection ------------- */
+  [id$="-table-wrap"] tbody tr:has(input[type=checkbox]:checked){
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  [id$="-table-wrap"] tbody tr:has(input[type=checkbox]:checked) td{ background: transparent; }
+
+
+  /* --- Disabled, four rules that were one -----------------------------------
+     VUI-DIS-002: disabled and loading are DIFFERENT states. One says "you cannot",
+     the other says "not yet". Collapsing them is why a working sync button looked
+     broken.
+     VUI-DIS-003: a disabled label still has to clear 4.5:1, so this dims the
+     chrome and leaves the text legible rather than fading the whole control.  */
+  button:disabled, button[aria-disabled="true"]{
+    opacity: 1;                       /* was .45 — that took the LABEL under 4.5:1 */
+    color: var(--ink-dim);
+    border-color: var(--line);
+    background: var(--sunken);
+    filter: none;
+    cursor: default !important;
+  }
+  button.is-loading{
+    color: var(--ink-soft);
+    cursor: progress !important;
+    position: relative;
+  }
+  button.is-loading::after{
+    content: "";
+    width: 12px; height: 12px; margin-left: var(--sp-3);
+    border: 2px solid currentColor; border-right-color: transparent;
+    border-radius: var(--r-pill);
+    display: inline-block; vertical-align: -2px;
+    animation: spendly-spin 700ms linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce){
+    button.is-loading::after{ animation-duration: 2s; }
+  }
+
+
+  /* --- Badges. Seven rules, none of them previously used -------------------- */
+  /* VUI-BDG-003: a count badge and a status dot are different objects. The dot
+     says "something is true"; the badge says "there are N of them". */
+  .ui-badge{
+    position: absolute; top: -5px; right: -5px;
+    min-width: 17px; height: 17px; padding: 0 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; line-height: 1;
+    font-variant-numeric: tabular-nums;
+    border-radius: var(--r-pill);           /* VUI-RAD-003: one line, so a pill */
+    background: var(--negative); color: #0B0D10;
+    box-shadow: 0 0 0 2px var(--card);      /* VUI-RAD-005: ring = inner + gap */
+    pointer-events: none;
+  }
+  .ui-dot{
+    position: absolute; top: -1px; right: -1px;
+    width: 8px; height: 8px; border-radius: var(--r-pill);
+    box-shadow: 0 0 0 2px var(--card);
+    pointer-events: none;
+  }
+  /* VUI-BDG-007: red means act now, green means online. Two different claims. */
+  .ui-dot.is-ok{ background: var(--positive); }
+  .ui-dot.is-act{ background: var(--negative); }
+  /* VUI-BDG-002: pinned to the icon's corner so the icon never moves when the
+     count appears. The host is the anchor; the badge is out of flow. */
+  .has-badge{ position: relative; overflow: visible; }
+
+
+  /* --- VUI-KBD-001: every action displays its own shortcut, in place --------- */
+  .kbd{
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 17px; height: 17px; padding: 0 4px; margin-left: var(--sp-3);
+    font-size: 10px; font-weight: 700; line-height: 1;
+    font-family: inherit;
+    color: var(--ink-dim);
+    background: var(--sunken);
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: var(--r-sm);     /* VUI-RAD-001: badge tier */
+  }
+  @media (hover: none), (pointer: coarse){ .kbd{ display: none; } }
+
+
+  /* --- VUI-SET-004/005: settings say what changed, and quarantine the ruin --- */
+  .set-changed{
+    display: inline-block; width: 6px; height: 6px; margin-left: var(--sp-3);
+    border-radius: var(--r-pill); background: var(--accent);
+    vertical-align: middle;
+  }
+  .set-reset{
+    margin-left: var(--sp-4); padding: 0 var(--sp-3);
+    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--track-caps);
+    background: transparent; border: 1px solid var(--line);
+    border-radius: var(--r-sm); color: var(--ink-soft); cursor: pointer;
+  }
+  .danger-zone{
+    margin-top: var(--sp-11);
+    padding: var(--sp-7);
+    border: 1px solid color-mix(in srgb, var(--negative) 40%, var(--line));
+    border-radius: var(--r-lg);
+    background: color-mix(in srgb, var(--negative) 6%, transparent);
+  }
+  .danger-zone h3{
+    margin: 0 0 var(--sp-3);
+    font-size: var(--fs-sm); font-weight: 800;
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+    color: var(--negative);
+  }
+
+
+  /* --- VUI-FRM-002: the whole field GROUP carries the error, not just the input */
+  .field-invalid{
+    padding-left: var(--sp-5);
+    border-left: 2px solid var(--negative);
+  }
+  .field-invalid label, .field-invalid .field-label{ color: var(--negative); }
+  .field-invalid input, .field-invalid select{ border-color: var(--negative); }
+  .field-error{
+    display: block; margin-top: var(--sp-3);
+    font-size: var(--fs-sm); font-weight: 600; color: var(--negative);
+  }
+
+
+  /* --- VUI-RSZ-001..005: the side panel becomes draggable ------------------- */
+  .rsz-handle{
+    position: absolute; top: 0; bottom: 0; left: -6px;
+    width: 12px;              /* VUI-RSZ-001: 12px grab target on a 1px divider */
+    cursor: col-resize;
+    z-index: 30;
+  }
+  .rsz-handle::after{
+    content: ""; position: absolute; top: 0; bottom: 0; left: 6px;
+    width: 1px; background: transparent;
+    transition: background var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){ .rsz-handle:hover::after{ background: var(--accent); } }
+  /* VUI-RSZ-004: an invisible sheet over the page during the drag, so the pointer
+     cannot be stolen by an iframe, a text selection or a hover state mid-gesture. */
+  .rsz-shield{ position: fixed; inset: 0; z-index: 9998; cursor: col-resize; }
+  /* VUI-RSZ-005: the cursor belongs on the body — the pointer leaves the 12px
+     handle within one frame of the drag starting. */
+  body.is-resizing{ cursor: col-resize !important; user-select: none; }
+  /* Collapsed to a rail rather than to nothing: the handle has to survive, or the
+     panel can never be brought back. */
+  body.side-collapsed #side-panel > *:not(.rsz-handle){ display: none; }
+  body.side-collapsed #side-panel{
+    padding: 0;
+    background: var(--sunken);
+    border-left: 1px solid var(--line);
+  }
+  body.side-collapsed .rsz-handle{ left: 0; width: 14px; }
+  body.side-collapsed .rsz-handle::after{ background: var(--line); left: 6px; }
+
+
+  /* --- Menus. Five rules that only exist once there is a real menu ----------
+     The app's own dropdowns are native <select>, which the OS already draws,
+     positions and keyboards for — the MNU rules have nothing to add there and
+     are not force-fitted onto them. The menu that DOES need building is the one
+     VUI-TBL-016 asks for: touch has no hover, so the row actions it hides need
+     somewhere to live. That menu is where these rules apply. */
+  .kebab-menu{
+    position: fixed; z-index: 9990;
+    min-width: 184px; padding: var(--sp-3);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);          /* VUI-RAD-001: panel tier */
+    box-shadow: var(--elev-4);
+  }
+  .kebab-menu button{
+    display: flex; align-items: center; gap: var(--sp-5);
+    width: 100%; padding: var(--sp-4) var(--sp-5);
+    background: transparent; border: 0;
+    border-radius: var(--r-md);          /* VUI-RAD-002: 12 - 4 padding = 8 */
+    color: var(--ink); font: inherit; font-size: var(--fs-md); font-weight: 600;
+    text-align: left; cursor: pointer;
+  }
+  .kebab-menu button[aria-selected="true"],
+  .kebab-menu button:hover{ background: var(--hover); }
+  .kebab-menu button.is-danger{ color: var(--negative); }
+  /* VUI-MNU-002: clusters separated by dividers, not twelve flat lines. */
+  .kebab-sep{ height: 1px; margin: var(--sp-3) var(--sp-4); background: var(--line); }
+  .kebab-group-label{
+    padding: var(--sp-3) var(--sp-5) var(--sp-2);
+    font-size: var(--fs-3xs); font-weight: 800; color: var(--ink-dim);
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+
+  /* --- Pull to refresh ------------------------------------------------------ */
+  .ptr-track{
+    position: fixed; top: 0; left: 0; right: 0; height: 0;
+    display: flex; align-items: flex-end; justify-content: center;
+    overflow: hidden; z-index: 60; pointer-events: none;
+  }
+  .ptr-ring{
+    width: 22px; height: 22px; margin-bottom: 8px;
+    border: 2px solid var(--line); border-top-color: var(--accent);
+    border-radius: var(--r-pill);
+  }
+  .ptr-ring.is-armed{ border-color: var(--accent); border-top-color: var(--accent); }
+  /* VUI-PTR-003: the stretch indicator hands off to a spinner AT the threshold,
+     in the same place, so the gesture and its result stay connected. */
+  .ptr-ring.is-running{ animation: spendly-spin 700ms linear infinite; }
+
 </style>
 </head>
 
@@ -10843,6 +11201,473 @@
   updateBackupBanner();
   // Charts (and Chart.js) render on first visit to that tab, not on page load —
   // see the tab-click handler and ensureChartJs().
+
+
+  /* ==========================================================================
+     /unai — the rules CSS cannot reach.
+     Inserted inside the app's IIFE so it can see the real state: selection sets,
+     the stores, the render functions. Everything here is additive; nothing above
+     is rewritten.
+     ========================================================================== */
+  (function corpusLayer(){
+    "use strict";
+
+    /* --- VUI-OVL-001 / 003: the DOCUMENT owns overlay side effects ----------
+       The dialog should not be reaching out to lock the page — it does not know
+       whether another overlay is already open, so two of them fight over the
+       scroll position and the second to close restores the wrong one. A counter
+       on the document is the only thing that can answer "is anything open".   */
+    let openOverlays = 0, lockedScrollY = 0;
+    function lockDocument(){
+      if (openOverlays++ > 0) return;
+      lockedScrollY = window.scrollY;
+      document.body.style.position = "fixed";
+      document.body.style.top = (-lockedScrollY) + "px";
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+      document.body.style.overflow = "hidden";
+    }
+    function unlockDocument(){
+      if (openOverlays === 0) return;
+      if (--openOverlays > 0) return;
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.overflow = "";
+      window.scrollTo(0, lockedScrollY);
+    }
+    // Wrapped rather than edited, so the original focus-trap logic is untouched.
+    const _openDialog = openDialog, _closeDialog = closeDialog;
+    openDialog = function(o){ lockDocument(); return _openDialog(o); };
+    closeDialog = function(o){ unlockDocument(); return _closeDialog(o); };
+
+    /* --- VUI-SCR-001: scroll position is saved and restored per history entry.
+       Switching tabs and coming back dropped the reader at the top of a
+       fifty-row table every time. Keyed by tab, which is what this app uses for
+       history entries. */
+    const scrollByTab = Object.create(null);
+    let lastTab = null;
+    function rememberScroll(){ if (lastTab) scrollByTab[lastTab] = window.scrollY; }
+    document.addEventListener("click", (e)=>{
+      const b = e.target.closest && e.target.closest("[data-tab]");
+      if (b) rememberScroll();
+    }, true);
+    const _activateTab = (typeof activateTab === "function") ? activateTab : null;
+    if (_activateTab){
+      activateTab = function(name){
+        const r = _activateTab.apply(this, arguments);
+        lastTab = name;
+        // VUI-SCR-002: offset by the sticky header, or the restored row lands
+        // underneath it and reads as the wrong row.
+        const y = scrollByTab[name];
+        if (typeof y === "number") requestAnimationFrame(()=> window.scrollTo(0, y));
+        return r;
+      };
+    }
+
+    /* --- VUI-SEL-004: shift-click selects a range --------------------------
+       Forcing one click per row when the user wants a contiguous block is the
+       anti-pattern; this is the single most common reason a selection UI feels
+       hostile. Anchored on the last row touched, not on the first in the table. */
+    const anchors = Object.create(null);
+    document.addEventListener("click", (e)=>{
+      const box = e.target;
+      if (!box || box.type !== "checkbox") return;
+      const row = box.closest("tr[data-id]");
+      if (!row) return;
+      const wrap = row.closest('[id$="-table-wrap"]');
+      if (!wrap) return;
+      const key = wrap.id;
+      const rows = [...wrap.querySelectorAll("tbody tr[data-id]")];
+      const i = rows.indexOf(row);
+      const prev = anchors[key];
+      if (e.shiftKey && typeof prev === "number" && prev !== i){
+        const [lo, hi] = prev < i ? [prev, i] : [i, prev];
+        const want = box.checked;
+        for (let k = lo; k <= hi; k++){
+          const cb = rows[k].querySelector('input[type=checkbox]');
+          if (cb && cb.checked !== want){ cb.checked = want; cb.dispatchEvent(new Event("change", { bubbles:true })); }
+        }
+      }
+      anchors[key] = i;
+    }, true);
+
+    /* --- VUI-SEL-002: clicking the partial box selects everything; it never
+       clears. Partial-clears-all silently destroys work the user did row by row,
+       which is the one thing a tri-state box must not do. */
+    document.addEventListener("mousedown", (e)=>{
+      const box = e.target;
+      if (!box || box.type !== "checkbox" || !box.indeterminate) return;
+      box.checked = false;          // so the click that follows lands on "checked"
+    }, true);
+
+    /* --- VUI-KBD-001: every action displays its own shortcut, in place ------
+       The app already answers "/" and Escape; nothing said so. A shortcut nobody
+       can see is a shortcut nobody uses. */
+    function hint(sel, keys){
+      const el = document.querySelector(sel);
+      if (!el || el.querySelector(".kbd")) return;
+      const k = document.createElement("span");
+      k.className = "kbd";
+      k.textContent = keys;
+      k.setAttribute("aria-hidden", "true");
+      el.appendChild(k);
+    }
+    hint("#btn-global-search", "/");
+    hint("#btn-close-search", "Esc");
+
+    /* --- VUI-BDG-001/004/005/006: badges ------------------------------------
+       Badge only what needs a DECISION. Of everything this app tracks, that is
+       overdue loans: money that was due back and is not. Not counts of rows.  */
+    function overdueCount(){
+      const today = todayISO();
+      const due = l => l && l.status === "outstanding" && l.deadline && l.deadline < today;
+      return loansGiven.filter(due).length + loansTaken.filter(due).length;
+    }
+    function paintBadges(){
+      const tab = document.querySelector('[data-tab="loans"]');
+      if (!tab) return;
+      tab.classList.add("has-badge");
+      let b = tab.querySelector(".ui-badge");
+      const n = overdueCount();
+      if (!n){
+        // VUI-BDG-004: it clears when the view is opened, and 0 is never drawn.
+        if (b) b.remove();
+        return;
+      }
+      if (!b){ b = document.createElement("span"); b.className = "ui-badge"; tab.appendChild(b); }
+      // VUI-BDG-001: cap it, so the badge keeps a stable shape at 9 and at 400.
+      b.textContent = n > 99 ? "99+" : String(n);
+      b.setAttribute("aria-label", n + " overdue");
+    }
+    paintBadges();
+    document.addEventListener("click", ()=> setTimeout(paintBadges, 60), true);
+
+    /* --- VUI-DIS-002: disabled and loading are different states -------------
+       The sync button disabled itself for the length of a request, which reads
+       as "you may not" when it means "not yet". */
+    ["btn-sync", "btn-sync-now", "btn-check-update"].forEach(id=>{
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new MutationObserver(()=>{
+        el.classList.toggle("is-loading", el.disabled);
+        if (el.disabled) el.setAttribute("aria-busy", "true"); else el.removeAttribute("aria-busy");
+      });
+      obs.observe(el, { attributes:true, attributeFilter:["disabled"] });
+    });
+
+    /* --- VUI-DIS-001/004: a blocked control stays live and explains itself ---
+       "Never attach the explanation to the disabled element itself" — a disabled
+       button does not fire hover, so its own tooltip is unreachable. The message
+       goes to a sibling that is not disabled. */
+    document.addEventListener("click", (e)=>{
+      const b = e.target.closest && e.target.closest("button[aria-disabled='true']");
+      if (!b) return;
+      e.preventDefault();
+      const why = b.getAttribute("data-why");
+      if (why && typeof showToast === "function") showToast(why);
+    }, true);
+
+    /* --- VUI-SET-004/005/006: settings ---------------------------------------
+       Mark every changed setting with a dot and a one-click reset, and put the
+       destructive actions last, marked, and set apart. */
+    const SETTING_DEFAULTS = { density: "default", theme: "dark" };
+    function markChangedSettings(){
+      Object.keys(SETTING_DEFAULTS).forEach(key=>{
+        const now = (uiPrefs && uiPrefs[key]) || SETTING_DEFAULTS[key];
+        const host = document.getElementById(key + "-toggle");
+        if (!host || !host.parentElement) return;
+        const label = host.parentElement.querySelector(".settings-section-label, label, h3");
+        if (!label) return;
+        let dot = label.querySelector(".set-changed");
+        const changed = now !== SETTING_DEFAULTS[key];
+        if (changed && !dot){
+          dot = document.createElement("span");
+          dot.className = "set-changed";
+          dot.title = "Changed from the default";
+          label.appendChild(dot);
+          const reset = document.createElement("button");
+          reset.className = "set-reset";
+          reset.type = "button";
+          reset.textContent = "reset";
+          reset.addEventListener("click", ()=>{
+            if (key === "density" && typeof applyDensity === "function"){
+              applyDensity(SETTING_DEFAULTS.density);
+              setUiPref("density", SETTING_DEFAULTS.density);
+            }
+            markChangedSettings();
+          });
+          label.appendChild(reset);
+        } else if (!changed && dot){
+          dot.remove();
+          const r = label.querySelector(".set-reset");
+          if (r) r.remove();
+        }
+      });
+    }
+    document.addEventListener("click", ()=> setTimeout(markChangedSettings, 80), true);
+    markChangedSettings();
+
+    /* --- VUI-RSZ-001..006: the side panel is draggable ----------------------
+       Six rules that only exist if there is something to resize. The panel was a
+       fixed 300px; it is the one piece of chrome competing with the table for
+       width, so it is the one worth handing to the user. */
+    (function resizableSidePanel(){
+      const panel = document.getElementById("side-panel");
+      if (!panel) return;
+      const MIN = 240, MAX = 520, RAIL = 14;
+      // VUI-RSZ-006: persist across reloads, or the user sets it every session.
+      const saved = parseInt((uiPrefs && uiPrefs.sidePanelW) || "", 10);
+      if (saved >= MIN && saved <= MAX){
+        document.documentElement.style.setProperty("--side-panel-w", saved + "px");
+      }
+      const handle = document.createElement("div");
+      handle.className = "rsz-handle";
+      handle.setAttribute("role", "separator");
+      handle.setAttribute("aria-orientation", "vertical");
+      handle.setAttribute("aria-label", "Resize the side panel");
+      handle.tabIndex = 0;
+      panel.appendChild(handle);
+
+      // The rendered box is 0 whenever the panel is hidden by a breakpoint, and
+      // resizing from 0 clamps straight to the minimum — a keypress at the wrong
+      // moment silently shrank the panel. The token is the source of truth; the
+      // box is only a fallback for the first run before the token is set.
+      function widthNow(){
+        const tok = parseInt(getComputedStyle(document.documentElement)
+                      .getPropertyValue("--side-panel-w"), 10);
+        if (tok > 0) return tok;
+        const box = Math.round(panel.getBoundingClientRect().width);
+        return box > 0 ? box : 300;
+      }
+      function apply(px){
+        // VUI-RSZ-003: "snap fully CLOSED near the edge; never leave a sliver."
+        // Read first time as "clamp to the minimum", which pinned the panel at MIN
+        // and made it impossible to grow — every step landed inside the snap zone
+        // and bounced back. Closed means closed: below the useful minimum it
+        // collapses to a rail, and the rail still carries the handle so there is
+        // always a way back. A control that can delete its own escape hatch is the
+        // trap this app has hit before.
+        if (px < MIN - 40){
+          document.documentElement.style.setProperty("--side-panel-w", RAIL + "px");
+          document.body.classList.add("side-collapsed");
+          return RAIL;
+        }
+        document.body.classList.remove("side-collapsed");
+        // VUI-RSZ-002: clamp between a min and a max, always.
+        const w = Math.max(MIN, Math.min(MAX, px));
+        document.documentElement.style.setProperty("--side-panel-w", w + "px");
+        return w;
+      }
+      handle.addEventListener("pointerdown", (e)=>{
+        e.preventDefault();
+        const startX = e.clientX, startW = widthNow();
+        const shield = document.createElement("div");   // VUI-RSZ-004
+        shield.className = "rsz-shield";
+        document.body.appendChild(shield);
+        document.body.classList.add("is-resizing");     // VUI-RSZ-005
+        function move(ev){ apply(startW - (ev.clientX - startX)); }
+        function up(){
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", up);
+          shield.remove();
+          document.body.classList.remove("is-resizing");
+          setUiPref("sidePanelW", widthNow());
+        }
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
+      });
+      // Keyboard, because a drag handle that only takes a pointer is unreachable.
+      handle.addEventListener("keydown", (e)=>{
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        e.preventDefault();
+        const w = apply(widthNow() + (e.key === "ArrowLeft" ? 16 : -16));
+        setUiPref("sidePanelW", w);
+      });
+    })();
+
+    /* --- VUI-TBL-016 + VUI-MNU-001/002/004/005: the row kebab and its menu ----
+       Touch has no hover, so the actions VUI-TBL-015 hides have to be reachable
+       another way. Building that menu is what makes the MNU rules apply at all —
+       they are not force-fitted onto the native <select> elements elsewhere,
+       which the OS already positions and keyboards correctly. */
+    let openMenu = null;
+    function closeKebab(){
+      if (!openMenu) return;
+      openMenu.remove(); openMenu = null;
+      document.removeEventListener("keydown", menuKeys, true);
+    }
+    function menuKeys(e){
+      if (!openMenu) return;
+      const items = [...openMenu.querySelectorAll("button")];
+      const i = items.indexOf(document.activeElement);
+      // VUI-MNU-004: arrows walk, letters jump, Escape closes one level.
+      if (e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); closeKebab(); return; }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp"){
+        e.preventDefault();
+        const next = e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+        items[next].focus();
+        return;
+      }
+      if (/^[a-z]$/i.test(e.key)){
+        const hit = items.find((b, k) => k > i && b.textContent.trim().toLowerCase().startsWith(e.key.toLowerCase()))
+                 || items.find(b => b.textContent.trim().toLowerCase().startsWith(e.key.toLowerCase()));
+        if (hit){ e.preventDefault(); hit.focus(); }
+      }
+    }
+    function openKebab(anchor, groups){
+      closeKebab();
+      const menu = document.createElement("div");
+      menu.className = "kebab-menu";
+      menu.setAttribute("role", "menu");
+      groups.forEach((g, gi)=>{
+        if (gi) menu.appendChild(Object.assign(document.createElement("div"), { className: "kebab-sep" }));
+        if (g.label) menu.appendChild(Object.assign(document.createElement("div"), { className: "kebab-group-label", textContent: g.label }));
+        g.items.forEach(it=>{
+          const b = document.createElement("button");
+          b.type = "button"; b.setAttribute("role", "menuitem");
+          b.textContent = it.label;
+          if (it.danger) b.classList.add("is-danger");
+          b.addEventListener("click", ()=>{ closeKebab(); it.run(); });
+          menu.appendChild(b);
+        });
+      });
+      document.body.appendChild(menu);
+      // VUI-MNU-001: measure BEFORE placing, then flip up / mirror left so it can
+      // never render half off screen or push the page into scrolling.
+      const a = anchor.getBoundingClientRect();
+      const m = menu.getBoundingClientRect();
+      const pad = 8;
+      // A hidden pane or a backgrounded tab reports every viewport measure as 0,
+      // and clamping against 0 places the menu at negative coordinates — off
+      // screen, which is the exact failure this rule exists to prevent. Fall back
+      // to the document box, then to a sane constant, before doing the maths.
+      const vw = window.innerWidth || document.documentElement.clientWidth || 1024;
+      const vh = window.innerHeight || document.documentElement.clientHeight || 768;
+      let top = a.bottom + 4, left = a.right - m.width;
+      if (top + m.height > vh - pad) top = Math.max(pad, a.top - m.height - 4);
+      if (left + m.width > vw - pad) left = vw - m.width - pad;
+      if (left < pad) left = pad;
+      if (top < pad) top = pad;
+      menu.style.top = top + "px";
+      menu.style.left = left + "px";
+      const first = menu.querySelector("button");
+      if (first) first.focus();
+      document.addEventListener("keydown", menuKeys, true);
+      setTimeout(()=>{
+        document.addEventListener("pointerdown", function once(ev){
+          if (openMenu && !openMenu.contains(ev.target)) closeKebab();
+          document.removeEventListener("pointerdown", once, true);
+        }, true);
+      }, 0);
+      openMenu = menu;
+    }
+    function rowMenuFor(row){
+      const dup = row.querySelector('[data-action="duplicate"]');
+      const del = row.querySelector('[data-action="delete"]');
+      // VUI-MNU-002: grouped by what the user is trying to do, with a divider,
+      // and the destructive one quarantined at the end (VUI-SET-005's instinct).
+      return [
+        { label: "This entry", items: [
+            { label: "Duplicate", run: ()=> dup && dup.click() }
+          ] },
+        { items: [ { label: "Delete", danger: true, run: ()=> del && del.click() } ] }
+      ];
+    }
+    function addKebabs(){
+      if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+      document.querySelectorAll('[id$="-table-wrap"] tbody tr[data-id]').forEach(row=>{
+        const cell = row.querySelector("td:last-child");
+        if (!cell || cell.querySelector(".row-kebab")) return;
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "row-kebab";
+        b.setAttribute("aria-haspopup", "menu");
+        b.setAttribute("aria-label", "Actions for this entry");
+        b.textContent = "\u22EF";
+        b.addEventListener("click", (e)=>{ e.stopPropagation(); openKebab(b, rowMenuFor(row)); });
+        cell.appendChild(b);
+      });
+    }
+    addKebabs();
+    document.addEventListener("click", ()=> setTimeout(addKebabs, 80), true);
+    // VUI-MNU-005: long-press is the touch trigger for the same menu.
+    let pressTimer = null;
+    document.addEventListener("touchstart", (e)=>{
+      const row = e.target.closest && e.target.closest('[id$="-table-wrap"] tbody tr[data-id]');
+      if (!row) return;
+      pressTimer = setTimeout(()=> openKebab(row, rowMenuFor(row)), 500);
+    }, { passive: true });
+    ["touchend","touchmove","touchcancel"].forEach(ev=>
+      document.addEventListener(ev, ()=>{ clearTimeout(pressTimer); }, { passive: true }));
+
+    /* --- Pull to refresh, six rules --------------------------------------------
+       What it refreshes matters: sync is disabled in the lab by design, so a pull
+       that claimed to sync would be lying. It re-runs the recompute-and-render
+       path instead, which is a real thing this app does on boot and which genuinely
+       changes the screen after an edit on another tab. */
+    (function pullToRefresh(){
+      if (!window.matchMedia("(pointer: coarse)").matches) return;
+      const THRESHOLD = 72, MAX = 110;
+      const track = document.createElement("div");
+      track.className = "ptr-track";
+      const ring = document.createElement("div");
+      ring.className = "ptr-ring";
+      track.appendChild(ring);
+      document.body.appendChild(track);
+
+      let startY = null, pulled = 0, running = false;
+      function setPull(px){
+        pulled = px;
+        track.style.height = px + "px";
+        ring.style.transform = "rotate(" + (px * 3) + "deg)";
+        ring.classList.toggle("is-armed", px >= THRESHOLD);
+      }
+      document.addEventListener("touchstart", (e)=>{
+        if (running || window.scrollY > 0) return;
+        startY = e.touches[0].clientY;
+      }, { passive: true });
+      document.addEventListener("touchmove", (e)=>{
+        if (startY === null || running) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy <= 0){ setPull(0); return; }
+        // VUI-PTR-002: elastic resistance — the content moves less than the finger
+        // the further it is pulled, so the threshold can be felt approaching. A 1:1
+        // drag gives no sense of where the line is.
+        setPull(Math.min(MAX, MAX * (1 - Math.exp(-dy / 140))));
+      }, { passive: true });
+      document.addEventListener("touchend", ()=>{
+        if (startY === null || running) return;
+        startY = null;
+        // VUI-PTR-001: fires past the threshold, never before it, so a stray
+        // scroll cannot reload the list.
+        if (pulled < THRESHOLD){
+          // VUI-PTR-005: settle rather than stop dead.
+          track.style.transition = "height 180ms " + getComputedStyle(document.documentElement).getPropertyValue("--ease-out");
+          setPull(0);
+          setTimeout(()=>{ track.style.transition = ""; }, 200);
+          return;
+        }
+        running = true;
+        ring.classList.add("is-running");     // VUI-PTR-003: same place, hands off
+        setPull(THRESHOLD);
+        // VUI-PTR-006: the list is NEVER locked while this runs. No overlay, no
+        // disabled scroll — the content updates in place underneath.
+        setTimeout(()=>{
+          try{
+            if (typeof recomputeBalances === "function") recomputeBalances();
+            if (typeof renderAll === "function") renderAll();
+            else if (typeof renderTotalMoneyBar === "function") renderTotalMoneyBar();
+          }catch(err){}
+          ring.classList.remove("is-running");
+          track.style.transition = "height 180ms " + getComputedStyle(document.documentElement).getPropertyValue("--ease-out");
+          setPull(0);
+          setTimeout(()=>{ track.style.transition = ""; running = false; }, 200);
+        }, 420);
+      }, { passive: true });
+    })();
+
+  })();
 
 })();
 
