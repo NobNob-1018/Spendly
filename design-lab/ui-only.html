@@ -889,6 +889,17 @@
     font-size: var(--fs-3xs); color: var(--ink-dim); line-height: 1.6;
   }
 
+
+  /* ---------- workspace forms: a grid that keeps its shape ------------------- */
+  .form-grid.form-cols{
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: var(--sp-6) var(--sp-7);
+  }
+  .form-grid.form-cols > .full{ grid-column: 1 / -1; }
+  @media (max-width: 640px){ .form-grid.form-cols{ grid-template-columns: 1fr; } }
+  .form-grid.form-cols label{ margin-bottom: var(--sp-3); }
+  .form-grid.form-cols .amount-wrap input{ padding-left: var(--sp-9); }
+
 </style>
 </head>
 
@@ -1211,7 +1222,7 @@
         <button class="btn btn-ghost btn-sm" id="btn-toggle-loans-given">▾ Collapse</button>
       </div>
       <div id="loans-given-body">
-        <div class="form-grid">
+        <div class="form-grid form-cols">
           <div>
             <label for="lg-person">Borrower's name</label>
             <input type="text" id="lg-person" placeholder="e.g. Jam">
@@ -1255,7 +1266,7 @@
         <button class="btn btn-ghost btn-sm" id="btn-toggle-loans-taken">▾ Collapse</button>
       </div>
       <div id="loans-taken-body">
-        <div class="form-grid">
+        <div class="form-grid form-cols">
           <div>
             <label for="lt-person">Lender's name</label>
             <input type="text" id="lt-person" placeholder="e.g. Mom">
@@ -1299,7 +1310,7 @@
         <button class="btn btn-ghost btn-sm" id="btn-toggle-investments">▾ Collapse</button>
       </div>
       <div id="investments-body">
-        <div class="form-grid">
+        <div class="form-grid form-cols">
           <div>
             <label for="inv-name">What did you invest in?</label>
             <input type="text" id="inv-name" placeholder="e.g. Index fund, BDO stock, land in Cavite">
@@ -1349,7 +1360,7 @@
         <p class="sub">Add every place you keep money — supports flat rates or tiered/capped rates (like Maya Savings) — and see the interest it's projected to earn each month, after tax.</p>
       </header>
 
-      <div class="form-grid">
+      <div class="form-grid form-cols">
         <div>
           <label for="sv-provider">Where is it held?</label>
           <select id="sv-provider"></select>
@@ -1378,7 +1389,7 @@
         <input type="checkbox" id="sv-tiered">
         <label for="sv-tiered">This rate only applies up to a certain amount (tiered — e.g. Maya Savings)</label>
       </div>
-      <div class="form-grid" id="sv-tiered-row" style="display:none; margin-top: var(--sp-6);">
+      <div class="form-grid form-cols" id="sv-tiered-row" style="display:none; margin-top: var(--sp-6);">
         <div>
           <label for="sv-tier-cap">That rate applies up to</label>
           <div class="amount-wrap"><span>₱</span><input type="number" id="sv-tier-cap" placeholder="100000" min="0" step="0.01" value="100000"></div>
@@ -1389,7 +1400,7 @@
         </div>
       </div>
 
-      <div class="form-grid" style="margin-top:12px;">
+      <div class="form-grid form-cols" style="margin-top:12px;">
         <div class="full">
           <label for="sv-tax">Tax on interest (%)</label>
           <input type="number" id="sv-tax" placeholder="20" min="0" max="100" step="0.01" value="20">
@@ -1484,7 +1495,7 @@
       </div>
       <p class="hint" id="currency-sync-status"></p>
 
-      <div class="form-grid">
+      <div class="form-grid form-cols">
         <div>
           <label for="new-currency-code">Currency</label>
           <select id="new-currency-code"></select>
