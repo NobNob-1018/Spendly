@@ -3112,6 +3112,104 @@
   .card:focus-within{ border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
   tbody tr:focus-within{ background: var(--hover); }
   tbody tr:focus-within td{ background: transparent; }
+
+  /* ==========================================================================
+     /ui — the analytical direction. Appended last, where it wins.
+     ========================================================================== */
+
+  /* L2: a scale of its own, sitting between the other two variants — this
+     surface is neither an operations console nor a lounge. */
+  :root{
+    --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 18px; --r-pill: 9999px;
+  }
+  .card, [id$="-table-wrap"]{ border-radius: var(--r-lg); }
+  .tm-hero, .search-panel{ border-radius: var(--r-xl); }
+  .filter-chip, .range-tabs button, .stat-badge, .tag{ border-radius: var(--r-pill); }
+  .card > [id$="-table-wrap"]{ border-radius: 0; }
+
+  /* L2: charts lead. They were two thirds the height of the table below them;
+     on an analytical surface the chart is the content, not an illustration. */
+  .charts-grid{ gap: var(--sp-9); }
+  .chart-box{
+    min-height: 260px;
+    border-radius: var(--r-lg);
+    overflow: hidden;              /* the container clips; the canvas gets no radius */
+  }
+  .chart-box canvas{ border-radius: 0; }
+
+  /* L4 (chart domain): the accessible fallback for a category chart is a visible
+     sortable table with a comparison summary, NOT a colour key. A doughnut that
+     encodes category only as hue is unreadable to anyone who cannot separate the
+     hues, and slow for everyone else — matching twelve legend swatches to twelve
+     arcs is work the table does for free. */
+  .cat-table{
+    width: 100%;
+    margin-top: var(--sp-7);
+    border-collapse: collapse;
+    font-size: var(--fs-sm);
+  }
+  .cat-table th{
+    text-align: left;
+    padding: var(--sp-3) var(--sp-4);
+    font-size: var(--fs-3xs); font-weight: 800; color: var(--ink-dim);
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+    border-bottom: 1px solid var(--line);
+    cursor: pointer; user-select: none;
+    background: transparent;
+  }
+  .cat-table th[aria-sort="descending"], .cat-table th[aria-sort="ascending"]{
+    color: var(--ink);
+  }
+  .cat-table th[aria-sort] .cat-arrow{ opacity: 1; }
+  .cat-arrow{ opacity: 0; margin-left: 4px; font-size: 9px; }
+  .cat-table td{
+    padding: var(--sp-4);
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+  }
+  .cat-table tr:last-child td{ border-bottom: 0; }
+  .cat-table td.cat-name{ color: var(--ink); font-weight: 600; }
+  /* L4: the swatch REPEATS the chart's colour so the two can be matched, but the
+     name is always present — colour is never the only carrier. */
+  .cat-swatch{
+    display: inline-block; width: 9px; height: 9px; margin-right: var(--sp-4);
+    border-radius: 2px; vertical-align: 0;
+  }
+  .cat-table td.num{
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    white-space: nowrap;
+    font-weight: 650;
+  }
+  .cat-table td.cat-share{ width: 34%; }
+  .cat-bar{
+    position: relative; height: 6px; border-radius: 3px;
+    background: var(--line); overflow: hidden;
+  }
+  .cat-bar i{ position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+  .cat-summary{
+    margin-top: var(--sp-5);
+    font-size: var(--fs-sm); color: var(--ink-soft);
+  }
+  .cat-summary strong{ color: var(--ink); font-weight: 700; }
+
+  /* L2: the analytical surface wants its numbers legible at a glance. */
+  td.num, .amount-cell, .stat .value, .tm-value{
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+  [id$="-table-wrap"] tbody tr{ border-bottom: 1px solid var(--line); }
+  [id$="-table-wrap"] tbody tr:last-child{ border-bottom: 0; }
+
+  /* L4 UX guideline (Data Entry / Bulk Actions): selection is already here, so
+     the whole selected region should show it rather than just the checkbox. */
+  [id$="-table-wrap"] tbody tr:has(input[type=checkbox]:checked){
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  [id$="-table-wrap"] tbody tr:has(input[type=checkbox]:checked) td{ background: transparent; }
+
 </style>
 </head>
 
@@ -10687,6 +10785,106 @@
   updateBackupBanner();
   // Charts (and Chart.js) render on first visit to that tab, not on page load —
   // see the tab-click handler and ensureChartJs().
+
+
+    /* --- /ui: the analytical layer ------------------------------------------
+       L4 (ui-ux-pro-max, chart domain, "Compare Categories"): sort descending,
+       never encode category solely by colour, and provide a visible sortable
+       table plus a concise comparison summary as the fallback. The data was
+       already sorted; the table and the summary were not there at all. */
+    (function analyticalLayer(){
+      "use strict";
+
+      let catSort = { key: "amount", dir: "desc" };
+
+      function renderCategoryTable(labels, data, colors){
+        const host = document.getElementById("chart-pie");
+        if (!host) return;
+        const box = host.closest(".chart-box");
+        if (!box || !box.parentElement) return;
+        let wrap = box.parentElement.querySelector(".cat-table-wrap");
+        if (!wrap){
+          wrap = document.createElement("div");
+          wrap.className = "cat-table-wrap";
+          box.parentElement.appendChild(wrap);
+        }
+        if (!labels || !labels.length){ wrap.innerHTML = ""; return; }
+
+        const total = data.reduce((a, b)=> a + b, 0) || 1;
+        const rows = labels.map((l, i)=> ({ name: l, amount: data[i], color: colors[i] }));
+        rows.sort((a, b)=>{
+          const v = catSort.key === "name"
+            ? String(a.name).localeCompare(String(b.name))
+            : a.amount - b.amount;
+          return catSort.dir === "desc" ? -v : v;
+        });
+        const top = rows.reduce((m, r)=> r.amount > m.amount ? r : m, rows[0]);
+        const arrow = k => catSort.key === k ? (catSort.dir === "desc" ? "\u25BC" : "\u25B2") : "";
+        const aria = k => catSort.key === k ? (catSort.dir === "desc" ? "descending" : "ascending") : "none";
+
+        wrap.innerHTML =
+          '<table class="cat-table">'
+          + '<thead><tr>'
+          + '<th data-k="name" aria-sort="' + aria("name") + '">Category<span class="cat-arrow">' + arrow("name") + '</span></th>'
+          + '<th data-k="amount" aria-sort="' + aria("amount") + '">Share<span class="cat-arrow"></span></th>'
+          + '<th data-k="amount" class="num" aria-sort="' + aria("amount") + '" style="text-align:right;">Spent<span class="cat-arrow">' + arrow("amount") + '</span></th>'
+          + '</tr></thead><tbody>'
+          + rows.map(r =>
+              '<tr>'
+              + '<td class="cat-name"><span class="cat-swatch" style="background:' + r.color + '"></span>' + escapeHtml(r.name) + '</td>'
+              + '<td class="cat-share"><span class="cat-bar"><i style="width:' + Math.round((r.amount / total) * 100) + '%;background:' + r.color + '"></i></span></td>'
+              + '<td class="num">' + fmtMoney(r.amount) + '</td>'
+              + '</tr>').join("")
+          + '</tbody></table>'
+          // L4: "a concise comparison summary" — the sentence the chart is making,
+          // written out, so the insight does not depend on reading the arcs.
+          + '<p class="cat-summary"><strong>' + escapeHtml(top.name) + '</strong> is the largest at '
+          + '<strong>' + fmtMoney(top.amount) + '</strong>, '
+          + Math.round((top.amount / total) * 100) + '% of ' + fmtMoney(total)
+          + ' across ' + rows.length + ' categor' + (rows.length === 1 ? "y" : "ies") + '.</p>';
+
+        wrap.querySelectorAll("th[data-k]").forEach(th=>{
+          th.addEventListener("click", ()=>{
+            const k = th.dataset.k;
+            if (catSort.key === k) catSort.dir = catSort.dir === "desc" ? "asc" : "desc";
+            else { catSort.key = k; catSort.dir = k === "name" ? "asc" : "desc"; }
+            renderCategoryTable(labels, data, colors);
+          });
+          // Keyboard: focusable headers, Enter/Space sort, aria-sort reports it.
+          th.tabIndex = 0;
+          th.addEventListener("keydown", (e)=>{
+            if (e.key === "Enter" || e.key === " "){ e.preventDefault(); th.click(); }
+          });
+        });
+      }
+
+      /* The chart is rebuilt on every range change, so the table has to follow it.
+         Intercepting the Chart constructor was the first attempt and did not take:
+         ensureChartJs() assigns window.Chart through a path the property hook never
+         saw. This code runs INSIDE the IIFE, so it can simply wrap the render
+         function that owns both the data and the chart, which is where the coupling
+         belongs anyway. */
+      const _renderCharts = (typeof renderCharts === "function") ? renderCharts : null;
+      if (_renderCharts){
+        renderCharts = function(){
+          const out = _renderCharts.apply(this, arguments);
+          // Read back from the INSTANCE after it draws, so the table can never
+          // disagree with the chart sitting beside it.
+          setTimeout(()=>{
+            try{
+              const inst = (window.Chart && Chart.getChart) ? Chart.getChart("chart-pie") : null;
+              if (inst && inst.data && inst.data.labels && inst.data.labels.length){
+                const ds = inst.data.datasets[0];
+                renderCategoryTable(inst.data.labels, ds.data, ds.backgroundColor);
+              } else {
+                renderCategoryTable([], [], []);
+              }
+            }catch(e){}
+          }, 60);
+          return out;
+        };
+      }
+    })();
 
 })();
 

@@ -3219,6 +3219,129 @@
   .card:focus-within{ border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
   tbody tr:focus-within{ background: var(--hover); }
   tbody tr:focus-within td{ background: transparent; }
+
+  /* ==========================================================================
+     /unai-team — the richer direction, at full strength. Appended last, because
+     this file overrides its own rules in a second block further down.
+     ========================================================================== */
+
+  /* L1 direction + L3 VUI-RAD-001: one scale, mapped to element class, sized for
+     a system that is generous rather than tight. Same rule, larger system. */
+  :root{
+    --r-sm: 8px;     /* chip, badge */
+    --r-md: 14px;    /* button, input */
+    --r-lg: 20px;    /* card, panel */
+    --r-xl: 28px;    /* modal, hero */
+    --r-pill: 9999px;
+    /* Comfortable is the default here, where unai-only defaults to Compact. The
+       same VUI-DEN-002 ladder, a different rung chosen — this is a reading
+       surface, not an operations console. */
+    --row-h: 56px;
+  }
+
+  /* VUI-RAD-003: a pill is a one-line shape. VUI-RAD-002: nested corners are
+     derived, inner = outer - padding, so the 20px card with 20px of padding
+     gives a flush child 0 and an inset child 12. */
+  .card, .tm-hero, .search-panel{ border-radius: var(--r-xl); }
+  .stat, .sv-card, .inv-card, [id$="-table-wrap"]{ border-radius: var(--r-lg); }
+  .card{ padding: var(--sp-9); }
+  .card > [id$="-table-wrap"]{ border-radius: 0; }
+  .filter-chip, .stat-badge, .range-tabs button, .tag{ border-radius: var(--r-pill); }
+  button:focus-visible, a:focus-visible{ border-radius: calc(var(--r-md) + 2px); }
+
+  /* L1: material. Depth is carried by light on a surface, not by a border alone.
+     VUI-COL-001 asks that a gradient ENCODE something; under this direction it
+     encodes elevation, which is something. The 28px badge ramps stay deleted,
+     because a hue ramped into itself across 28px encodes nothing at any size. */
+  .card{
+    background:
+      radial-gradient(140% 120% at 0% 0%, rgb(255 255 255 / .045), transparent 58%),
+      linear-gradient(180deg, color-mix(in srgb, var(--ink) 3%, var(--card)), var(--card) 180px);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / .06),
+      var(--elev-3);
+    border: 1px solid var(--line);
+  }
+  .tm-hero{
+    background:
+      radial-gradient(120% 140% at 12% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 62%),
+      linear-gradient(165deg, var(--accent-light), var(--sunken) 82%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), var(--elev-4);
+  }
+
+  /* L1: room to read. The operator console packs; this one breathes. */
+  .bento{ gap: var(--sp-9); }
+  .stat-row{ gap: var(--sp-7) var(--sp-9); }
+  [id$="-table-wrap"] tbody td{ padding-left: var(--sp-7); padding-right: var(--sp-7); }
+  [id$="-table-wrap"] thead th{ padding-left: var(--sp-7); padding-right: var(--sp-7); }
+  h2{ letter-spacing: -0.015em; }
+  .card > .sub{ margin-bottom: var(--sp-9); }
+
+  /* L4 (ui-ux-pro-max) within L2's constraint: "mono for data, sans for labels"
+     with one embedded family, so weight and tracking carry what a second face
+     would have. Pushed further here than in the exclusive variant, because a
+     calm surface can afford the contrast. */
+  .stat .label, .card > .sub, .filter-chips-label{
+    letter-spacing: .04em;
+  }
+  td.num, .amount-cell, .stat .value, .tm-value, .bd-value{
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    letter-spacing: -0.02em;
+    font-weight: 680;
+  }
+
+  /* L3 VUI-TBL-008: one hairline, hover lights the row. Generous rows make the
+     hairline the only separator that is needed. */
+  [id$="-table-wrap"] tbody tr{ border-bottom: 1px solid var(--line); }
+  [id$="-table-wrap"] tbody tr:last-child{ border-bottom: 0; }
+
+  /* L3 VUI-TBL-014 / VUI-TXT-001: numbers never truncate; prose needs min-width:0
+     before it ever will. */
+  [id$="-table-wrap"] td.num, .amount-cell, .bd-value{ white-space: nowrap; overflow: visible; }
+  [id$="-table-wrap"] td.desc-cell{ max-width: 0; }
+  [id$="-table-wrap"] td.desc-cell > *{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* L3 VUI-STA-001: the whole selectable region shows selection. */
+  [id$="-table-wrap"] tbody tr:has(input[type=checkbox]:checked){
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    box-shadow: inset 4px 0 0 var(--accent);
+  }
+  [id$="-table-wrap"] tbody tr:has(input[type=checkbox]:checked) td{ background: transparent; }
+
+  /* L3 VUI-DIS-002/003: disabled and loading are different, and a disabled label
+     still has to be readable. */
+  button:disabled, button[aria-disabled="true"]{
+    opacity: 1; color: var(--ink-dim);
+    background: var(--sunken); border-color: var(--line);
+    filter: none; cursor: default !important;
+  }
+  button.is-loading{ color: var(--ink-soft); cursor: progress !important; }
+  button.is-loading::after{
+    content: ""; width: 12px; height: 12px; margin-left: var(--sp-3);
+    border: 2px solid currentColor; border-right-color: transparent;
+    border-radius: var(--r-pill); display: inline-block; vertical-align: -2px;
+    animation: spendly-spin 700ms linear infinite;
+  }
+
+  /* L3 VUI-BDG-003/007: a count badge and a status dot are different objects. */
+  .ui-badge{
+    position: absolute; top: -6px; right: -6px;
+    min-width: 19px; height: 19px; padding: 0 5px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; line-height: 1;
+    font-variant-numeric: tabular-nums;
+    border-radius: var(--r-pill);
+    background: var(--negative); color: #0B0D10;
+    box-shadow: 0 0 0 3px var(--card);
+    pointer-events: none;
+  }
+  .has-badge{ position: relative; overflow: visible; }
+
+  /* L5 (Emil): the one expressive moment stays scoped and named. Everything that
+     answers an action is still under the 150ms functional cap. */
+  .tm-hero{ transition: box-shadow var(--dur-express) var(--ease-out); }
+
 </style>
 </head>
 
@@ -10836,6 +10959,111 @@
   updateBackupBanner();
   // Charts (and Chart.js) render on first visit to that tab, not on page load —
   // see the tab-click handler and ensureChartJs().
+
+
+    /* --- /unai-team: the rules CSS cannot reach --------------------------- */
+    (function teamLayer(){
+      "use strict";
+
+      /* L3 VUI-OVL-001/003: the DOCUMENT owns overlay side effects, because only
+         it knows whether another overlay is already open. */
+      let openOverlays = 0, lockedY = 0;
+      const _open = openDialog, _close = closeDialog;
+      openDialog = function(o){
+        if (openOverlays++ === 0){
+          lockedY = window.scrollY;
+          document.body.style.position = "fixed";
+          document.body.style.top = (-lockedY) + "px";
+          document.body.style.left = "0"; document.body.style.right = "0";
+          document.body.style.overflow = "hidden";
+        }
+        return _open(o);
+      };
+      closeDialog = function(o){
+        if (openOverlays > 0 && --openOverlays === 0){
+          document.body.style.position = ""; document.body.style.top = "";
+          document.body.style.left = ""; document.body.style.right = "";
+          document.body.style.overflow = "";
+          window.scrollTo(0, lockedY);
+        }
+        return _close(o);
+      };
+
+      /* L3 VUI-SCR-001: scroll position saved and restored per tab. */
+      const byTab = Object.create(null);
+      let last = null;
+      document.addEventListener("click", (e)=>{
+        const b = e.target.closest && e.target.closest("[data-tab]");
+        if (b && last) byTab[last] = window.scrollY;
+      }, true);
+      const _activate = (typeof activateTab === "function") ? activateTab : null;
+      if (_activate){
+        activateTab = function(name){
+          const r = _activate.apply(this, arguments);
+          last = name;
+          const y = byTab[name];
+          if (typeof y === "number") requestAnimationFrame(()=> window.scrollTo(0, y));
+          return r;
+        };
+      }
+
+      /* L3 VUI-SEL-004: shift-click selects a range. */
+      const anchor = Object.create(null);
+      document.addEventListener("click", (e)=>{
+        const box = e.target;
+        if (!box || box.type !== "checkbox") return;
+        const row = box.closest("tr[data-id]"); if (!row) return;
+        const wrap = row.closest('[id$="-table-wrap"]'); if (!wrap) return;
+        const rows = [...wrap.querySelectorAll("tbody tr[data-id]")];
+        const i = rows.indexOf(row), prev = anchor[wrap.id];
+        if (e.shiftKey && typeof prev === "number" && prev !== i){
+          const lo = Math.min(prev, i), hi = Math.max(prev, i), want = box.checked;
+          for (let k = lo; k <= hi; k++){
+            const cb = rows[k].querySelector('input[type=checkbox]');
+            if (cb && cb.checked !== want){ cb.checked = want; cb.dispatchEvent(new Event("change", { bubbles:true })); }
+          }
+        }
+        anchor[wrap.id] = i;
+      }, true);
+
+      /* L3 VUI-SEL-002: the partial box selects everything; it never clears. */
+      document.addEventListener("mousedown", (e)=>{
+        const b = e.target;
+        if (b && b.type === "checkbox" && b.indeterminate) b.checked = false;
+      }, true);
+
+      /* L3 VUI-BDG-001/004/006: badge only what needs a decision — overdue money. */
+      function paintBadge(){
+        const tab = document.querySelector('[data-tab="loans"]');
+        if (!tab) return;
+        tab.classList.add("has-badge");
+        const today = todayISO();
+        const due = l => l && l.status === "outstanding" && l.deadline && l.deadline < today;
+        const n = loansGiven.filter(due).length + loansTaken.filter(due).length;
+        let b = tab.querySelector(".ui-badge");
+        if (!n){ if (b) b.remove(); return; }
+        if (!b){ b = document.createElement("span"); b.className = "ui-badge"; tab.appendChild(b); }
+        b.textContent = n > 99 ? "99+" : String(n);
+        b.setAttribute("aria-label", n + " overdue");
+      }
+      paintBadge();
+      document.addEventListener("click", ()=> setTimeout(paintBadge, 60), true);
+
+      /* L3 VUI-DIS-002: disabled and loading are different states. */
+      ["btn-sync", "btn-sync-now", "btn-check-update"].forEach(id=>{
+        const el = document.getElementById(id); if (!el) return;
+        new MutationObserver(()=>{
+          el.classList.toggle("is-loading", el.disabled);
+          if (el.disabled) el.setAttribute("aria-busy","true"); else el.removeAttribute("aria-busy");
+        }).observe(el, { attributes:true, attributeFilter:["disabled"] });
+      });
+
+      /* L1 direction: Comfortable is this variant's default rung, so a first run
+         lands on the reading density rather than the scanning one. */
+      if (typeof applyDensity === "function" && !(uiPrefs && uiPrefs.density)){
+        applyDensity("comfortable");
+      }
+    })();
 
 })();
 
