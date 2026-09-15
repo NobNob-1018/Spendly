@@ -881,6 +881,52 @@
   }
   .panel-head.is-chapter .section-head-row{ margin: var(--sp-6) 0 0; }
 
+
+  /* ---------- the month so far, as one sentence ------------------------------ */
+  #run-card{ background: var(--raised); }
+  .run-line{
+    margin: 0; font-size: var(--fs-lg); line-height: 1.7; color: var(--ink-soft);
+  }
+  .run-line strong{ color: var(--ink); font-weight: 700; }
+
+  /* ---------- targets --------------------------------------------------------- */
+  .tgt-list{ display: flex; flex-direction: column; gap: var(--sp-8); }
+  .tgt-row{ padding-bottom: var(--sp-7); border-bottom: 1px solid var(--line); }
+  .tgt-row:last-child{ border-bottom: 0; padding-bottom: 0; }
+  .tgt-head{ display: flex; align-items: center; justify-content: space-between; gap: var(--sp-6); }
+  .tgt-name{ font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.015em; }
+  .tgt-input{ flex: 0 0 auto; }
+  .tgt-input input{ width: 130px; }
+  .tgt-track{
+    position: relative; height: 8px; margin: var(--sp-6) 0 var(--sp-5);
+    background: var(--line); border-radius: 4px; overflow: hidden;
+  }
+  .tgt-fill{
+    position: absolute; inset: 0 auto 0 0; border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+  }
+  .tgt-row.is-warn .tgt-fill{ background: linear-gradient(90deg, color-mix(in srgb, var(--warn) 55%, transparent), var(--warn)); }
+  .tgt-row.is-over .tgt-fill{ background: linear-gradient(90deg, color-mix(in srgb, var(--negative) 55%, transparent), var(--negative)); }
+  /* The pace mark: where the month itself has got to. */
+  .tgt-pace{
+    position: absolute; top: -3px; bottom: -3px; width: 2px;
+    background: var(--ink-soft); opacity: .55; border-radius: 1px;
+  }
+  .tgt-verdict{ margin: 0; font-size: var(--fs-sm); color: var(--ink-soft); line-height: 1.6; }
+  .tgt-verdict strong{ color: var(--ink); }
+  .tgt-row.is-over .tgt-verdict strong{ color: var(--negative); }
+  .tgt-key{ margin: var(--sp-8) 0 0; font-size: var(--fs-3xs); color: var(--ink-dim); line-height: 1.6; }
+
+  /* ---------- the margin ------------------------------------------------------ */
+  #margin-note{ font-family: inherit; font-size: var(--fs-md); line-height: 1.7; }
+  .margin-meta{ margin: var(--sp-5) 0 0; font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .margin-jump{
+    background: transparent; border: 1px solid var(--line); border-radius: var(--r-pill);
+    padding: 1px var(--sp-4); margin-right: var(--sp-3);
+    color: var(--ink-soft); font: inherit; font-size: var(--fs-3xs); cursor: pointer;
+  }
+  .margin-jump:hover{ color: var(--accent); border-color: var(--accent-deep); }
+
 </style>
 </head>
 
@@ -8901,6 +8947,231 @@
       mountAll();
       // The dashboard is re-rendered on tab changes, so re-mount if it was wiped.
       document.addEventListener("click", () => setTimeout(mountAll, 160), true);
+    })();
+
+
+    /* ======================================================================
+       READING FEATURES, ROUND TWO — /unai-team ledger
+       Targets written as intentions rather than gauges, a running commentary
+       on the month so far, and a place to write down why a month went the way
+       it did. A ledger is a record you keep, and a record has margins.
+       ====================================================================== */
+    (function ledgerFeaturesTwo(){
+      "use strict";
+
+      const TARGETS_KEY = "targets";
+      const NOTES_KEY = "monthNotes";
+      const readTargets = () => {
+        try { return JSON.parse((uiPrefs && uiPrefs[TARGETS_KEY]) || "{}"); }
+        catch (e) { return {}; }
+      };
+      const writeTargets = t => setUiPref(TARGETS_KEY, JSON.stringify(t));
+      const readNotes = () => {
+        try { return JSON.parse((uiPrefs && uiPrefs[NOTES_KEY]) || "{}"); }
+        catch (e) { return {}; }
+      };
+      const writeNotes = n => setUiPref(NOTES_KEY, JSON.stringify(n));
+
+      const thisMonth = () => todayISO().slice(0, 7);
+      const spentThisMonth = cat => {
+        const k = thisMonth();
+        return round2(expenses
+          .filter(e => String(e.date).slice(0, 7) === k && (!cat || e.category === cat))
+          .reduce((t, e) => t + e.amount, 0));
+      };
+
+      /* How far through the month we are, which is what turns "you have spent
+         60% of it" from an alarm into a fact. Two thirds of the way through a
+         month, two thirds of a budget is exactly on pace. */
+      function monthProgress(){
+        const now = new Date();
+        const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        return { day: now.getDate(), days, pct: now.getDate() / days };
+      }
+
+      /* ---------- targets, written as intentions --------------------------
+         The app already has budgets, which are a number and a bar. A target
+         here is the same number said as a sentence, with the pace written out,
+         because "on pace" is the useful part and a bar cannot say it. */
+      function buildTargets(){
+        const t = readTargets();
+        const { day, days, pct } = monthProgress();
+        const cats = categories.slice();
+
+        const rows = cats.map(c => {
+          const target = Number(t[c]) || 0;
+          const spent = spentThisMonth(c);
+          if (!target && !spent) return "";
+          const share = target > 0 ? spent / target : null;
+          const pace = target > 0 ? round2(target * pct) : null;
+          const verdict = target === 0
+            ? `No target set. <strong>${fmtMoney(spent)}</strong> so far.`
+            : share > 1
+              ? `Over by <strong>${fmtMoney(round2(spent - target))}</strong>.`
+              : spent > pace
+                ? `<strong>${fmtMoney(spent)}</strong> of ${fmtMoney(target)} — ahead of pace by ${fmtMoney(round2(spent - pace))}.`
+                : `<strong>${fmtMoney(spent)}</strong> of ${fmtMoney(target)} — ${fmtMoney(round2(target - spent))} left, and ${days - day} day${days - day === 1 ? "" : "s"} to go.`;
+
+          return `
+            <div class="tgt-row ${share > 1 ? "is-over" : (share !== null && spent > pace ? "is-warn" : "")}">
+              <div class="tgt-head">
+                <span class="tgt-name">${escapeHtml(c)}</span>
+                <div class="amount-wrap tgt-input">
+                  <span>₱</span>
+                  <input type="number" min="0" step="1" value="${target || ""}"
+                         placeholder="no target" data-target-for="${escapeHtml(c)}">
+                </div>
+              </div>
+              ${target > 0 ? `
+                <div class="tgt-track">
+                  <i class="tgt-fill" style="width:${Math.min(100, Math.round(share * 100))}%"></i>
+                  <i class="tgt-pace" style="left:${Math.round(pct * 100)}%" title="Where the month is"></i>
+                </div>` : ""}
+              <p class="tgt-verdict">${verdict}</p>
+            </div>`;
+        }).filter(Boolean).join("");
+
+        return rows
+          ? `<div class="tgt-list">${rows}</div>
+             <p class="tgt-key">The pale mark on each bar is how far through the month you are, so
+                a bar behind it is on pace and a bar past it is not.</p>`
+          : `<p class="stm-empty">Set a target beside any category to start tracking it.</p>`;
+      }
+
+      function mountTargets(){
+        const panel = document.getElementById("tab-dashboard");
+        if (!panel || panel.querySelector("#tgt-card")) return;
+        const card = document.createElement("div");
+        card.className = "card";
+        card.id = "tgt-card";
+        card.innerHTML = `
+          <header class="panel-head is-chapter">
+            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg></span>Targets</h2>
+            <p class="sub">What you meant to spend, against what you have. The month is only part
+               spent, so the pace matters more than the total.</p>
+          </header>
+          <div id="tgt-body"></div>`;
+        panel.appendChild(card);
+        const body = card.querySelector("#tgt-body");
+        const draw = () => {
+          body.innerHTML = buildTargets();
+          body.querySelectorAll("[data-target-for]").forEach(inp => {
+            inp.addEventListener("change", () => {
+              const t = readTargets();
+              const cat = inp.dataset.targetFor;
+              const v = parseFloat(inp.value);
+              if (!isFinite(v) || v <= 0) delete t[cat]; else t[cat] = round2(v);
+              writeTargets(t);
+              draw();
+              showToast(t[cat] ? `Target for ${cat} set to ${fmtMoney(t[cat])}.` : `Target for ${cat} cleared.`);
+            });
+          });
+        };
+        draw();
+      }
+
+      /* ---------- the month so far, as a sentence -------------------------
+         One line at the top of the document that says where the month stands.
+         It is the thing a person actually wants to know on opening the app,
+         and it was previously spread across four separate figures. */
+      function buildRunning(){
+        const { day, days, pct } = monthProgress();
+        const spent = spentThisMonth(null);
+        const k = thisMonth();
+        const earned = round2(incomes.filter(i => String(i.date).slice(0, 7) === k)
+          .reduce((t, i) => t + i.amount, 0));
+
+        // Last month at the same point, which is the only fair comparison
+        // partway through: comparing a half month to a whole one is nonsense.
+        const d = new Date(k + "-01T00:00:00");
+        d.setMonth(d.getMonth() - 1);
+        const prevKey = d.toISOString().slice(0, 7);
+        const prevToDate = round2(expenses
+          .filter(e => String(e.date).slice(0, 7) === prevKey && Number(String(e.date).slice(8, 10)) <= day)
+          .reduce((t, e) => t + e.amount, 0));
+
+        const diff = prevToDate > 0 ? round2(spent - prevToDate) : null;
+        const projected = pct > 0 ? round2(spent / pct) : spent;
+
+        return `
+          <p class="run-line">
+            <strong>Day ${day} of ${days}.</strong>
+            You have spent <strong>${fmtMoney(spent)}</strong> and taken in
+            <strong>${fmtMoney(earned)}</strong>.
+            ${diff !== null
+              ? `By this point last month it was <strong>${fmtMoney(prevToDate)}</strong> —
+                 you are ${diff > 0 ? "ahead by" : "behind by"} <strong>${fmtMoney(Math.abs(diff))}</strong>.`
+              : `There is no comparable stretch of last month recorded.`}
+            At this rate the month closes near <strong>${fmtMoney(projected)}</strong>.
+          </p>`;
+      }
+
+      function mountRunning(){
+        const panel = document.getElementById("tab-dashboard");
+        if (!panel || panel.querySelector("#run-card")) return;
+        const card = document.createElement("div");
+        card.className = "card";
+        card.id = "run-card";
+        card.innerHTML = `<div id="run-body"></div>`;
+        panel.insertBefore(card, panel.firstChild);
+        card.querySelector("#run-body").innerHTML = buildRunning();
+      }
+
+      /* ---------- the margin ----------------------------------------------
+         A record has margins. This is where the reason a month went the way it
+         did gets written down, kept per month, so next year it still says why. */
+      function mountMargin(){
+        const panel = document.getElementById("tab-dashboard");
+        if (!panel || panel.querySelector("#margin-card")) return;
+        const notes = readNotes();
+        const k = thisMonth();
+        const card = document.createElement("div");
+        card.className = "card";
+        card.id = "margin-card";
+        card.innerHTML = `
+          <header class="panel-head is-chapter">
+            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v13l-4 4H4z"/><path d="M16 21v-4h4"/><path d="M8 9h8M8 13h5"/></svg></span>In the margin</h2>
+            <p class="sub">Why this month went the way it did. Figures record what happened;
+               this is the only place that records why.</p>
+          </header>
+          <textarea id="margin-note" rows="4" placeholder="A note to your future self about ${escapeHtml(k)}…">${escapeHtml(notes[k] || "")}</textarea>
+          <p class="margin-meta" id="margin-meta"></p>`;
+        panel.appendChild(card);
+
+        const ta = card.querySelector("#margin-note");
+        const meta = card.querySelector("#margin-meta");
+        const paintMeta = () => {
+          const all = readNotes();
+          const others = Object.keys(all).filter(m => m !== k && all[m]).sort().reverse();
+          meta.innerHTML = others.length
+            ? `Earlier notes: ${others.slice(0, 6).map(m => `<button class="margin-jump" data-m="${m}">${escapeHtml(m)}</button>`).join(" ")}`
+            : `Saved as you type, kept per month.`;
+          meta.querySelectorAll(".margin-jump").forEach(b => {
+            b.addEventListener("click", () => {
+              const all2 = readNotes();
+              ta.value = all2[b.dataset.m] || "";
+              ta.dataset.viewing = b.dataset.m;
+              showToast(`Showing the note for ${b.dataset.m}. Editing it writes to that month.`);
+            });
+          });
+        };
+        let timer = null;
+        ta.addEventListener("input", () => {
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            const all = readNotes();
+            const key = ta.dataset.viewing || k;
+            if (ta.value.trim()) all[key] = ta.value; else delete all[key];
+            writeNotes(all);
+            paintMeta();
+          }, 500);
+        });
+        paintMeta();
+      }
+
+      function mountAll(){ mountRunning(); mountTargets(); mountMargin(); }
+      mountAll();
+      document.addEventListener("click", () => setTimeout(mountAll, 170), true);
     })();
 
 })();
