@@ -2390,8 +2390,11 @@
     border:1px solid var(--line);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
   }
+  /* VUI-COL-001, at the end of the sheet where it actually takes effect: an
+     identical selector earlier was being overridden here, so flattening the
+     gradient up there changed nothing on screen. */
   .stat.is-primary{
-    background: linear-gradient(150deg, var(--accent-light), var(--sunken) 78%);
+    background: var(--accent-light);
     border-color: color-mix(in srgb, var(--accent) 26%, var(--line));
   }
   .card{ background: linear-gradient(180deg, color-mix(in srgb, var(--ink) 2%, var(--card)), var(--card) 120px); }
