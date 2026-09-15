@@ -923,6 +923,117 @@
   /* Investments stay a table here. The gain/loss figures still need their hue. */
   .pl-figure.is-gain{ color: var(--positive); } .pl-figure.is-loss{ color: var(--negative); }
 
+
+  /* ---------- command palette ------------------------------------------------
+     The console's front door. Squared off like everything else, because a
+     rounded floating card would be the one soft object on a hard surface. */
+  .cmdk{
+    display:none; position:fixed; inset:0; z-index:9995;
+    background: rgb(4 6 9 / .72);
+    align-items:flex-start; justify-content:center;
+    padding: 12vh var(--sp-7) var(--sp-7);
+  }
+  .cmdk.show{ display:flex; }
+  .cmdk-panel{
+    width:100%; max-width:620px; max-height:64vh;
+    display:flex; flex-direction:column; overflow:hidden;
+    background: var(--over); border:1px solid var(--line-strong);
+  }
+  .cmdk-head{
+    display:flex; align-items:center; gap: var(--sp-5);
+    padding: var(--sp-5) var(--sp-6);
+    border-bottom:1px solid var(--line);
+  }
+  .cmdk-prompt{ color: var(--accent); font-weight:800; font-size: var(--fs-lg); line-height:1; }
+  .cmdk-head input{
+    flex:1; height:28px; border:0; background:transparent; padding:0;
+    font-size: var(--fs-lg); color: var(--ink);
+  }
+  .cmdk-head input:focus{ outline:none; }
+  .cmdk-list{ overflow-y:auto; flex:1; }
+  .cmdk-row{
+    display:grid; grid-template-columns: 76px minmax(0,1fr) auto auto;
+    align-items:center; gap: var(--sp-5);
+    width:100%; padding: var(--sp-4) var(--sp-6);
+    background:transparent; border:0; border-bottom:1px solid var(--line);
+    color: var(--ink); font:inherit; font-size: var(--fs-sm);
+    text-align:left; cursor:pointer;
+  }
+  .cmdk-row.is-active{ background: var(--accent-light); box-shadow: inset 2px 0 0 var(--accent); }
+  .cmdk-kind{
+    font-size: var(--fs-3xs); font-weight:800; color: var(--ink-dim);
+    text-transform:uppercase; letter-spacing: var(--track-caps);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .cmdk-label{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cmdk-amt{ font-variant-numeric: tabular-nums; font-weight:700; white-space:nowrap; }
+  .cmdk-meta{ font-size: var(--fs-3xs); color: var(--ink-dim); white-space:nowrap; }
+  .cmdk-empty{ padding: var(--sp-9); text-align:center; color: var(--ink-dim); font-size: var(--fs-sm); }
+  .cmdk-foot{
+    display:flex; align-items:center; gap: var(--sp-7);
+    padding: var(--sp-4) var(--sp-6);
+    border-top:1px solid var(--line);
+    font-size: var(--fs-3xs); color: var(--ink-dim);
+  }
+  .cmdk-foot #cmdk-count{ margin-left:auto; font-variant-numeric: tabular-nums; }
+
+  /* ---------- keyboard cheat sheet ------------------------------------------ */
+  .kbd-sheet{
+    display:none; position:fixed; inset:0; z-index:9996;
+    background: rgb(4 6 9 / .72);
+    align-items:center; justify-content:center; padding: var(--sp-7);
+  }
+  .kbd-sheet.show{ display:flex; }
+  .kbd-sheet-panel{
+    width:100%; max-width:460px; padding: var(--sp-9);
+    background: var(--over); border:1px solid var(--line-strong);
+  }
+  .kbd-sheet-panel h2{
+    margin:0 0 var(--sp-7); font-size: var(--fs-2xs); font-weight:800;
+    color: var(--ink-soft); text-transform:uppercase; letter-spacing: var(--track-caps);
+  }
+  .kbd-sheet-panel dl{ margin:0; display:flex; flex-direction:column; gap: var(--sp-4); }
+  .kbd-sheet-panel dl > div{ display:flex; align-items:center; gap: var(--sp-6); }
+  .kbd-sheet-panel dt{ flex:0 0 130px; display:flex; gap: var(--sp-2); }
+  .kbd-sheet-panel dd{ margin:0; font-size: var(--fs-sm); color: var(--ink-soft); }
+  .kbd-sheet-foot{ margin: var(--sp-9) 0 0; font-size: var(--fs-3xs); color: var(--ink-dim); }
+
+  /* ---------- column chooser ------------------------------------------------ */
+  .colpick-btn{ margin-bottom: var(--sp-4); }
+  .colpick{
+    position:fixed; z-index:9994; min-width:190px; padding: var(--sp-4);
+    background: var(--over); border:1px solid var(--line-strong);
+  }
+  .colpick-title{
+    padding: var(--sp-2) var(--sp-4) var(--sp-4);
+    font-size: var(--fs-3xs); font-weight:800; color: var(--ink-dim);
+    text-transform:uppercase; letter-spacing: var(--track-caps);
+  }
+  .colpick-row{
+    display:flex; align-items:center; gap: var(--sp-5);
+    padding: var(--sp-3) var(--sp-4); margin:0;
+    font-size: var(--fs-sm); color: var(--ink); cursor:pointer;
+    text-transform:none; letter-spacing:0; font-weight:500;
+  }
+  .colpick-row:hover{ background: var(--raised); }
+
+  /* ---------- quick-add line ------------------------------------------------ */
+  .quickadd{
+    display:flex; align-items:center; gap: var(--sp-5);
+    padding: var(--sp-5) var(--sp-6); margin-bottom: var(--sp-5);
+    background: var(--sunken); border:1px solid var(--line);
+    flex-wrap:wrap;
+  }
+  .quickadd-prompt{ color: var(--accent); font-weight:800; font-size: var(--fs-lg); line-height:1; }
+  .quickadd input{
+    flex:1; min-width:200px; height:30px;
+    background:transparent; border:0; border-bottom:1px solid var(--line);
+    border-radius:0; font-size: var(--fs-sm);
+  }
+  .quickadd input:focus{ border-bottom-color: var(--accent); outline:none; }
+  .quickadd-hint{ font-size: var(--fs-3xs); color: var(--ink-dim); flex-basis:100%; }
+  @media (max-width: 720px){ .quickadd-hint{ display:none; } }
+
 </style>
 </head>
 
@@ -1416,8 +1527,7 @@
       <button data-settings="info">About</button>
     </div>
 
-    <p class="settings-section-label" data-settings-group="appearance">Appearance</p>
-    <div class="card">
+    <div data-settings-group="appearance" class="card">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>Table density</h2>
       <p class="sub">Compact tightens spacing across tables, cards and lists so more fits on screen. Your data is unchanged.</p>
       <div class="range-tabs" id="density-toggle" style="display:inline-flex;">
@@ -1427,15 +1537,13 @@
       </div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="sync">Sync</p>
-    <div class="card">
+    <div data-settings-group="sync" class="card">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span>Sync between devices</h2>
       <p class="sub">Off by default. With it off, nothing ever leaves this device — that is still the point of Spendly.</p>
       <div id="sync-body"></div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="budgeting">Budgeting &amp; categories</p>
-    <div class="card">
+    <div data-settings-group="budgeting" class="card">
       <div class="section-head-row">
         <div>
           <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span>Monthly budgets</h2>
@@ -1461,8 +1569,7 @@
       </div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="trackers">Trackers</p>
-    <div class="card">
+    <div data-settings-group="trackers" class="card">
       <div class="section-head-row">
         <div>
           <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 3 21 7 17 11"/><line x1="3" y1="7" x2="21" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="21" y1="17" x2="3" y2="17"/></svg></span>Currency tracker</h2>
@@ -1500,8 +1607,7 @@
       <div id="crypto-list"></div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="backup">Backup &amp; restore</p>
-    <div class="card">
+    <div data-settings-group="backup" class="card">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>Backup &amp; restore</h2>
       <p class="sub">Sync keeps your devices holding the same records. A backup is the copy you keep
          yourself — for moving somewhere new, or for the day something goes wrong.</p>
@@ -1514,8 +1620,7 @@
       <input type="file" id="file-import" accept=".json,.csv" style="display:none;">
     </div>
 
-    <p class="settings-section-label" data-settings-group="info">App info</p>
-    <div class="card is-supporting">
+    <div data-settings-group="info" class="card is-supporting">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"/></svg></span>About</h2>
       <p class="sub">Spendly is a single self-contained file — everything you enter stays on this device only. Use the ⇅ button in the sidebar any time to export a backup or import one.</p>
       <p class="hint" style="margin-bottom:10px;">This build: <strong id="app-build">—</strong></p>
@@ -8984,6 +9089,369 @@
     })();
 
   })();
+
+
+    /* ======================================================================
+       OPERATOR FEATURES — /unai console
+       Four things a console has and a page does not: a command palette, a
+       keyboard layer that tells you about itself, tables whose columns you
+       choose, and a way to enter a record without leaving the keyboard.
+       ====================================================================== */
+    (function operatorFeatures(){
+      "use strict";
+
+      /* ---------- shared: fuzzy match ------------------------------------
+         Subsequence match with a score, so "jlb" finds "Jollibee lunch" and
+         a run of adjacent letters beats a scattered one. Cheap enough to run
+         over every record on each keystroke, which is what makes it feel
+         instant rather than debounced. */
+      function fuzzy(needle, hay){
+        if (!needle) return { hit: true, score: 0 };
+        const n = needle.toLowerCase(), h = String(hay || "").toLowerCase();
+        let i = 0, score = 0, run = 0, firstAt = -1;
+        for (let k = 0; k < h.length && i < n.length; k++){
+          if (h[k] === n[i]){
+            if (firstAt < 0) firstAt = k;
+            run++; score += 1 + run;          // adjacency pays
+            if (k === 0 || h[k-1] === " ") score += 5;   // word starts pay more
+            i++;
+          } else run = 0;
+        }
+        if (i < n.length) return { hit: false, score: 0 };
+        return { hit: true, score: score - firstAt * 0.1 };
+      }
+
+      /* ---------- 1. the command palette --------------------------------
+         Actions and records in one list. The point of a console is that you
+         never have to know WHERE a thing is, only what it is called. */
+      let palette = null, paletteRows = [], paletteIndex = 0;
+
+      function paletteActions(){
+        const go = t => ({ label: "Go to " + t[0].toUpperCase() + t.slice(1), kind: "Navigate", run(){ activateTab(t); } });
+        const acts = ["dashboard","charts","history","savings","loans","settings"].map(go);
+        acts.push(
+          { label: "Add an expense", kind: "Create", run(){ activateTab("add"); const m=document.querySelector('#entry-mode-toggle button[data-mode="expense"]'); if(m) m.click(); setTimeout(()=>{ const f=document.getElementById("in-desc"); if(f) f.focus(); }, 120); } },
+          { label: "Add income", kind: "Create", run(){ activateTab("add"); const m=document.querySelector('#entry-mode-toggle button[data-mode="income"]'); if(m) m.click(); } },
+          { label: "Density: Compact", kind: "View", run(){ applyDensity("compact"); setUiPref("density","compact"); } },
+          { label: "Density: Default", kind: "View", run(){ applyDensity("default"); setUiPref("density","default"); } },
+          { label: "Density: Comfortable", kind: "View", run(){ applyDensity("comfortable"); setUiPref("density","comfortable"); } },
+          { label: "Back up everything (JSON)", kind: "Data", run(){ const b=document.getElementById("btn-export-json"); if(b) b.click(); } },
+          { label: "Export for Excel / Sheets", kind: "Data", run(){ const b=document.getElementById("btn-export-csv"); if(b) b.click(); } },
+          { label: "Keyboard shortcuts", kind: "Help", run(){ showShortcuts(); } }
+        );
+        return acts;
+      }
+
+      function paletteRecords(){
+        const out = [];
+        const push = (list, kind, label, tab) => {
+          (list || []).slice(0, 400).forEach(r=>{
+            out.push({
+              label: label(r), kind, meta: r.date || r.dateGiven || r.dateTaken || "",
+              amount: r.amount,
+              run(){ activateTab(tab); }
+            });
+          });
+        };
+        push(expenses, "Expense", r=>r.description || "(no description)", "history");
+        push(incomes, "Income", r=>r.description || "(no description)", "history");
+        push(loansGiven, "Lent", r=>r.person, "loans");
+        push(loansTaken, "Borrowed", r=>r.person, "loans");
+        push(savings, "Account", r=>r.provider, "savings");
+        push(investments, "Investment", r=>r.name, "loans");
+        return out;
+      }
+
+      function buildPalette(){
+        if (palette) return palette;
+        palette = document.createElement("div");
+        palette.className = "cmdk";
+        palette.innerHTML =
+          '<div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="Command palette">'
+          + '<div class="cmdk-head">'
+          +   '<span class="cmdk-prompt">&rsaquo;</span>'
+          +   '<input id="cmdk-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type a command, or search everything…">'
+          +   '<span class="kbd">Esc</span>'
+          + '</div>'
+          + '<div class="cmdk-list" id="cmdk-list" role="listbox"></div>'
+          + '<div class="cmdk-foot">'
+          +   '<span><span class="kbd">↑</span><span class="kbd">↓</span> move</span>'
+          +   '<span><span class="kbd">↵</span> run</span>'
+          +   '<span id="cmdk-count"></span>'
+          + '</div>'
+          + '</div>';
+        document.body.appendChild(palette);
+        palette.addEventListener("pointerdown", e=>{ if (e.target === palette) closePalette(); });
+        palette.querySelector("#cmdk-input").addEventListener("input", renderPalette);
+        return palette;
+      }
+
+      function renderPalette(){
+        const q = palette.querySelector("#cmdk-input").value.trim();
+        const pool = paletteActions().concat(q ? paletteRecords() : []);
+        paletteRows = pool
+          .map(r=>({ r, m: fuzzy(q, r.label) }))
+          .filter(x=>x.m.hit)
+          .sort((a,b)=> b.m.score - a.m.score)
+          .slice(0, 40)
+          .map(x=>x.r);
+        paletteIndex = 0;
+        const list = palette.querySelector("#cmdk-list");
+        list.innerHTML = paletteRows.length
+          ? paletteRows.map((r,i)=>
+              '<button class="cmdk-row' + (i===0?' is-active':'') + '" role="option" data-i="'+i+'">'
+              + '<span class="cmdk-kind">'+escapeHtml(r.kind)+'</span>'
+              + '<span class="cmdk-label">'+escapeHtml(r.label)+'</span>'
+              + (r.amount != null ? '<span class="cmdk-amt">'+fmtMoney(r.amount)+'</span>' : '')
+              + (r.meta ? '<span class="cmdk-meta">'+escapeHtml(r.meta)+'</span>' : '')
+              + '</button>').join("")
+          : '<div class="cmdk-empty">Nothing matches “'+escapeHtml(q)+'”.</div>';
+        palette.querySelector("#cmdk-count").textContent =
+          paletteRows.length ? paletteRows.length + (paletteRows.length === 1 ? " result" : " results") : "";
+        list.querySelectorAll(".cmdk-row").forEach(b=>{
+          b.addEventListener("click", ()=>{ runPalette(Number(b.dataset.i)); });
+        });
+      }
+
+      function movePalette(d){
+        if (!paletteRows.length) return;
+        paletteIndex = (paletteIndex + d + paletteRows.length) % paletteRows.length;
+        const rows = palette.querySelectorAll(".cmdk-row");
+        rows.forEach((b,i)=> b.classList.toggle("is-active", i === paletteIndex));
+        const active = rows[paletteIndex];
+        if (active) active.scrollIntoView({ block: "nearest" });
+      }
+      function runPalette(i){
+        const row = paletteRows[i == null ? paletteIndex : i];
+        closePalette();
+        if (row) setTimeout(()=>{ try{ row.run(); }catch(e){} }, 0);
+      }
+      function openPalette(){
+        buildPalette();
+        palette.classList.add("show");
+        const input = palette.querySelector("#cmdk-input");
+        input.value = "";
+        renderPalette();
+        input.focus();
+      }
+      function closePalette(){
+        if (!palette) return;
+        palette.classList.remove("show");
+        // Surrender focus. A hidden input that still holds it makes the typing
+        // guard below swallow every shortcut on the page.
+        const inp = palette.querySelector("#cmdk-input");
+        if (inp && document.activeElement === inp) inp.blur();
+      }
+
+      /* ---------- 2. the keyboard layer, which explains itself ------------
+         VUI-KBD-001 says every action displays its own shortcut in place. The
+         corollary for a console is that the whole set has to be reachable, so
+         "?" prints it. */
+      const SHORTCUTS = [
+        ["Ctrl / ⌘  K", "Command palette"],
+        ["/",               "Search everything"],
+        ["?",               "This list"],
+        ["G then D",        "Dashboard"],
+        ["G then H",        "History"],
+        ["G then S",        "Savings"],
+        ["G then L",        "Loans & invest"],
+        ["G then C",        "Charts"],
+        ["G then ,",        "Settings"],
+        ["A",               "Add an expense"],
+        ["Esc",             "Close whatever is open"]
+      ];
+      let sheet = null;
+      function showShortcuts(){
+        if (!sheet){
+          sheet = document.createElement("div");
+          sheet.className = "kbd-sheet";
+          sheet.innerHTML =
+            '<div class="kbd-sheet-panel" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">'
+            + '<h2>Keyboard</h2>'
+            + '<dl>' + SHORTCUTS.map(([k,v])=>
+                '<div><dt>'+k.split("  ").map(p=>'<span class="kbd">'+escapeHtml(p)+'</span>').join(" ")+'</dt><dd>'+escapeHtml(v)+'</dd></div>'
+              ).join("") + '</dl>'
+            + '<p class="kbd-sheet-foot">Press <span class="kbd">Esc</span> to close.</p>'
+            + '</div>';
+          document.body.appendChild(sheet);
+          sheet.addEventListener("pointerdown", e=>{ if (e.target === sheet) sheet.classList.remove("show"); });
+        }
+        sheet.classList.add("show");
+      }
+
+      let gPending = false, gTimer = null;
+      const GO = { d:"dashboard", h:"history", s:"savings", l:"loans", c:"charts", ",":"settings" };
+
+      document.addEventListener("keydown", (e)=>{
+        // Only a VISIBLE field counts as typing. A focused control inside a
+        // closed overlay is not the user typing, and treating it as such
+        // silently disables the whole keyboard layer.
+        const ae = document.activeElement;
+        const typing = !!ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && !!ae.offsetParent;
+        const paletteOpen = palette && palette.classList.contains("show");
+
+        if (paletteOpen){
+          if (e.key === "Escape"){ e.preventDefault(); closePalette(); return; }
+          if (e.key === "ArrowDown"){ e.preventDefault(); movePalette(1); return; }
+          if (e.key === "ArrowUp"){ e.preventDefault(); movePalette(-1); return; }
+          if (e.key === "Enter"){ e.preventDefault(); runPalette(); return; }
+          return;
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")){
+          e.preventDefault(); openPalette(); return;
+        }
+        if (sheet && sheet.classList.contains("show") && e.key === "Escape"){
+          sheet.classList.remove("show"); return;
+        }
+        if (typing) return;
+
+        if (e.key === "?"){ e.preventDefault(); showShortcuts(); return; }
+        if (e.key === "g" || e.key === "G"){
+          gPending = true; clearTimeout(gTimer);
+          gTimer = setTimeout(()=>{ gPending = false; }, 900);
+          return;
+        }
+        if (gPending){
+          const dest = GO[e.key.toLowerCase()];
+          gPending = false; clearTimeout(gTimer);
+          if (dest){ e.preventDefault(); activateTab(dest); }
+          return;
+        }
+        if (e.key === "a" || e.key === "A"){
+          e.preventDefault(); activateTab("add");
+          setTimeout(()=>{ const f=document.getElementById("in-desc"); if(f) f.focus(); }, 120);
+        }
+      }, true);
+
+      /* ---------- 3. the column chooser ----------------------------------
+         An operator decides which columns matter; the person who built the
+         table cannot know. Choice persists, because re-choosing every session
+         is the same as not having the choice. */
+      function tableKeyFor(wrap){ return "cols:" + wrap.id; }
+      function hiddenCols(wrap){
+        const raw = (uiPrefs && uiPrefs[tableKeyFor(wrap)]) || "";
+        return new Set(String(raw).split(",").filter(Boolean).map(Number));
+      }
+      function applyCols(wrap){
+        const hide = hiddenCols(wrap);
+        wrap.querySelectorAll("tr").forEach(tr=>{
+          [...tr.children].forEach((cell, i)=>{
+            if (cell.hasAttribute("colspan")) return;
+            cell.style.display = hide.has(i) ? "none" : "";
+          });
+        });
+      }
+      function buildColumnChooser(wrap){
+        const table = wrap.querySelector("table");
+        if (!table) return null;
+        const heads = [...table.querySelectorAll("thead th")].map(th=>th.textContent.trim() || "—");
+        const hide = hiddenCols(wrap);
+        const box = document.createElement("div");
+        box.className = "colpick";
+        box.innerHTML = '<div class="colpick-title">Columns</div>'
+          + heads.map((h,i)=>
+              '<label class="colpick-row"><input type="checkbox" data-col="'+i+'"'
+              + (hide.has(i) ? '' : ' checked') + '><span>'+escapeHtml(h)+'</span></label>').join("");
+        box.querySelectorAll("input[data-col]").forEach(cb=>{
+          cb.addEventListener("change", ()=>{
+            const next = hiddenCols(wrap);
+            const i = Number(cb.dataset.col);
+            if (cb.checked) next.delete(i); else next.add(i);
+            setUiPref(tableKeyFor(wrap), [...next].join(","));
+            applyCols(wrap);
+          });
+        });
+        return box;
+      }
+      function mountColumnChoosers(){
+        document.querySelectorAll('[id$="-table-wrap"]').forEach(wrap=>{
+          if (!wrap.querySelector("table")) return;
+          applyCols(wrap);
+          const host = wrap.parentElement;
+          if (!host || host.querySelector('[data-colpick-for="' + wrap.id + '"]')) return;
+          const btn = document.createElement("button");
+          btn.className = "btn btn-outline btn-sm colpick-btn";
+          btn.type = "button";
+          btn.setAttribute("data-colpick-for", wrap.id);
+          btn.textContent = "Columns";
+          btn.addEventListener("click", (e)=>{
+            e.stopPropagation();
+            const open = host.querySelector(".colpick");
+            if (open){ open.remove(); return; }
+            const box = buildColumnChooser(wrap);
+            if (!box) return;
+            host.appendChild(box);
+            const r = btn.getBoundingClientRect();
+            box.style.top = (r.bottom + 4) + "px";
+            box.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 220)) + "px";
+            setTimeout(()=> document.addEventListener("pointerdown", function once(ev){
+              if (!box.contains(ev.target)) box.remove();
+              document.removeEventListener("pointerdown", once, true);
+            }, true), 0);
+          });
+          wrap.insertAdjacentElement("beforebegin", btn);
+        });
+      }
+      mountColumnChoosers();
+      document.addEventListener("click", ()=> setTimeout(mountColumnChoosers, 120), true);
+
+      /* ---------- 4. the quick-add line ----------------------------------
+         "12.50 lunch food" logged without leaving the keyboard. The console
+         reuses the app's own parser and category guess rather than inventing
+         a second way for money to enter the file. */
+      function mountQuickAdd(){
+        const wrap = document.getElementById("history-table-wrap");
+        if (!wrap || !wrap.parentElement) return;
+        const host = wrap.parentElement;
+        if (host.querySelector(".quickadd")) return;
+        const bar = document.createElement("form");
+        bar.className = "quickadd";
+        bar.innerHTML =
+          '<span class="quickadd-prompt">+</span>'
+          + '<input type="text" id="quickadd-input" autocomplete="off" '
+          + 'placeholder="Amount then what it was — e.g. 250 grab to office">'
+          + '<button class="btn btn-primary btn-sm" type="submit">Log it</button>'
+          + '<span class="quickadd-hint">Category is guessed; the row stays editable.</span>';
+        bar.addEventListener("submit", (e)=>{
+          e.preventDefault();
+          const input = bar.querySelector("#quickadd-input");
+          const raw = input.value.trim();
+          if (!raw) return;
+          const m = raw.match(/(-?\d+(?:[.,]\d+)?)/);
+          if (!m){ showToast("Start with an amount, e.g. 250 coffee."); return; }
+          const amount = round2(parseFloat(m[1].replace(",", ".")));
+          if (!isFinite(amount) || amount <= 0){ showToast("That amount did not read as a number."); return; }
+          const desc = raw.replace(m[0], "").trim() || "Quick entry";
+          const category = (typeof guessCategory === "function") ? guessCategory(desc) : "Other";
+          const entry = {
+            id: "e_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+            description: desc, amount, category, tags: [],
+            date: todayISO(), bank: null, originalAmount: null, originalCurrency: null
+          };
+          expenses.unshift(entry);
+          saveExpenses(expenses);
+          input.value = "";
+          renderHistory();
+          if (typeof renderTotalMoneyBar === "function") renderTotalMoneyBar();
+          showUndoToast(`Logged ${fmtMoney(amount)} — ${desc} (${category}).`, ()=>{
+            expenses = expenses.filter(x=>x.id !== entry.id);
+            saveExpenses(expenses);
+            renderHistory();
+            if (typeof renderTotalMoneyBar === "function") renderTotalMoneyBar();
+          });
+        });
+        wrap.insertAdjacentElement("beforebegin", bar);
+      }
+      mountQuickAdd();
+      document.addEventListener("click", ()=> setTimeout(mountQuickAdd, 140), true);
+
+      /* The palette is the console's front door, so it says so in the bar. */
+      const searchBtn = document.getElementById("btn-global-search");
+      if (searchBtn && !searchBtn.dataset.cmdk){
+        searchBtn.dataset.cmdk = "1";
+        searchBtn.title = "Command palette (Ctrl/⌘ K)";
+      }
+    })();
 
 })();
 

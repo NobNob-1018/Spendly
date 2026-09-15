@@ -701,6 +701,152 @@
   .loan-line-controls .sa-field{ min-width:150px; }
   .loan-line-controls .btn-danger-text{ margin-left:auto; }
 
+
+  /* ---------- the statement --------------------------------------------------
+     A document inside the document: narrower measure, printed proportions, and
+     a rule under the title the way a statement has one. */
+  .stm-controls{ display:flex; align-items:center; gap: var(--sp-5); flex-wrap:wrap; }
+  .stm-controls select{ width:auto; min-width:150px; }
+  .stm-doc{
+    margin-top: var(--sp-7);
+    padding: var(--sp-9);
+    background: var(--sunken);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+  }
+  .stm-head{ padding-bottom: var(--sp-7); border-bottom: 2px solid var(--line-strong); }
+  .stm-kicker{
+    margin: 0 0 var(--sp-3); font-size: var(--fs-3xs); font-weight: 800;
+    color: var(--ink-dim); text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  .stm-title{ margin: 0; font-size: var(--fs-3xl); font-weight: 800; letter-spacing: -0.03em; }
+  .stm-sub{ margin: var(--sp-4) 0 0; font-size: var(--fs-sm); color: var(--ink-dim); }
+
+  .stm-figures{
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--sp-6);
+    padding: var(--sp-8) 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .stm-line{ display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+  .stm-label{
+    font-size: var(--fs-3xs); font-weight: 800; color: var(--ink-dim);
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  .stm-value{
+    font-size: var(--fs-2xl); font-weight: 800; letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .stm-value .cur-sym{ color: var(--ink-dim); font-size: .58em; vertical-align: .3em; }
+  .stm-value .cur-cents{ color: var(--ink-soft); font-size: .58em; vertical-align: .3em; }
+  .stm-value.is-good{ color: var(--positive); }
+  .stm-value.is-bad{ color: var(--negative); }
+
+  .stm-prose{ padding: var(--sp-8) 0; border-bottom: 1px solid var(--line); }
+  .stm-prose p{ margin: 0 0 var(--sp-5); font-size: var(--fs-md); line-height: 1.7; color: var(--ink-soft); }
+  .stm-prose p:last-child{ margin-bottom: 0; }
+  .stm-prose strong{ color: var(--ink); font-weight: 700; }
+
+  .stm-breakdown{ padding: var(--sp-8) 0 0; }
+  .stm-breakdown h3{
+    margin: 0 0 var(--sp-6); font-size: var(--fs-3xs); font-weight: 800;
+    color: var(--ink-dim); text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  .stm-cat{
+    display: grid; grid-template-columns: 130px minmax(0,1fr) auto;
+    align-items: center; gap: var(--sp-6);
+    padding: var(--sp-4) 0;
+    font-size: var(--fs-sm);
+  }
+  .stm-cat-name{ color: var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .stm-cat-bar{ position: relative; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .stm-cat-bar i{
+    position: absolute; inset: 0 auto 0 0; border-radius: 3px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--negative) 45%, transparent), var(--negative));
+  }
+  .stm-cat-amt{ font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stm-foot{
+    margin-top: var(--sp-8); padding-top: var(--sp-6);
+    border-top: 1px solid var(--line);
+    font-size: var(--fs-3xs); color: var(--ink-dim);
+  }
+  .stm-empty{ padding: var(--sp-9); text-align: center; color: var(--ink-dim); }
+
+  /* ---------- the year -------------------------------------------------------- */
+  .yr-lede{ margin: 0 0 var(--sp-8); font-size: var(--fs-md); line-height: 1.7; color: var(--ink-soft); }
+  .yr-lede strong{ color: var(--ink); }
+  .yr-rows{ display: flex; flex-direction: column; gap: var(--sp-4); }
+  .yr-row{
+    display: grid; grid-template-columns: 90px minmax(0,1fr) 110px;
+    align-items: center; gap: var(--sp-6);
+    font-size: var(--fs-sm);
+  }
+  .yr-month{ color: var(--ink-soft); }
+  .yr-bars{ display: flex; flex-direction: column; gap: 3px; }
+  .yr-bars i{ display: block; height: 6px; border-radius: 3px; min-width: 2px; }
+  i.yr-in{ background: var(--positive); }
+  i.yr-out{ background: var(--negative); }
+  .yr-net{ text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .yr-net.is-good{ color: var(--positive); }
+  .yr-net.is-bad{ color: var(--negative); }
+  .yr-key{ margin: var(--sp-7) 0 0; font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .yr-swatch{ display: inline-block; width: 10px; height: 6px; border-radius: 3px; vertical-align: 1px; margin-right: 4px; }
+
+  /* ---------- reading mode ----------------------------------------------------
+     Not a theme: the controls are genuinely removed from the flow, so the
+     document reflows into the space they were taking. */
+  #btn-reading[aria-pressed="true"]{ background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  body.reading-mode .sticky-top,
+  body.reading-mode .stm-controls,
+  body.reading-mode .row-action-bar,
+  body.reading-mode .pagination-bar,
+  body.reading-mode .table-filter-bar,
+  body.reading-mode .history-toolbar,
+  body.reading-mode .form-actions,
+  body.reading-mode .range-tabs,
+  body.reading-mode .btn,
+  body.reading-mode .row-action,
+  body.reading-mode .btn-danger-text{ display: none !important; }
+  body.reading-mode .app{ padding-top: calc(var(--bar-h) + var(--sp-9)); }
+  body.reading-mode input,
+  body.reading-mode select,
+  body.reading-mode textarea{
+    border-color: transparent; background: transparent;
+    pointer-events: none; padding-left: 0;
+  }
+  body.reading-mode .card{ box-shadow: none; }
+
+  /* ---------- print ------------------------------------------------------------
+     When the statement is printed it should be the only thing on the paper, in
+     ink on white. A dark statement wastes a cartridge and reads worse. */
+  @media print{
+    body.printing-statement{ background: #fff; color: #111; }
+    body.printing-statement .app{ max-width: none; padding: 0; }
+    body.printing-statement header.top,
+    body.printing-statement .sticky-top,
+    body.printing-statement nav.tabs,
+    body.printing-statement #lab-badge,
+    body.printing-statement .card:not(#stm-card),
+    body.printing-statement .stm-controls,
+    body.printing-statement #side-panel{ display: none !important; }
+    body.printing-statement #stm-card{ border: 0; box-shadow: none; padding: 0; background: #fff; }
+    body.printing-statement .stm-doc{ background: #fff; border: 0; padding: 0; }
+    body.printing-statement .stm-title,
+    body.printing-statement .stm-value,
+    body.printing-statement .stm-prose strong,
+    body.printing-statement .stm-cat-amt{ color: #111; }
+    body.printing-statement .stm-prose p,
+    body.printing-statement .stm-cat-name,
+    body.printing-statement .stm-sub,
+    body.printing-statement .stm-kicker,
+    body.printing-statement .stm-foot{ color: #444; }
+    body.printing-statement .stm-head{ border-bottom-color: #111; }
+    body.printing-statement .stm-figures,
+    body.printing-statement .stm-prose{ border-bottom-color: #ccc; }
+    body.printing-statement .stm-cat-bar{ background: #e6e6e6; }
+    body.printing-statement .stm-cat-bar i{ background: #888; }
+  }
+
 </style>
 </head>
 
@@ -1192,8 +1338,7 @@
       <button data-settings="info">About</button>
     </div>
 
-    <p class="settings-section-label" data-settings-group="appearance">Appearance</p>
-    <div class="card">
+    <div data-settings-group="appearance" class="card">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>Table density</h2>
       <p class="sub">Compact tightens spacing across tables, cards and lists so more fits on screen. Your data is unchanged.</p>
       <div class="range-tabs" id="density-toggle" style="display:inline-flex;">
@@ -1203,15 +1348,13 @@
       </div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="sync">Sync</p>
-    <div class="card">
+    <div data-settings-group="sync" class="card">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span>Sync between devices</h2>
       <p class="sub">Off by default. With it off, nothing ever leaves this device — that is still the point of Spendly.</p>
       <div id="sync-body"></div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="budgeting">Budgeting &amp; categories</p>
-    <div class="card">
+    <div data-settings-group="budgeting" class="card">
       <div class="section-head-row">
         <div>
           <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span>Monthly budgets</h2>
@@ -1237,8 +1380,7 @@
       </div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="trackers">Trackers</p>
-    <div class="card">
+    <div data-settings-group="trackers" class="card">
       <div class="section-head-row">
         <div>
           <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 3 21 7 17 11"/><line x1="3" y1="7" x2="21" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="21" y1="17" x2="3" y2="17"/></svg></span>Currency tracker</h2>
@@ -1276,8 +1418,7 @@
       <div id="crypto-list"></div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="backup">Backup &amp; restore</p>
-    <div class="card">
+    <div data-settings-group="backup" class="card">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>Backup &amp; restore</h2>
       <p class="sub">Sync keeps your devices holding the same records. A backup is the copy you keep
          yourself — for moving somewhere new, or for the day something goes wrong.</p>
@@ -1290,8 +1431,7 @@
       <input type="file" id="file-import" accept=".json,.csv" style="display:none;">
     </div>
 
-    <p class="settings-section-label" data-settings-group="info">App info</p>
-    <div class="card is-supporting">
+    <div data-settings-group="info" class="card is-supporting">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"/></svg></span>About</h2>
       <p class="sub">Spendly is a single self-contained file — everything you enter stays on this device only. Use the ⇅ button in the sidebar any time to export a backup or import one.</p>
       <p class="hint" style="margin-bottom:10px;">This build: <strong id="app-build">—</strong></p>
@@ -8392,6 +8532,267 @@
       if (typeof applyDensity === "function" && !(uiPrefs && uiPrefs.density)){
         applyDensity("comfortable");
       }
+    })();
+
+
+    /* ======================================================================
+       READING FEATURES — /unai-team ledger
+       A statement is a thing you read, print and keep. So: a real monthly
+       statement written in sentences, a year in review, and a reading mode
+       that puts every control away so the document is all that is left.
+       ====================================================================== */
+    (function ledgerFeatures(){
+      "use strict";
+
+      const MONTHS = ["January","February","March","April","May","June",
+                      "July","August","September","October","November","December"];
+      const monthName = key => {
+        const parts = String(key).split("-");
+        return MONTHS[Number(parts[1]) - 1] + " " + parts[0];
+      };
+      const inMonth = (list, key) => (list || []).filter(r => String(r.date || "").slice(0,7) === key);
+      const sum = list => round2((list || []).reduce((t, r) => t + (Number(r.amount) || 0), 0));
+
+      /* Every month the file actually has something in, newest first. A statement
+         for an empty month is a blank page pretending to be a record. */
+      function monthsWithData(){
+        const keys = new Set();
+        expenses.concat(incomes).forEach(r => { if (r && r.date) keys.add(String(r.date).slice(0,7)); });
+        return [...keys].sort().reverse();
+      }
+
+      /* ---------- the statement ------------------------------------------
+         Written, not tabulated. The figures are the ones every other screen
+         uses; what changes is that they are in sentences, which is what makes
+         a statement readable away from the app that produced it. */
+      function buildStatement(key){
+        const exp = inMonth(expenses, key), inc = inMonth(incomes, key);
+        const spent = sum(exp), earned = sum(inc), net = round2(earned - spent);
+
+        const byCat = {};
+        exp.forEach(e => { byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
+        const cats = Object.keys(byCat)
+          .map(c => ({ name: c, amount: byCat[c] }))
+          .sort((a, b) => b.amount - a.amount);
+        const top = cats[0];
+
+        // The month before, so the comparison names what it compares to.
+        const d = new Date(key + "-01T00:00:00");
+        d.setMonth(d.getMonth() - 1);
+        const prevKey = d.toISOString().slice(0, 7);
+        const prevSpent = sum(inMonth(expenses, prevKey));
+        const delta = prevSpent > 0 ? round2(spent - prevSpent) : null;
+        const deltaPct = prevSpent > 0 ? Math.abs(Math.round((delta / prevSpent) * 100)) : null;
+
+        const biggest = exp.slice().sort((a, b) => b.amount - a.amount)[0];
+        const days = new Set(exp.map(e => e.date)).size;
+        const perDay = days ? round2(spent / days) : 0;
+
+        const line = (label, value, tone) =>
+          `<div class="stm-line"><span class="stm-label">${escapeHtml(label)}</span>` +
+          `<span class="stm-value${tone ? " is-" + tone : ""}">${value}</span></div>`;
+
+        // Built as paragraphs in an array: one sentence per entry, joined at the
+        // end. Concatenating a document with + across forty lines is how a stray
+        // operator ends up inside a ternary.
+        const paras = [];
+        paras.push(earned > 0
+          ? `You took in <strong>${fmtMoney(earned)}</strong> and spent <strong>${fmtMoney(spent)}</strong>, ` +
+            (net >= 0
+              ? `keeping <strong>${fmtMoney(net)}</strong>.`
+              : `which is <strong>${fmtMoney(Math.abs(net))}</strong> more than came in.`)
+          : `You spent <strong>${fmtMoney(spent)}</strong>, with nothing recorded coming in.`);
+
+        if (top){
+          paras.push(`The largest category was <strong>${escapeHtml(top.name)}</strong> at ` +
+            `<strong>${fmtMoney(top.amount)}</strong>, ` +
+            `${Math.round((top.amount / (spent || 1)) * 100)}% of everything spent.`);
+        }
+        if (biggest){
+          paras.push(`The single largest entry was <strong>${escapeHtml(biggest.description || "an expense")}</strong> ` +
+            `at <strong>${fmtMoney(biggest.amount)}</strong> on ${fmtDate(biggest.date)}.`);
+        }
+        paras.push(delta !== null
+          ? `Against ${escapeHtml(monthName(prevKey))}, that is <strong>${fmtMoney(Math.abs(delta))}</strong> ` +
+            `${delta > 0 ? "more" : "less"} — ${deltaPct}% ${delta > 0 ? "up" : "down"}.`
+          : `There is no earlier month recorded to compare against.`);
+        if (days){
+          paras.push(`That averages <strong>${fmtMoney(perDay)}</strong> on each day you spent anything.`);
+        }
+
+        const breakdown = cats.length
+          ? `<section class="stm-breakdown"><h3>Where it went</h3>` +
+            cats.map(c => `<div class="stm-cat">` +
+              `<span class="stm-cat-name">${escapeHtml(c.name)}</span>` +
+              `<span class="stm-cat-bar"><i style="width:${Math.round((c.amount / (top.amount || 1)) * 100)}%"></i></span>` +
+              `<span class="stm-cat-amt">${fmtMoney(c.amount)}</span>` +
+            `</div>`).join("") +
+            `</section>`
+          : "";
+
+        return `
+          <article class="stm-doc">
+            <header class="stm-head">
+              <p class="stm-kicker">Statement</p>
+              <h3 class="stm-title">${escapeHtml(monthName(key))}</h3>
+              <p class="stm-sub">${exp.length} expense${exp.length === 1 ? "" : "s"} and
+                ${inc.length} deposit${inc.length === 1 ? "" : "s"} across
+                ${days} day${days === 1 ? "" : "s"}.</p>
+            </header>
+            <section class="stm-figures">
+              ${line("Money in", fmtMoneyRich(earned), "good")}
+              ${line("Money out", fmtMoneyRich(spent), "bad")}
+              ${line(net >= 0 ? "Kept" : "Short by", fmtMoneyRich(Math.abs(net)), net >= 0 ? "good" : "bad")}
+            </section>
+            <section class="stm-prose">${paras.map(p => `<p>${p}</p>`).join("")}</section>
+            ${breakdown}
+            <footer class="stm-foot">Prepared ${fmtDate(todayISO())} from your own records.</footer>
+          </article>`;
+      }
+
+      /* ---------- the year ------------------------------------------------ */
+      function buildYear(year){
+        const rows = [];
+        for (let m = 1; m <= 12; m++){
+          const key = year + "-" + String(m).padStart(2, "0");
+          const spent = sum(inMonth(expenses, key));
+          const earned = sum(inMonth(incomes, key));
+          if (spent || earned) rows.push({ key, label: MONTHS[m - 1], spent, earned, net: round2(earned - spent) });
+        }
+        if (!rows.length) return `<p class="stm-empty">Nothing recorded in ${escapeHtml(String(year))}.</p>`;
+
+        const peak = rows.reduce((a, b) => b.spent > a.spent ? b : a, rows[0]);
+        const totalSpent = round2(rows.reduce((t, r) => t + r.spent, 0));
+        const totalEarned = round2(rows.reduce((t, r) => t + r.earned, 0));
+        const max = Math.max.apply(null, rows.map(r => Math.max(r.spent, r.earned)).concat([1]));
+
+        return `
+          <div class="yr-doc">
+            <p class="yr-lede">Across ${rows.length} recorded month${rows.length === 1 ? "" : "s"} of
+              ${escapeHtml(String(year))}, you took in <strong>${fmtMoney(totalEarned)}</strong> and spent
+              <strong>${fmtMoney(totalSpent)}</strong>. <strong>${escapeHtml(peak.label)}</strong> was the
+              heaviest month at <strong>${fmtMoney(peak.spent)}</strong>.</p>
+            <div class="yr-rows">
+              ${rows.map(r => `
+                <div class="yr-row">
+                  <span class="yr-month">${escapeHtml(r.label)}</span>
+                  <span class="yr-bars">
+                    <i class="yr-in" style="width:${Math.round((r.earned / max) * 100)}%"></i>
+                    <i class="yr-out" style="width:${Math.round((r.spent / max) * 100)}%"></i>
+                  </span>
+                  <span class="yr-net ${r.net >= 0 ? "is-good" : "is-bad"}">${r.net >= 0 ? "+" : "−"}${fmtMoney(Math.abs(r.net))}</span>
+                </div>`).join("")}
+            </div>
+            <p class="yr-key"><span class="yr-swatch yr-in"></span> in
+               <span class="yr-swatch yr-out"></span> out</p>
+          </div>`;
+      }
+
+      /* ---------- mount ---------------------------------------------------- */
+      function mountStatement(){
+        const panel = document.getElementById("tab-dashboard");
+        if (!panel || panel.querySelector("#stm-card")) return;
+        const keys = monthsWithData();
+        if (!keys.length) return;
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.id = "stm-card";
+        card.innerHTML = `
+          <div class="section-head-row">
+            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M15 3v5h4"/><path d="M9 12h6M9 16h4"/></svg></span>Statement</h2>
+            <div class="stm-controls">
+              <select id="stm-month" aria-label="Statement month">
+                ${keys.map(k => `<option value="${k}">${escapeHtml(monthName(k))}</option>`).join("")}
+              </select>
+              <button class="btn btn-outline btn-sm" id="stm-copy" type="button">Copy as text</button>
+              <button class="btn btn-outline btn-sm" id="stm-print" type="button">Print</button>
+            </div>
+          </div>
+          <p class="sub">The month, written out — readable away from the app that produced it.</p>
+          <div id="stm-body"></div>`;
+        panel.appendChild(card);
+
+        const body = card.querySelector("#stm-body");
+        const sel = card.querySelector("#stm-month");
+        const draw = () => { body.innerHTML = buildStatement(sel.value); };
+        sel.addEventListener("change", draw);
+        draw();
+
+        /* Plain text, so it can be pasted to somebody who does not have the app. */
+        card.querySelector("#stm-copy").addEventListener("click", () => {
+          const text = body.innerText.replace(/\n{3,}/g, "\n\n").trim();
+          if (navigator.clipboard && navigator.clipboard.writeText){
+            navigator.clipboard.writeText(text)
+              .then(() => showToast("Statement copied as plain text."))
+              .catch(() => showToast("Could not reach the clipboard."));
+          } else {
+            showToast("The clipboard is not available here.");
+          }
+        });
+
+        card.querySelector("#stm-print").addEventListener("click", () => {
+          document.body.classList.add("printing-statement");
+          window.print();
+          setTimeout(() => document.body.classList.remove("printing-statement"), 600);
+        });
+      }
+
+      function mountYear(){
+        const panel = document.getElementById("tab-dashboard");
+        if (!panel || panel.querySelector("#yr-card")) return;
+        const years = [...new Set(expenses.concat(incomes)
+          .map(r => String(r.date || "").slice(0, 4)).filter(Boolean))].sort().reverse();
+        if (!years.length) return;
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.id = "yr-card";
+        card.innerHTML = `
+          <div class="section-head-row">
+            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15l3-4 3 3 4-6"/></svg></span>The year</h2>
+            <select id="yr-year" aria-label="Year">${years.map(y => `<option>${escapeHtml(y)}</option>`).join("")}</select>
+          </div>
+          <p class="sub">Every recorded month, in and out.</p>
+          <div id="yr-body"></div>`;
+        panel.appendChild(card);
+
+        const sel = card.querySelector("#yr-year"), body = card.querySelector("#yr-body");
+        const draw = () => { body.innerHTML = buildYear(sel.value); };
+        sel.addEventListener("change", draw);
+        draw();
+      }
+
+      /* ---------- reading mode --------------------------------------------
+         Every control away, so the document is what is left. A statement you
+         cannot read without the machinery around it is not a statement. */
+      function mountReadingMode(){
+        if (document.getElementById("btn-reading")) return;
+        const anchor = document.getElementById("btn-global-search");
+        if (!anchor || !anchor.parentElement) return;
+        const btn = document.createElement("button");
+        btn.id = "btn-reading";
+        btn.type = "button";
+        btn.title = "Reading mode — put the controls away";
+        btn.setAttribute("aria-pressed", "false");
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 5h7a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H3z"/><path d="M21 5h-7a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h8z"/></svg>';
+        btn.addEventListener("click", () => {
+          const on = document.body.classList.toggle("reading-mode");
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+          setUiPref("readingMode", on ? "1" : "");
+          showToast(on ? "Reading mode on — the controls are put away." : "Reading mode off.");
+        });
+        anchor.parentElement.insertBefore(btn, anchor);
+        if (uiPrefs && uiPrefs.readingMode){
+          document.body.classList.add("reading-mode");
+          btn.setAttribute("aria-pressed", "true");
+        }
+      }
+
+      function mountAll(){ mountStatement(); mountYear(); mountReadingMode(); }
+      mountAll();
+      // The dashboard is re-rendered on tab changes, so re-mount if it was wiped.
+      document.addEventListener("click", () => setTimeout(mountAll, 160), true);
     })();
 
 })();

@@ -623,6 +623,130 @@
   .loan-card-controls{ display:flex; align-items:center; gap: var(--sp-5); flex-wrap:wrap; }
   .loan-card-controls .status-select{ flex:1; min-width:110px; }
 
+
+  /* ---------- saved views ---------------------------------------------------- */
+  .views-bar{
+    display: flex; align-items: center; gap: var(--sp-5);
+    flex-wrap: wrap; margin-bottom: var(--sp-6);
+    padding: var(--sp-5) var(--sp-6);
+    background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-md);
+  }
+  .views-label{
+    font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-dim);
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  .views-empty{ font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .view-chip{
+    display: inline-flex; align-items: stretch;
+    border: 1px solid var(--line); border-radius: var(--r-pill); overflow: hidden;
+    background: var(--raised);
+  }
+  .view-apply{
+    background: transparent; border: 0; cursor: pointer;
+    padding: var(--sp-3) var(--sp-5);
+    color: var(--ink); font: inherit; font-size: var(--fs-3xs); font-weight: 600;
+    max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .view-apply:hover{ background: var(--accent-light); color: var(--accent); }
+  .view-del{
+    background: transparent; border: 0; border-left: 1px solid var(--line);
+    cursor: pointer; padding: 0 var(--sp-4);
+    color: var(--ink-dim); font: inherit; font-size: var(--fs-sm); line-height: 1;
+  }
+  .view-del:hover{ color: var(--negative); }
+  .views-save{ margin-left: auto; }
+
+  /* ---------- compare -------------------------------------------------------- */
+  .cmp-head, .cmp-row{
+    display: grid; grid-template-columns: minmax(0,1.2fr) 1fr 1fr 90px;
+    align-items: center; gap: var(--sp-6);
+    padding: var(--sp-5) 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .cmp-head{
+    border-bottom: 1px solid var(--line);
+    font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-dim);
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  .cmp-row{ border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
+  .cmp-row:last-of-type{ border-bottom: 0; }
+  .cmp-label{ color: var(--ink-soft); font-weight: 600; }
+  .cmp-now{ font-weight: 700; font-size: var(--fs-md); }
+  .cmp-prev{ color: var(--ink-dim); }
+  .cmp-delta{ text-align: right; font-weight: 700; font-size: var(--fs-3xs); }
+  .cmp-delta.is-good{ color: var(--positive); }
+  .cmp-delta.is-bad{ color: var(--negative); }
+  .cmp-delta.is-flat{ color: var(--ink-dim); }
+
+  .cmp-movers{ margin-top: var(--sp-7); padding-top: var(--sp-7); border-top: 1px solid var(--line); }
+  .cmp-movers h3{
+    margin: 0 0 var(--sp-6); font-size: var(--fs-3xs); font-weight: 700;
+    color: var(--ink-dim); text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  .cmp-mover{
+    display: grid; grid-template-columns: 130px minmax(0,1fr) 110px;
+    align-items: center; gap: var(--sp-6);
+    padding: var(--sp-4) 0; font-size: var(--fs-sm);
+  }
+  .cmp-mover-name{ color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cmp-mover-bar{ position: relative; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .cmp-mover-bar i{ position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+  .cmp-mover-bar i.is-up{ background: var(--negative); }
+  .cmp-mover-bar i.is-down{ background: var(--positive); }
+  .cmp-mover-amt{ text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .cmp-mover-amt.is-good{ color: var(--positive); }
+  .cmp-mover-amt.is-bad{ color: var(--negative); }
+  .cmp-empty{ padding: var(--sp-7) 0 0; color: var(--ink-dim); font-size: var(--fs-sm); }
+
+  /* ---------- drill-down ------------------------------------------------------ */
+  .is-drillable{ cursor: pointer; }
+  .is-drillable:hover{ color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  .drill{
+    display: none; position: fixed; inset: 0; z-index: 9993;
+    background: rgb(4 7 12 / .7);
+    align-items: center; justify-content: center; padding: var(--sp-8);
+  }
+  .drill.show{ display: flex; }
+  .drill-panel{
+    width: 100%; max-width: 680px; max-height: 80vh;
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--line-strong);
+    border-radius: var(--r-lg); box-shadow: var(--elev-4);
+  }
+  .drill-head{
+    display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-6);
+    padding: var(--sp-8); border-bottom: 1px solid var(--line);
+  }
+  .drill-kicker{
+    margin: 0 0 var(--sp-2); font-size: var(--fs-3xs); font-weight: 700;
+    color: var(--ink-dim); text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  .drill-title{ margin: 0; font-size: var(--fs-2xl); font-weight: 700; letter-spacing: -0.02em; }
+  .drill-sub{ margin: var(--sp-3) 0 0; font-size: var(--fs-sm); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .drill-body{ overflow-y: auto; padding: var(--sp-8); }
+
+  .drill-spark{
+    display: flex; align-items: flex-end; gap: var(--sp-5);
+    height: 90px; margin-bottom: var(--sp-8);
+    padding-bottom: var(--sp-6); border-bottom: 1px solid var(--line);
+  }
+  .drill-bar{ flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: var(--sp-3); height: 100%; }
+  .drill-bar i{ display: block; width: 100%; background: var(--accent-deep); border-radius: 2px 2px 0 0; }
+  .drill-bar:last-child i{ background: var(--accent); }
+  .drill-bar em{ font-style: normal; font-size: var(--fs-3xs); color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+
+  .drill-table{ width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+  .drill-table th{
+    text-align: left; padding: var(--sp-4) var(--sp-5);
+    font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-dim);
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+    border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface);
+  }
+  .drill-table td{ padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--line); }
+  .drill-table tr:last-child td{ border-bottom: 0; }
+  .drill-table td.num{ text-align: right; font-variant-numeric: tabular-nums; font-weight: 650; white-space: nowrap; }
+  .drill-more{ margin: var(--sp-6) 0 0; font-size: var(--fs-3xs); color: var(--ink-dim); }
+
 </style>
 </head>
 
@@ -1113,8 +1237,7 @@
       <button data-settings="info">About</button>
     </div>
 
-    <p class="settings-section-label" data-settings-group="appearance">Appearance</p>
-    <div class="card">
+    <div data-settings-group="appearance" class="card">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>Table density</h2>
       <p class="sub">Compact tightens spacing across tables, cards and lists so more fits on screen. Your data is unchanged.</p>
       <div class="range-tabs" id="density-toggle" style="display:inline-flex;">
@@ -1123,15 +1246,13 @@
       </div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="sync">Sync</p>
-    <div class="card">
+    <div data-settings-group="sync" class="card">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span>Sync between devices</h2>
       <p class="sub">Off by default. With it off, nothing ever leaves this device — that is still the point of Spendly.</p>
       <div id="sync-body"></div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="budgeting">Budgeting &amp; categories</p>
-    <div class="card">
+    <div data-settings-group="budgeting" class="card">
       <div class="section-head-row">
         <div>
           <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span>Monthly budgets</h2>
@@ -1157,8 +1278,7 @@
       </div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="trackers">Trackers</p>
-    <div class="card">
+    <div data-settings-group="trackers" class="card">
       <div class="section-head-row">
         <div>
           <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 3 21 7 17 11"/><line x1="3" y1="7" x2="21" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="21" y1="17" x2="3" y2="17"/></svg></span>Currency tracker</h2>
@@ -1196,8 +1316,7 @@
       <div id="crypto-list"></div>
     </div>
 
-    <p class="settings-section-label" data-settings-group="backup">Backup &amp; restore</p>
-    <div class="card">
+    <div data-settings-group="backup" class="card">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>Backup &amp; restore</h2>
       <p class="sub">Sync keeps your devices holding the same records. A backup is the copy you keep
          yourself — for moving somewhere new, or for the day something goes wrong.</p>
@@ -1210,8 +1329,7 @@
       <input type="file" id="file-import" accept=".json,.csv" style="display:none;">
     </div>
 
-    <p class="settings-section-label" data-settings-group="info">App info</p>
-    <div class="card is-supporting">
+    <div data-settings-group="info" class="card is-supporting">
       <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"/></svg></span>About</h2>
       <p class="sub">Spendly is a single self-contained file — everything you enter stays on this device only. Use the ⇅ button in the sidebar any time to export a backup or import one.</p>
       <p class="hint" style="margin-bottom:10px;">This build: <strong id="app-build">—</strong></p>
@@ -8266,6 +8384,291 @@
           return out;
         };
       }
+    })();
+
+
+    /* ======================================================================
+       ANALYTICAL FEATURES — /ui workspace
+       Three things a workspace has and a page does not: saved views you can
+       name and come back to, a comparison against the previous period, and a
+       way to open one category up and see what is inside it.
+       ====================================================================== */
+    (function workspaceFeatures(){
+      "use strict";
+
+      const VIEWS_KEY = "savedViews";
+      const readViews = () => {
+        try { return JSON.parse((uiPrefs && uiPrefs[VIEWS_KEY]) || "[]"); }
+        catch (e) { return []; }
+      };
+      const writeViews = v => setUiPref(VIEWS_KEY, JSON.stringify(v));
+
+      /* ---------- 1. saved views ------------------------------------------
+         A filter set you spent a minute assembling is work. Making the user
+         rebuild it each session is the same as throwing that work away.
+         Captures only what the History screen actually filters on. */
+      function currentView(){
+        const g = id => { const el = document.getElementById(id); return el ? el.value : ""; };
+        return {
+          cat: g("exp-f-cat"),
+          range: g("exp-range-filter"),
+          search: g("filter-search"),
+          from: g("exp-from"),
+          to: g("exp-to")
+        };
+      }
+      function describeView(v){
+        const bits = [];
+        if (v.cat) bits.push(v.cat);
+        if (v.range && v.range !== "all") bits.push(v.range);
+        if (v.search) bits.push('"' + v.search + '"');
+        return bits.length ? bits.join(" · ") : "Everything";
+      }
+      function applyView(v){
+        const set = (id, val) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.value = val || "";
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        };
+        set("exp-range-filter", v.range);
+        set("exp-f-cat", v.cat);
+        set("exp-from", v.from);
+        set("exp-to", v.to);
+        const s = document.getElementById("filter-search");
+        if (s){ s.value = v.search || ""; s.dispatchEvent(new Event("input", { bubbles: true })); }
+      }
+
+      function renderViewBar(){
+        const host = document.getElementById("history-table-wrap");
+        if (!host || !host.parentElement) return;
+        let bar = host.parentElement.querySelector(".views-bar");
+        if (!bar){
+          bar = document.createElement("div");
+          bar.className = "views-bar";
+          host.insertAdjacentElement("beforebegin", bar);
+        }
+        const views = readViews();
+        bar.innerHTML =
+          '<span class="views-label">Views</span>'
+          + (views.length
+              ? views.map((v, i) =>
+                  '<span class="view-chip" data-i="' + i + '">'
+                  + '<button class="view-apply" data-i="' + i + '" title="' + escapeHtml(describeView(v)) + '">'
+                  + escapeHtml(v.name) + '</button>'
+                  + '<button class="view-del" data-del="' + i + '" aria-label="Delete this view">×</button>'
+                  + '</span>').join("")
+              : '<span class="views-empty">None saved yet — filter the table, then save it.</span>')
+          + '<button class="btn btn-outline btn-sm views-save" type="button">Save this view</button>';
+
+        bar.querySelectorAll(".view-apply").forEach(b => {
+          b.addEventListener("click", () => {
+            const v = readViews()[Number(b.dataset.i)];
+            if (v){ applyView(v); showToast('Applied "' + v.name + '".'); }
+          });
+        });
+        bar.querySelectorAll(".view-del").forEach(b => {
+          b.addEventListener("click", () => {
+            const all = readViews();
+            const gone = all.splice(Number(b.dataset.del), 1)[0];
+            writeViews(all);
+            renderViewBar();
+            if (gone) showUndoToast('Deleted "' + gone.name + '".', () => {
+              const back = readViews(); back.push(gone); writeViews(back); renderViewBar();
+            });
+          });
+        });
+        bar.querySelector(".views-save").addEventListener("click", () => {
+          const v = currentView();
+          const suggested = describeView(v);
+          const name = window.prompt("Name this view", suggested === "Everything" ? "All expenses" : suggested);
+          if (!name) return;
+          const all = readViews();
+          all.push(Object.assign({ name: name.slice(0, 40) }, v));
+          writeViews(all);
+          renderViewBar();
+          showToast('Saved "' + name + '".');
+        });
+      }
+
+      /* ---------- 2. compare against the previous period -------------------
+         A number on its own is not an observation. The comparison is what makes
+         it one, so the workspace states it rather than leaving the reader to
+         hold last month in their head. */
+      function monthKeyOffset(n){
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() - n);
+        return d.toISOString().slice(0, 7);
+      }
+      function totalsFor(key){
+        const inMonth = list => (list || []).filter(r => String(r.date || "").slice(0, 7) === key);
+        const sum = list => round2(list.reduce((t, r) => t + (Number(r.amount) || 0), 0));
+        const exp = inMonth(expenses);
+        const byCat = {};
+        exp.forEach(e => { byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
+        return { spent: sum(exp), earned: sum(inMonth(incomes)), count: exp.length, byCat };
+      }
+
+      function buildCompare(){
+        const nowKey = monthKeyOffset(0), prevKey = monthKeyOffset(1);
+        const a = totalsFor(nowKey), b = totalsFor(prevKey);
+        const delta = (x, y) => {
+          const d = round2(x - y);
+          const pct = y > 0 ? Math.round((d / y) * 100) : null;
+          return { d, pct };
+        };
+        const row = (label, cur, prev, invert) => {
+          const { d, pct } = delta(cur, prev);
+          const good = invert ? d <= 0 : d >= 0;
+          const arrow = d === 0 ? "→" : (d > 0 ? "▲" : "▼");
+          return `
+            <div class="cmp-row">
+              <span class="cmp-label">${escapeHtml(label)}</span>
+              <span class="cmp-now">${fmtMoney(cur)}</span>
+              <span class="cmp-prev">${fmtMoney(prev)}</span>
+              <span class="cmp-delta ${d === 0 ? "is-flat" : (good ? "is-good" : "is-bad")}">
+                ${arrow} ${pct === null ? "—" : Math.abs(pct) + "%"}
+              </span>
+            </div>`;
+        };
+
+        // The categories that moved most, which is the actual question behind
+        // "am I spending more" — more on WHAT.
+        const cats = [...new Set(Object.keys(a.byCat).concat(Object.keys(b.byCat)))]
+          .map(c => ({ name: c, now: a.byCat[c] || 0, prev: b.byCat[c] || 0 }))
+          .map(c => Object.assign(c, { move: round2(c.now - c.prev) }))
+          .filter(c => Math.abs(c.move) > 0.005)
+          .sort((x, y) => Math.abs(y.move) - Math.abs(x.move))
+          .slice(0, 5);
+
+        const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        const nice = k => MONTHS[Number(k.split("-")[1]) - 1] + " " + k.split("-")[0];
+
+        return `
+          <div class="cmp">
+            <div class="cmp-head">
+              <span class="cmp-label"></span>
+              <span class="cmp-now">${escapeHtml(nice(nowKey))}</span>
+              <span class="cmp-prev">${escapeHtml(nice(prevKey))}</span>
+              <span class="cmp-delta">Change</span>
+            </div>
+            ${row("Spent", a.spent, b.spent, true)}
+            ${row("Received", a.earned, b.earned, false)}
+            ${row("Net", round2(a.earned - a.spent), round2(b.earned - b.spent), false)}
+            ${cats.length ? `
+              <div class="cmp-movers">
+                <h3>Biggest movers</h3>
+                ${cats.map(c => `
+                  <div class="cmp-mover">
+                    <span class="cmp-mover-name">${escapeHtml(c.name)}</span>
+                    <span class="cmp-mover-bar">
+                      <i class="${c.move > 0 ? "is-up" : "is-down"}"
+                         style="width:${Math.min(100, Math.round(Math.abs(c.move) / (Math.abs(cats[0].move) || 1) * 100))}%"></i>
+                    </span>
+                    <span class="cmp-mover-amt ${c.move > 0 ? "is-bad" : "is-good"}">
+                      ${c.move > 0 ? "+" : "−"}${fmtMoney(Math.abs(c.move))}
+                    </span>
+                  </div>`).join("")}
+              </div>` : `<p class="cmp-empty">Nothing moved between these two months.</p>`}
+          </div>`;
+      }
+
+      function mountCompare(){
+        const panel = document.getElementById("tab-dashboard");
+        if (!panel || panel.querySelector("#cmp-card")) return;
+        const card = document.createElement("div");
+        card.className = "card bento-span-12";
+        card.id = "cmp-card";
+        card.innerHTML = `
+          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20V7"/></svg></span>This month against last</h2>
+          <p class="sub">A figure on its own is not an observation. This is the comparison that makes it one.</p>
+          <div id="cmp-body"></div>`;
+        const bento = panel.querySelector(".bento");
+        (bento || panel).appendChild(card);
+        card.querySelector("#cmp-body").innerHTML = buildCompare();
+      }
+
+      /* ---------- 3. category drill-down -----------------------------------
+         Clicking a category anywhere should open what is inside it. The chart
+         and the table already agree on the totals; this shows the rows behind
+         one of them without leaving the screen. */
+      let drill = null;
+      function openDrill(cat){
+        if (!drill){
+          drill = document.createElement("div");
+          drill.className = "drill";
+          drill.innerHTML = '<div class="drill-panel" role="dialog" aria-modal="true"><div class="drill-head"></div><div class="drill-body"></div></div>';
+          document.body.appendChild(drill);
+          drill.addEventListener("pointerdown", e => { if (e.target === drill) closeDrill(); });
+          document.addEventListener("keydown", e => {
+            if (e.key === "Escape" && drill.classList.contains("show")) closeDrill();
+          });
+        }
+        const rows = expenses.filter(e => e.category === cat)
+          .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        const total = round2(rows.reduce((t, r) => t + r.amount, 0));
+        const months = {};
+        rows.forEach(r => { const k = String(r.date).slice(0, 7); months[k] = round2((months[k] || 0) + r.amount); });
+        const mk = Object.keys(months).sort().slice(-6);
+        const mx = Math.max.apply(null, mk.map(k => months[k]).concat([1]));
+
+        drill.querySelector(".drill-head").innerHTML = `
+          <div>
+            <p class="drill-kicker">Category</p>
+            <h2 class="drill-title">${escapeHtml(cat)}</h2>
+            <p class="drill-sub">${rows.length} entr${rows.length === 1 ? "y" : "ies"} · ${fmtMoney(total)} all time</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="drill-close" type="button">Close</button>`;
+        drill.querySelector("#drill-close").addEventListener("click", closeDrill);
+
+        drill.querySelector(".drill-body").innerHTML = `
+          ${mk.length > 1 ? `
+            <div class="drill-spark">
+              ${mk.map(k => `
+                <span class="drill-bar" title="${escapeHtml(k)}: ${fmtMoney(months[k])}">
+                  <i style="height:${Math.max(3, Math.round(months[k] / mx * 100))}%"></i>
+                  <em>${escapeHtml(k.slice(5))}</em>
+                </span>`).join("")}
+            </div>` : ""}
+          <table class="drill-table">
+            <thead><tr><th>Date</th><th>Description</th><th class="num">Amount</th></tr></thead>
+            <tbody>
+              ${rows.slice(0, 80).map(r => `
+                <tr>
+                  <td>${fmtDate(r.date)}</td>
+                  <td class="desc-cell"><span>${escapeHtml(r.description || "—")}</span></td>
+                  <td class="num">${fmtMoney(r.amount)}</td>
+                </tr>`).join("")}
+            </tbody>
+          </table>
+          ${rows.length > 80 ? `<p class="drill-more">Showing the 80 most recent of ${rows.length}.</p>` : ""}`;
+        drill.classList.add("show");
+      }
+      function closeDrill(){ if (drill) drill.classList.remove("show"); }
+
+      /* Anything that names a category becomes a way into it. */
+      function wireDrill(){
+        document.querySelectorAll(".cat-table td.cat-name").forEach(td => {
+          if (td.dataset.drill) return;
+          td.dataset.drill = "1";
+          td.classList.add("is-drillable");
+          td.addEventListener("click", () => {
+            const name = td.textContent.trim();
+            if (name) openDrill(name);
+          });
+        });
+        document.querySelectorAll(".cmp-mover-name").forEach(el => {
+          if (el.dataset.drill) return;
+          el.dataset.drill = "1";
+          el.classList.add("is-drillable");
+          el.addEventListener("click", () => openDrill(el.textContent.trim()));
+        });
+      }
+
+      function mountAll(){ renderViewBar(); mountCompare(); wireDrill(); }
+      mountAll();
+      document.addEventListener("click", () => setTimeout(mountAll, 180), true);
     })();
 
 })();
