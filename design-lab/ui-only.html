@@ -99,7 +99,9 @@
     --dur-fast: 120ms;    /* hover, focus, colour swaps */
     --dur-base: 180ms;    /* the default for anything visible */
     --dur-slow: 280ms;    /* panels, overlays, larger travel */
-    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    /* L5 Emil, Hard Rule 2 (no approximated values): this is his table’s curve,
+       not one that resembles it. */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     /* The measured height of the bottom nav without a home indicator. Anything that
        floats above it derives its offset from this rather than guessing; the guess
        was 92px against an actual 61, which is how the add button ended up parked on
@@ -109,9 +111,10 @@
     --rail-nav-w: 92px;
     --side-panel-w: 300px;
     --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-    /* Exits accelerate away. Pairing ease-out with an entrance and ease-in with a
-       departure is what makes a panel feel dismissed rather than deleted. */
-    --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+    /* L5 Emil overrules the earlier reasoning here. "Never ease-in on a UI element":
+       it starts slow and delays the moment the user is watching, and ease-out at
+       200ms FEELS faster than ease-in at 200ms. The token is gone rather than left
+       unused, so nothing reaches for it again. */
 
     --track-caps: .04em;
     --track-tight: -0.02em;
@@ -143,17 +146,22 @@
        NOTE: .cur-sym / .cur-cents deliberately stay em-relative — they are the
        fmtMoneyRich symbol and cents, and must scale with whatever size the money
        around them is rendered at. They are not scale violations. */
-    --fs-3xs: 8px;
-    --fs-2xs: 10.5px;
-    --fs-xs:  11.5px;
-    --fs-sm:  12.5px;
-    --fs-md:  13.5px;
+    /* L4 ui-ux-pro-max: modular scale 10/12/14/16/18/24. Eleven steps including
+       13.5 and 14 — half a pixel apart — became six that can be told apart. A step
+       nobody can perceive is not a step; by layer 4’s own guideline that is the
+       "random font sizes" anti-pattern wearing token names. Extended down to 10px
+       because a dense finance UI needs a label rung below 12. */
+    --fs-3xs: 10px;
+    --fs-2xs: 10px;
+    --fs-xs:  12px;
+    --fs-sm:  12px;
+    --fs-md:  14px;
     --fs-base: 14px;
-    --fs-lg:  15px;
+    --fs-lg:  16px;
     --fs-xl:  16px;
     --fs-2xl: 18px;
-    --fs-3xl: 20px;
-    --fs-4xl: 22px;
+    --fs-3xl: 18px;
+    --fs-4xl: 24px;
     /* Display sizes are fluid because the hero number has to survive a phone and a
        1500px desktop without a breakpoint for each. Three densities, three rungs. */
     --fs-display-1: clamp(38px, 6.5vw, 60px);
@@ -1045,11 +1053,34 @@
     background:var(--accent-light);
     color:var(--accent-dark);
   }
+  /* L2: the grid stops claiming three metrics are equal. */
+  .card:has(> .stat-row){ container-type: inline-size; container-name: stat-area; }
   .stat-row{
     display:grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--sp-8);
+    grid-template-columns: 1.6fr 1fr;
+    grid-auto-rows: min-content;
+    gap: var(--sp-5) var(--sp-8);
     margin-bottom: var(--sp-11);
+    align-items:start;
+  }
+  .stat-row > .stat.is-primary{ grid-column:1; grid-row:1 / -1; align-self:stretch; }
+  .stat-row > .stat:not(.is-primary){ grid-column:2; }
+  .stat-row:not(:has(.is-primary)){ grid-template-columns: repeat(3, 1fr); }
+  .stat-row:not(:has(.is-primary)) > .stat{ grid-column:auto; }
+  /* L2: measured on the card. The window is 1024 here and the card is 475 - a
+     viewport breakpoint would read a number that has nothing to do with the
+     component it is meant to be protecting. */
+  @container stat-area (max-width: 560px){
+    .stat-row{ grid-template-columns: 1fr; }
+    .stat-row > .stat.is-primary{ grid-column:1; grid-row:auto; }
+    .stat-row > .stat:not(.is-primary){ grid-column:1; }
+  }
+  @supports not (container-type: inline-size){
+    @media (max-width: 900px){
+      .stat-row{ grid-template-columns: 1fr; }
+      .stat-row > .stat.is-primary{ grid-column:1; grid-row:auto; }
+      .stat-row > .stat:not(.is-primary){ grid-column:1; }
+    }
   }
   .stat-row.two{ grid-template-columns: repeat(2, 1fr); }
   @media (max-width: 480px){
@@ -1127,9 +1158,28 @@
      instantly among otherwise-identical cards. */
   .stat.is-primary{
     border-color: var(--accent);
-    background: linear-gradient(155deg, var(--accent-light), var(--card) 180%);
+    background: var(--accent-light);
+    flex-direction:column; align-items:stretch; justify-content:flex-start;
+    gap: var(--sp-5); padding: var(--sp-7);
   }
-  .stat.is-primary .value{ font-size:var(--fs-3xl); }
+  .stat.is-primary .stat-badge{ order:-1; }
+  /* L4: the display rung, three steps above the demoted ones. Contrast the eye
+     can use, rather than the 2px difference it cannot. */
+  .stat.is-primary .value{ font-size: var(--fs-display-3); line-height:1.05; }
+  .stat.is-primary .stat-spark{ width:100%; }
+  .stat.is-primary .stat-spark svg{ width:100%; height:44px; }
+
+  .stat-row > .stat:not(.is-primary){
+    background: var(--sunken);
+    border:1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: var(--sp-5);
+    gap: var(--sp-5);
+  }
+  .stat-row > .stat:not(.is-primary):hover{ transform:none; }
+  .stat-row > .stat:not(.is-primary) .stat-badge{ width:24px; height:24px; box-shadow:none; }
+  .stat-row > .stat:not(.is-primary) .stat-badge svg{ width:14px; height:14px; }
+  .stat-row > .stat:not(.is-primary) .value{ font-size: var(--fs-xl); }
   .stat-badge{
     width:30px; height:30px; border-radius:var(--r-md); flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
@@ -1664,19 +1714,15 @@
     justify-content:center;
     padding: 8vh 16px 16px;
   }
-  #search-overlay.show{
-    display:flex;
-    animation: overlayFadeIn var(--dur-base) var(--ease-out) both;
-  }
+  /* L5 Emil, gate step 1: keyboard-initiated, so it does not animate. */
+  #search-overlay.show{ display:flex; }
   @keyframes overlayFadeIn{
     from{ opacity:0; }
     to{ opacity:1; }
   }
   /* The panel scales up slightly as the backdrop fades — a full-screen modal
      appearing instantly is the most jarring transition left in the app. */
-  #search-overlay.show .search-panel{
-    animation: panelPopIn .2s var(--ease-out) both;
-  }
+  /* Same gate. The panel is the thing the keystroke asked for; it should be there. */
   @keyframes panelPopIn{
     from{ opacity:0; transform: translateY(-8px) scale(.97); }
     to{ opacity:1; transform: translateY(0) scale(1); }
@@ -1685,13 +1731,10 @@
      for: .show carries display:flex, and removing it alone would cut the exit off
      at frame one. The exit is shorter than the entrance — a dismissal that lingers
      reads as lag, not polish. */
-  #search-overlay.is-closing{
-    display:flex;
-    animation: overlayFadeOut var(--dur-fast) var(--ease-in) both;
-  }
-  #search-overlay.is-closing .search-panel{
-    animation: panelPopOut var(--dur-fast) var(--ease-in) both;
-  }
+  /* Exit removed with the entrance: "exit the way it entered", and it no longer
+     enters. The .is-closing class is kept so the JS contract is unchanged; it just
+     has nothing to play, and the timeout tears it down as before. */
+  #search-overlay.is-closing{ display:none; }
   @keyframes overlayFadeOut{
     from{ opacity:1; }
     to{ opacity:0; }
@@ -2126,6 +2169,13 @@
      rather than stacked, and lets the primary figure claim more room than the
      secondary one. Collapses to a single column before the tiles get too narrow
      to hold their stat rows. */
+  /* L5 Emil, stagger: ALREADY SATISFIED, nothing added. "Everything entering at
+     once -> 30-80ms stagger" is a real rule, but a 40/90/140ms stagger already
+     exists further down on .tab-panel.is-active .bento > .card - 50ms steps, inside
+     his range, and at a higher specificity than anything added here would have had.
+     A second ladder would have lost the cascade and sat in the file as dead CSS
+     implying a decision nobody made. Checked, left alone, recorded. */
+
   .bento{
     display:grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -2252,8 +2302,11 @@
     border:1px solid var(--line);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
   }
+  /* This is the rule that WINS - an identical selector earlier in the sheet is
+     overridden here at equal specificity, so editing the one above changes nothing
+     on screen. Same trap as .empty-state elsewhere in this file. */
   .stat.is-primary{
-    background: linear-gradient(150deg, var(--accent-light), var(--sunken) 78%);
+    background: var(--accent-light);
     border-color: color-mix(in srgb, var(--accent) 26%, var(--line));
   }
   .card{ background: linear-gradient(180deg, color-mix(in srgb, var(--ink) 2%, var(--card)), var(--card) 120px); }
@@ -3256,7 +3309,7 @@
       <div class="card bento-span-7" id="money-overview-card">
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="7"/><line x1="16" y1="20" x2="16" y2="10"/><line x1="20" y1="20" x2="20" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span>Money overview</h2>
         <p class="sub">Your total money right now, and how this month is going.</p>
-        <div class="stat-row two" id="money-overview-row"></div>
+        <div class="stat-row" id="money-overview-row"></div>
         <p class="hint" id="money-overview-loan-note" style="display:none; margin-top: var(--sp-6); margin-bottom:0;"></p>
       </div>
 
