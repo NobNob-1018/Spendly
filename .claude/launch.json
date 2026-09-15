@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "spendly-lab",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["design-lab/serve.js"],
+      "port": 8899
+    }
+  ]
+}
