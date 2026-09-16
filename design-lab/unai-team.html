@@ -80,8 +80,8 @@
        which made hover feedback invisible on anything already using it as a
        background. It now covers static tinted surfaces only; these two handle
        the interaction states. */
-    --hover: rgba(34,211,197,0.10);  /* transient hover feedback */
-    --selected: rgba(34,211,197,0.18); /* persistent selected state */
+    --hover: color-mix(in srgb, var(--accent) 10%, transparent);  /* transient hover feedback */
+    --selected: color-mix(in srgb, var(--accent) 18%, transparent); /* persistent selected state */
 
     /* --radius was a legacy alias duplicating --r-lg (both 18px); folded in. */
     /* Radius scale — snap to these rather than arbitrary values. */
@@ -196,8 +196,8 @@
   /* The surfaces nobody draws. Selection, the caret and the underline offset ship
      with browser defaults that belong to no design system, and they are visible on
      every text field in an app whose whole job is typing numbers into fields. */
-  ::selection{ background: rgba(34,211,197,0.28); color: var(--ink); }
-  ::-moz-selection{ background: rgba(34,211,197,0.28); color: var(--ink); }
+  ::selection{ background: color-mix(in srgb, var(--accent) 28%, transparent); color: var(--ink); }
+  ::-moz-selection{ background: color-mix(in srgb, var(--accent) 28%, transparent); color: var(--ink); }
   input, textarea, select, [contenteditable]{ caret-color: var(--accent); }
   a{ text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 
@@ -281,7 +281,7 @@
   #total-money-bar.flash-up{ animation: tmFlashUp var(--dur-slow) var(--ease-in-out); }
   #total-money-bar.flash-down{ animation: tmFlashDown var(--dur-slow) var(--ease-in-out); }
   @keyframes tmFlashUp{
-    0%{ border-color: var(--accent); box-shadow: 0 0 0 3px rgba(34,211,197,0.28); }
+    0%{ border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
     100%{ border-color: var(--line); box-shadow: var(--elev-3), var(--elev-inset-hi); }
   }
   @keyframes tmFlashDown{
@@ -802,7 +802,7 @@
     outline: none;
     border-color: var(--accent);
     background: var(--sunken-2);
-    box-shadow: 0 0 0 3px rgba(34,211,197,0.25);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
   }
   /* Focus must outrank hover — same colour at the same intensity made keyboard
      focus indistinguishable from a mouse hover. The halo does that. */
@@ -827,7 +827,7 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-radius: var(--r-sm);
-    box-shadow: 0 0 0 5px rgba(34,211,197,0.18);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent);
   }
   .amount-wrap{ position:relative; }
   .amount-wrap span{
@@ -1363,9 +1363,9 @@
     .sorted-col-3 th:nth-child(3), .sorted-col-3 td:nth-child(3),
     .sorted-col-6 th:nth-child(6), .sorted-col-6 td:nth-child(6){
       box-shadow:
-        inset  1px 0 0 rgba(34,211,197,0.22),
-        inset -1px 0 0 rgba(34,211,197,0.22),
-        inset 0 0 0 999px rgba(34,211,197,0.05);
+        inset  1px 0 0 color-mix(in srgb, var(--accent) 22%, transparent),
+        inset -1px 0 0 color-mix(in srgb, var(--accent) 22%, transparent),
+        inset 0 0 0 999px color-mix(in srgb, var(--accent) 5%, transparent);
     }
   }
   /* The cell was right-aligned but the input inside it was not, so tabular-nums was
@@ -1438,7 +1438,7 @@
   .add-more-toggle:focus-visible{
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-    box-shadow: 0 0 0 5px rgba(34,211,197,0.18);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent);
   }
 
   .summary-figure{
@@ -2020,7 +2020,7 @@
     content:"";
     position:fixed; inset:0; pointer-events:none; z-index:0;
     background:
-      radial-gradient(120% 80% at 12% -10%, rgba(34,211,197,0.16), transparent 55%),
+      radial-gradient(120% 80% at 12% -10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 55%),
       radial-gradient(90% 70% at 92% 0%, rgba(139,92,246,0.12), transparent 60%);
   }
   /* Grain. An inline SVG turbulence rather than a raster, so it costs ~200 bytes
@@ -2052,7 +2052,7 @@
     display:grid; grid-template-columns: minmax(0,1fr) auto;
     align-items:end; gap: var(--sp-6);
     background:
-      linear-gradient(158deg, rgba(34,211,197,0.10), transparent 42%),
+      linear-gradient(158deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent 42%),
       var(--card);
     border:1px solid var(--line);
     border-radius: var(--r-lg);
@@ -3440,6 +3440,526 @@
     letter-spacing: var(--track-caps); font-size: var(--fs-3xs); }
   .sp-row.is-future .sp-date.is-late + .sp-node::before{ border-color: var(--out); border-style: solid; }
 
+
+  /* ======================================================================
+     THE SPINE, ROUND TWO — pages, the fold, an opened line, and the night
+     edition of the paper.
+     ====================================================================== */
+
+  /* ---------- the page bar --------------------------------------------------
+     A book is turned, not scrolled forever. The bar says which page, how many
+     there are, and names the two either side rather than offering two arrows
+     that could go anywhere (VUI-LST-001: numbered, with a visible total). */
+  .spine-head{ display: block; margin-bottom: var(--sp-6); }
+  .spine-head-top{
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: var(--sp-7); flex-wrap: wrap;
+  }
+  .spine-id{ min-width: 0; }
+  .pager{ display: flex; align-items: stretch; gap: var(--sp-2); flex-shrink: 0; }
+  .pager-btn{
+    display: flex; align-items: center; gap: var(--sp-3);
+    max-width: 17ch; padding: var(--sp-4) var(--sp-6);
+    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-sm);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2); cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  @media (hover: hover){ .pager-btn:not(:disabled):hover{ border-color: var(--accent); color: var(--ink); } }
+  /* Disabled is not decoration: it is the book telling you there is no page
+     that way, which saves a click that would have done nothing. */
+  .pager-btn:disabled{ opacity: .42; cursor: default; border-color: var(--rule); }
+  .pager-mid{
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1px; padding: 0 var(--sp-5); min-width: 96px;
+  }
+  .pager-pos{ font-size: var(--fs-3xs); color: var(--ink-3); white-space: nowrap;
+    font-variant-numeric: tabular-nums; }
+  .pager-now{
+    border: 0; background: none; padding: 0; cursor: pointer;
+    font-size: var(--fs-3xs); font-weight: 700; color: var(--accent);
+    text-decoration: underline; text-underline-offset: 2px; white-space: nowrap;
+  }
+  .pager-now[hidden]{ display: none; }
+
+  /* ---------- the filter row ------------------------------------------------ */
+  .rail-controls{
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--sp-6); flex-wrap: wrap; margin-top: var(--sp-6);
+  }
+  /* Idle is surface plus border; active is filled and ticked. The difference
+     between chosen and not chosen is the highest-value contrast in the
+     component, so it is not a five-percent background shift. */
+  .spine-modes{ display: flex; gap: var(--sp-3); padding: 0; background: none; border-radius: 0; flex-wrap: wrap; }
+  .spine-mode{
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+    padding: var(--sp-4) var(--sp-6);
+    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-pill);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2);
+    cursor: pointer; white-space: nowrap;
+    transition: background var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){ .spine-mode:not(:disabled):not(.is-on):hover{ border-color: var(--accent); color: var(--ink); } }
+  .spine-mode.is-on{
+    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  }
+  .spine-mode:disabled{ opacity: .45; cursor: default; background: none; }
+  .chip-tick{ width: 0; overflow: hidden; transition: width var(--dur-fast) var(--ease-out); }
+  .chip-tick::before{ content: "\2713"; font-size: 11px; }
+  .spine-mode.is-on .chip-tick{ width: 11px; }
+  .chip-n{
+    font-size: var(--fs-3xs); font-weight: 600; font-variant-numeric: tabular-nums;
+    padding: 0 var(--sp-3); border-radius: var(--r-pill);
+    background: var(--paper-3); color: var(--ink-3);
+  }
+  .spine-mode.is-on .chip-n{ background: rgb(255 255 255 / .22); color: var(--on-accent); }
+
+  .rail-find{ position: relative; display: flex; align-items: center; flex: 0 1 260px; min-width: 170px; }
+  .rail-find input{
+    width: 100%; height: 32px; padding: 0 34px 0 var(--sp-6);
+    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-pill);
+    font-size: var(--fs-xs); color: var(--ink);
+  }
+  .rail-find input::placeholder{ color: var(--ink-4); }
+  /* VUI-KBD-001: the key is shown where the thing it does lives, not in a
+     help panel nobody opens. */
+  .rail-find kbd{ position: absolute; right: 8px; pointer-events: none; }
+  kbd{
+    display: inline-block; min-width: 15px; padding: 0 4px;
+    background: var(--paper-3); border: 1px solid var(--rule-2); border-bottom-width: 2px;
+    border-radius: 3px; font: 600 10px/16px var(--mono); color: var(--ink-3);
+    text-align: center; vertical-align: baseline;
+  }
+
+  /* ---------- what is currently on -------------------------------------------
+     Pinned above the results, each one individually removable, with the count
+     and one exit that says how much it will undo. */
+  .active-filters{
+    display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap;
+    margin-top: var(--sp-5); padding: var(--sp-4) var(--sp-5);
+    background: var(--accent-l); border-radius: var(--r-md);
+  }
+  .active-filters[hidden]{ display: none; }
+  .af-k{ font-size: var(--fs-3xs); text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-3); }
+  .af-chip{
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+    padding: 2px var(--sp-4) 2px var(--sp-5);
+    background: var(--card); border: 1px solid var(--accent); border-radius: var(--r-pill);
+    font-size: var(--fs-xs); color: var(--ink); cursor: pointer;
+  }
+  .af-x{ font-size: 13px; line-height: 1; color: var(--ink-3); }
+  @media (hover: hover){ .af-chip:hover .af-x{ color: var(--out); } }
+  .af-logic{ font-size: var(--fs-3xs); color: var(--ink-3); font-style: italic; }
+  .af-count{ font-size: var(--fs-3xs); color: var(--ink-2); font-weight: 600;
+    font-variant-numeric: tabular-nums; margin-left: auto; }
+  .af-clear{
+    border: 0; background: none; padding: 2px var(--sp-4); cursor: pointer;
+    font-size: var(--fs-xs); font-weight: 700; color: var(--accent);
+    text-decoration: underline; text-underline-offset: 2px;
+  }
+
+  /* ---------- the fold -------------------------------------------------------
+     A ledger foots its columns. This app never did, so a month could be read
+     line by line and still not answer "how did it go". It sits above the lines
+     because that is the order the question is actually asked in. */
+  .fold{
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1px; margin: var(--sp-6) 0 var(--sp-7);
+    background: var(--rule); border: 1px solid var(--rule);
+    border-radius: var(--r-md); overflow: hidden;
+  }
+  .fold-cell{ display: flex; flex-direction: column; gap: 2px;
+    padding: var(--sp-5) var(--sp-6); background: var(--paper-2); min-width: 0; }
+  .fold-k{ font-size: var(--fs-3xs); text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-3); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .fold-v{ font-size: var(--fs-lg); font-weight: 700; color: var(--ink); }
+  .fold-cell.is-in .fold-v{ color: var(--in); }
+  .fold-cell.is-out .fold-v{ color: var(--out); }
+  @media (max-width: 900px){
+    .fold{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .fold-cell:last-child:nth-child(odd){ grid-column: 1 / -1; }
+  }
+
+  /* ---------- an opened line -------------------------------------------------
+     In place and indented to the rail, because a record of four fields does not
+     deserve a modal and a modal would cost the reader their place. */
+  .sp-row{ cursor: pointer; scroll-margin-top: calc(var(--bar-h) + 8px); }
+  .sp-row.is-open{ background: var(--paper-2); border-bottom-color: var(--rule-2); }
+  .sp-row.is-cursor{ box-shadow: inset 3px 0 0 var(--accent); background: var(--paper-2); }
+  .sp-row:focus-visible{ outline: 2px solid var(--accent); outline-offset: -2px; }
+  .sp-detail{
+    padding: var(--sp-6) var(--sp-5) var(--sp-7) 116px;
+    background: var(--paper-2); border-bottom: 1px solid var(--rule-2);
+    animation: sp-open var(--dur-base) var(--ease-out);
+  }
+  @keyframes sp-open{ from{ opacity: 0; transform: translateY(-3px); } to{ opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce){ .sp-detail{ animation: none; } }
+  .sp-d-row{ display: grid; grid-template-columns: 116px minmax(0, 1fr);
+    gap: var(--sp-5); padding: var(--sp-3) 0; font-size: var(--fs-sm); }
+  .sp-d-k{ color: var(--ink-3); }
+  .sp-d-v{ color: var(--ink); }
+  .sp-d-note{ margin: var(--sp-5) 0 0; max-width: 62ch;
+    font-size: var(--fs-xs); line-height: 1.6; color: var(--ink-3); }
+  .sp-d-act{ margin-top: var(--sp-6); }
+  .sp-d-go{
+    padding: var(--sp-4) var(--sp-6);
+    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-sm);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink); cursor: pointer;
+  }
+  @media (hover: hover){ .sp-d-go:hover{ border-color: var(--accent); color: var(--accent); } }
+  @media (max-width: 720px){
+    .sp-detail{ padding-left: var(--sp-6); }
+    .sp-d-row{ grid-template-columns: minmax(0, 1fr); gap: 0; }
+  }
+
+  /* The rule that separates what happened from what is only committed, on a
+     page that is not today's and so has no "today" on it. */
+  .sp-fold-rule{
+    display: flex; align-items: center; gap: var(--sp-5);
+    margin: var(--sp-7) 0 var(--sp-5); padding-left: 116px;
+    font-size: var(--fs-3xs); text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-3);
+  }
+  .sp-fold-rule::after{ content: ""; flex: 1; height: 1px; background: var(--rule-2); }
+
+  .keycap-strip{
+    margin: var(--sp-8) 0 0; padding-top: var(--sp-5);
+    border-top: 1px solid var(--rule);
+    font-size: var(--fs-3xs); color: var(--ink-3); line-height: 2.1;
+  }
+  .keycap-strip kbd{ margin: 0 2px; }
+
+  /* ---------- places, with what is on this page ----------------------------- */
+  .place{ grid-template-columns: 3px minmax(0, 1fr) auto; row-gap: 1px; }
+  .place-n{
+    grid-column: 2 / -1; font-size: var(--fs-3xs); color: var(--ink-4);
+    font-variant-numeric: tabular-nums;
+  }
+  .place.is-on .place-n{ color: var(--accent); font-weight: 600; }
+  /* Dimmed, not hidden: an account with nothing on this page is information. */
+  .place.is-empty:not(.is-on){ opacity: .5; }
+
+  /* ---------- the rest of the book ------------------------------------------ */
+  .ref-head{ margin: 0 0 var(--sp-4); font-size: var(--fs-3xs); text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-3); }
+  .ref-link.is-on{ background: var(--card); color: var(--ink); font-weight: 600; }
+  .ref-link.is-on .ref-go{ color: var(--accent); }
+  .ref-name{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .drawer-bar{ flex-wrap: wrap; row-gap: var(--sp-4); }
+  .drawer-where{ width: 100%; margin: 0; font-size: var(--fs-3xs);
+    text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--ink-4); }
+  /* Sections are reachable from inside the drawer, so moving between them is
+     not "close, find the rail, open another". */
+  .drawer-tabs{ display: flex; gap: var(--sp-2); flex-wrap: wrap; order: 3; width: 100%;
+    padding-top: var(--sp-4); border-top: 1px solid var(--rule); }
+  .drawer-tab{
+    padding: var(--sp-3) var(--sp-5); background: none; border: 0; border-radius: var(--r-sm);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-3); cursor: pointer;
+  }
+  @media (hover: hover){ .drawer-tab:hover{ background: var(--paper-2); color: var(--ink); } }
+  .drawer-tab.is-on{ background: var(--accent); color: var(--on-accent); }
+  .drawer-close{
+    display: inline-flex; align-items: center; gap: var(--sp-4);
+    padding: var(--sp-4) var(--sp-6); background: var(--card);
+    border: 1px solid var(--rule-2); border-radius: var(--r-sm);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2); cursor: pointer;
+  }
+  @media (hover: hover){ .drawer-close:hover{ border-color: var(--accent); color: var(--ink); } }
+
+  /* Arriving somewhere should look like arriving, not like a panel opening. */
+  tr.is-found > td{ background: var(--accent-l) !important; }
+  tr.is-found{ animation: found-flash 2.4s var(--ease-out); }
+  @keyframes found-flash{ 0%,18%{ box-shadow: inset 3px 0 0 var(--accent); } 100%{ box-shadow: none; } }
+  @media (prefers-reduced-motion: reduce){ tr.is-found{ animation: none; } }
+
+  .act-amt.is-in{ color: var(--in); }
+  .act-amt.is-out{ color: var(--ink-2); }
+  #act-quick{ margin-bottom: var(--sp-9); }
+
+  /* ---------- the theme switch ---------------------------------------------- */
+  .lamp{
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-5); background: none;
+    border: 1px solid var(--rule-2); border-radius: var(--r-pill);
+    font-size: var(--fs-2xs); font-weight: 600; color: var(--ink-3); cursor: pointer;
+    white-space: nowrap;
+  }
+  @media (hover: hover){ .lamp:hover{ border-color: var(--accent); color: var(--ink); } }
+  .lamp svg{ width: 14px; height: 14px; }
+  @media (max-width: 640px){ .lamp-label{ display: none; } }
+
+  /* ======================================================================
+     THE NIGHT EDITION
+
+     Not the light palette inverted. Paper under a lamp is warm and the ink on
+     it never reaches white, so the ground keeps its brown and the ink stops
+     short of #FFF. The banknote colours are lifted and desaturated
+     (VUI-DRK-004) because the daylight versions — a 5F3382 violet, a 1F5B3B
+     green — are unreadable on anything dark.
+     ====================================================================== */
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+
+    --paper:      #17150F;
+    --paper-2:    #1F1C15;
+    --paper-3:    #2A251C;
+    --card:       #262119;      /* raised, which on paper meant white and here means nearer the lamp */
+    --rule:       #38322A;
+    --rule-2:     #4E4739;
+
+    --ink:        #F4EFE4;
+    --ink-2:      #D3CABA;
+    --ink-3:      #AEA593;
+    --ink-4:      #9A917F;
+
+    --peso-100:   #C49AE4;
+    --peso-100-d: #DCC2F0;
+    --peso-100-l: #2E2437;
+    --peso-200:   #7FCB9F;
+    --peso-50:    #F0958A;
+    --peso-500:   #E5BA6D;
+    --peso-1000:  #93BCE0;
+
+    --on-accent:  #1B1023;      /* the accent is now the light one, so its ink is dark */
+    --caution:    #E5BA6D;
+    --selected:   rgb(196 154 228 / .18);
+    --violet-soft: #B98ADB;
+    --accent-quiet: #B98ADB;
+
+    --elev-3: 0 6px 22px rgb(0 0 0 / .55);
+    --elev-4: 0 18px 48px rgb(0 0 0 / .68);
+  }
+  :root[data-theme="dark"] ::selection{ background: var(--peso-100-l); color: var(--ink); }
+  :root[data-theme="dark"] .drawer-scrim{ background: rgb(0 0 0 / .58); }
+  /* The tick and the count inside a filled chip sit on a LIGHT accent at night,
+     so a white wash would disappear. */
+  :root[data-theme="dark"] .spine-mode.is-on .chip-n{ background: rgb(27 16 35 / .18); }
+  /* The card white the app uses for inputs is the raised surface here, and a
+     hairline is needed to keep a field from dissolving into the page. */
+  :root[data-theme="dark"] .quick input,
+  :root[data-theme="dark"] .quick select,
+  :root[data-theme="dark"] .rail-find input{ background: var(--paper-3); }
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --paper: #17150F; --paper-2: #1F1C15; --paper-3: #2A251C; --card: #262119;
+      --rule: #38322A; --rule-2: #4E4739;
+      --ink: #F4EFE4; --ink-2: #D3CABA; --ink-3: #AEA593; --ink-4: #9A917F;
+      --peso-100: #C49AE4; --peso-100-d: #DCC2F0; --peso-100-l: #2E2437;
+      --peso-200: #7FCB9F; --peso-50: #F0958A; --peso-500: #E5BA6D; --peso-1000: #93BCE0;
+      --on-accent: #1B1023; --caution: #E5BA6D; --selected: rgb(196 154 228 / .18);
+      --violet-soft: #B98ADB; --accent-quiet: #B98ADB;
+      --elev-3: 0 6px 22px rgb(0 0 0 / .55);
+      --elev-4: 0 18px 48px rgb(0 0 0 / .68);
+    }
+    :root:not([data-theme="light"]) ::selection{ background: var(--peso-100-l); color: var(--ink); }
+    :root:not([data-theme="light"]) .drawer-scrim{ background: rgb(0 0 0 / .58); }
+    :root:not([data-theme="light"]) .spine-mode.is-on .chip-n{ background: rgb(27 16 35 / .18); }
+    :root:not([data-theme="light"]) .quick input,
+    :root:not([data-theme="light"]) .quick select,
+    :root:not([data-theme="light"]) .rail-find input{ background: var(--paper-3); }
+  }
+
+
+  .sp-elsewhere{
+    margin: var(--sp-6) 0 0; padding-left: 116px;
+    font-size: var(--fs-xs); line-height: 2; color: var(--ink-3);
+  }
+  .sp-jump{
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+    margin: 0 var(--sp-3); padding: 2px var(--sp-5);
+    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-pill);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink); cursor: pointer;
+  }
+  @media (hover: hover){ .sp-jump:hover{ border-color: var(--accent); color: var(--accent); } }
+  .sp-jump-n{ font-size: var(--fs-3xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .ref-link kbd{ flex-shrink: 0; }
+  @media (max-width: 720px){ .sp-elsewhere{ padding-left: var(--sp-6); } }
+
+  /* The rail is six columns, not five: date, node, what, tag, amount, balance.
+     The sixth was missing and the balance was being auto-placed onto a second
+     row underneath the date, which is not "beside" anything. */
+  .sp-row{
+    grid-template-columns: 84px 24px minmax(0, 1fr) auto minmax(88px, auto) 104px;
+  }
+  .sp-bal{ min-width: 0; }
+  /* Today is measured against the same column or it is not a comparison. */
+  .sp-today{
+    grid-template-columns: 84px 24px minmax(0, 1fr) auto minmax(88px, auto) 104px;
+  }
+  .sp-today-label{ grid-column: 3 / 6; }
+  .sp-today-bal{ grid-column: 6; text-align: right; }
+  /* Below the act column the tag has nowhere to go; it drops under the
+     description rather than squeezing the two figures that carry the meaning. */
+  @media (max-width: 1080px){
+    .sp-row{ grid-template-columns: 76px 20px minmax(0, 1fr) minmax(80px, auto) 96px; }
+    .sp-tag{ grid-column: 3 / -1; grid-row: 2; font-size: var(--fs-3xs); }
+    .sp-today{ grid-template-columns: 76px 20px minmax(0, 1fr) minmax(80px, auto) 96px; }
+    .sp-today-label{ grid-column: 3 / 5; }
+    .sp-today-bal{ grid-column: 5; }
+  }
+  @media (max-width: 620px){
+    .sp-row{ grid-template-columns: 64px 16px minmax(0, 1fr) auto; }
+    .sp-tag{ grid-column: 3 / -1; grid-row: 2; }
+    .sp-bal{ grid-column: 4; grid-row: 2; }
+    .sp-today{ grid-template-columns: 64px 16px minmax(0, 1fr) auto; }
+    .sp-today-label{ grid-column: 3; }
+    .sp-today-bal{ grid-column: 4; }
+  }
+
+  /* ---------- narrow: three columns become three bands --------------------- */
+  /* Between 1180 and 860 the places rail keeps its column and the act panel
+     drops underneath, full width, as two blocks side by side. */
+  @media (max-width: 1180px){
+    .frame{ grid-template-columns: var(--rail-w) minmax(0, 1fr); align-items: stretch; }
+    .act{
+      display: grid; grid-column: 1 / -1; grid-row: 2;
+      grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+      gap: var(--sp-9);
+      position: static; max-height: none; overflow: visible;
+      border-left: 0; border-top: 1px solid var(--rule-2);
+      padding: var(--sp-8);
+    }
+    #act-quick{ margin-bottom: 0; }
+    .quick{ display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
+  }
+
+  @media (max-width: 860px){
+    .frame{ grid-template-columns: minmax(0, 1fr); }
+    /* What needs doing, then where the money is, then the rail. A reader on a
+       phone opens this to answer a question, not to browse. */
+    .act{ display: grid; order: 1; grid-column: 1; grid-row: auto;
+          grid-template-columns: minmax(0, 1fr); gap: var(--sp-8);
+          border-top: 0; border-bottom: 1px solid var(--rule-2); }
+    .places{
+      display: block; order: 2; position: static;
+      max-height: none; overflow: visible;
+      border-right: 0; border-bottom: 1px solid var(--rule-2);
+      padding: var(--sp-6) 0 var(--sp-6) var(--sp-7);
+      background: var(--paper-2);
+    }
+    .spine-wrap{ order: 3; padding: var(--sp-7) var(--sp-7) var(--sp-13); }
+
+    .places-head{ padding-right: var(--sp-7); }
+    /* Sideways, not wrapped into a wall: four rows of chips would push the
+       first line of the rail below the fold, and the rail is the content. */
+    #places-body{
+      display: flex; gap: var(--sp-4); overflow-x: auto; overflow-y: hidden;
+      padding-bottom: var(--sp-4); scroll-snap-type: x proximity;
+      overscroll-behavior-x: contain;
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 42px), transparent);
+              mask-image: linear-gradient(to right, #000 calc(100% - 42px), transparent);
+    }
+    #places-body .place{
+      flex: 0 0 auto; width: auto; scroll-snap-align: start;
+      grid-template-columns: 3px auto auto; row-gap: 0;
+      background: var(--card); border: 1px solid var(--rule);
+      border-radius: var(--r-pill); padding: var(--sp-3) var(--sp-6) var(--sp-3) var(--sp-4);
+    }
+    #places-body .place.is-on{ border-color: var(--accent); background: var(--accent-l); }
+    #places-body .place-n{ display: none; }        /* the count is desktop detail */
+    .places-total{ margin-right: var(--sp-7); }
+    .places-note{ display: none; }
+
+    .ref-list{
+      display: flex; flex-direction: row; gap: var(--sp-3);
+      margin-top: var(--sp-6); padding: var(--sp-5) var(--sp-7) 0 0;
+      border-top: 1px solid var(--rule);
+      overflow-x: auto; overscroll-behavior-x: contain;
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+              mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+    }
+    .ref-head{ display: none; }
+    .ref-link{ flex: 0 0 auto; width: auto; gap: var(--sp-3);
+      border: 1px solid var(--rule); border-radius: var(--r-pill); }
+    .ref-link kbd{ display: none; }                /* no keyboard to shortcut */
+
+    /* The drawer is the whole screen here, not a panel beside the rail. */
+    .drawer{ width: 100%; inset: var(--bar-h) 0 0 0; }
+    .drawer-body{ padding: var(--sp-6) var(--sp-7) var(--sp-13); }
+    .keycap-strip{ display: none; }
+  }
+
+  /* The act column is the add affordance only while it is on screen. */
+  @media (max-width: 1180px){
+    #btn-fab-add{ display: flex; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
+  }
+
+  @media (max-width: 860px){
+    /* The full form is a button away and is the better form on a phone: it has
+       the date, the tags and the currency this one drops. */
+    #act-quick{ display: none; }
+    .act{ padding: var(--sp-6) var(--sp-7); }
+    .act-item{ padding: var(--sp-4) 0; }
+  }
+  .act-more{
+    margin-top: var(--sp-5); padding: 0; background: none; border: 0;
+    font-size: var(--fs-xs); font-weight: 600; color: var(--accent);
+    text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+  }
+
+  /* ---------- narrow, corrected -------------------------------------------- */
+  @media (max-width: 860px){
+    /* Filter, then the rail, then the duplicate. The act band repeats what the
+       rail already shows in date order, so on the one screen where space is
+       scarce it goes last rather than first. */
+    .places{ order: 1; }
+    .spine-wrap{ order: 2; }
+    .act{ order: 3; border-bottom: 0; border-top: 1px solid var(--rule-2); }
+
+    /* Two, and a way to the rest. The third onward is every .act-item with two
+       .act-item siblings ahead of it. */
+    .act-item + .act-item + .act-item{ display: none; }
+
+    /* The total is written inside the body, so in a horizontal strip it is a
+       member of the row. It leads it, and looks like a total rather than like
+       an account with no name. */
+    #places-body .places-total{
+      order: -1; flex: 0 0 auto; display: flex; flex-direction: column;
+      gap: 0; margin: 0 var(--sp-4) 0 0; padding: var(--sp-3) var(--sp-6);
+      border-top: 0; border-right: 1px solid var(--rule-2);
+      align-items: flex-start; justify-content: center;
+    }
+    #places-body .places-total-v{ font-size: var(--fs-md); }
+  }
+  /* Above the breakpoint the whole list shows, so the offer to see the rest is
+     an offer to see what is already there. */
+  @media (min-width: 861px){ .act-more{ display: none; } }
+
+  /* A phone's first screen belongs to the rail. The explanation of what the
+     rail is can be read once, on something with room for it. */
+  @media (max-width: 620px){
+    .spine-sub{ display: none; }
+    .spine-head-top{ gap: var(--sp-5); }
+    .pager{ width: 100%; }
+    .pager-btn{ flex: 1 1 0; min-width: 0; justify-content: center; }
+    .fold{ grid-template-columns: repeat(2, minmax(0, 1fr)); margin: var(--sp-5) 0; }
+    .fold-cell{ padding: var(--sp-4) var(--sp-5); }
+    .fold-v{ font-size: var(--fs-md); }
+    .rail-controls{ gap: var(--sp-4); }
+    .rail-find{ flex: 1 1 100%; }
+  }
+
+  @media (max-width: 620px){
+    .fold{
+      display: flex; gap: 1px; overflow-x: auto; overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+              mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+    }
+    .fold-cell{ flex: 0 0 auto; min-width: 118px; scroll-snap-align: start; }
+    .fold-cell:last-child:nth-child(odd){ grid-column: auto; }
+  }
+
+  /* The baseline lit its ground with two coloured radials. On paper that is a
+     stain, and this design's own note says to shadow only what opens above the
+     page — a fixed gradient over the whole viewport opens nothing. */
+  body::before{ display: none; }
 </style>
 <script>
 /* Runs before anything is painted. A reader who chose the night edition should
@@ -12064,521 +12584,6 @@
   @media (max-width: 720px){
     #lab-badge{ bottom: auto; top: 6px; left: 6px; font-size: 10px; padding: 4px 8px; }
     #lab-badge small{ display: none; }
-  }
-
-  /* ======================================================================
-     THE SPINE, ROUND TWO — pages, the fold, an opened line, and the night
-     edition of the paper.
-     ====================================================================== */
-
-  /* ---------- the page bar --------------------------------------------------
-     A book is turned, not scrolled forever. The bar says which page, how many
-     there are, and names the two either side rather than offering two arrows
-     that could go anywhere (VUI-LST-001: numbered, with a visible total). */
-  .spine-head{ display: block; margin-bottom: var(--sp-6); }
-  .spine-head-top{
-    display: flex; align-items: flex-end; justify-content: space-between;
-    gap: var(--sp-7); flex-wrap: wrap;
-  }
-  .spine-id{ min-width: 0; }
-  .pager{ display: flex; align-items: stretch; gap: var(--sp-2); flex-shrink: 0; }
-  .pager-btn{
-    display: flex; align-items: center; gap: var(--sp-3);
-    max-width: 17ch; padding: var(--sp-4) var(--sp-6);
-    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-sm);
-    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2); cursor: pointer;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  @media (hover: hover){ .pager-btn:not(:disabled):hover{ border-color: var(--accent); color: var(--ink); } }
-  /* Disabled is not decoration: it is the book telling you there is no page
-     that way, which saves a click that would have done nothing. */
-  .pager-btn:disabled{ opacity: .42; cursor: default; border-color: var(--rule); }
-  .pager-mid{
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 1px; padding: 0 var(--sp-5); min-width: 96px;
-  }
-  .pager-pos{ font-size: var(--fs-3xs); color: var(--ink-3); white-space: nowrap;
-    font-variant-numeric: tabular-nums; }
-  .pager-now{
-    border: 0; background: none; padding: 0; cursor: pointer;
-    font-size: var(--fs-3xs); font-weight: 700; color: var(--accent);
-    text-decoration: underline; text-underline-offset: 2px; white-space: nowrap;
-  }
-  .pager-now[hidden]{ display: none; }
-
-  /* ---------- the filter row ------------------------------------------------ */
-  .rail-controls{
-    display: flex; align-items: center; justify-content: space-between;
-    gap: var(--sp-6); flex-wrap: wrap; margin-top: var(--sp-6);
-  }
-  /* Idle is surface plus border; active is filled and ticked. The difference
-     between chosen and not chosen is the highest-value contrast in the
-     component, so it is not a five-percent background shift. */
-  .spine-modes{ display: flex; gap: var(--sp-3); padding: 0; background: none; border-radius: 0; flex-wrap: wrap; }
-  .spine-mode{
-    display: inline-flex; align-items: center; gap: var(--sp-3);
-    padding: var(--sp-4) var(--sp-6);
-    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-pill);
-    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2);
-    cursor: pointer; white-space: nowrap;
-    transition: background var(--dur-fast) var(--ease-out),
-                color var(--dur-fast) var(--ease-out),
-                border-color var(--dur-fast) var(--ease-out);
-  }
-  @media (hover: hover){ .spine-mode:not(:disabled):not(.is-on):hover{ border-color: var(--accent); color: var(--ink); } }
-  .spine-mode.is-on{
-    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
-  }
-  .spine-mode:disabled{ opacity: .45; cursor: default; background: none; }
-  .chip-tick{ width: 0; overflow: hidden; transition: width var(--dur-fast) var(--ease-out); }
-  .chip-tick::before{ content: "\2713"; font-size: 11px; }
-  .spine-mode.is-on .chip-tick{ width: 11px; }
-  .chip-n{
-    font-size: var(--fs-3xs); font-weight: 600; font-variant-numeric: tabular-nums;
-    padding: 0 var(--sp-3); border-radius: var(--r-pill);
-    background: var(--paper-3); color: var(--ink-3);
-  }
-  .spine-mode.is-on .chip-n{ background: rgb(255 255 255 / .22); color: var(--on-accent); }
-
-  .rail-find{ position: relative; display: flex; align-items: center; flex: 0 1 260px; min-width: 170px; }
-  .rail-find input{
-    width: 100%; height: 32px; padding: 0 34px 0 var(--sp-6);
-    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-pill);
-    font-size: var(--fs-xs); color: var(--ink);
-  }
-  .rail-find input::placeholder{ color: var(--ink-4); }
-  /* VUI-KBD-001: the key is shown where the thing it does lives, not in a
-     help panel nobody opens. */
-  .rail-find kbd{ position: absolute; right: 8px; pointer-events: none; }
-  kbd{
-    display: inline-block; min-width: 15px; padding: 0 4px;
-    background: var(--paper-3); border: 1px solid var(--rule-2); border-bottom-width: 2px;
-    border-radius: 3px; font: 600 10px/16px var(--mono); color: var(--ink-3);
-    text-align: center; vertical-align: baseline;
-  }
-
-  /* ---------- what is currently on -------------------------------------------
-     Pinned above the results, each one individually removable, with the count
-     and one exit that says how much it will undo. */
-  .active-filters{
-    display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap;
-    margin-top: var(--sp-5); padding: var(--sp-4) var(--sp-5);
-    background: var(--accent-l); border-radius: var(--r-md);
-  }
-  .active-filters[hidden]{ display: none; }
-  .af-k{ font-size: var(--fs-3xs); text-transform: uppercase;
-    letter-spacing: var(--track-caps); color: var(--ink-3); }
-  .af-chip{
-    display: inline-flex; align-items: center; gap: var(--sp-3);
-    padding: 2px var(--sp-4) 2px var(--sp-5);
-    background: var(--card); border: 1px solid var(--accent); border-radius: var(--r-pill);
-    font-size: var(--fs-xs); color: var(--ink); cursor: pointer;
-  }
-  .af-x{ font-size: 13px; line-height: 1; color: var(--ink-3); }
-  @media (hover: hover){ .af-chip:hover .af-x{ color: var(--out); } }
-  .af-logic{ font-size: var(--fs-3xs); color: var(--ink-3); font-style: italic; }
-  .af-count{ font-size: var(--fs-3xs); color: var(--ink-2); font-weight: 600;
-    font-variant-numeric: tabular-nums; margin-left: auto; }
-  .af-clear{
-    border: 0; background: none; padding: 2px var(--sp-4); cursor: pointer;
-    font-size: var(--fs-xs); font-weight: 700; color: var(--accent);
-    text-decoration: underline; text-underline-offset: 2px;
-  }
-
-  /* ---------- the fold -------------------------------------------------------
-     A ledger foots its columns. This app never did, so a month could be read
-     line by line and still not answer "how did it go". It sits above the lines
-     because that is the order the question is actually asked in. */
-  .fold{
-    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 1px; margin: var(--sp-6) 0 var(--sp-7);
-    background: var(--rule); border: 1px solid var(--rule);
-    border-radius: var(--r-md); overflow: hidden;
-  }
-  .fold-cell{ display: flex; flex-direction: column; gap: 2px;
-    padding: var(--sp-5) var(--sp-6); background: var(--paper-2); min-width: 0; }
-  .fold-k{ font-size: var(--fs-3xs); text-transform: uppercase;
-    letter-spacing: var(--track-caps); color: var(--ink-3); white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis; }
-  .fold-v{ font-size: var(--fs-lg); font-weight: 700; color: var(--ink); }
-  .fold-cell.is-in .fold-v{ color: var(--in); }
-  .fold-cell.is-out .fold-v{ color: var(--out); }
-  @media (max-width: 900px){
-    .fold{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .fold-cell:last-child:nth-child(odd){ grid-column: 1 / -1; }
-  }
-
-  /* ---------- an opened line -------------------------------------------------
-     In place and indented to the rail, because a record of four fields does not
-     deserve a modal and a modal would cost the reader their place. */
-  .sp-row{ cursor: pointer; scroll-margin-top: calc(var(--bar-h) + 8px); }
-  .sp-row.is-open{ background: var(--paper-2); border-bottom-color: var(--rule-2); }
-  .sp-row.is-cursor{ box-shadow: inset 3px 0 0 var(--accent); background: var(--paper-2); }
-  .sp-row:focus-visible{ outline: 2px solid var(--accent); outline-offset: -2px; }
-  .sp-detail{
-    padding: var(--sp-6) var(--sp-5) var(--sp-7) 116px;
-    background: var(--paper-2); border-bottom: 1px solid var(--rule-2);
-    animation: sp-open var(--dur-base) var(--ease-out);
-  }
-  @keyframes sp-open{ from{ opacity: 0; transform: translateY(-3px); } to{ opacity: 1; transform: none; } }
-  @media (prefers-reduced-motion: reduce){ .sp-detail{ animation: none; } }
-  .sp-d-row{ display: grid; grid-template-columns: 116px minmax(0, 1fr);
-    gap: var(--sp-5); padding: var(--sp-3) 0; font-size: var(--fs-sm); }
-  .sp-d-k{ color: var(--ink-3); }
-  .sp-d-v{ color: var(--ink); }
-  .sp-d-note{ margin: var(--sp-5) 0 0; max-width: 62ch;
-    font-size: var(--fs-xs); line-height: 1.6; color: var(--ink-3); }
-  .sp-d-act{ margin-top: var(--sp-6); }
-  .sp-d-go{
-    padding: var(--sp-4) var(--sp-6);
-    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-sm);
-    font-size: var(--fs-xs); font-weight: 600; color: var(--ink); cursor: pointer;
-  }
-  @media (hover: hover){ .sp-d-go:hover{ border-color: var(--accent); color: var(--accent); } }
-  @media (max-width: 720px){
-    .sp-detail{ padding-left: var(--sp-6); }
-    .sp-d-row{ grid-template-columns: minmax(0, 1fr); gap: 0; }
-  }
-
-  /* The rule that separates what happened from what is only committed, on a
-     page that is not today's and so has no "today" on it. */
-  .sp-fold-rule{
-    display: flex; align-items: center; gap: var(--sp-5);
-    margin: var(--sp-7) 0 var(--sp-5); padding-left: 116px;
-    font-size: var(--fs-3xs); text-transform: uppercase;
-    letter-spacing: var(--track-caps); color: var(--ink-3);
-  }
-  .sp-fold-rule::after{ content: ""; flex: 1; height: 1px; background: var(--rule-2); }
-
-  .keycap-strip{
-    margin: var(--sp-8) 0 0; padding-top: var(--sp-5);
-    border-top: 1px solid var(--rule);
-    font-size: var(--fs-3xs); color: var(--ink-3); line-height: 2.1;
-  }
-  .keycap-strip kbd{ margin: 0 2px; }
-
-  /* ---------- places, with what is on this page ----------------------------- */
-  .place{ grid-template-columns: 3px minmax(0, 1fr) auto; row-gap: 1px; }
-  .place-n{
-    grid-column: 2 / -1; font-size: var(--fs-3xs); color: var(--ink-4);
-    font-variant-numeric: tabular-nums;
-  }
-  .place.is-on .place-n{ color: var(--accent); font-weight: 600; }
-  /* Dimmed, not hidden: an account with nothing on this page is information. */
-  .place.is-empty:not(.is-on){ opacity: .5; }
-
-  /* ---------- the rest of the book ------------------------------------------ */
-  .ref-head{ margin: 0 0 var(--sp-4); font-size: var(--fs-3xs); text-transform: uppercase;
-    letter-spacing: var(--track-caps); color: var(--ink-3); }
-  .ref-link.is-on{ background: var(--card); color: var(--ink); font-weight: 600; }
-  .ref-link.is-on .ref-go{ color: var(--accent); }
-  .ref-name{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  .drawer-bar{ flex-wrap: wrap; row-gap: var(--sp-4); }
-  .drawer-where{ width: 100%; margin: 0; font-size: var(--fs-3xs);
-    text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--ink-4); }
-  /* Sections are reachable from inside the drawer, so moving between them is
-     not "close, find the rail, open another". */
-  .drawer-tabs{ display: flex; gap: var(--sp-2); flex-wrap: wrap; order: 3; width: 100%;
-    padding-top: var(--sp-4); border-top: 1px solid var(--rule); }
-  .drawer-tab{
-    padding: var(--sp-3) var(--sp-5); background: none; border: 0; border-radius: var(--r-sm);
-    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-3); cursor: pointer;
-  }
-  @media (hover: hover){ .drawer-tab:hover{ background: var(--paper-2); color: var(--ink); } }
-  .drawer-tab.is-on{ background: var(--accent); color: var(--on-accent); }
-  .drawer-close{
-    display: inline-flex; align-items: center; gap: var(--sp-4);
-    padding: var(--sp-4) var(--sp-6); background: var(--card);
-    border: 1px solid var(--rule-2); border-radius: var(--r-sm);
-    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2); cursor: pointer;
-  }
-  @media (hover: hover){ .drawer-close:hover{ border-color: var(--accent); color: var(--ink); } }
-
-  /* Arriving somewhere should look like arriving, not like a panel opening. */
-  tr.is-found > td{ background: var(--accent-l) !important; }
-  tr.is-found{ animation: found-flash 2.4s var(--ease-out); }
-  @keyframes found-flash{ 0%,18%{ box-shadow: inset 3px 0 0 var(--accent); } 100%{ box-shadow: none; } }
-  @media (prefers-reduced-motion: reduce){ tr.is-found{ animation: none; } }
-
-  .act-amt.is-in{ color: var(--in); }
-  .act-amt.is-out{ color: var(--ink-2); }
-  #act-quick{ margin-bottom: var(--sp-9); }
-
-  /* ---------- the theme switch ---------------------------------------------- */
-  .lamp{
-    display: inline-flex; align-items: center; gap: var(--sp-3);
-    padding: var(--sp-3) var(--sp-5); background: none;
-    border: 1px solid var(--rule-2); border-radius: var(--r-pill);
-    font-size: var(--fs-2xs); font-weight: 600; color: var(--ink-3); cursor: pointer;
-    white-space: nowrap;
-  }
-  @media (hover: hover){ .lamp:hover{ border-color: var(--accent); color: var(--ink); } }
-  .lamp svg{ width: 14px; height: 14px; }
-  @media (max-width: 640px){ .lamp-label{ display: none; } }
-
-  /* ======================================================================
-     THE NIGHT EDITION
-
-     Not the light palette inverted. Paper under a lamp is warm and the ink on
-     it never reaches white, so the ground keeps its brown and the ink stops
-     short of #FFF. The banknote colours are lifted and desaturated
-     (VUI-DRK-004) because the daylight versions — a 5F3382 violet, a 1F5B3B
-     green — are unreadable on anything dark.
-     ====================================================================== */
-  :root[data-theme="dark"]{
-    color-scheme: dark;
-
-    --paper:      #17150F;
-    --paper-2:    #1F1C15;
-    --paper-3:    #2A251C;
-    --card:       #262119;      /* raised, which on paper meant white and here means nearer the lamp */
-    --rule:       #38322A;
-    --rule-2:     #4E4739;
-
-    --ink:        #F4EFE4;
-    --ink-2:      #D3CABA;
-    --ink-3:      #AEA593;
-    --ink-4:      #9A917F;
-
-    --peso-100:   #C49AE4;
-    --peso-100-d: #DCC2F0;
-    --peso-100-l: #2E2437;
-    --peso-200:   #7FCB9F;
-    --peso-50:    #F0958A;
-    --peso-500:   #E5BA6D;
-    --peso-1000:  #93BCE0;
-
-    --on-accent:  #1B1023;      /* the accent is now the light one, so its ink is dark */
-    --caution:    #E5BA6D;
-    --selected:   rgb(196 154 228 / .18);
-    --violet-soft: #B98ADB;
-    --accent-quiet: #B98ADB;
-
-    --elev-3: 0 6px 22px rgb(0 0 0 / .55);
-    --elev-4: 0 18px 48px rgb(0 0 0 / .68);
-  }
-  :root[data-theme="dark"] ::selection{ background: var(--peso-100-l); color: var(--ink); }
-  :root[data-theme="dark"] .drawer-scrim{ background: rgb(0 0 0 / .58); }
-  /* The tick and the count inside a filled chip sit on a LIGHT accent at night,
-     so a white wash would disappear. */
-  :root[data-theme="dark"] .spine-mode.is-on .chip-n{ background: rgb(27 16 35 / .18); }
-  /* The card white the app uses for inputs is the raised surface here, and a
-     hairline is needed to keep a field from dissolving into the page. */
-  :root[data-theme="dark"] .quick input,
-  :root[data-theme="dark"] .quick select,
-  :root[data-theme="dark"] .rail-find input{ background: var(--paper-3); }
-
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      color-scheme: dark;
-      --paper: #17150F; --paper-2: #1F1C15; --paper-3: #2A251C; --card: #262119;
-      --rule: #38322A; --rule-2: #4E4739;
-      --ink: #F4EFE4; --ink-2: #D3CABA; --ink-3: #AEA593; --ink-4: #9A917F;
-      --peso-100: #C49AE4; --peso-100-d: #DCC2F0; --peso-100-l: #2E2437;
-      --peso-200: #7FCB9F; --peso-50: #F0958A; --peso-500: #E5BA6D; --peso-1000: #93BCE0;
-      --on-accent: #1B1023; --caution: #E5BA6D; --selected: rgb(196 154 228 / .18);
-      --violet-soft: #B98ADB; --accent-quiet: #B98ADB;
-      --elev-3: 0 6px 22px rgb(0 0 0 / .55);
-      --elev-4: 0 18px 48px rgb(0 0 0 / .68);
-    }
-    :root:not([data-theme="light"]) ::selection{ background: var(--peso-100-l); color: var(--ink); }
-    :root:not([data-theme="light"]) .drawer-scrim{ background: rgb(0 0 0 / .58); }
-    :root:not([data-theme="light"]) .spine-mode.is-on .chip-n{ background: rgb(27 16 35 / .18); }
-    :root:not([data-theme="light"]) .quick input,
-    :root:not([data-theme="light"]) .quick select,
-    :root:not([data-theme="light"]) .rail-find input{ background: var(--paper-3); }
-  }
-
-
-  .sp-elsewhere{
-    margin: var(--sp-6) 0 0; padding-left: 116px;
-    font-size: var(--fs-xs); line-height: 2; color: var(--ink-3);
-  }
-  .sp-jump{
-    display: inline-flex; align-items: center; gap: var(--sp-3);
-    margin: 0 var(--sp-3); padding: 2px var(--sp-5);
-    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-pill);
-    font-size: var(--fs-xs); font-weight: 600; color: var(--ink); cursor: pointer;
-  }
-  @media (hover: hover){ .sp-jump:hover{ border-color: var(--accent); color: var(--accent); } }
-  .sp-jump-n{ font-size: var(--fs-3xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-  .ref-link kbd{ flex-shrink: 0; }
-  @media (max-width: 720px){ .sp-elsewhere{ padding-left: var(--sp-6); } }
-
-  /* The rail is six columns, not five: date, node, what, tag, amount, balance.
-     The sixth was missing and the balance was being auto-placed onto a second
-     row underneath the date, which is not "beside" anything. */
-  .sp-row{
-    grid-template-columns: 84px 24px minmax(0, 1fr) auto minmax(88px, auto) 104px;
-  }
-  .sp-bal{ min-width: 0; }
-  /* Today is measured against the same column or it is not a comparison. */
-  .sp-today{
-    grid-template-columns: 84px 24px minmax(0, 1fr) auto minmax(88px, auto) 104px;
-  }
-  .sp-today-label{ grid-column: 3 / 6; }
-  .sp-today-bal{ grid-column: 6; text-align: right; }
-  /* Below the act column the tag has nowhere to go; it drops under the
-     description rather than squeezing the two figures that carry the meaning. */
-  @media (max-width: 1080px){
-    .sp-row{ grid-template-columns: 76px 20px minmax(0, 1fr) minmax(80px, auto) 96px; }
-    .sp-tag{ grid-column: 3 / -1; grid-row: 2; font-size: var(--fs-3xs); }
-    .sp-today{ grid-template-columns: 76px 20px minmax(0, 1fr) minmax(80px, auto) 96px; }
-    .sp-today-label{ grid-column: 3 / 5; }
-    .sp-today-bal{ grid-column: 5; }
-  }
-  @media (max-width: 620px){
-    .sp-row{ grid-template-columns: 64px 16px minmax(0, 1fr) auto; }
-    .sp-tag{ grid-column: 3 / -1; grid-row: 2; }
-    .sp-bal{ grid-column: 4; grid-row: 2; }
-    .sp-today{ grid-template-columns: 64px 16px minmax(0, 1fr) auto; }
-    .sp-today-label{ grid-column: 3; }
-    .sp-today-bal{ grid-column: 4; }
-  }
-
-  /* ---------- narrow: three columns become three bands --------------------- */
-  /* Between 1180 and 860 the places rail keeps its column and the act panel
-     drops underneath, full width, as two blocks side by side. */
-  @media (max-width: 1180px){
-    .frame{ grid-template-columns: var(--rail-w) minmax(0, 1fr); align-items: stretch; }
-    .act{
-      display: grid; grid-column: 1 / -1; grid-row: 2;
-      grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
-      gap: var(--sp-9);
-      position: static; max-height: none; overflow: visible;
-      border-left: 0; border-top: 1px solid var(--rule-2);
-      padding: var(--sp-8);
-    }
-    #act-quick{ margin-bottom: 0; }
-    .quick{ display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
-  }
-
-  @media (max-width: 860px){
-    .frame{ grid-template-columns: minmax(0, 1fr); }
-    /* What needs doing, then where the money is, then the rail. A reader on a
-       phone opens this to answer a question, not to browse. */
-    .act{ display: grid; order: 1; grid-column: 1; grid-row: auto;
-          grid-template-columns: minmax(0, 1fr); gap: var(--sp-8);
-          border-top: 0; border-bottom: 1px solid var(--rule-2); }
-    .places{
-      display: block; order: 2; position: static;
-      max-height: none; overflow: visible;
-      border-right: 0; border-bottom: 1px solid var(--rule-2);
-      padding: var(--sp-6) 0 var(--sp-6) var(--sp-7);
-      background: var(--paper-2);
-    }
-    .spine-wrap{ order: 3; padding: var(--sp-7) var(--sp-7) var(--sp-13); }
-
-    .places-head{ padding-right: var(--sp-7); }
-    /* Sideways, not wrapped into a wall: four rows of chips would push the
-       first line of the rail below the fold, and the rail is the content. */
-    #places-body{
-      display: flex; gap: var(--sp-4); overflow-x: auto; overflow-y: hidden;
-      padding-bottom: var(--sp-4); scroll-snap-type: x proximity;
-      overscroll-behavior-x: contain;
-      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 42px), transparent);
-              mask-image: linear-gradient(to right, #000 calc(100% - 42px), transparent);
-    }
-    #places-body .place{
-      flex: 0 0 auto; width: auto; scroll-snap-align: start;
-      grid-template-columns: 3px auto auto; row-gap: 0;
-      background: var(--card); border: 1px solid var(--rule);
-      border-radius: var(--r-pill); padding: var(--sp-3) var(--sp-6) var(--sp-3) var(--sp-4);
-    }
-    #places-body .place.is-on{ border-color: var(--accent); background: var(--accent-l); }
-    #places-body .place-n{ display: none; }        /* the count is desktop detail */
-    .places-total{ margin-right: var(--sp-7); }
-    .places-note{ display: none; }
-
-    .ref-list{
-      display: flex; flex-direction: row; gap: var(--sp-3);
-      margin-top: var(--sp-6); padding: var(--sp-5) var(--sp-7) 0 0;
-      border-top: 1px solid var(--rule);
-      overflow-x: auto; overscroll-behavior-x: contain;
-      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
-              mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
-    }
-    .ref-head{ display: none; }
-    .ref-link{ flex: 0 0 auto; width: auto; gap: var(--sp-3);
-      border: 1px solid var(--rule); border-radius: var(--r-pill); }
-    .ref-link kbd{ display: none; }                /* no keyboard to shortcut */
-
-    /* The drawer is the whole screen here, not a panel beside the rail. */
-    .drawer{ width: 100%; inset: var(--bar-h) 0 0 0; }
-    .drawer-body{ padding: var(--sp-6) var(--sp-7) var(--sp-13); }
-    .keycap-strip{ display: none; }
-  }
-
-  /* The act column is the add affordance only while it is on screen. */
-  @media (max-width: 1180px){
-    #btn-fab-add{ display: flex; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
-  }
-
-  @media (max-width: 860px){
-    /* The full form is a button away and is the better form on a phone: it has
-       the date, the tags and the currency this one drops. */
-    #act-quick{ display: none; }
-    .act{ padding: var(--sp-6) var(--sp-7); }
-    .act-item{ padding: var(--sp-4) 0; }
-  }
-  .act-more{
-    margin-top: var(--sp-5); padding: 0; background: none; border: 0;
-    font-size: var(--fs-xs); font-weight: 600; color: var(--accent);
-    text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
-  }
-
-  /* ---------- narrow, corrected -------------------------------------------- */
-  @media (max-width: 860px){
-    /* Filter, then the rail, then the duplicate. The act band repeats what the
-       rail already shows in date order, so on the one screen where space is
-       scarce it goes last rather than first. */
-    .places{ order: 1; }
-    .spine-wrap{ order: 2; }
-    .act{ order: 3; border-bottom: 0; border-top: 1px solid var(--rule-2); }
-
-    /* Two, and a way to the rest. The third onward is every .act-item with two
-       .act-item siblings ahead of it. */
-    .act-item + .act-item + .act-item{ display: none; }
-
-    /* The total is written inside the body, so in a horizontal strip it is a
-       member of the row. It leads it, and looks like a total rather than like
-       an account with no name. */
-    #places-body .places-total{
-      order: -1; flex: 0 0 auto; display: flex; flex-direction: column;
-      gap: 0; margin: 0 var(--sp-4) 0 0; padding: var(--sp-3) var(--sp-6);
-      border-top: 0; border-right: 1px solid var(--rule-2);
-      align-items: flex-start; justify-content: center;
-    }
-    #places-body .places-total-v{ font-size: var(--fs-md); }
-  }
-  /* Above the breakpoint the whole list shows, so the offer to see the rest is
-     an offer to see what is already there. */
-  @media (min-width: 861px){ .act-more{ display: none; } }
-
-  /* A phone's first screen belongs to the rail. The explanation of what the
-     rail is can be read once, on something with room for it. */
-  @media (max-width: 620px){
-    .spine-sub{ display: none; }
-    .spine-head-top{ gap: var(--sp-5); }
-    .pager{ width: 100%; }
-    .pager-btn{ flex: 1 1 0; min-width: 0; justify-content: center; }
-    .fold{ grid-template-columns: repeat(2, minmax(0, 1fr)); margin: var(--sp-5) 0; }
-    .fold-cell{ padding: var(--sp-4) var(--sp-5); }
-    .fold-v{ font-size: var(--fs-md); }
-    .rail-controls{ gap: var(--sp-4); }
-    .rail-find{ flex: 1 1 100%; }
-  }
-
-  @media (max-width: 620px){
-    .fold{
-      display: flex; gap: 1px; overflow-x: auto; overscroll-behavior-x: contain;
-      scroll-snap-type: x proximity;
-      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
-              mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
-    }
-    .fold-cell{ flex: 0 0 auto; min-width: 118px; scroll-snap-align: start; }
-    .fold-cell:last-child:nth-child(odd){ grid-column: auto; }
   }
 </style>
 </body>

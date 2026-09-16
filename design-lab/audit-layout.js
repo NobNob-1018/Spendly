@@ -11,8 +11,10 @@
  *              and anything fixed, which is allowed to sit over things)
  *   collapsed  a grid whose every track computed to ~0
  *   overflow   an element outside the parent that should contain it
- *   sticky     a sticky element whose offset is measured against a scroll
- *              container it did not mean to be inside
+ *   sticky     a sticky element with a NON-ZERO offset inside a scroll
+ *              container — i.e. an offset measured for the viewport being
+ *              applied against a container, which parks it on the content.
+ *              top:0 inside a container is correct and is not reported.
  *   clipped    text cut off with no ellipsis
  *
  * Every rect is clipped to its nearest scrolling ancestor first — without that,
@@ -117,6 +119,10 @@
     }
     if (container){
       const top = parseFloat(getComputedStyle(el).top) || 0;
+      // top:0 against a scroll container is the correct construction — it pins
+      // to the top of the thing that scrolls. Only an offset meant for the
+      // viewport, applied inside a container, lands on content.
+      if (top === 0) return;
       out.sticky.push(name(el) + ' sticks inside ' + name(container) +
         ' (top:' + top + 'px) not the viewport');
     }
