@@ -1612,6 +1612,44 @@
       width: auto; max-width: none; }
   }
 
+
+  /* A scroll container with a bounded height, which is what the sticky header
+     always assumed it was inside. top:0 because the offset is measured from the
+     container, not the page. */
+  [id$="-table-wrap"]{
+    max-height: min(68vh, 680px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  [id$="-table-wrap"] thead th{ top: 0; }
+  /* Short tables should not grow a scrollbar or a cropped look. */
+  @media (max-height: 560px){ [id$="-table-wrap"]{ max-height: none; } }
+
+  /* The query legend was a definition list whose values ran past it and landed
+     on the toolbar above. It wraps as a grid of pairs now. */
+  /* Each pair was a flex row with a rigid 120px term against a 210px track, so
+     the definition ran 111px past the list and onto the toolbar above it. */
+  .query-legend dl > div{ flex-wrap: wrap; }
+  .query-legend dt{ flex: 0 0 auto; min-width: 104px; }
+  .query-legend dd{ flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
+
+
+  .query-legend{ flex: 1 1 100%; min-width: 0; }
+  .query-legend dl{ width: 100%; }
+
+
+  details.query-legend:not([open]) dl,
+  details.query-legend:not([open]) p{ display: none; }
+
+
+  /* The movement log and the reconciliation balances are wide by nature — five
+     and six columns of figures — so they scroll sideways like every other table
+     here rather than bursting their panel. */
+  @media (max-width: 720px){
+    #ml-body, .rec-block{ overflow-x: auto; overscroll-behavior-x: contain; }
+    .ml-table, .rec-table{ min-width: 520px; }
+  }
+
 </style>
 </head>
 

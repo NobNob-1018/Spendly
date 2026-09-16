@@ -1494,6 +1494,41 @@
     /* overflow-x stays: some of these tables are wider than the measure. */
   }
 
+
+  /* A scroll container with a bounded height, which is what the sticky header
+     always assumed it was inside. top:0 because the offset is measured from the
+     container, not the page. */
+  [id$="-table-wrap"]{
+    max-height: min(68vh, 680px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  [id$="-table-wrap"] thead th{ top: 0; }
+  /* Short tables should not grow a scrollbar or a cropped look. */
+  @media (max-height: 560px){ [id$="-table-wrap"]{ max-height: none; } }
+
+  .rb-scroll{ max-height: min(68vh, 680px); overflow: auto; overscroll-behavior: contain; }
+  .rb-scroll thead th{ top: 0; }
+
+  /* "Add this interest automatically" and its explanation had only a font-size
+     between them and no layout at all, so the strong and the hint landed on the
+     same line. The checkbox, the label and the note each get their own place. */
+  .sa-auto{ display:flex; align-items:flex-start; gap: var(--sp-5); }
+  .sa-auto-text{ display:flex; flex-direction:column; gap: var(--sp-3); min-width:0; }
+  .sa-auto-text .hint{ margin:0; }
+
+
+  /* The note under a statement line held the change and what it was measured
+     against on one line with no room to wrap, so they sat on top of each other. */
+  .ln-note{ display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3) var(--sp-5); }
+  .ln-delta{ margin-right: 0; }
+  .ln-context{ min-width: 0; }
+  @media (max-width: 560px){
+    .ln-row{ flex-wrap: wrap; }
+    .ln-leader{ display: none; }            /* leader dots need a line to run along */
+    .ln-value{ margin-left: auto; }
+  }
+
 </style>
 </head>
 

@@ -1427,6 +1427,50 @@
       bottom: calc(64px + 54px + var(--sp-6) * 2); }
   }
 
+
+  /* A scroll container with a bounded height, which is what the sticky header
+     always assumed it was inside. top:0 because the offset is measured from the
+     container, not the page. */
+  [id$="-table-wrap"]{
+    max-height: min(68vh, 680px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  [id$="-table-wrap"] thead th{ top: 0; }
+  /* Short tables should not grow a scrollbar or a cropped look. */
+  @media (max-height: 560px){ [id$="-table-wrap"]{ max-height: none; } }
+
+  /* The rewritten week panel emits its own layout; the flex row it inherited
+     squeezed the 7-column chart to 60px and stacked every day label. */
+  #summary-content{ display:block; }
+  .wk-chart{ width:100%; min-width:0; }
+  /* Below ~360px of chart there is not room for three-letter names side by side,
+     so they become initials rather than colliding. */
+  .wk-lbl{ white-space:nowrap; }
+  @media (max-width: 520px){
+    .wk-chart{ gap: var(--sp-3); }
+  }
+
+
+  /* What-changed is three columns against a 375px screen. The bar rail is the
+     part that can go: the figures carry the same information. */
+  @media (max-width: 560px){
+    .wc-row{ grid-template-columns: 1fr auto; grid-template-areas: "name diff" "basis basis"; }
+    .wc-bars{ display: none; }
+  }
+  /* The planner is six columns of figures; it scrolls rather than crushing the
+     category cell until its own subtitle lands on the name above it. */
+  @media (max-width: 900px){
+    #pl-body{ overflow-x: auto; overscroll-behavior-x: contain; }
+    .pl-table{ min-width: 720px; }
+  }
+  .pl-name{ min-width: 0; }
+  /* A five-pixel burst from a toolbar row that cannot wrap. */
+  .section-head-row{ flex-wrap: wrap; row-gap: var(--sp-4); }
+
+
+  .section-head-row > *{ min-width: 0; }
+
 </style>
 </head>
 
