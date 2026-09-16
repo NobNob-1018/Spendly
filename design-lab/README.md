@@ -46,15 +46,50 @@ work has started, and never after — re-running it discards a redesign. Edit
 
 ## Checking a variant before calling it done
 
+Two auditors live here. Both are expressions, not modules: fetch one and
+`eval` it inside the page being audited. Each file's own header has the
+snippet.
+
 `audit-layout.js` measures geometry rather than reading text, because reading
 text is how three rounds of visible defects got past review: a seven-column
 chart collapsed to 60px still reports the right seven day names.
 
 It reports overlapping text, grids whose tracks computed to zero, elements
-outside their container, sticky offsets measured against the wrong scroll
-container, and text clipped with no ellipsis. It is an expression — fetch it and
-`eval` it inside the page you are auditing; the file's own header has the
-snippet. Sweep **every variant x every tab x {420, 900, 1400, 1900}px**.
+outside their container, sticky elements given a **non-zero** offset inside a
+scroll container, and text clipped with no ellipsis.
+
+`audit-contrast.js` composites the real background through every ancestor —
+honouring alpha — and compares it with the real foreground, then reports
+anything under WCAG AA for its size. When contrast was finally measured rather
+than assumed, all three variants failed, including the colour meaning *money
+arriving* at 4.41 and a fourth ink level at 1.98 that was carrying meaning.
+
+Sweep **every variant x every tab x {420, 900, 1400, 1900}px**, and a variant
+with two editions in **both of them** — the accents that work on paper are the
+ones that vanish at night.
+
+### What each auditor cannot see, and says so
+
+Neither one is allowed to guess. Both name what they could not measure rather
+than reporting it as a fault, because a checker that cries wolf is one nobody
+reads the fourth time.
+
+- **audit-contrast** stops at a gradient or an image and lists the element
+  under `unmeasurable`. The first version had no such rule and reported the
+  masthead's gradient-filled mark as a 1.1 failure, because computed
+  `backgroundColor` for a gradient is transparent and it took the paper behind
+  it as the ground.
+- **audit-layout** ignores `top: 0` sticky inside a scroll container, which is
+  the correct construction. The defect it looks for is an offset measured for
+  the viewport being applied against a container — a `th` given the masthead's
+  height and then pinned from the top of a table, which parks it on the rows.
+- **A full-bleed row** (negative margin, matching padding, so its rule reaches
+  the card edge) reports as overflowing its parent by that margin. Check whether
+  the *content* still lines up with its siblings before treating it as real.
+- **Focus rings cannot be tested from script.** `:focus-visible` does not match
+  a programmatic `.focus()`, so a script that focuses each control and compares
+  what it paints will report every single one as having no visible focus. It is
+  measuring `:focus` rules only. Drive real Tab presses.
 
 Two traps worth knowing before you trust a result:
 

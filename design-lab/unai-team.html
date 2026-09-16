@@ -12265,20 +12265,45 @@
       // marked so the reader can see they arrived somewhere, not just that a
       // panel opened.
       function findRecord(kind, id){
+        const income = kind === "income";
+        const wrapId = income ? "income-history-table-wrap" : "history-table-wrap";
+        const seek = () => document.querySelector("#" + wrapId +
+          ' tr[data-id="' + CSS.escape(String(id)) + '"]');
+
         openRef("history", () => {
           jumpToHistoryMode(kind);
           setTimeout(() => {
-            const tr = document.querySelector('#' + (kind === "income" ? "income" : "expense") +
-              '-table-wrap tr[data-id="' + CSS.escape(String(id)) + '"]') ||
-              document.querySelector('tr[data-id="' + CSS.escape(String(id)) + '"]');
+            let tr = seek();
+            if (!tr){
+              // Ten rows to a page and a hundred and thirteen records: being on
+              // the wrong page is the ordinary case, not the exception. The
+              // app's own renderer decides which page holds what, so it is the
+              // one asked — page by page until the row appears, or until
+              // paginate() clamps the page back and says there are no more.
+              const was = income ? incomePage : expensePage;
+              const draw = () => income ? renderIncomeHistory() : renderHistory();
+              for (let p = 1; p <= 200 && !tr; p++){
+                if (income) incomePage = p; else expensePage = p;
+                draw();
+                if ((income ? incomePage : expensePage) !== p) break;
+                tr = seek();
+              }
+              if (!tr){
+                if (income) incomePage = was; else expensePage = was;
+                draw();
+              }
+            }
             if (tr){
               tr.scrollIntoView({ block: "center", behavior: prefersStill() ? "auto" : "smooth" });
               tr.classList.add("is-found");
               setTimeout(() => tr.classList.remove("is-found"), 2400);
             } else {
-              showToast("That line is outside the filters the record list is holding.");
+              // Not a silent failure and not a shrug: the list is filtered, and
+              // the control that is hiding it is the one named.
+              showToast("Not in the list as it is filtered \u2014 clear the search " +
+                "and the date range above to see everything.");
             }
-          }, 120);
+          }, 140);
         });
       }
 
