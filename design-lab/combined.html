@@ -1781,6 +1781,38 @@
   .rail-place-name{ font-size: var(--fs-md); }
   .rail-place-amt{ font-size: var(--fs-sm); }
   .rail-place-n{ font-size: var(--fs-2xs); }
+
+  /* ---------- the caret, on every heading in the rail ---------------------- */
+  nav.tabs button[data-tab]{ position: relative; }
+  .nav-caret{
+    flex: 0 0 auto; width: 20px; height: 20px; margin-left: 2px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--r-sm); cursor: pointer;
+  }
+  .nav-caret::before{
+    content: ""; width: 7px; height: 7px;
+    border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg) translate(-2px, -2px);
+    transition: transform var(--dur-slow) var(--ease-out);
+    opacity: .7;
+  }
+  button[data-tab].is-list-open .nav-caret::before{
+    transform: rotate(225deg) translate(-2px, -2px);
+  }
+  @media (hover: hover){ .nav-caret:hover{ background: var(--hover); } }
+  .nav-caret:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* Where the money is leads the rail, so it wears the rule under it rather
+     than above it. */
+  .rail-places{
+    margin: 0 0 var(--sp-5); padding: 0 0 var(--sp-5);
+    border-top: 0; border-bottom: 1px solid var(--line);
+  }
+
+  /* A destination with one section has nothing to disclose, so it does not
+     offer to. Learned the first time it is opened — a panel's headings cannot
+     be read until it has rendered. */
+  button[data-tab].has-no-list .nav-caret{ display: none; }
 </style>
 </head>
 
@@ -11294,15 +11326,21 @@
                       savings: "Savings", loans: "Loans & Invest", settings: "Settings" };
       const KEY = "spendly_rail_open_v1";
       const PLACES_KEY = "spendly_rail_places_v1";
+      const LIST_KEY = "spendly_rail_lists_v1";
 
       let open = {};
       try{ open = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(e){ open = {}; }
       let placesOpen = true;
       try{ placesOpen = localStorage.getItem(PLACES_KEY) !== "0"; }catch(e){}
+      // Whether a destination's list is showing, per destination. Closed until
+      // asked for — that is the whole point of the caret.
+      let listOpen = {};
+      try{ listOpen = JSON.parse(localStorage.getItem(LIST_KEY) || "{}") || {}; }catch(e){ listOpen = {}; }
       function save(){
         try{
           localStorage.setItem(KEY, JSON.stringify(open));
           localStorage.setItem(PLACES_KEY, placesOpen ? "1" : "0");
+          localStorage.setItem(LIST_KEY, JSON.stringify(listOpen));
         }catch(e){}
       }
 
@@ -11323,6 +11361,58 @@
         k.className = "nav-key";
         k.textContent = String(i + 1);
         b.appendChild(k);
+        // The same disclosure All places has. A destination is a heading with
+        // something folded under it, and this is how you ask for it.
+        const c = document.createElement("span");
+        c.className = "nav-caret";
+        c.setAttribute("role", "button");
+        c.setAttribute("tabindex", "0");
+        c.setAttribute("aria-label", "Show what is on the " + (NAMES[b.dataset.tab] || b.dataset.tab) + " page");
+        b.appendChild(c);
+      });
+
+      function isListOpen(tab){ return !!listOpen[tab]; }
+      function paintCarets(){
+        buttons.forEach(b => {
+          const on = isListOpen(b.dataset.tab);
+          const c = b.querySelector(".nav-caret");
+          if (c) c.setAttribute("aria-expanded", on ? "true" : "false");
+          b.classList.toggle("is-list-open", on);
+        });
+      }
+      // Taken in the capture phase: the caret lives inside the destination
+      // button, and the app's own handler would navigate on the same click.
+      nav.addEventListener("click", ev => {
+        const c = ev.target.closest(".nav-caret");
+        if (!c) return;
+        const btn = c.closest("button[data-tab]");
+        if (!btn) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const tab = btn.dataset.tab;
+        listOpen[tab] = !listOpen[tab];
+        save();
+        if (tab !== currentTab()){
+          // Asking to see inside somewhere is also asking to go there.
+          if (listOpen[tab]) activateTab(tab);
+          else paintCarets();
+          return;
+        }
+        paintCarets();
+        // This destination's own fold — it is the element immediately after the
+        // button, not merely the first one in the rail.
+        const fold = btn.nextElementSibling &&
+          btn.nextElementSibling.classList.contains("nav-contents-fold")
+            ? btn.nextElementSibling : null;
+        if (fold) fold.classList.toggle("is-open", listOpen[tab]);
+        else { signature = ""; buildContents(true); }
+      }, true);
+      nav.addEventListener("keydown", ev => {
+        const c = ev.target.closest && ev.target.closest(".nav-caret");
+        if (!c) return;
+        if (ev.key !== "Enter" && ev.key !== " ") return;
+        ev.preventDefault();
+        c.click();
       });
       let shiftOn = false;
       function setShift(on){
@@ -11418,12 +11508,24 @@
         if (sig === signature) return;
         signature = sig;
 
-        nav.querySelectorAll(".nav-contents").forEach(el => el.remove());
+        // The wrapper, not the box inside it. Removing the box left the fold
+        // behind, one per destination ever visited, and the caret then toggled
+        // whichever empty one happened to be first in the document.
+        nav.querySelectorAll(".nav-contents-fold").forEach(el => el.remove());
         spyTargets = [];
         const active = buttons.find(b => b.classList.contains("active"));
-        if (!active || secs.length < 2) return;
+        if (!active) return;
+        // Now that this panel has rendered we know whether it has anything to
+        // disclose. A caret over nothing is a control that lies.
+        active.classList.toggle("has-no-list", secs.length < 2);
+        if (secs.length < 2){
+          if (listOpen[tab]){ delete listOpen[tab]; save(); }
+          paintCarets();
+          return;
+        }
 
-        const fold = makeFold(!animate);
+        const wantOpen = isListOpen(tab);
+        const fold = makeFold(wantOpen && !animate);
         fold.classList.add("nav-contents-fold");
         const box = document.createElement("div");
         box.className = "nav-contents";
@@ -11481,7 +11583,8 @@
         });
 
         active.insertAdjacentElement("afterend", fold);
-        if (animate) openSoon(fold);
+        if (wantOpen && animate) openSoon(fold);
+        paintCarets();
 
         box.addEventListener("click", ev => {
           const all = ev.target.closest("[data-all]");
@@ -11654,9 +11757,11 @@
       places.id = "rail-places";
       const scroller = document.createElement("div");
       scroller.className = "rail-scroll";
-      [...nav.children].forEach(c => scroller.appendChild(c));
-      scroller.appendChild(back);
+      // Where the money is, first. It was at the foot, which meant scrolling
+      // past six destinations to reach the one figure wanted at a glance.
       scroller.appendChild(places);
+      [...nav.children].forEach(c => { if (c !== scroller) scroller.appendChild(c); });
+      scroller.appendChild(back);
       nav.appendChild(scroller);
 
       let last = (buttons.find(b => b.classList.contains("active")) || buttons[0]).dataset.tab;
@@ -11668,7 +11773,9 @@
         last = active.dataset.tab;
         paintBack();
         signature = "";
-        buildContents(true);          // the new breakdown folds open
+        // Folds open only if this destination's list was left open, or was just
+        // asked for by its caret. Arriving somewhere does not push a list at you.
+        buildContents(true);
         window.scrollTo({ top: 0, behavior: "auto" });
       }
       new MutationObserver(onChange).observe(nav, {
