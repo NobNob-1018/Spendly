@@ -2208,6 +2208,92 @@
   nav.tabs .nav-content.is-chip .nav-content-dot{ grid-column: 2; }
   nav.tabs .nav-content.is-chip .nav-content-t{ grid-column: 3; }
   nav.tabs .nav-content.is-chip .nav-pin{ grid-column: 4; }
+
+  /* ---------- one account, looked at --------------------------------------- */
+  .acct-view[hidden]{ display: none; }
+  .av-fold{
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px; margin-bottom: var(--sp-8);
+    background: var(--line); border: 1px solid var(--line); border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .av-cell{ display: flex; flex-direction: column; gap: 2px;
+    padding: var(--sp-5) var(--sp-6); background: var(--raised); min-width: 0; }
+  .av-k{ font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .av-v{ font-size: var(--fs-lg); font-weight: 700; color: var(--ink);
+    font-variant-numeric: tabular-nums; }
+  .av-cell.is-in .av-v{ color: var(--positive); }
+  .av-cell.is-out .av-v{ color: var(--negative); }
+  .av-cell.is-now{ background: var(--accent-light); }
+  .av-cell.is-now .av-v{ color: var(--ink); }
+
+  .av-lines{ position: relative; }
+  .av-line{
+    display: grid; grid-template-columns: 92px 18px minmax(0, 1fr) auto minmax(96px, auto) 112px;
+    align-items: baseline; gap: var(--sp-5);
+    padding: var(--sp-4) 0; border-bottom: 1px solid var(--line);
+  }
+  .av-line:last-child{ border-bottom: 0; }
+  .av-date{ font-size: var(--fs-2xs); color: var(--ink-dim); white-space: nowrap;
+    font-variant-numeric: tabular-nums; }
+  .av-node{ position: relative; height: 1px; }
+  .av-node::before{
+    content: ""; position: absolute; left: 0; top: 50%;
+    width: 7px; height: 7px; margin: -3px 0 0 -3px; border-radius: 50%;
+    border: 1.5px solid var(--line-strong); background: transparent;
+  }
+  .av-line.is-in .av-node::before{ border-color: var(--positive); background: var(--positive); }
+  .av-line.is-out .av-node::before{ border-color: var(--negative); }
+  .av-what{ font-size: var(--fs-sm); color: var(--ink); min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .av-tag{ font-size: var(--fs-3xs); color: var(--ink-dim); white-space: nowrap; }
+  .av-amt{ font-size: var(--fs-sm); white-space: nowrap; text-align: right;
+    font-variant-numeric: tabular-nums; }
+  .av-line.is-in .av-amt{ color: var(--positive); }
+  .av-line.is-out .av-amt{ color: var(--ink-soft); }
+  .av-bal{ font-size: var(--fs-2xs); color: var(--ink-dim); text-align: right;
+    white-space: nowrap; }
+
+  .av-empty{ margin: 0; padding: var(--sp-8) 0; font-size: var(--fs-sm); color: var(--ink-dim); }
+  .av-note{ margin: var(--sp-6) 0 0; max-width: 68ch;
+    font-size: var(--fs-xs); line-height: 1.6; color: var(--ink-dim); }
+
+  .av-block{ margin-top: var(--sp-8); padding-top: var(--sp-6);
+    border-top: 1px solid var(--line); }
+  .av-block-k{ margin: 0 0 var(--sp-4); font-size: var(--fs-3xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--ink-dim); }
+  .av-block-t{ margin: 0; max-width: 68ch; font-size: var(--fs-sm);
+    line-height: 1.6; color: var(--ink-soft); }
+  .av-block-t strong{ color: var(--ink); }
+  .av-owed{ display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px var(--sp-5); padding: var(--sp-4) 0; border-bottom: 1px solid var(--line); }
+  .av-owed:last-child{ border-bottom: 0; }
+  .av-owed-who{ font-size: var(--fs-sm); color: var(--ink); }
+  .av-owed-amt{ font-size: var(--fs-sm); white-space: nowrap;
+    font-variant-numeric: tabular-nums; }
+  .av-owed-amt.is-in{ color: var(--positive); }
+  .av-owed-amt.is-out{ color: var(--ink-soft); }
+  .av-owed-when{ grid-column: 1 / -1; font-size: var(--fs-3xs); color: var(--ink-dim); }
+
+  .av-act{ display: flex; align-items: center; gap: var(--sp-6); flex-wrap: wrap;
+    margin-top: var(--sp-8); padding-top: var(--sp-6); border-top: 1px solid var(--line); }
+  .av-go{
+    padding: var(--sp-4) var(--sp-7);
+    background: var(--raised); border: 1px solid var(--line-strong);
+    border-radius: var(--r-md); color: var(--ink);
+    font-size: var(--fs-sm); font-weight: 600; cursor: pointer;
+  }
+  @media (hover: hover){ .av-go:hover{ border-color: var(--accent); color: var(--accent); } }
+  .av-act-note{ flex: 1 1 260px; min-width: 0;
+    font-size: var(--fs-xs); line-height: 1.5; color: var(--ink-dim); }
+
+  @media (max-width: 720px){
+    .av-line{ grid-template-columns: 78px 14px minmax(0, 1fr) auto; }
+    .av-tag{ grid-column: 3 / -1; grid-row: 2; }
+    .av-bal{ grid-column: 4; grid-row: 2; }
+  }
 </style>
 </head>
 
@@ -12272,22 +12358,10 @@
         const fig = document.getElementById("top-total-v");
         if (fig) fig.textContent = fmtMoney(total);
 
+        // Looking at an account is not the same as adjusting one. This opens
+        // the account; the panel has a way through to the form.
         host.querySelectorAll("[data-place]").forEach(b =>
-          b.addEventListener("click", () => {
-            activateTab("savings");
-            setTimeout(() => {
-              const want = b.dataset.place;
-              const row = document.querySelector('#tab-savings [data-id="' +
-                CSS.escape(b.dataset.acct) + '"]');
-              if (row){
-                row.scrollIntoView({ block: "center", behavior: still() ? "auto" : "smooth" });
-                row.classList.add("is-found");
-                setTimeout(() => row.classList.remove("is-found"), 2400);
-              } else {
-                showToast("Opened your accounts — " + want + " is in the list.");
-              }
-            }, 160);
-          }));
+          b.addEventListener("click", () => openAccountBeside(b.dataset.acct)));
       }
 
       /* ---- the panel beside the page ------------------------------------------
@@ -12471,6 +12545,140 @@
         settle = setTimeout(() => { buildContents(false); renderPlaces(); }, 220);
       }).observe(document.querySelector(".app") || document.body,
                  { childList: true, subtree: true });
+
+      /* ---- one account, looked at -----------------------------------------
+         The ledger's page for a single place: what it holds, what moved through
+         it this month, and the balance carried down the lines. */
+      const acctView = document.createElement("div");
+      acctView.className = "acct-view";
+      acctView.id = "acct-view";
+      acctView.hidden = true;
+      (document.querySelector(".app") || document.body).appendChild(acctView);
+
+      function openAccountBeside(id){
+        const a = savings.find(x => String(x.id) === String(id));
+        if (!a) return;
+        const held = round2(Number(a.amount) || 0);
+        const month = todayISO().slice(0, 7);
+        const from = month + "-01", to = month + "-31";
+
+        const lines = [];
+        expenses.forEach(e => {
+          if (e.bank === a.provider && e.date >= from && e.date <= to)
+            lines.push({ date: e.date, what: e.description || "(no description)",
+                         tag: e.category, amt: -Math.abs(e.amount) });
+        });
+        incomes.forEach(i => {
+          if (i.bank === a.provider && i.date >= from && i.date <= to)
+            lines.push({ date: i.date, what: i.description || "(no description)",
+                         tag: i.category, amt: Math.abs(i.amount) });
+        });
+        lines.sort((x, y) => x.date.localeCompare(y.date));
+
+        // Backwards from what it holds now: that figure is known, and every
+        // earlier one is derived from it.
+        let run = held;
+        for (let k = lines.length - 1; k >= 0; k--){
+          lines[k].bal = run;
+          run = round2(run - lines[k].amt);
+        }
+        const opened = run;
+        const inSum = round2(lines.filter(l => l.amt > 0).reduce((t, l) => t + l.amt, 0));
+        const outSum = round2(lines.filter(l => l.amt < 0).reduce((t, l) => t - l.amt, 0));
+        const net = round2(inSum - outSum);
+
+        const owed = [].concat(
+          loansGiven.filter(l => l.status === "outstanding" && l.bank === a.provider)
+            .map(l => ({ who: l.person + " owes you", amt: l.amount, on: l.deadline, dir: "in" })),
+          loansTaken.filter(l => l.status === "outstanding" && l.bank === a.provider)
+            .map(l => ({ who: "You owe " + l.person, amt: l.amount, on: l.deadline, dir: "out" }))
+        ).sort((x, y) => String(x.on || "").localeCompare(String(y.on || "")));
+
+        const rate = Number(a.rate) || 0;
+        const tax = Number(a.taxRate) || 0;
+        const perMonth = rate ? round2(held * (rate / 100) / 12 * (1 - tax / 100)) : 0;
+        const MINUS = String.fromCharCode(8722), DASH = String.fromCharCode(8212);
+
+        const cell = (k, v, cls) => '<div class="av-cell' + (cls ? " " + cls : "") + '">' +
+          '<span class="av-k">' + k + '</span>' +
+          '<span class="av-v num">' + v + '</span></div>';
+
+        acctView.innerHTML =
+          '<div class="av-fold">' +
+            cell("Received this month", fmtMoney(inSum), "is-in") +
+            cell("Paid out this month", fmtMoney(outSum), "is-out") +
+            cell("Net", (net >= 0 ? "+" : MINUS) + fmtMoney(Math.abs(net)),
+                 net >= 0 ? "is-in" : "is-out") +
+            cell("Opened the month at", fmtMoney(opened)) +
+            cell("Holds now", fmtMoney(held), "is-now") +
+          '</div>' +
+
+          (lines.length
+            ? '<div class="av-lines">' + lines.map(l =>
+                '<div class="av-line is-' + (l.amt >= 0 ? "in" : "out") + '">' +
+                  '<span class="av-date">' + escapeHtml(fmtDate(l.date)) + '</span>' +
+                  '<span class="av-node" aria-hidden="true"></span>' +
+                  '<span class="av-what">' + escapeHtml(l.what) + '</span>' +
+                  '<span class="av-tag">' + escapeHtml(l.tag || "") + '</span>' +
+                  '<span class="av-amt">' + (l.amt >= 0 ? "+" : MINUS) +
+                    fmtMoney(Math.abs(l.amt)) + '</span>' +
+                  '<span class="av-bal num">' + fmtMoney(l.bal) + '</span>' +
+                '</div>').join("") + '</div>'
+            : '<p class="av-empty">Nothing has moved through ' +
+              escapeHtml(a.provider) + ' this month.</p>') +
+
+          '<p class="av-note">Each balance is what this account held once that ' +
+            'line had happened, worked back from what it holds now. Interest and ' +
+            'transfers between accounts are not lines here, so a step between two ' +
+            'of them that no line explains is one of those.</p>' +
+
+          '<div class="av-block"><p class="av-block-k">Interest</p>' +
+            (rate
+              ? '<p class="av-block-t">' + rate + '% a year' +
+                (tax ? ', less ' + tax + '% withholding' : ', untaxed') +
+                ' ' + DASH + ' about <strong>' + fmtMoney(perMonth) +
+                '</strong> a month at this balance.</p>'
+              : '<p class="av-block-t">This account earns nothing.</p>') +
+          '</div>' +
+
+          (owed.length
+            ? '<div class="av-block"><p class="av-block-k">Tied to this account</p>' +
+              owed.map(o => '<div class="av-owed">' +
+                '<span class="av-owed-who">' + escapeHtml(o.who) + '</span>' +
+                '<span class="av-owed-amt num ' + (o.dir === "in" ? "is-in" : "is-out") + '">' +
+                  fmtMoney(o.amt) + '</span>' +
+                '<span class="av-owed-when">' +
+                  (o.on ? "due " + escapeHtml(fmtDate(o.on)) : "no date set") +
+                '</span></div>').join("") + '</div>'
+            : "") +
+
+          '<div class="av-act">' +
+            '<button type="button" class="av-go" data-acct-go="' +
+              escapeHtml(String(a.id)) + '">Adjust this account</button>' +
+            '<span class="av-act-note">Renaming it, changing the rate or correcting ' +
+              'the balance all happen in Accounts.</span>' +
+          '</div>';
+
+        openPanelBeside(acctView, a.provider);
+      }
+
+      // The one thing in here that leaves: it goes where the account is edited,
+      // which is a different job from looking at one.
+      acctView.addEventListener("click", ev => {
+        const go = ev.target.closest("[data-acct-go]");
+        if (!go) return;
+        const id = go.dataset.acctGo;
+        closeBeside();
+        activateTab("savings");
+        setTimeout(() => {
+          const row = document.querySelector('#tab-savings [data-id="' + CSS.escape(id) + '"]');
+          if (row){
+            row.scrollIntoView({ block: "center", behavior: still() ? "auto" : "smooth" });
+            row.classList.add("is-found");
+            setTimeout(() => row.classList.remove("is-found"), 2400);
+          }
+        }, 180);
+      });
 
       /* ---- the accounts, under the total ----------------------------------
          The figure is in one place now, and this is what is behind it. The page
