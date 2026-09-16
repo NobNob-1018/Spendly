@@ -1895,6 +1895,22 @@
 
   /* The slogan is gone, so the mark and the name set themselves. */
   .brand h1{ font-size: var(--fs-lg); }
+
+  /* Open at the side: still on this page, just not standing in it. */
+  .nav-content.is-beside{
+    color: var(--ink); font-weight: 600;
+    background: var(--accent-light);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .nav-content.is-beside .nav-content-dot{
+    background: transparent; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+  .nav-content.is-beside .nav-content-t::after{
+    content: "beside"; margin-left: var(--sp-4);
+    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--accent);
+  }
 </style>
 </head>
 
@@ -11434,6 +11450,14 @@
         return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       }
 
+      // A shortcut must never take a keystroke out of a field someone is
+      // filling in.
+      function typing(){
+        const a = document.activeElement;
+        return !!a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" ||
+                       a.tagName === "SELECT" || a.isContentEditable);
+      }
+
       /* ---- the keys, which are not on the wall -------------------------------
          Six numbers sitting in the margin forever is six pieces of furniture to
          teach one thing. Hold Shift and every key in the rail appears at once;
@@ -11453,6 +11477,20 @@
         c.setAttribute("aria-label", "Show what is on the " + (NAMES[b.dataset.tab] || b.dataset.tab) + " page");
         b.appendChild(c);
       });
+
+      // The digits, taken in the capture phase so the baseline's e.key test —
+      // which cannot see a shifted digit — never gets them. e.code is the
+      // physical key, which is what the label on the rail is promising.
+      document.addEventListener("keydown", e => {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (typing() || document.body.classList.contains("beside-open")) return;
+        const m = /^Digit([1-9])$/.exec(e.code || "");
+        const n = m ? +m[1] : (/^[1-9]$/.test(e.key) ? +e.key : 0);
+        if (!n || n > buttons.length) return;
+        e.preventDefault();
+        e.stopPropagation();
+        activateTab(buttons[n - 1].dataset.tab);
+      }, true);
 
       function isListOpen(tab){ return !!listOpen[tab]; }
       function paintCarets(){
@@ -11578,6 +11616,10 @@
       /* ---- the breakdown ------------------------------------------------------ */
       let spyTargets = [];
       let signature = "";
+      // What each page is made of, the last time everything was home. A section
+      // open at the side is still part of its page; it is just not standing in
+      // it at this moment.
+      const known = {};
       function buildContents(animate){
         const tab = currentTab();
         const panel = tab && document.getElementById("tab-" + tab);
@@ -11587,13 +11629,22 @@
         const secs = sectionsOf(panel);
         secs.forEach(s => s.block.setAttribute("data-rail-block", s.id));
 
+        // The one that is open at the side left the page to be looked at, so
+        // sectionsOf cannot see it. Put it back in the list, where it was.
+        if (besideNow && besideNow.tab === tab && !secs.some(x => x.id === besideNow.id)){
+          const at = known[tab] ? known[tab].indexOf(besideNow.id) : -1;
+          secs.splice(at >= 0 ? Math.min(at, secs.length) : secs.length, 0, besideNow);
+        }
+        if (!besideNow) known[tab] = secs.map(x => x.id);
+
         const chosen = new Set(glanceOf(secs));
         // A section that is currently open beside the page is not in the page,
         // and must not be dragged back into it by a re-render.
         secs.forEach(s => { if (!homeOf.has(s.block)) setBlock(s.block, chosen.has(s.id)); });
 
         const sig = tab + "|" + secs.map(s => s.id + ":" + s.inside.length).join("␟") +
-          "||" + [...chosen].sort().join(",");
+          "||" + [...chosen].sort().join(",") +
+          "||" + (besideNow ? besideNow.id : "");
         if (sig === signature) return;
         signature = sig;
 
@@ -11634,9 +11685,11 @@
 
           const b = document.createElement("button");
           b.type = "button";
-          b.className = "nav-content" + (on ? " is-on" : "");
+          const beside = !!(besideNow && besideNow.id === s.id);
+          b.className = "nav-content" + (on ? " is-on" : "") + (beside ? " is-beside" : "");
           b.dataset.sec = s.id;
           b.setAttribute("aria-pressed", on ? "true" : "false");
+          if (beside) b.setAttribute("aria-current", "true");
           b.innerHTML =
             '<span class="nav-content-dot" aria-hidden="true"></span>' +
             '<span class="nav-content-t">' + escapeHtml(s.head.textContent.trim()) + '</span>';
@@ -11690,6 +11743,7 @@
             if (s.head) s.head.scrollIntoView({ block: "start", behavior: still() ? "auto" : "smooth" });
             return;
           }
+          s.tab = tab;
           openBeside(s, secs.filter(x => !chosen.has(x.id)));
         });
         spy();
@@ -11843,6 +11897,7 @@
         drawer.classList.add("is-open");
         scrim.classList.add("is-open");
         document.body.classList.add("beside-open");
+        signature = ""; buildContents(false);   // the list marks what is open
         body.scrollTop = 0;
         document.getElementById("rd-close").focus();
       }
@@ -11857,6 +11912,7 @@
         setBlock(besideNow.block, false);
         homeOf.delete(besideNow.block);
         besideNow = null;
+        signature = ""; buildContents(false);   // and when nothing is
       }
       function closeBeside(){
         if (!besideNow) return;
