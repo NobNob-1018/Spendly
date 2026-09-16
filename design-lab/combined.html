@@ -2005,6 +2005,147 @@
      window, and 72px clears the masthead; in the side panel it is the panel,
      and 72px would park this on top of the form it belongs to. */
   #rd-body #entry-preview{ top: 0; }
+
+  /* ======================================================================
+     THE MASTHEAD, REHAULED — one total, and the logo does something
+     ====================================================================== */
+  header.top{ grid-template-columns: auto minmax(0, 1fr) auto; }
+  .brand{ display: flex; align-items: center; gap: var(--sp-5); }
+
+  /* The mark is the sync button. Same element the app binds to, so is-syncing
+     and has-error still land where they always did. */
+  .brand .mark{
+    position: relative; flex: 0 0 auto;
+    width: 38px; height: 38px; padding: 0; border: 0;
+    border-radius: var(--r-md); cursor: pointer;
+    background: linear-gradient(155deg, var(--accent-dark), var(--accent) 70%);
+    color: var(--on-accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .brand .mark .mark-p{
+    font-size: var(--fs-2xl); font-weight: 800; line-height: 1;
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  .brand .mark .mark-sync{
+    position: absolute; width: 19px; height: 19px; opacity: 0;
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  /* It says what it does when you reach for it, and keeps the logo otherwise. */
+  @media (hover: hover){
+    .brand .mark:hover .mark-p{ opacity: 0; }
+    .brand .mark:hover .mark-sync{ opacity: 1; }
+  }
+  .brand .mark:focus-visible .mark-p{ opacity: 0; }
+  .brand .mark:focus-visible .mark-sync{ opacity: 1; }
+  .brand .mark.is-syncing .mark-p{ opacity: 0; }
+  .brand .mark.is-syncing .mark-sync{ opacity: 1; animation: mark-spin 900ms linear infinite; }
+  .brand .mark.has-error{ background: var(--negative); }
+  @keyframes mark-spin{ to{ transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce){ .brand .mark.is-syncing .mark-sync{ animation: none; } }
+
+  /* The figure, once, where the wordmark was. */
+  .top-total{
+    display: grid; grid-template-columns: minmax(0, 1fr) 12px;
+    align-items: center; gap: 0 var(--sp-4);
+    padding: var(--sp-3) var(--sp-5); margin: 0;
+    background: none; border: 0; border-radius: var(--r-md);
+    cursor: pointer; text-align: left; font: inherit;
+  }
+  @media (hover: hover){ .top-total:hover{ background: var(--raised); } }
+  .top-total-k{
+    grid-column: 1; font-size: var(--fs-3xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--ink-dim);
+  }
+  .top-total-v{
+    grid-column: 1; font-size: var(--fs-xl); font-weight: 700; color: var(--ink);
+    font-variant-numeric: tabular-nums; line-height: 1.15;
+  }
+  .top-total-caret{
+    grid-column: 2; grid-row: 1 / span 2; justify-self: end; align-self: center;
+    width: 8px; height: 8px;
+    border-right: 1.5px solid var(--ink-dim); border-bottom: 1.5px solid var(--ink-dim);
+    transform: rotate(45deg) translate(-2px, -2px);
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+  .top-total.is-open .top-total-caret{ transform: rotate(225deg) translate(-2px, -2px); }
+
+  /* ---------- the accounts, come down from it ------------------------------ */
+  .places-drop{
+    position: fixed; top: var(--bar-h); left: var(--sp-7); z-index: 56;
+    width: min(380px, calc(100vw - var(--sp-8) * 2));
+    max-height: min(70vh, 620px); overflow-y: auto; overscroll-behavior: contain;
+    margin-top: var(--sp-4); padding: var(--sp-6);
+    background: var(--over); border: 1px solid var(--line-strong);
+    border-radius: var(--r-lg); box-shadow: var(--elev-4);
+    opacity: 0; transform: translateY(-6px);
+    transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+  }
+  .places-drop[hidden]{ display: none; }
+  .places-drop.is-open{ opacity: 1; transform: none; }
+  .places-drop-head{
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--sp-5); margin: 0 0 var(--sp-4);
+    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim);
+  }
+  .places-drop .rail-place-list{ margin: 0; padding: 0; border-left: 0; }
+  .places-drop .rail-place{ padding: var(--sp-4) var(--sp-5); }
+  .places-drop .rail-places-note{ margin: var(--sp-5) var(--sp-5) 0; }
+
+  /* Shadowed, because this is something you opened. */
+  .places-scrim{
+    position: fixed; inset: var(--bar-h) 0 0 0; z-index: 55;
+    background: rgb(0 0 0 / .5); opacity: 0; pointer-events: none;
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  .places-scrim.is-open{ opacity: 1; pointer-events: auto; }
+
+  @media (max-width: 720px){
+    header.top > .brand{ grid-column: 1; grid-row: 1; }
+    .places-drop{ left: var(--sp-5); right: var(--sp-5); width: auto; }
+  }
+
+  /* The running total lives in the brand now. This is the element the app binds
+     to and writes into, so it stays in the document and out of sight rather
+     than being deleted — getElementById on a removed node throws at load. */
+  .sticky-top{ display: none !important; }
+
+  /* ---------- the account rows, wherever they are -------------------------- */
+  /* Written without a parent, because they no longer have a fixed one: they are
+     in the masthead dropdown now and were in the rail before. Against the user
+     agent's button defaults, not against the sidebar's. */
+  .rail-place{
+    display: grid; grid-template-columns: 3px minmax(0, 1fr) max-content;
+    align-items: baseline; gap: 0 var(--sp-4);
+    width: 100%; height: auto; min-height: 0;
+    padding: var(--sp-3) var(--sp-4); margin: 0;
+    background: none; border: 0; border-radius: var(--r-sm);
+    font: inherit; color: inherit; text-align: left; cursor: pointer;
+    -webkit-appearance: none; appearance: none;
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){ .rail-place:hover{ background: var(--hover); } }
+  .rail-place:focus-visible{ outline: 2px solid var(--accent); outline-offset: -2px; }
+  .rail-place-tick{
+    grid-row: 1 / span 2; align-self: center;
+    width: 3px; height: 18px; border-radius: 2px; background: transparent;
+  }
+  @media (hover: hover){ .rail-place:hover .rail-place-tick{ background: var(--accent); } }
+  .rail-place-name{
+    grid-column: 2; font-size: var(--fs-md); font-weight: 600; color: var(--ink);
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .rail-place-amt{
+    grid-column: 3; justify-self: end;
+    font-size: var(--fs-sm); color: var(--ink); white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .rail-place-n{
+    grid-column: 2 / -1; grid-row: 2;
+    font-size: var(--fs-2xs); color: var(--ink-dim); line-height: 1.5;
+  }
+  .rail-place.is-empty{ opacity: .55; }
+  .rail-place.is-empty .rail-place-name{ font-weight: 500; }
 </style>
 </head>
 
@@ -2013,11 +2154,20 @@
 
   <header class="top">
     <div class="brand">
-      <div class="mark" aria-hidden="true">₱</div>
-      <div>
-        <h1>Spendly</h1>
-      </div>
+      <!-- The mark IS #btn-sync: the same element the app binds to and paints
+           its syncing and error states onto, wearing the logo. -->
+      <button id="btn-sync" class="mark" type="button" title="Sync now" aria-label="Sync now">
+        <span class="mark-p" aria-hidden="true">₱</span>
+        <svg class="mark-sync" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg>
+      </button>
+      <button class="top-total" id="top-total" type="button" aria-expanded="false" aria-controls="places-drop">
+        <span class="top-total-k">All places</span>
+        <span class="top-total-v num" id="top-total-v">₱0.00</span>
+        <span class="top-total-caret" aria-hidden="true"></span>
+      </button>
     </div>
+    <div class="places-drop" id="places-drop" hidden></div>
+    <div class="places-scrim" id="places-scrim"></div>
     <!-- The search is a field in the middle, not an icon at the edge: it is the
          one control here used with the keyboard rather than the mouse. -->
     <div class="top-search" id="top-search">
@@ -2041,7 +2191,6 @@
     <div style="display:flex; align-items:center; gap: var(--sp-5);">
       <div id="save-status"><span class="dot"></span><span id="save-status-text">Saved</span></div>
       <button id="btn-global-search" title="Search everything"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
-      <button id="btn-sync" title="Sync now" aria-label="Sync now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg></button>
     </div>
   </header>
 
@@ -11869,7 +12018,7 @@
          it is the headline. */
       let placesSig = "";
       function renderPlaces(){
-        const host = document.getElementById("rail-places");
+        const host = document.getElementById("places-drop");
         if (!host) return;
         const rows = savings.slice().sort((a, b) => b.amount - a.amount);
         const total = round2(rows.reduce((t, a) => t + (Number(a.amount) || 0), 0));
@@ -11902,27 +12051,14 @@
         }).join("");
 
         host.innerHTML =
-          '<button class="rail-total" type="button" id="rail-total" ' +
-            'aria-expanded="' + (placesOpen ? "true" : "false") + '">' +
-            '<span class="rail-total-k">All places</span>' +
-            '<span class="rail-total-v num">' + fmtMoney(total) + '</span>' +
-            '<span class="rail-total-sub">' + rows.length + ' accounts</span>' +
-            '<span class="rail-total-caret" aria-hidden="true"></span>' +
-          '</button>' +
-          '<div class="rail-fold rail-places-fold' + (placesOpen ? " is-open" : "") + '">' +
-            '<div class="rail-fold-inner">' +
-              '<div class="rail-place-list">' + accounts + '</div>' +
-              '<p class="rail-places-note">Money out on loan is not counted here — ' +
-                'it comes back on its own date.</p>' +
-            '</div>' +
-          '</div>';
+          '<p class="places-drop-head"><span>Where it is</span>' +
+            '<span>' + rows.length + ' accounts</span></p>' +
+          '<div class="rail-place-list">' + accounts + '</div>' +
+          '<p class="rail-places-note">Money out on loan is not counted here — ' +
+            'it comes back on its own date.</p>';
 
-        document.getElementById("rail-total").addEventListener("click", () => {
-          placesOpen = !placesOpen;
-          save();
-          host.querySelector(".rail-places-fold").classList.toggle("is-open", placesOpen);
-          document.getElementById("rail-total").setAttribute("aria-expanded", placesOpen ? "true" : "false");
-        });
+        const fig = document.getElementById("top-total-v");
+        if (fig) fig.textContent = fmtMoney(total);
 
         host.querySelectorAll("[data-place]").forEach(b =>
           b.addEventListener("click", () => {
@@ -12088,14 +12224,10 @@
       });
 
       /* ---- mount ---------------------------------------------------------------- */
-      const places = document.createElement("div");
-      places.className = "rail-places";
-      places.id = "rail-places";
+      // The accounts moved to the masthead, under the total that used to be
+      // printed twice. The rail is destinations again.
       const scroller = document.createElement("div");
       scroller.className = "rail-scroll";
-      // Where the money is, first. It was at the foot, which meant scrolling
-      // past six destinations to reach the one figure wanted at a glance.
-      scroller.appendChild(places);
       [...nav.children].forEach(c => { if (c !== scroller) scroller.appendChild(c); });
       scroller.appendChild(back);
       nav.appendChild(scroller);
@@ -12127,6 +12259,34 @@
         settle = setTimeout(() => { buildContents(false); renderPlaces(); }, 220);
       }).observe(document.querySelector(".app") || document.body,
                  { childList: true, subtree: true });
+
+      /* ---- the accounts, under the total ----------------------------------
+         The figure is in one place now, and this is what is behind it. The page
+         is shadowed while it is down, because this is a thing you opened rather
+         than a thing that is always there. */
+      (function placesDrop(){
+        const btn = document.getElementById("top-total");
+        const drop = document.getElementById("places-drop");
+        const scrim = document.getElementById("places-scrim");
+        if (!btn || !drop || !scrim) return;
+        let open = false;
+        function set(v){
+          open = v;
+          drop.hidden = !v;
+          drop.classList.toggle("is-open", v);
+          scrim.classList.toggle("is-open", v);
+          btn.setAttribute("aria-expanded", v ? "true" : "false");
+          btn.classList.toggle("is-open", v);
+        }
+        btn.addEventListener("click", e => { e.stopPropagation(); set(!open); });
+        scrim.addEventListener("click", () => set(false));
+        document.addEventListener("keydown", e => {
+          if (e.key === "Escape" && open){ e.stopPropagation(); set(false); btn.focus(); }
+        }, true);
+        // Going to an account is going somewhere, so the drop gets out of the way.
+        drop.addEventListener("click", e => { if (e.target.closest("[data-place]")) set(false); });
+        set(false);
+      })();
 
       /* ---- the search, in the masthead ------------------------------------
          The app's own search, shown under the field instead of over the page.
@@ -12201,6 +12361,9 @@
         fab.addEventListener("click", e => {
           e.preventDefault();
           e.stopPropagation();
+          // Pressing it again closes what it opened, rather than reopening the
+          // thing already in front of you.
+          if (besideNow && besideNow.block === panel){ closeBeside(); return; }
           openPanelBeside(panel, "Add an entry");
           const d = document.getElementById("in-desc");
           if (d) setTimeout(() => d.focus(), 80);
