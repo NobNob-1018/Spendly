@@ -12895,6 +12895,12 @@
            short. scrollHeight is the content's height in the box it actually
            got, so one corrective pass settles it. A height the user chose is
            not a mistake, so those are left exactly as they are. */
+        // A card whose height YOU set keeps it, so it can legitimately be too
+        // short for its contents. A scrollbar is a thin thing to say that with -
+        // it reads as a figure cut in half rather than as a card with more in
+        // it - so the edge gets a shade. Inset shadows are painted against the
+        // border box, so it stays at the bottom edge instead of scrolling away.
+        cards.forEach(el => el.classList.toggle("has-more", el.scrollHeight - el.clientHeight > 2));
         cards.forEach(el => {
           if (rectOf(tab, el).r >= ROWS_MIN) return;
           const over = el.scrollHeight - el.clientHeight;
@@ -12950,19 +12956,13 @@
          scrollbar. */
       function placeHandles(host, card, pad){
         const h = host.getBoundingClientRect(), c = card.getBoundingClientRect();
-        // A card that scrolls puts a scrollbar along the very edge the width
-        // handle wants, so the overlay stops short of it. Borders come out of
-        // the same subtraction, which is why they are measured rather than
-        // assumed to be the 1px they happen to be today.
-        const cs = getComputedStyle(card);
-        const bx = parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
-        const by = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
-        const sbW = Math.max(0, card.offsetWidth - card.clientWidth - bx);
-        const sbH = Math.max(0, card.offsetHeight - card.clientHeight - by);
+        // Exactly the card's rectangle. The handles hang OUTSIDE it, in the
+        // gutter, so there is no scrollbar to dodge and nothing underneath
+        // them to cover.
         pad.style.left = (c.left - h.left) + "px";
         pad.style.top = (c.top - h.top) + "px";
-        pad.style.width = Math.max(0, c.width - sbW) + "px";
-        pad.style.height = Math.max(0, c.height - sbH) + "px";
+        pad.style.width = c.width + "px";
+        pad.style.height = c.height + "px";
       }
       // After anything that can move a card: a resize, a reorder, a rebuild.
       function placeAllHandles(host){
@@ -14596,22 +14596,20 @@
   .card-handles{
     position: absolute; z-index: 6; pointer-events: none;
     border-radius: var(--r-lg);
+    /* .bento > * gives every child overflow:auto so a CARD can scroll, and the
+       overlay is a child too - so it became a scroll container that clipped its
+       own handles back inside itself and grew a 15px scrollbar of its own. That
+       is why they kept landing on the card however far out they were placed. */
+    overflow: visible;
   }
+  .card-ghost{ overflow: visible; }
   .card-handles > *{ pointer-events: auto; }
 
-  /* A short entrance, once, when the mode opens: they announce themselves and
-     then stay still. A loop would be a fidget. */
-  @keyframes handleIn{
-    from{ opacity: 0; transform: scale(.4); }
-    to{ opacity: 1; transform: scale(1); }
-  }
-  @media (prefers-reduced-motion: no-preference){
-    .card-handles .card-seam::after,
-    .card-handles .card-seam-v::after,
-    .card-handles .card-seam-c::after{
-      animation: handleIn var(--dur-slow) var(--ease-out) both;
-    }
-  }
+  /* No entrance animation. There was one, and it fired on every rebuild rather
+     than once per mode, because each rebuild makes new elements and "once" is
+     once per element. The result was a flicker whenever anything on the page
+     changed. An entrance would have to be keyed to the mode opening, and it is
+     not worth that. */
   /* The flare: a soft halo in the accent, so the bar reads as lit rather than
      drawn, and a brighter core under the hand. */
   .card-handles .card-seam::after,
@@ -14664,6 +14662,28 @@
   .card-handles.is-temporary .card-seam::after,
   .card-handles.is-temporary .card-seam-v::after,
   .card-handles.is-temporary .card-seam-c::after{ opacity: .55; }
+
+  /* ---------- the handles hang outside the card --------------------------- */
+  /* In the gutter the grid already leaves: sixteen pixels of nothing between
+     one card and the next, which is where a seam belongs. Inside the card a
+     handle is always over something, and over a figure once the card scrolls. */
+  .card-handles .card-seam{
+    right: -14px; width: 20px; top: 0; bottom: 0;
+  }
+  .card-handles .card-seam::after{ right: 8px; }
+  .card-handles .card-seam-v{
+    bottom: -14px; height: 20px; left: 0; right: 14px;
+  }
+  .card-handles .card-seam-v::after{ bottom: 8px; }
+  .card-handles .card-seam-c{
+    right: -14px; bottom: -14px; width: 22px; height: 22px;
+  }
+  .card-handles .card-seam-c::after{ right: 9px; bottom: 9px; }
+
+  /* ---------- a card with more in it than it shows ------------------------ */
+  .bento > .card.has-more{
+    box-shadow: var(--elev-1), inset 0 -20px 16px -16px rgb(0 0 0 / .5);
+  }
 </style>
 </body>
 </html>
