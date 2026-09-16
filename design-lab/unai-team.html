@@ -1071,6 +1071,49 @@
   .chart-loading{ transition: opacity var(--dur-base) var(--ease-out), visibility var(--dur-base); }
   .chart-loading.hide{ opacity:0; visibility:hidden; pointer-events:none; }
 
+
+  /* ---------- the note the app leaves --------------------------------------- */
+  #toast{ border-radius: var(--r-md); background: var(--raised); border:1px solid var(--line);
+    padding: var(--sp-6) var(--sp-7); max-width: 46ch; }
+  #toast.is-undo{ border-color: var(--line-strong); }
+  .toast-said{ margin:0; font-size: var(--fs-sm); line-height:1.65; color: var(--ink-soft); }
+  .toast-undo{ background:none; border:0; padding:0; font: inherit; color: var(--accent);
+    text-decoration: underline; text-underline-offset: 2px; cursor:pointer; }
+  .toast-undo:hover{ color: var(--accent-dark); }
+
+  /* ---------- field errors as sentences -------------------------------------- */
+  .field-error-msg{ margin-top: var(--sp-4); font-size: var(--fs-sm); line-height:1.6;
+    font-style: italic; color: var(--negative); max-width: 46ch; }
+  input.field-invalid, select.field-invalid, textarea.field-invalid{ border-color: var(--negative); }
+
+  /* ---------- empty states as passages --------------------------------------- */
+  .empty-state{ display:block; padding: var(--sp-9) 0; max-width: 54ch; }
+  .empty-state-title{ margin:0; font-size: var(--fs-lg); line-height:1.6; color: var(--ink); font-weight:500; }
+  .empty-state-sub{ margin: var(--sp-5) 0 0; font-size: var(--fs-sm); line-height:1.75; color: var(--ink-dim); }
+  .empty-state-offer{ margin: var(--sp-6) 0 0; }
+  .empty-state-action{ background:none; border:0; padding:0; font-size: var(--fs-sm);
+    color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor:pointer; }
+
+  /* ---------- search, grouped ------------------------------------------------ */
+  .sr-intro{ margin:0; padding: var(--sp-8); font-size: var(--fs-md); line-height:1.8;
+    color: var(--ink-dim); max-width: 60ch; }
+  .sr-intro strong{ color: var(--ink-soft); font-weight:500; }
+  .sr-count{ margin:0; padding: var(--sp-7) var(--sp-8) var(--sp-5); font-size: var(--fs-sm);
+    line-height:1.7; color: var(--ink-dim); border-bottom:1px solid var(--line); }
+  .sr-group{ padding: var(--sp-6) var(--sp-8); border-bottom:1px solid var(--line); }
+  .sr-group:last-child{ border-bottom:0; }
+  .sr-group-title{ display:flex; align-items:baseline; gap: var(--sp-5); margin: 0 0 var(--sp-4);
+    font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing: var(--track-caps); color: var(--ink-dim); }
+  .sr-group-n{ color: var(--ink-dim); opacity:.7; font-variant-numeric: tabular-nums; }
+  .search-result{ display:grid; grid-template-columns: auto 1fr auto; grid-template-areas:
+    "said leader amount" "aside aside aside"; align-items:baseline; gap: 0 var(--sp-5);
+    padding: var(--sp-4) 0; cursor:pointer; }
+  @media (hover: hover){ .search-result:hover .sr-said{ color: var(--accent); } }
+  .sr-said{ grid-area: said; font-size: var(--fs-sm); color: var(--ink); }
+  .sr-leader{ grid-area: leader; border-bottom:1px dotted var(--line); transform: translateY(-3px); }
+  .sr-amount{ grid-area: amount; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+  .sr-aside{ grid-area: aside; font-size: var(--fs-3xs); color: var(--ink-dim); }
+
 </style>
 </head>
 
@@ -2612,9 +2655,16 @@
     return toLocalISO(new Date());
   }
   function fmtDate(iso){
-    const d = new Date(iso + "T00:00:00");
-    return d.toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" });
+    // Written out. A book does not abbreviate its dates, and "16 September 2026"
+    // reads at the same speed as the sentence around it.
+    const d = new Date(String(iso) + "T00:00:00");
+    if (isNaN(d.getTime())) return String(iso);
+    const MON = ["January","February","March","April","May","June",
+                 "July","August","September","October","November","December"];
+    const sameYear = d.getFullYear() === new Date().getFullYear();
+    return d.getDate() + " " + MON[d.getMonth()] + (sameYear ? "" : " " + d.getFullYear());
   }
+
   /* Strips grouping and the currency mark before any arithmetic. parseFloat stops at
      the first comma, so "1,150.00" would otherwise read as 1. */
   /* Grouped digits only. The cell draws its own ₱ beside the field, so fmtMoney —
@@ -2635,11 +2685,13 @@
   // markup is rendered — plain fmtMoney() is still used for toasts, tooltips and
   // anything set via textContent.
   function fmtMoneyRich(n){
-    const parts = Number(n).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 }).split(".");
-    const whole = parts[0];
-    const cents = parts[1] || "00";
-    return `<span class="cur-sym">₱</span>${whole}<span class="cur-cents">.${cents}</span>`;
+    // The symbol and the cents step back so the magnitude carries the line. On a
+    // reading surface the cents are almost never the thing being read.
+    const parts = Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).split(".");
+    return '<span class="cur-sym">\u20B1</span>' + parts[0] +
+           '<span class="cur-cents">.' + (parts[1] || "00") + '</span>';
   }
+
   function round2(n){
     return Math.round(n * 100) / 100;
   }
@@ -2987,11 +3039,19 @@
 
   function showToast(msg){
     const el = document.getElementById("toast");
-    el.textContent = msg;
+    el.classList.remove("is-undo");
+    el.innerHTML = "";
+    const p = document.createElement("p");
+    p.className = "toast-said";
+    p.textContent = msg;
+    el.appendChild(p);
     el.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=> el.classList.remove("show"), 2200);
+    clearTimeout(undoTimer);
+    // Long enough to be read at reading speed rather than glance speed.
+    toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
   }
+
 
   // Deletes are irreversible and several of them move real money (a bank-linked
   // loan adjusts an account balance when removed). Rather than gate every delete
@@ -3001,29 +3061,32 @@
   function showUndoToast(msg, onUndo){
     const el = document.getElementById("toast");
     el.innerHTML = "";
+    const p = document.createElement("p");
+    p.className = "toast-said";
+    // The sentence carries the offer: "…stopped. Undo that." rather than a
+    // message with a control attached to the side of it.
     const text = document.createElement("span");
-    text.textContent = msg;
+    text.textContent = msg + " ";
     const btn = document.createElement("button");
     btn.className = "toast-undo";
-    btn.textContent = "Undo";
-    btn.addEventListener("click", ()=>{
+    btn.textContent = "Undo that.";
+    btn.addEventListener("click", () => {
       clearTimeout(undoTimer);
       clearTimeout(toastTimer);
-      el.classList.remove("show");
+      el.classList.remove("show", "is-undo");
       onUndo();
     });
-    el.appendChild(text);
-    el.appendChild(btn);
-    el.classList.add("show");
+    p.appendChild(text); p.appendChild(btn);
+    el.appendChild(p);
+    el.classList.add("show", "is-undo");
     clearTimeout(toastTimer);
     clearTimeout(undoTimer);
-    // Longer than a normal toast — the user needs time to notice and react.
-    toastTimer = setTimeout(()=>{
-      el.classList.remove("show");
-      // Reset to plain-text mode so the next ordinary toast isn't left with a button
-      setTimeout(()=>{ if (!el.classList.contains("show")) el.textContent = ""; }, 300);
-    }, 6000);
+    toastTimer = setTimeout(() => {
+      el.classList.remove("show", "is-undo");
+      setTimeout(() => { if (!el.classList.contains("show")) el.textContent = ""; }, 300);
+    }, 7000);
   }
+
 
   // Highlights the actual field that failed validation, instead of leaving the
   // user to guess which one a toast was about. Clears itself the moment the user
@@ -3035,16 +3098,17 @@
     if (!errEl){
       errEl = document.createElement("div");
       errEl.className = "field-error-msg";
-      // Needs an id so the control can point at it. Without aria-describedby, focus
-      // lands on "Pay from which account, combo box" and the reason is never spoken.
       errEl.id = "field-err-" + (++fieldErrSeq);
       errEl.setAttribute("role", "alert");
       input.insertAdjacentElement("afterend", errEl);
     }
-    errEl.textContent = message;
+    // A sentence under the field, ending in a full stop, because it is a
+    // sentence. A bare fragment in red reads as the machine complaining.
+    const said = String(message || "").trim();
+    errEl.textContent = /[.!?]$/.test(said) ? said : said + ".";
     input.setAttribute("aria-invalid", "true");
     input.setAttribute("aria-describedby", errEl.id);
-    const clear = ()=>{
+    const clear = () => {
       input.classList.remove("field-invalid");
       input.removeAttribute("aria-invalid");
       input.removeAttribute("aria-describedby");
@@ -3056,6 +3120,7 @@
     input.addEventListener("change", clear);
     input.focus();
   }
+
 
   /* ---------- CSS var helper (used by Chart.js for theme-correct colors) ---------- */
   function getCSSVar(name){
@@ -3508,79 +3573,98 @@
   };
 
   function renderGlobalSearchResults(query){
-
     const container = document.getElementById("global-search-results");
     if (!query){
-      container.innerHTML = `<div class="hint" style="padding:16px;">Search your records — or type an action like <strong>add expense</strong>, <strong>backup</strong>, or <strong>charts</strong>.</div>`;
+      container.innerHTML =
+        '<p class="sr-intro">Search the book. A word from a description, a category, a person\u2019s name \u2014 ' +
+        'or the name of something you want done, such as <strong>backup</strong> or <strong>charts</strong>.</p>';
       return;
     }
 
-    const results = [];
-    // Commands first: when someone types "backup" they want the action, not an
-    // expense that happens to contain the word.
-    paletteCommands().forEach(c=>{
-      if (c.label.toLowerCase().includes(query) || c.keys.includes(query)){
-        results.push({ icon:ICON.action, type:"Action", label:c.label, meta:"Press to run",
-                       amount:"", action:c.run, isCommand:true });
-      }
+    const groups = [
+      { key: "actions", title: "Things to do", rows: [] },
+      { key: "expenses", title: "Paid out", rows: [] },
+      { key: "incomes", title: "Received", rows: [] },
+      { key: "loans", title: "Lent and borrowed", rows: [] },
+      { key: "holdings", title: "Held", rows: [] }
+    ];
+    const g = k => groups.find(x => x.key === k);
+
+    paletteCommands().forEach(c => {
+      if (c.label.toLowerCase().includes(query) || c.keys.includes(query))
+        g("actions").rows.push({ said: c.label, aside: "", amount: "", action: c.run });
     });
-    expenses.forEach(e=>{
-      if (hit(e.description, query) || hit(e.category, query)
-          || (Array.isArray(e.tags) ? e.tags : []).some(t=>hit(t, query))){
-        results.push({ icon:ICON.out, type:"Expense", label:e.description, meta:`${fmtDate(e.date)} · ${e.category}`, amount:fmtMoney(e.amount), action:()=>jumpToHistoryMode("expense") });
-      }
+    expenses.forEach(e => {
+      if (hit(e.description, query) || hit(e.category, query) || (Array.isArray(e.tags) ? e.tags : []).some(t => hit(t, query)))
+        g("expenses").rows.push({ said: e.description, aside: fmtDate(e.date) + ", under " + e.category,
+                                  amount: fmtMoney(e.amount), action: () => jumpToHistoryMode("expense") });
     });
-    incomes.forEach(i=>{
-      if (hit(i.description, query) || hit(i.category, query)
-          || (Array.isArray(i.tags) ? i.tags : []).some(t=>hit(t, query))){
-        results.push({ icon:ICON.in, type:"Income", label:i.description, meta:`${fmtDate(i.date)} · ${i.category}`, amount:fmtMoney(i.amount), action:()=>jumpToHistoryMode("income") });
-      }
+    incomes.forEach(i => {
+      if (hit(i.description, query) || hit(i.category, query) || (Array.isArray(i.tags) ? i.tags : []).some(t => hit(t, query)))
+        g("incomes").rows.push({ said: i.description, aside: fmtDate(i.date) + ", under " + i.category,
+                                 amount: fmtMoney(i.amount), action: () => jumpToHistoryMode("income") });
     });
-    loansGiven.forEach(l=>{
-      if (hit(l.person, query)){
-        results.push({ icon:ICON.loan, type:"Loan given", label:l.person, meta: l.deadline ? `Due ${fmtDate(l.deadline)}` : "No deadline set", amount:fmtMoney(l.amount), action:()=>activateTab("loans") });
-      }
+    loansGiven.forEach(l => {
+      if (hit(l.person, query))
+        g("loans").rows.push({ said: l.person + " owes you",
+                               aside: l.deadline ? "due " + fmtDate(l.deadline) : "no date set",
+                               amount: fmtMoney(l.amount), action: () => activateTab("loans") });
     });
-    loansTaken.forEach(l=>{
-      if (hit(l.person, query)){
-        results.push({ icon:ICON.out, type:"Loan taken", label:l.person, meta: l.deadline ? `Due ${fmtDate(l.deadline)}` : "No deadline set", amount:fmtMoney(l.amount), action:()=>activateTab("loans") });
-      }
+    loansTaken.forEach(l => {
+      if (hit(l.person, query))
+        g("loans").rows.push({ said: "You owe " + l.person,
+                               aside: l.deadline ? "due " + fmtDate(l.deadline) : "no date set",
+                               amount: fmtMoney(l.amount), action: () => activateTab("loans") });
     });
-    investments.forEach(inv=>{
-      if (hit(inv.name, query) || hit(inv.category, query)){
-        results.push({ icon:ICON.chart, type:"Investment", label:inv.name, meta: inv.category, amount:fmtMoney(inv.amount), action:()=>activateTab("loans") });
-      }
+    investments.forEach(inv => {
+      if (hit(inv.name, query) || hit(inv.category, query))
+        g("holdings").rows.push({ said: inv.name, aside: "held as " + inv.category,
+                                  amount: fmtMoney(inv.amount), action: () => activateTab("loans") });
     });
-    savings.forEach(s=>{
-      if (hit(s.provider, query)){
-        results.push({ icon:ICON.bank, type:"Savings", label:s.provider, meta: `${s.rate || 0}% p.a.`, amount:fmtMoney(s.amount), action:()=>activateTab("savings") });
-      }
+    savings.forEach(s => {
+      if (hit(s.provider, query))
+        g("holdings").rows.push({ said: s.provider, aside: "earning " + (s.rate || 0) + "% a year",
+                                  amount: fmtMoney(s.amount), action: () => activateTab("savings") });
     });
 
-    if (!results.length){
-      container.innerHTML = emptyStateHtml("search", `No matches for "${query}"`, "Try a different word or check another tab.");
+    const filled = groups.filter(x => x.rows.length);
+    if (!filled.length){
+      container.innerHTML = emptyStateHtml("search", "Nothing in the book matches \u201C" + escapeHtml(query) + "\u201D",
+        "Try a shorter word, or the name of a category.");
       return;
     }
 
-    container.innerHTML = results.map((r,idx)=>`
-      <div class="search-result ${r.isCommand ? "is-command" : ""}" data-idx="${idx}">
-        <span class="sr-icon">${r.icon}</span>
-        <div class="sr-body">
-          <div class="sr-label">${escapeHtml(r.label)}</div>
-          <div class="sr-meta">${escapeHtml(r.type)} · ${escapeHtml(r.meta)}</div>
-        </div>
-        <span class="sr-amount">${r.amount}</span>
-      </div>
-    `).join("");
+    // Grouped and introduced, so the answer is a short reading rather than a
+    // list of rows the reader has to sort into kinds themselves.
+    const count = filled.reduce((t, x) => t + x.rows.length, 0);
+    let idx = 0;
+    const flat = [];
+    container.innerHTML =
+      '<p class="sr-count">' + count + ' entr' + (count === 1 ? "y" : "ies") + ' mention \u201C' +
+        escapeHtml(query) + '\u201D, across ' + filled.length + ' part' + (filled.length === 1 ? "" : "s") + ' of the book.</p>'
+      + filled.map(grp =>
+        '<div class="sr-group">' +
+          '<p class="sr-group-title">' + grp.title + '<span class="sr-group-n">' + grp.rows.length + '</span></p>' +
+          grp.rows.map(r => {
+            flat.push(r);
+            return '<div class="search-result" data-idx="' + (idx++) + '">' +
+              '<span class="sr-said">' + escapeHtml(r.said) + '</span>' +
+              '<span class="sr-leader"></span>' +
+              '<span class="sr-amount">' + r.amount + '</span>' +
+              (r.aside ? '<span class="sr-aside">' + escapeHtml(r.aside) + '</span>' : "") +
+            '</div>';
+          }).join("") +
+        '</div>').join("");
 
-    container.querySelectorAll(".search-result").forEach(el=>{
-      el.addEventListener("click", ()=>{
-        const r = results[parseInt(el.dataset.idx, 10)];
+    container.querySelectorAll(".search-result").forEach(el => {
+      el.addEventListener("click", () => {
+        const r = flat[parseInt(el.dataset.idx, 10)];
         closeSearchOverlay();
         r.action();
       });
     });
   }
+
 
   /* ---------- Add tab: Expense / Income mode ---------- */
   const ENTRY_MODE_COPY = {
@@ -3689,15 +3773,16 @@
   // One builder for every empty state, so they stay visually consistent and can
   // optionally offer an action instead of being a dead end.
   function emptyStateHtml(icon, title, sub, actionLabel, actionId){
-    return `<div class="empty-state">
-      <div class="empty-state-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${EMPTY_ICONS[icon] || EMPTY_ICONS.list}</svg>
-      </div>
-      <div class="empty-state-title">${escapeHtml(title)}</div>
-      ${sub ? `<div class="empty-state-sub">${sub}</div>` : ""}
-      ${actionLabel ? `<button class="empty-state-action" id="${actionId}">${escapeHtml(actionLabel)}</button>` : ""}
-    </div>`;
+    // Set as a short passage, left-aligned on the measure, with the offer as a
+    // word in the text. An icon here would be an illustration of nothing.
+    return '<div class="empty-state">' +
+      '<p class="empty-state-title">' + escapeHtml(title) + '</p>' +
+      (sub ? '<p class="empty-state-sub">' + sub + '</p>' : "") +
+      (actionLabel ? '<p class="empty-state-offer"><button class="empty-state-action" id="' + actionId + '">' +
+        escapeHtml(actionLabel) + '</button></p>' : "") +
+    '</div>';
   }
+
 
   /* ---------- Add expense ---------- */
   const DRAFT_KEY = "spendly_draft_v1";

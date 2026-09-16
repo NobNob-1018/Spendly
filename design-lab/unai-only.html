@@ -1380,6 +1380,57 @@
   #stat-row .metric{ border-bottom:1px solid var(--line); }
   @media (min-width: 1160px){ #stat-row .metric{ border-bottom:0; } }
 
+
+  /* ---------- status line ---------------------------------------------------- */
+  #toast{ border-radius:0; border:1px solid var(--line-strong); background: var(--over);
+    font-size: var(--fs-2xs); padding: var(--sp-4) var(--sp-6); gap: var(--sp-5);
+    align-items: baseline; }
+  #toast.is-undo{ border-left: 2px solid var(--warn); }
+  .toast-stamp{ font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums;
+    letter-spacing:.04em; }
+  .toast-msg{ color: var(--ink); }
+  .toast-undo{ border:1px solid var(--line-strong); border-radius:0; padding: 1px var(--sp-4);
+    font-size: var(--fs-3xs); letter-spacing:.04em; display:inline-flex; align-items:center; gap: var(--sp-3); }
+  .toast-undo kbd{ font: inherit; border:1px solid var(--line-strong); padding: 0 3px; }
+
+  /* ---------- field errors --------------------------------------------------- */
+  .field-error-msg{ display:flex; align-items:baseline; gap: var(--sp-4); margin-top: var(--sp-3);
+    font-size: var(--fs-3xs); color: var(--negative); }
+  .fe-flag{ font-weight:800; }
+  input.field-invalid, select.field-invalid, textarea.field-invalid{
+    border-color: var(--negative); box-shadow: inset 2px 0 0 var(--negative); }
+
+  /* ---------- empty states --------------------------------------------------- */
+  .empty-state{ display:flex; flex-direction:column; align-items:center; gap: var(--sp-5);
+    padding: var(--sp-9) var(--sp-6); }
+  .empty-state-title{ display:flex; align-items:center; gap: var(--sp-6);
+    font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.1em; color: var(--ink-dim); }
+  .es-rule{ display:block; width:28px; height:1px; background: var(--line-strong); }
+  .empty-state-sub{ font-size: var(--fs-2xs); color: var(--ink-faint); text-align:center; max-width:46ch; }
+
+  /* ---------- search results ------------------------------------------------- */
+  .sr-legend{ display:flex; flex-wrap:wrap; gap: var(--sp-6); padding: var(--sp-7); align-items:center; }
+  .sr-legend-row{ display:inline-flex; align-items:center; gap: var(--sp-3);
+    font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .sr-legend-row kbd{ border:1px solid var(--line-strong); padding: 0 4px; font: inherit; }
+  .sr-legend-note{ flex:1 1 100%; margin:0; font-size: var(--fs-3xs); color: var(--ink-faint); }
+  .sr-summary{ padding: var(--sp-4) var(--sp-7); border-bottom:1px solid var(--line);
+    font-size: var(--fs-3xs); letter-spacing:.05em; text-transform:uppercase; color: var(--ink-dim); }
+  .search-result{ display:grid; grid-template-columns: 24px 42px 1fr 1fr auto;
+    gap: var(--sp-5); align-items:baseline; height: var(--row-h); padding: 0 var(--sp-7);
+    border-bottom:1px solid var(--line); cursor:pointer; }
+  .search-result:last-child{ border-bottom:0; }
+  @media (hover: hover){ .search-result:hover{ background: var(--hover); } }
+  .search-result.is-command{ border-left:2px solid var(--accent); }
+  .sr-n{ font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .sr-kind{ font-size: var(--fs-3xs); letter-spacing:.06em; color: var(--ink-dim); }
+  .sr-label{ font-size: var(--fs-2xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sr-meta{ font-size: var(--fs-3xs); color: var(--ink-faint); overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .sr-amount{ font-size: var(--fs-2xs); font-variant-numeric: tabular-nums; text-align:right; white-space:nowrap; }
+  .sr-amount.is-in{ color: var(--positive); } .sr-amount.is-out{ color: var(--negative); }
+  .sr-more{ padding: var(--sp-5) var(--sp-7); font-size: var(--fs-3xs); color: var(--ink-faint); }
+
 </style>
 </head>
 
@@ -2917,9 +2968,11 @@
     return toLocalISO(new Date());
   }
   function fmtDate(iso){
-    const d = new Date(iso + "T00:00:00");
-    return d.toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" });
+    // ISO, because it is fixed width and sorts as it reads. "Sep 6" and
+    // "Sep 16" are different widths, which makes a column of them ripple.
+    return String(iso).slice(0, 10);
   }
+
   /* Strips grouping and the currency mark before any arithmetic. parseFloat stops at
      the first comma, so "1,150.00" would otherwise read as 1. */
   /* Grouped digits only. The cell draws its own ₱ beside the field, so fmtMoney —
@@ -2940,11 +2993,13 @@
   // markup is rendered — plain fmtMoney() is still used for toasts, tooltips and
   // anything set via textContent.
   function fmtMoneyRich(n){
-    const parts = Number(n).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 }).split(".");
-    const whole = parts[0];
-    const cents = parts[1] || "00";
-    return `<span class="cur-sym">₱</span>${whole}<span class="cur-cents">.${cents}</span>`;
+    // Cents at full weight here. A console does not decide for the operator
+    // which digits matter; they are all the figure.
+    const parts = Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).split(".");
+    return '<span class="cur-sym">\u20B1</span>' + parts[0] +
+           '<span class="cur-cents">.' + (parts[1] || "00") + '</span>';
   }
+
   function round2(n){
     return Math.round(n * 100) / 100;
   }
@@ -3296,64 +3351,101 @@
 
   function showToast(msg){
     const el = document.getElementById("toast");
-    el.textContent = msg;
+    const t = new Date();
+    const stamp = String(t.getHours()).padStart(2, "0") + ":" +
+                  String(t.getMinutes()).padStart(2, "0") + ":" +
+                  String(t.getSeconds()).padStart(2, "0");
+    el.innerHTML = '<span class="toast-stamp">' + stamp + '</span><span class="toast-msg"></span>';
+    el.querySelector(".toast-msg").textContent = msg;
     el.classList.add("show");
+    el.classList.remove("is-undo");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=> el.classList.remove("show"), 2200);
+    clearTimeout(undoTimer);
+    if (undoKeyHandler){ document.removeEventListener("keydown", undoKeyHandler, true); undoKeyHandler = null; }
+    toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
   }
+
 
   // Deletes are irreversible and several of them move real money (a bank-linked
   // loan adjusts an account balance when removed). Rather than gate every delete
   // behind a confirm dialog, deletions show a toast with an Undo button for a few
   // seconds — safer in practice, and far less friction on intentional deletes.
   let undoTimer = null;
+  let undoKeyHandler = null;
   function showUndoToast(msg, onUndo){
     const el = document.getElementById("toast");
+    const t = new Date();
+    const stamp = String(t.getHours()).padStart(2, "0") + ":" +
+                  String(t.getMinutes()).padStart(2, "0") + ":" +
+                  String(t.getSeconds()).padStart(2, "0");
     el.innerHTML = "";
+    const st = document.createElement("span");
+    st.className = "toast-stamp";
+    st.textContent = stamp;
     const text = document.createElement("span");
+    text.className = "toast-msg";
     text.textContent = msg;
     const btn = document.createElement("button");
     btn.className = "toast-undo";
-    btn.textContent = "Undo";
-    btn.addEventListener("click", ()=>{
+    // The key is part of the label, because on this surface the key is the
+    // primary way to press it and a button that hides its shortcut wastes it.
+    btn.innerHTML = '<kbd>U</kbd> undo';
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
       clearTimeout(undoTimer);
       clearTimeout(toastTimer);
-      el.classList.remove("show");
-      onUndo();
-    });
-    el.appendChild(text);
-    el.appendChild(btn);
-    el.classList.add("show");
+      el.classList.remove("show", "is-undo");
+      if (undoKeyHandler){ document.removeEventListener("keydown", undoKeyHandler, true); undoKeyHandler = null; }
+    };
+    btn.addEventListener("click", () => { finish(); onUndo(); });
+
+    // U undoes, Escape dismisses — but never while a field has focus, or typing
+    // the letter u into a description would silently revert the last delete.
+    if (undoKeyHandler) document.removeEventListener("keydown", undoKeyHandler, true);
+    undoKeyHandler = e => {
+      const a = document.activeElement;
+      const typing = a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT" || a.isContentEditable);
+      if (typing) return;
+      if (e.key === "u" || e.key === "U"){ e.preventDefault(); finish(); onUndo(); }
+      else if (e.key === "Escape"){ finish(); }
+    };
+    document.addEventListener("keydown", undoKeyHandler, true);
+
+    el.appendChild(st); el.appendChild(text); el.appendChild(btn);
+    el.classList.add("show", "is-undo");
     clearTimeout(toastTimer);
     clearTimeout(undoTimer);
-    // Longer than a normal toast — the user needs time to notice and react.
-    toastTimer = setTimeout(()=>{
-      el.classList.remove("show");
-      // Reset to plain-text mode so the next ordinary toast isn't left with a button
-      setTimeout(()=>{ if (!el.classList.contains("show")) el.textContent = ""; }, 300);
-    }, 6000);
+    toastTimer = setTimeout(() => {
+      finish();
+      setTimeout(() => { if (!el.classList.contains("show")) el.textContent = ""; }, 200);
+    }, 8000);
   }
+
 
   // Highlights the actual field that failed validation, instead of leaving the
   // user to guess which one a toast was about. Clears itself the moment the user
   // starts fixing it.
   let fieldErrSeq = 0;
+
   function markFieldInvalid(input, message){
     input.classList.add("field-invalid");
     let errEl = input.parentElement.querySelector(".field-error-msg");
     if (!errEl){
       errEl = document.createElement("div");
       errEl.className = "field-error-msg";
-      // Needs an id so the control can point at it. Without aria-describedby, focus
-      // lands on "Pay from which account, combo box" and the reason is never spoken.
       errEl.id = "field-err-" + (++fieldErrSeq);
       errEl.setAttribute("role", "alert");
       input.insertAdjacentElement("afterend", errEl);
     }
-    errEl.textContent = message;
+    // Prefixed and squared, matching how the rest of this surface flags a row.
+    errEl.innerHTML = '<span class="fe-flag">!</span><span class="fe-text"></span>';
+    errEl.querySelector(".fe-text").textContent = message;
     input.setAttribute("aria-invalid", "true");
     input.setAttribute("aria-describedby", errEl.id);
-    const clear = ()=>{
+    const clear = () => {
       input.classList.remove("field-invalid");
       input.removeAttribute("aria-invalid");
       input.removeAttribute("aria-describedby");
@@ -3365,6 +3457,7 @@
     input.addEventListener("change", clear);
     input.focus();
   }
+
 
   /* ---------- CSS var helper (used by Chart.js for theme-correct colors) ---------- */
   function getCSSVar(name){
@@ -3817,79 +3910,91 @@
   };
 
   function renderGlobalSearchResults(query){
-
     const container = document.getElementById("global-search-results");
     if (!query){
-      container.innerHTML = `<div class="hint" style="padding:16px;">Search your records — or type an action like <strong>add expense</strong>, <strong>backup</strong>, or <strong>charts</strong>.</div>`;
+      container.innerHTML =
+        '<div class="sr-legend">' +
+          '<div class="sr-legend-row"><kbd>\u2191</kbd><kbd>\u2193</kbd><span>move</span></div>' +
+          '<div class="sr-legend-row"><kbd>\u21B5</kbd><span>run</span></div>' +
+          '<div class="sr-legend-row"><kbd>esc</kbd><span>close</span></div>' +
+          '<p class="sr-legend-note">Records and actions. Type a word from a description, a category, a person, or a command name.</p>' +
+        '</div>';
       return;
     }
 
     const results = [];
-    // Commands first: when someone types "backup" they want the action, not an
-    // expense that happens to contain the word.
-    paletteCommands().forEach(c=>{
+    paletteCommands().forEach(c => {
       if (c.label.toLowerCase().includes(query) || c.keys.includes(query)){
-        results.push({ icon:ICON.action, type:"Action", label:c.label, meta:"Press to run",
-                       amount:"", action:c.run, isCommand:true });
+        results.push({ kind: "ACTION", label: c.label, meta: "run", amount: "", action: c.run, isCommand: true });
       }
     });
-    expenses.forEach(e=>{
-      if (hit(e.description, query) || hit(e.category, query)
-          || (Array.isArray(e.tags) ? e.tags : []).some(t=>hit(t, query))){
-        results.push({ icon:ICON.out, type:"Expense", label:e.description, meta:`${fmtDate(e.date)} · ${e.category}`, amount:fmtMoney(e.amount), action:()=>jumpToHistoryMode("expense") });
-      }
+    expenses.forEach(e => {
+      if (hit(e.description, query) || hit(e.category, query) || (Array.isArray(e.tags) ? e.tags : []).some(t => hit(t, query)))
+        results.push({ kind: "EXP", label: e.description, meta: fmtDate(e.date) + " " + e.category,
+                       amount: fmtMoney(e.amount), tone: "out", action: () => jumpToHistoryMode("expense") });
     });
-    incomes.forEach(i=>{
-      if (hit(i.description, query) || hit(i.category, query)
-          || (Array.isArray(i.tags) ? i.tags : []).some(t=>hit(t, query))){
-        results.push({ icon:ICON.in, type:"Income", label:i.description, meta:`${fmtDate(i.date)} · ${i.category}`, amount:fmtMoney(i.amount), action:()=>jumpToHistoryMode("income") });
-      }
+    incomes.forEach(i => {
+      if (hit(i.description, query) || hit(i.category, query) || (Array.isArray(i.tags) ? i.tags : []).some(t => hit(t, query)))
+        results.push({ kind: "INC", label: i.description, meta: fmtDate(i.date) + " " + i.category,
+                       amount: fmtMoney(i.amount), tone: "in", action: () => jumpToHistoryMode("income") });
     });
-    loansGiven.forEach(l=>{
-      if (hit(l.person, query)){
-        results.push({ icon:ICON.loan, type:"Loan given", label:l.person, meta: l.deadline ? `Due ${fmtDate(l.deadline)}` : "No deadline set", amount:fmtMoney(l.amount), action:()=>activateTab("loans") });
-      }
+    loansGiven.forEach(l => {
+      if (hit(l.person, query))
+        results.push({ kind: "RECV", label: l.person, meta: l.deadline ? "due " + fmtDate(l.deadline) : "no deadline",
+                       amount: fmtMoney(l.amount), tone: "in", action: () => activateTab("loans") });
     });
-    loansTaken.forEach(l=>{
-      if (hit(l.person, query)){
-        results.push({ icon:ICON.out, type:"Loan taken", label:l.person, meta: l.deadline ? `Due ${fmtDate(l.deadline)}` : "No deadline set", amount:fmtMoney(l.amount), action:()=>activateTab("loans") });
-      }
+    loansTaken.forEach(l => {
+      if (hit(l.person, query))
+        results.push({ kind: "PAY", label: l.person, meta: l.deadline ? "due " + fmtDate(l.deadline) : "no deadline",
+                       amount: fmtMoney(l.amount), tone: "out", action: () => activateTab("loans") });
     });
-    investments.forEach(inv=>{
-      if (hit(inv.name, query) || hit(inv.category, query)){
-        results.push({ icon:ICON.chart, type:"Investment", label:inv.name, meta: inv.category, amount:fmtMoney(inv.amount), action:()=>activateTab("loans") });
-      }
+    investments.forEach(inv => {
+      if (hit(inv.name, query) || hit(inv.category, query))
+        results.push({ kind: "INV", label: inv.name, meta: inv.category, amount: fmtMoney(inv.amount),
+                       action: () => activateTab("loans") });
     });
-    savings.forEach(s=>{
-      if (hit(s.provider, query)){
-        results.push({ icon:ICON.bank, type:"Savings", label:s.provider, meta: `${s.rate || 0}% p.a.`, amount:fmtMoney(s.amount), action:()=>activateTab("savings") });
-      }
+    savings.forEach(s => {
+      if (hit(s.provider, query))
+        results.push({ kind: "ACCT", label: s.provider, meta: (s.rate || 0) + "% p.a.",
+                       amount: fmtMoney(s.amount), action: () => activateTab("savings") });
     });
 
     if (!results.length){
-      container.innerHTML = emptyStateHtml("search", `No matches for "${query}"`, "Try a different word or check another tab.");
+      container.innerHTML = emptyStateHtml("search", 'no match for "' + query + '"',
+        "Try a shorter word, or a category name.");
       return;
     }
 
-    container.innerHTML = results.map((r,idx)=>`
-      <div class="search-result ${r.isCommand ? "is-command" : ""}" data-idx="${idx}">
-        <span class="sr-icon">${r.icon}</span>
-        <div class="sr-body">
-          <div class="sr-label">${escapeHtml(r.label)}</div>
-          <div class="sr-meta">${escapeHtml(r.type)} · ${escapeHtml(r.meta)}</div>
-        </div>
-        <span class="sr-amount">${r.amount}</span>
-      </div>
-    `).join("");
+    // A count by kind before the rows: 40 matches is a different answer from 2,
+    // and the breakdown says which tab they are actually in.
+    const byKind = {};
+    results.forEach(r => { byKind[r.kind] = (byKind[r.kind] || 0) + 1; });
+    const total = round2(results.filter(r => !r.isCommand)
+      .reduce((t, r) => t + parseMoneyInput(r.amount) || 0, 0));
 
-    container.querySelectorAll(".search-result").forEach(el=>{
-      el.addEventListener("click", ()=>{
+    container.innerHTML =
+      '<div class="sr-summary">' + results.length + ' match' + (results.length === 1 ? "" : "es") + ' \u00B7 ' +
+        Object.keys(byKind).map(k => k + " " + byKind[k]).join("  ") +
+        (total > 0 ? '  \u00B7  \u03A3 ' + fmtMoney(total) : "") + '</div>'
+      + '<div class="sr-table">' + results.slice(0, 60).map((r, idx) =>
+        '<div class="search-result' + (r.isCommand ? " is-command" : "") + '" data-idx="' + idx + '">' +
+          '<span class="sr-n">' + String(idx + 1).padStart(2, "0") + '</span>' +
+          '<span class="sr-kind">' + r.kind + '</span>' +
+          '<span class="sr-label">' + escapeHtml(r.label) + '</span>' +
+          '<span class="sr-meta">' + escapeHtml(r.meta) + '</span>' +
+          '<span class="sr-amount' + (r.tone ? " is-" + r.tone : "") + '">' + r.amount + '</span>' +
+        '</div>').join("") + '</div>'
+      + (results.length > 60 ? '<div class="sr-more">+' + (results.length - 60) + ' not shown \u2014 narrow the query</div>' : "");
+
+    container.querySelectorAll(".search-result").forEach(el => {
+      el.addEventListener("click", () => {
         const r = results[parseInt(el.dataset.idx, 10)];
         closeSearchOverlay();
         r.action();
       });
     });
   }
+
 
   /* ---------- Add tab: Expense / Income mode ---------- */
   const ENTRY_MODE_COPY = {
@@ -3998,15 +4103,15 @@
   // One builder for every empty state, so they stay visually consistent and can
   // optionally offer an action instead of being a dead end.
   function emptyStateHtml(icon, title, sub, actionLabel, actionId){
-    return `<div class="empty-state">
-      <div class="empty-state-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${EMPTY_ICONS[icon] || EMPTY_ICONS.list}</svg>
-      </div>
-      <div class="empty-state-title">${escapeHtml(title)}</div>
-      ${sub ? `<div class="empty-state-sub">${sub}</div>` : ""}
-      ${actionLabel ? `<button class="empty-state-action" id="${actionId}">${escapeHtml(actionLabel)}</button>` : ""}
-    </div>`;
+    // No illustration. A drawn icon in an empty table is decoration standing in
+    // for the information that the table is empty, which the words already give.
+    return '<div class="empty-state">' +
+      '<div class="empty-state-title"><span class="es-rule"></span>' + escapeHtml(title) + '<span class="es-rule"></span></div>' +
+      (sub ? '<div class="empty-state-sub">' + sub + '</div>' : "") +
+      (actionLabel ? '<button class="empty-state-action" id="' + actionId + '">' + escapeHtml(actionLabel) + '</button>' : "") +
+    '</div>';
   }
+
 
   /* ---------- Add expense ---------- */
   const DRAFT_KEY = "spendly_draft_v1";

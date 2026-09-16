@@ -1117,6 +1117,60 @@
   .chart-loading{ transition: opacity var(--dur-base) var(--ease-out), visibility var(--dur-base); }
   .chart-loading.hide{ opacity:0; visibility:hidden; pointer-events:none; }
 
+
+  /* ---------- toast with a visible window ------------------------------------ */
+  #toast{ position: fixed; display:flex; align-items:center; gap: var(--sp-5);
+    border-radius: var(--r-lg); background: var(--raised); border:1px solid var(--line);
+    box-shadow: var(--elev-3); padding: var(--sp-6) var(--sp-7); overflow:hidden; }
+  .toast-icon{ display:grid; place-items:center; width:26px; height:26px; flex:none;
+    border-radius: var(--r-sm); background: var(--accent-light, var(--sunken)); color: var(--accent); }
+  .toast-icon svg{ width:15px; height:15px; }
+  .toast-icon.is-warn{ color: var(--negative); background: rgb(228 105 92 / .14); }
+  .toast-body{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .toast-msg{ font-size: var(--fs-2xs); font-weight:600; }
+  .toast-sub{ font-size: var(--fs-3xs); color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+  .toast-undo{ border:1px solid var(--line-strong); border-radius: var(--r-pill);
+    padding: 3px var(--sp-5); font-size: var(--fs-3xs); font-weight:700; }
+  .toast-rail{ position:absolute; left:0; right:0; bottom:0; height:2px; background: var(--line); }
+  .toast-rail i{ display:block; height:100%; width:100%; background: var(--accent); }
+
+  /* ---------- field errors ---------------------------------------------------- */
+  .field-error-msg{ display:flex; align-items:flex-start; gap: var(--sp-4); margin-top: var(--sp-4);
+    padding: var(--sp-4) var(--sp-5); border-radius: var(--r-sm);
+    background: rgb(228 105 92 / .10); font-size: var(--fs-3xs); color: var(--negative); }
+  .fe-icon svg{ width:13px; height:13px; display:block; margin-top:1px; }
+  input.field-invalid, select.field-invalid, textarea.field-invalid{
+    border-color: var(--negative); box-shadow: 0 0 0 3px rgb(228 105 92 / .12); }
+
+  /* ---------- search, grouped with keyboard navigation ------------------------ */
+  .sr-empty-hint{ padding: var(--sp-8); }
+  .sr-empty-hint p{ margin:0 0 var(--sp-6); font-size: var(--fs-2xs); line-height:1.7; color: var(--ink-dim); max-width:56ch; }
+  .sr-empty-hint strong{ color: var(--ink-soft); }
+  .sr-keys{ display:flex; flex-wrap:wrap; gap: var(--sp-6); font-size: var(--fs-3xs); color: var(--ink-faint); }
+  .sr-keys kbd{ display:inline-block; border:1px solid var(--line-strong); border-radius:4px;
+    padding: 0 4px; margin-right:2px; font: inherit; }
+  .sr-head{ display:flex; flex-wrap:wrap; align-items:center; gap: var(--sp-5);
+    padding: var(--sp-5) var(--sp-8); border-bottom:1px solid var(--line);
+    font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .sr-chip{ padding: 2px var(--sp-4); border-radius: var(--r-pill); background: var(--sunken); }
+  .sr-chip b{ color: var(--ink); font-variant-numeric: tabular-nums; }
+  .sr-section{ padding: var(--sp-5) 0; }
+  .sr-section-title{ margin: 0 0 var(--sp-3); padding: 0 var(--sp-8);
+    font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.06em; color: var(--ink-faint); }
+  .search-result{ display:grid; grid-template-columns: 28px 1fr auto; gap: var(--sp-5);
+    align-items:center; padding: var(--sp-5) var(--sp-8); cursor:pointer; }
+  .search-result.is-active{ background: var(--hover); box-shadow: inset 2px 0 0 var(--accent); }
+  @media (hover: hover){ .search-result:hover{ background: var(--hover); } }
+  .sr-icon{ display:grid; place-items:center; width:28px; height:28px; border-radius: var(--r-sm);
+    background: var(--sunken); }
+  .sr-icon svg{ width:14px; height:14px; }
+  .sr-body{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .sr-label{ font-size: var(--fs-2xs); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sr-meta{ font-size: var(--fs-3xs); color: var(--ink-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sr-amount{ font-size: var(--fs-2xs); font-weight:700; font-variant-numeric: tabular-nums; }
+  .sr-amount.is-in{ color: var(--positive); } .sr-amount.is-out{ color: var(--negative); }
+  .sr-more{ margin:0; padding: var(--sp-6) var(--sp-8); font-size: var(--fs-3xs); color: var(--ink-faint); }
+
 </style>
 </head>
 
@@ -2659,9 +2713,16 @@
     return toLocalISO(new Date());
   }
   function fmtDate(iso){
-    const d = new Date(iso + "T00:00:00");
-    return d.toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" });
+    // The year is dropped inside the current year and kept outside it: on a
+    // dense surface "2026" repeated down a column is 4 characters of nothing.
+    const d = new Date(String(iso) + "T00:00:00");
+    if (isNaN(d.getTime())) return String(iso);
+    const same = d.getFullYear() === new Date().getFullYear();
+    return d.toLocaleDateString(undefined, same
+      ? { month: "short", day: "numeric" }
+      : { month: "short", day: "numeric", year: "numeric" });
   }
+
   /* Strips grouping and the currency mark before any arithmetic. parseFloat stops at
      the first comma, so "1,150.00" would otherwise read as 1. */
   /* Grouped digits only. The cell draws its own ₱ beside the field, so fmtMoney —
@@ -2682,11 +2743,11 @@
   // markup is rendered — plain fmtMoney() is still used for toasts, tooltips and
   // anything set via textContent.
   function fmtMoneyRich(n){
-    const parts = Number(n).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 }).split(".");
-    const whole = parts[0];
-    const cents = parts[1] || "00";
-    return `<span class="cur-sym">₱</span>${whole}<span class="cur-cents">.${cents}</span>`;
+    const parts = Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).split(".");
+    return '<span class="cur-sym">\u20B1</span>' + parts[0] +
+           '<span class="cur-cents">.' + (parts[1] || "00") + '</span>';
   }
+
   function round2(n){
     return Math.round(n * 100) / 100;
   }
@@ -3025,11 +3086,15 @@
 
   function showToast(msg){
     const el = document.getElementById("toast");
-    el.textContent = msg;
+    el.classList.remove("is-undo");
+    el.innerHTML = '<span class="toast-icon">' + badgeIcon("check") + '</span><span class="toast-msg"></span>';
+    el.querySelector(".toast-msg").textContent = msg;
     el.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=> el.classList.remove("show"), 2200);
+    clearTimeout(undoTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
   }
+
 
   // Deletes are irreversible and several of them move real money (a bank-linked
   // loan adjusts an account balance when removed). Rather than gate every delete
@@ -3038,30 +3103,62 @@
   let undoTimer = null;
   function showUndoToast(msg, onUndo){
     const el = document.getElementById("toast");
+    const WINDOW_MS = 7000;
     el.innerHTML = "";
+
+    const icon = document.createElement("span");
+    icon.className = "toast-icon is-warn";
+    icon.innerHTML = badgeIcon("trash");
+    const body = document.createElement("span");
+    body.className = "toast-body";
     const text = document.createElement("span");
+    text.className = "toast-msg";
     text.textContent = msg;
+    const sub = document.createElement("span");
+    sub.className = "toast-sub";
+    body.appendChild(text); body.appendChild(sub);
+
     const btn = document.createElement("button");
     btn.className = "toast-undo";
     btn.textContent = "Undo";
-    btn.addEventListener("click", ()=>{
+
+    // The window drawn as a bar that empties, plus the seconds in words. An
+    // offer with an invisible deadline makes people either rush or miss it.
+    const rail = document.createElement("span");
+    rail.className = "toast-rail";
+    const fill = document.createElement("i");
+    rail.appendChild(fill);
+
+    let done = false;
+    const started = Date.now();
+    let raf = null;
+    const tick = () => {
+      const left = Math.max(0, WINDOW_MS - (Date.now() - started));
+      fill.style.width = ((left / WINDOW_MS) * 100).toFixed(1) + "%";
+      sub.textContent = left > 0 ? Math.ceil(left / 1000) + "s to undo" : "";
+      if (left > 0 && !done) raf = requestAnimationFrame(tick);
+    };
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (raf) cancelAnimationFrame(raf);
       clearTimeout(undoTimer);
       clearTimeout(toastTimer);
-      el.classList.remove("show");
-      onUndo();
-    });
-    el.appendChild(text);
-    el.appendChild(btn);
-    el.classList.add("show");
+      el.classList.remove("show", "is-undo");
+    };
+    btn.addEventListener("click", () => { finish(); onUndo(); });
+
+    el.appendChild(icon); el.appendChild(body); el.appendChild(btn); el.appendChild(rail);
+    el.classList.add("show", "is-undo");
     clearTimeout(toastTimer);
     clearTimeout(undoTimer);
-    // Longer than a normal toast — the user needs time to notice and react.
-    toastTimer = setTimeout(()=>{
-      el.classList.remove("show");
-      // Reset to plain-text mode so the next ordinary toast isn't left with a button
-      setTimeout(()=>{ if (!el.classList.contains("show")) el.textContent = ""; }, 300);
-    }, 6000);
+    tick();
+    toastTimer = setTimeout(() => {
+      finish();
+      setTimeout(() => { if (!el.classList.contains("show")) el.textContent = ""; }, 300);
+    }, WINDOW_MS);
   }
+
 
   // Highlights the actual field that failed validation, instead of leaving the
   // user to guess which one a toast was about. Clears itself the moment the user
@@ -3073,16 +3170,15 @@
     if (!errEl){
       errEl = document.createElement("div");
       errEl.className = "field-error-msg";
-      // Needs an id so the control can point at it. Without aria-describedby, focus
-      // lands on "Pay from which account, combo box" and the reason is never spoken.
       errEl.id = "field-err-" + (++fieldErrSeq);
       errEl.setAttribute("role", "alert");
       input.insertAdjacentElement("afterend", errEl);
     }
-    errEl.textContent = message;
+    errEl.innerHTML = '<span class="fe-icon">' + badgeIcon("alert") + '</span><span class="fe-text"></span>';
+    errEl.querySelector(".fe-text").textContent = message;
     input.setAttribute("aria-invalid", "true");
     input.setAttribute("aria-describedby", errEl.id);
-    const clear = ()=>{
+    const clear = () => {
       input.classList.remove("field-invalid");
       input.removeAttribute("aria-invalid");
       input.removeAttribute("aria-describedby");
@@ -3094,6 +3190,7 @@
     input.addEventListener("change", clear);
     input.focus();
   }
+
 
   /* ---------- CSS var helper (used by Chart.js for theme-correct colors) ---------- */
   function getCSSVar(name){
@@ -3546,79 +3643,118 @@
   };
 
   function renderGlobalSearchResults(query){
-
     const container = document.getElementById("global-search-results");
     if (!query){
-      container.innerHTML = `<div class="hint" style="padding:16px;">Search your records — or type an action like <strong>add expense</strong>, <strong>backup</strong>, or <strong>charts</strong>.</div>`;
+      container.innerHTML =
+        '<div class="sr-empty-hint">' +
+          '<p>Search records and actions at once. Try a description, a category, a person, ' +
+          'or a command such as <strong>backup</strong> or <strong>charts</strong>.</p>' +
+          '<div class="sr-keys"><span><kbd>\u2191</kbd><kbd>\u2193</kbd> move</span>' +
+          '<span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div>' +
+        '</div>';
       return;
     }
 
     const results = [];
-    // Commands first: when someone types "backup" they want the action, not an
-    // expense that happens to contain the word.
-    paletteCommands().forEach(c=>{
-      if (c.label.toLowerCase().includes(query) || c.keys.includes(query)){
-        results.push({ icon:ICON.action, type:"Action", label:c.label, meta:"Press to run",
-                       amount:"", action:c.run, isCommand:true });
-      }
+    paletteCommands().forEach(c => {
+      if (c.label.toLowerCase().includes(query) || c.keys.includes(query))
+        results.push({ group: "Actions", icon: ICON.action, type: "Action", label: c.label,
+                       meta: "Press to run", amount: "", action: c.run, isCommand: true });
     });
-    expenses.forEach(e=>{
-      if (hit(e.description, query) || hit(e.category, query)
-          || (Array.isArray(e.tags) ? e.tags : []).some(t=>hit(t, query))){
-        results.push({ icon:ICON.out, type:"Expense", label:e.description, meta:`${fmtDate(e.date)} · ${e.category}`, amount:fmtMoney(e.amount), action:()=>jumpToHistoryMode("expense") });
-      }
+    expenses.forEach(e => {
+      if (hit(e.description, query) || hit(e.category, query) || (Array.isArray(e.tags) ? e.tags : []).some(t => hit(t, query)))
+        results.push({ group: "Expenses", icon: ICON.out, type: "Expense", label: e.description,
+                       meta: fmtDate(e.date) + " \u00B7 " + e.category, amount: fmtMoney(e.amount),
+                       tone: "out", cat: e.category, action: () => jumpToHistoryMode("expense") });
     });
-    incomes.forEach(i=>{
-      if (hit(i.description, query) || hit(i.category, query)
-          || (Array.isArray(i.tags) ? i.tags : []).some(t=>hit(t, query))){
-        results.push({ icon:ICON.in, type:"Income", label:i.description, meta:`${fmtDate(i.date)} · ${i.category}`, amount:fmtMoney(i.amount), action:()=>jumpToHistoryMode("income") });
-      }
+    incomes.forEach(i => {
+      if (hit(i.description, query) || hit(i.category, query) || (Array.isArray(i.tags) ? i.tags : []).some(t => hit(t, query)))
+        results.push({ group: "Income", icon: ICON.in, type: "Income", label: i.description,
+                       meta: fmtDate(i.date) + " \u00B7 " + i.category, amount: fmtMoney(i.amount),
+                       tone: "in", cat: i.category, action: () => jumpToHistoryMode("income") });
     });
-    loansGiven.forEach(l=>{
-      if (hit(l.person, query)){
-        results.push({ icon:ICON.loan, type:"Loan given", label:l.person, meta: l.deadline ? `Due ${fmtDate(l.deadline)}` : "No deadline set", amount:fmtMoney(l.amount), action:()=>activateTab("loans") });
-      }
+    loansGiven.forEach(l => {
+      if (hit(l.person, query))
+        results.push({ group: "Loans", icon: ICON.loan, type: "Owed to you", label: l.person,
+                       meta: l.deadline ? "Due " + fmtDate(l.deadline) : "No deadline set",
+                       amount: fmtMoney(l.amount), tone: "in", action: () => activateTab("loans") });
     });
-    loansTaken.forEach(l=>{
-      if (hit(l.person, query)){
-        results.push({ icon:ICON.out, type:"Loan taken", label:l.person, meta: l.deadline ? `Due ${fmtDate(l.deadline)}` : "No deadline set", amount:fmtMoney(l.amount), action:()=>activateTab("loans") });
-      }
+    loansTaken.forEach(l => {
+      if (hit(l.person, query))
+        results.push({ group: "Loans", icon: ICON.out, type: "You owe", label: l.person,
+                       meta: l.deadline ? "Due " + fmtDate(l.deadline) : "No deadline set",
+                       amount: fmtMoney(l.amount), tone: "out", action: () => activateTab("loans") });
     });
-    investments.forEach(inv=>{
-      if (hit(inv.name, query) || hit(inv.category, query)){
-        results.push({ icon:ICON.chart, type:"Investment", label:inv.name, meta: inv.category, amount:fmtMoney(inv.amount), action:()=>activateTab("loans") });
-      }
+    investments.forEach(inv => {
+      if (hit(inv.name, query) || hit(inv.category, query))
+        results.push({ group: "Holdings", icon: ICON.chart, type: "Investment", label: inv.name,
+                       meta: inv.category, amount: fmtMoney(inv.amount), action: () => activateTab("loans") });
     });
-    savings.forEach(s=>{
-      if (hit(s.provider, query)){
-        results.push({ icon:ICON.bank, type:"Savings", label:s.provider, meta: `${s.rate || 0}% p.a.`, amount:fmtMoney(s.amount), action:()=>activateTab("savings") });
-      }
+    savings.forEach(s => {
+      if (hit(s.provider, query))
+        results.push({ group: "Holdings", icon: ICON.bank, type: "Account", label: s.provider,
+                       meta: (s.rate || 0) + "% p.a.", amount: fmtMoney(s.amount), action: () => activateTab("savings") });
     });
 
     if (!results.length){
-      container.innerHTML = emptyStateHtml("search", `No matches for "${query}"`, "Try a different word or check another tab.");
+      container.innerHTML = emptyStateHtml("search", 'No matches for "' + query + '"',
+        "Try a different word, or a category name.");
       return;
     }
 
-    container.innerHTML = results.map((r,idx)=>`
-      <div class="search-result ${r.isCommand ? "is-command" : ""}" data-idx="${idx}">
-        <span class="sr-icon">${r.icon}</span>
-        <div class="sr-body">
-          <div class="sr-label">${escapeHtml(r.label)}</div>
-          <div class="sr-meta">${escapeHtml(r.type)} · ${escapeHtml(r.meta)}</div>
-        </div>
-        <span class="sr-amount">${r.amount}</span>
-      </div>
-    `).join("");
-
-    container.querySelectorAll(".search-result").forEach(el=>{
-      el.addEventListener("click", ()=>{
-        const r = results[parseInt(el.dataset.idx, 10)];
-        closeSearchOverlay();
-        r.action();
-      });
+    const shown = results.slice(0, 60);
+    const order = ["Actions", "Expenses", "Income", "Loans", "Holdings"];
+    const grouped = [];
+    order.forEach(name => {
+      const rows = shown.filter(r => r.group === name);
+      if (rows.length) grouped.push({ name: name, rows: rows });
     });
+
+    let i = 0;
+    container.innerHTML =
+      '<div class="sr-head">' + results.length + ' result' + (results.length === 1 ? "" : "s") +
+        grouped.map(g => '<span class="sr-chip">' + g.name + ' <b>' + g.rows.length + '</b></span>').join("") + '</div>'
+      + grouped.map(g =>
+        '<div class="sr-section"><p class="sr-section-title">' + g.name + '</p>' +
+        g.rows.map(r => {
+          const idx = shown.indexOf(r);
+          i++;
+          return '<div class="search-result' + (r.isCommand ? " is-command" : "") + '" data-idx="' + idx + '" role="option">' +
+            '<span class="sr-icon"' + (r.cat ? ' style="color:' + colorFor(r.cat) + '"' : "") + '>' + r.icon + '</span>' +
+            '<span class="sr-body"><span class="sr-label">' + escapeHtml(r.label) + '</span>' +
+            '<span class="sr-meta">' + escapeHtml(r.type) + ' \u00B7 ' + escapeHtml(r.meta) + '</span></span>' +
+            '<span class="sr-amount' + (r.tone ? " is-" + r.tone : "") + '">' + r.amount + '</span>' +
+          '</div>';
+        }).join("") + '</div>').join("")
+      + (results.length > shown.length
+          ? '<p class="sr-more">' + (results.length - shown.length) + ' further matches not shown \u2014 add a word to narrow it.</p>'
+          : "");
+
+    const els = Array.prototype.slice.call(container.querySelectorAll(".search-result"));
+    const run = el => {
+      const r = shown[parseInt(el.dataset.idx, 10)];
+      closeSearchOverlay();
+      r.action();
+    };
+    els.forEach(el => el.addEventListener("click", () => run(el)));
+
+    // Arrow keys with a real selected state. Sixty results you can only reach by
+    // scrolling and clicking is a list, not a search.
+    let cursor = 0;
+    const paint = () => els.forEach((el, n) => el.classList.toggle("is-active", n === cursor));
+    paint();
+    const input = document.getElementById("global-search-input");
+    if (input){
+      if (input.__srNav) input.removeEventListener("keydown", input.__srNav);
+      input.__srNav = e => {
+        if (e.key === "ArrowDown"){ e.preventDefault(); cursor = Math.min(els.length - 1, cursor + 1); paint(); els[cursor].scrollIntoView({ block: "nearest" }); }
+        else if (e.key === "ArrowUp"){ e.preventDefault(); cursor = Math.max(0, cursor - 1); paint(); els[cursor].scrollIntoView({ block: "nearest" }); }
+        else if (e.key === "Enter" && els[cursor]){ e.preventDefault(); run(els[cursor]); }
+      };
+      input.addEventListener("keydown", input.__srNav);
+    }
   }
+
 
   /* ---------- Add tab: Expense / Income mode ---------- */
   const ENTRY_MODE_COPY = {
@@ -3703,6 +3839,9 @@
   // Line icons for stat badges — same visual language as the sidebar and card
   // headings, replacing the emoji these used to show.
   const BADGE_ICONS = {
+    check:  '<circle cx="12" cy="12" r="9"/><polyline points="8 12.5 11 15.5 16 9.5"/>',
+    alert:  '<path d="M12 3l9 16H3z"/><line x1="12" y1="9" x2="12" y2="13.5"/><circle cx="12" cy="16.6" r="1" fill="currentColor" stroke="none"/>',
+    trash:  '<path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>',
     bank:     `<polygon points="12,3 21,9 3,9"/><line x1="5" y1="9" x2="5" y2="19"/><line x1="10" y1="9" x2="10" y2="19"/><line x1="14" y1="9" x2="14" y2="19"/><line x1="19" y1="9" x2="19" y2="19"/><line x1="3" y1="21" x2="21" y2="21"/>`,
     spend:    `<path d="M3 7h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 7l3-4h12l3 4"/><line x1="12" y1="11" x2="12" y2="15"/>`,
     balance:  `<line x1="12" y1="4" x2="12" y2="20"/><line x1="5" y1="8" x2="19" y2="8"/><path d="M5 8l-2.5 6a3 3 0 0 0 5 0z"/><path d="M19 8l-2.5 6a3 3 0 0 0 5 0z"/>`,
@@ -3727,15 +3866,17 @@
   // One builder for every empty state, so they stay visually consistent and can
   // optionally offer an action instead of being a dead end.
   function emptyStateHtml(icon, title, sub, actionLabel, actionId){
-    return `<div class="empty-state">
-      <div class="empty-state-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${EMPTY_ICONS[icon] || EMPTY_ICONS.list}</svg>
-      </div>
-      <div class="empty-state-title">${escapeHtml(title)}</div>
-      ${sub ? `<div class="empty-state-sub">${sub}</div>` : ""}
-      ${actionLabel ? `<button class="empty-state-action" id="${actionId}">${escapeHtml(actionLabel)}</button>` : ""}
-    </div>`;
+    return '<div class="empty-state">' +
+      '<div class="empty-state-icon">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+        'stroke-linecap="round" stroke-linejoin="round">' + (EMPTY_ICONS[icon] || EMPTY_ICONS.list) + '</svg>' +
+      '</div>' +
+      '<div class="empty-state-title">' + escapeHtml(title) + '</div>' +
+      (sub ? '<div class="empty-state-sub">' + sub + '</div>' : "") +
+      (actionLabel ? '<button class="empty-state-action" id="' + actionId + '">' + escapeHtml(actionLabel) + '</button>' : "") +
+    '</div>';
   }
+
 
   /* ---------- Add expense ---------- */
   const DRAFT_KEY = "spendly_draft_v1";
