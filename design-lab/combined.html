@@ -12742,6 +12742,15 @@
       }
       function setRows(el, n){ el.style.setProperty("--rows", String(n)); }
 
+      /* The bento now holds things that are not cards - the handle overlays and
+         the drop shadow - and every pass that walked its children was counting
+         those as cards. Eighteen of them, for six cards. One definition, used
+         everywhere, so that cannot happen again. */
+      const cardsIn = host => [...host.children].filter(k =>
+        !k.classList.contains("card-handles") &&
+        !k.classList.contains("card-ghost") &&
+        k.getBoundingClientRect().height > 0);
+
       /* What a card needs, from what it holds. Cached on the element because it
          cannot change without the card being rebuilt, and asking the DOM this
          on every pointermove would be asking it sixty times a second. */
@@ -12793,6 +12802,15 @@
         return Math.abs(a.top - b.top) < 2 ? next : null;
       }
 
+      // A window resize moves every card without anything else noticing.
+      let handleReflow = null;
+      window.addEventListener("resize", () => {
+        clearTimeout(handleReflow);
+        handleReflow = setTimeout(() => {
+          document.querySelectorAll(".tab-panel .bento").forEach(b => placeAllHandles(b));
+        }, 120);
+      });
+
       /* Pack the gaps out, on request. Dense auto-flow is the browser's own
          packer and it is the one that decided the layout was gappy, so its
          answer agrees with what is on screen. It is turned on for one frame,
@@ -12802,7 +12820,7 @@
          touch. */
       function tidyBento(host, tab){
         if (!host) return 0;
-        const cards = [...host.children].filter(k => k.getBoundingClientRect().height > 0);
+        const cards = cardsIn(host);
         if (!cards.length) return 0;
         // Group by row, by the only thing that reliably says which row a card is
         // on: where it is.
@@ -12844,7 +12862,7 @@
           clearTimeout(refill);
           refill = setTimeout(() => { if (!seamDrag) applySpansAndSeams(host, tab, true); }, 450);
         }
-        const cards = [...host.children].filter(k => k.getBoundingClientRect().height > 0);
+        const cards = cardsIn(host);
         calibrateRows(host);
         cards.forEach(el => {
           el.querySelectorAll(":scope > .card-seam, :scope > .card-seam-v, :scope > .card-seam-c")
@@ -12907,43 +12925,77 @@
         // depends on the widths the first pass just applied.
         // Only while the layout is being edited. On a page you are reading,
         // a strip of the card that resizes it when dragged is a surprise.
+        host.querySelectorAll(":scope > .card-handles").forEach(x => x.remove());
         if (editing) cards.forEach((el, i) => {
-          // The width handle needs something to its right to be worth dragging;
-          // the height handle is always worth it.
-          if (i < cards.length - 1){
-            const seam = document.createElement("div");
-            seam.className = "card-seam";
-            seam.title = "Drag to set the width. Double-click to reset.";
-            seam.setAttribute("aria-hidden", "true");
-            el.appendChild(seam);
-          }
-          const vert = document.createElement("div");
-          vert.className = "card-seam-v";
-          vert.title = "Drag to set the height. Double-click to fit the contents.";
-          vert.setAttribute("aria-hidden", "true");
-          el.appendChild(vert);
-          const corner = document.createElement("div");
-          corner.className = "card-seam-c";
-          corner.title = "Drag to set both. Double-click to reset.";
-          corner.setAttribute("aria-hidden", "true");
-          el.appendChild(corner);
+          const pad = document.createElement("div");
+          pad.className = "card-handles";
+          pad.dataset.card = el.dataset.arrangeId || el.id || "";
+          pad.classList.toggle("is-temporary", el.classList.contains("is-unpinned"));
+          pad.setAttribute("aria-hidden", "true");
+          pad.innerHTML =
+            // The width handle needs something to its right to be worth
+            // dragging; the height handle is always worth it.
+            (i < cards.length - 1
+              ? '<div class="card-seam" title="Drag to set the width. Double-click to reset."></div>' : "") +
+            '<div class="card-seam-v" title="Drag to set the height. Double-click to fit the contents."></div>' +
+            '<div class="card-seam-c" title="Drag to set both. Double-click to reset."></div>';
+          host.appendChild(pad);
+          placeHandles(host, el, pad);
+        });
+      }
+
+      /* The overlay sits over a card's rectangle, in the bento's coordinates.
+         Not inside the card, because a card that scrolls would carry its
+         handles away with the content and put the width handle under the
+         scrollbar. */
+      function placeHandles(host, card, pad){
+        const h = host.getBoundingClientRect(), c = card.getBoundingClientRect();
+        // A card that scrolls puts a scrollbar along the very edge the width
+        // handle wants, so the overlay stops short of it. Borders come out of
+        // the same subtraction, which is why they are measured rather than
+        // assumed to be the 1px they happen to be today.
+        const cs = getComputedStyle(card);
+        const bx = parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+        const by = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+        const sbW = Math.max(0, card.offsetWidth - card.clientWidth - bx);
+        const sbH = Math.max(0, card.offsetHeight - card.clientHeight - by);
+        pad.style.left = (c.left - h.left) + "px";
+        pad.style.top = (c.top - h.top) + "px";
+        pad.style.width = Math.max(0, c.width - sbW) + "px";
+        pad.style.height = Math.max(0, c.height - sbH) + "px";
+      }
+      // After anything that can move a card: a resize, a reorder, a rebuild.
+      function placeAllHandles(host){
+        if (!host) return;
+        host.querySelectorAll(":scope > .card-handles").forEach(pad => {
+          const card = host.querySelector('[data-arrange-id="' + CSS.escape(pad.dataset.card) + '"]')
+                    || document.getElementById(pad.dataset.card);
+          if (card && card.getBoundingClientRect().height > 0) placeHandles(host, card, pad);
+          else pad.style.width = "0px";
         });
       }
 
       /* The handle. A grip so the card reads as draggable, and two buttons so
          dragging is not the only way to move it. */
-      function arrangeTag(at, of){
+      function arrangeTag(at, of, staying, secId){
         const tag = document.createElement("div");
-        tag.className = "arrange-tag";
-        const first = at === 1, last = at === of;
-        void first; void last;   // the menu works them out from the page itself
+        tag.className = "arrange-tag" + (staying ? "" : " is-temporary");
         tag.innerHTML =
           '<span class="arrange-grip" aria-hidden="true">' +
             '<svg viewBox="0 0 10 16"><circle cx="3" cy="3" r="1.3"/><circle cx="7" cy="3" r="1.3"/>' +
             '<circle cx="3" cy="8" r="1.3"/><circle cx="7" cy="8" r="1.3"/>' +
             '<circle cx="3" cy="13" r="1.3"/><circle cx="7" cy="13" r="1.3"/></svg>' +
           '</span>' +
-          '<span class="arrange-tag-t">' + at + '/' + of + '</span>' +
+          (staying
+            ? '<span class="arrange-tag-t">' + at + '/' + of + '</span>'
+            : '<span class="arrange-tag-t is-wide">Opens beside</span>' +
+              '<button type="button" class="arrange-step" data-pin-card="' + escapeHtml(secId || "") + '" ' +
+                'draggable="false" aria-label="Keep this on the page" ' +
+                'title="Keep this on the page">' +
+                '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" ' +
+                  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                  '<path d="M9 4h6l-1 6 4 3v2H6v-2l4-3z"/><line x1="12" y1="15" x2="12" y2="21"/>' +
+                '</svg></button>') +
           '<button type="button" class="arrange-step" data-menu draggable="false" ' +
             'aria-haspopup="menu" aria-expanded="false" ' +
             'aria-label="Place this card" title="Where this card goes, and how wide">' +
@@ -12953,6 +13005,9 @@
 
       function wireCardDrag(panel, secs, tab){
         const host = panel.querySelector(".bento") || panel;
+        // The same set the rail's list groups by, so the two never disagree
+        // about which cards are staying.
+        const onPageNow = new Set(glanceOf(tab, secs));
         secs.forEach((sec, i) => {
           const b = sec.block;
           b.classList.remove("is-dragging", "is-drop-before");
@@ -12963,7 +13018,11 @@
           // pass would carry the last pass's position in its labels.
           const old = b.querySelector(".arrange-tag");
           if (old) old.remove();
-          if (editing) b.appendChild(arrangeTag(i + 1, secs.length));
+          // Whether this one is actually staying, which is the difference
+          // between the page you are arranging and the page you will get.
+          const staying = onPageNow.has(sec.id);
+          b.classList.toggle("is-unpinned", !!editing && !staying);
+          if (editing) b.appendChild(arrangeTag(i + 1, secs.length, staying, sec.id));
         });
         // After the spans are applied, because whether two cards share a line
         // depends on how wide they just became.
@@ -12991,10 +13050,11 @@
           if (!seam || !editing || ev.button !== 0) return;
           const axis = seam.classList.contains("card-seam-v") ? "y"
                      : seam.classList.contains("card-seam-c") ? "xy" : "x";
-          // Its own card, which is its parent. Asking for the nearest ancestor
-          // the rail has named returns null for every card the rail does not
-          // track, and those are resizable too.
-          const left = seam.parentElement;
+          // Named on the overlay: the handles are no longer inside the card,
+          // because a card that scrolls would take them with it.
+          const pad = seam.closest(".card-handles");
+          const left = pad && (host.querySelector('[data-arrange-id="' + CSS.escape(pad.dataset.card) + '"]')
+                            || document.getElementById(pad.dataset.card));
           if (!left) return;
           // Whoever is beside it NOW. If nobody is, this drag only narrows the
           // card, and the next one arrives on its own when it fits.
@@ -13054,6 +13114,7 @@
               Math.round((px - rowOffset) / rowPitch)));
             setRows(left, n);
             seamDrag.r = n;
+            placeAllHandles(host);
           }
           if (axis === "y"){
             readout(ev.clientX + 16, ev.clientY + 16, curSpan(left) + " \u00d7 " + curRows(left));
@@ -13070,6 +13131,7 @@
             a = Math.max(minA, Math.min(SPAN_OF, a));
             setSpan(left, a);
             seamDrag.a = a;
+            placeAllHandles(host);
             return;
           }
           // Both floors have to hold, so neither card can be squeezed under
@@ -13080,6 +13142,7 @@
           setSpan(left, a);
           setSpan(right, b);
           seamDrag.a = a; seamDrag.b = b;
+          placeAllHandles(host);
           readout(ev.clientX + 16, ev.clientY + 16,
             a + " \u00d7 " + (curRows(left)) + (right ? "   \u00b7   " + b + " \u00d7 " + curRows(right) : ""));
         });
@@ -13107,7 +13170,10 @@
           if (vert && editing){
             // Back to the height the contents want, which is the useful reset
             // for a dimension whose "default" was measured in the first place.
-            const card = vert.parentElement;
+            const vpad = vert.closest(".card-handles");
+            const card = vpad && (host.querySelector('[data-arrange-id="' + CSS.escape(vpad.dataset.card) + '"]')
+                              || document.getElementById(vpad.dataset.card));
+            if (!card) return;
             ev.preventDefault();
             remember(tab, card, { r: null });
             applySpansAndSeams(host, tab);
@@ -13116,7 +13182,9 @@
           }
           const seam = ev.target.closest(".card-seam, .card-seam-c");
           if (!seam || !editing) return;
-          const left = seam.parentElement;
+          const wpad = seam.closest(".card-handles");
+          const left = wpad && (host.querySelector('[data-arrange-id="' + CSS.escape(wpad.dataset.card) + '"]')
+                            || document.getElementById(wpad.dataset.card));
           if (!left) return;
           const right = lineMate(left);
           ev.preventDefault();
@@ -13252,6 +13320,21 @@
           const firstItem = m.querySelector(".card-menu-i:not([disabled])");
           if (firstItem) firstItem.focus();
         }
+
+        // The same act as the pin in the rail's list, within reach of the card
+        // it applies to.
+        host.addEventListener("click", ev => {
+          const pin = ev.target.closest("[data-pin-card]");
+          if (!pin || !editing) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          const id = pin.dataset.pinCard;
+          const now = new Set(glanceOf(tab, secs));
+          now.add(id);
+          pinned[tab] = [...now];
+          save(); signature = ""; buildContents(false);
+          if (typeof showToast === "function") showToast("Kept on the page.");
+        });
 
         host.addEventListener("click", ev => {
           const btn = ev.target.closest("[data-menu]");
@@ -14506,6 +14589,81 @@
   .card-seam{ width: 18px; }
   .card-seam-v{ height: 18px; right: 18px; }
   .card-seam-c{ width: 22px; height: 22px; }
+
+  /* ---------- the handle overlay ------------------------------------------ */
+  /* Over the card, not in it. Nothing here takes a pointer except the handles
+     themselves, so the card underneath behaves exactly as it always did. */
+  .card-handles{
+    position: absolute; z-index: 6; pointer-events: none;
+    border-radius: var(--r-lg);
+  }
+  .card-handles > *{ pointer-events: auto; }
+
+  /* A short entrance, once, when the mode opens: they announce themselves and
+     then stay still. A loop would be a fidget. */
+  @keyframes handleIn{
+    from{ opacity: 0; transform: scale(.4); }
+    to{ opacity: 1; transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .card-handles .card-seam::after,
+    .card-handles .card-seam-v::after,
+    .card-handles .card-seam-c::after{
+      animation: handleIn var(--dur-slow) var(--ease-out) both;
+    }
+  }
+  /* The flare: a soft halo in the accent, so the bar reads as lit rather than
+     drawn, and a brighter core under the hand. */
+  .card-handles .card-seam::after,
+  .card-handles .card-seam-v::after{
+    background: linear-gradient(var(--accent), var(--accent-dark));
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--bg) 78%, transparent),
+      0 0 10px color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  @media (hover: hover){
+    .card-handles .card-seam:hover::after,
+    .card-handles .card-seam-v:hover::after{
+      box-shadow:
+        0 0 0 2px color-mix(in srgb, var(--bg) 78%, transparent),
+        0 0 16px color-mix(in srgb, var(--accent) 85%, transparent);
+    }
+  }
+  .card-handles .card-seam-c::after{
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--bg) 78%, transparent),
+      0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+
+  /* ---------- a card that is only here while you arrange ------------------- */
+  /* Drawn back, so the page you will actually get is the one that looks solid.
+     The dash is the same language the arrangeable outline already uses. */
+  .is-arrangeable.is-unpinned{ opacity: .72; }
+  .is-arrangeable.is-unpinned::after{
+    border-style: dashed; border-width: 2px;
+    border-color: color-mix(in srgb, var(--ink-dim) 70%, transparent);
+  }
+  .arrange-tag.is-temporary{
+    background: var(--ink-dim); color: var(--bg);
+  }
+  .arrange-tag.is-temporary .arrange-step{
+    background: color-mix(in srgb, var(--bg) 22%, transparent);
+    color: var(--bg);
+  }
+  @media (hover: hover){
+    .arrange-tag.is-temporary .arrange-step:hover{
+      background: var(--accent); color: var(--on-accent);
+    }
+  }
+  .arrange-tag-t.is-wide{
+    font-size: var(--fs-3xs); letter-spacing: var(--track-caps);
+    text-transform: uppercase; white-space: nowrap;
+  }
+  /* Its handles are drawn back with it: you can still size a card that is not
+     staying, it just should not be the loudest thing on the page. */
+  .card-handles.is-temporary .card-seam::after,
+  .card-handles.is-temporary .card-seam-v::after,
+  .card-handles.is-temporary .card-seam-c::after{ opacity: .55; }
 </style>
 </body>
 </html>
