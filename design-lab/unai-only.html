@@ -1578,6 +1578,40 @@
   #money-overview-row .metric{ border-bottom:1px solid var(--line); }
   @media (min-width: 1240px){ #money-overview-row .metric{ border-bottom:0; } }
 
+
+  /* ---------- chrome that has to leave the flow ----------------------------- */
+  /* Both of these were static blocks at the foot of the document. The button
+     never floated and the status line was never on screen. */
+  #btn-fab-add{
+    position: fixed; right: var(--sp-6); bottom: var(--sp-6); z-index: 90;
+    width: 44px; height: 44px; border-radius: 0;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    box-shadow: none;                 /* an operator button is not a lozenge */
+    transition: background var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){ #btn-fab-add:hover{ background: var(--accent-dark); border-color: var(--accent-dark); } }
+  #btn-fab-add:active{ transform: none; }
+  #btn-fab-add.is-current{ outline: 2px solid var(--accent-dark); outline-offset: 2px; }
+  #btn-fab-add svg{ width: 20px; height: 20px; }
+
+  /* The status line sits above the button, along the same edge, so the two read
+     as one corner rather than two floating objects. */
+  #toast{
+    position: fixed; right: var(--sp-6); bottom: calc(44px + var(--sp-6) * 2);
+    z-index: 999; max-width: min(92vw, 520px); width: max-content;
+    opacity: 0; pointer-events: none; transform: translateY(4px);
+    transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+  #toast.show{ opacity: 1; transform: none; pointer-events: auto; }
+
+  /* Clear of the bottom bar once the rail collapses into one. */
+  @media (max-width: 720px){
+    #btn-fab-add{ bottom: calc(56px + var(--sp-5)); }
+    #toast{ right: var(--sp-5); left: var(--sp-5); bottom: calc(56px + 44px + var(--sp-6) * 2);
+      width: auto; max-width: none; }
+  }
+
 </style>
 </head>
 

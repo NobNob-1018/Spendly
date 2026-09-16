@@ -1350,6 +1350,83 @@
      forward is the next row's brought forward, so the figure is still on screen. */
   @media (max-width: 900px){ .rb-table .is-opening{ display:none; } }
 
+
+  /* ---------- the page: a measure, and a margin beside it -------------------- */
+  /* The measure alone is a phone layout on a desk. A page has a margin, and the
+     reference material belongs in it — where it has been rendering all along,
+     unplaced, below everything else. */
+  :root{ --margin-col: 300px; }
+
+  @media (min-width: 1180px){
+    body{
+      display: grid;
+      grid-template-columns: 1fr var(--col) var(--margin-col) 1fr;
+      column-gap: var(--sp-10);
+      align-items: start;
+    }
+    .app{ grid-column: 2; max-width: none; margin: 0; }
+    #side-panel{
+      grid-column: 3;
+      position: sticky;
+      top: calc(var(--bar-h) + var(--sp-8));
+      /* Margin rather than padding, so the sticky offset above is the real one
+         and the first line still starts level with the measure's first line. */
+      margin: calc(var(--bar-h) + var(--sp-11)) 0 var(--sp-13);
+      padding: 0 0 0 var(--sp-8);
+      border-left: 1px solid var(--line);
+      max-height: calc(100vh - var(--bar-h) - var(--sp-11));
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+    /* A margin is read at a glance, not at reading pace. */
+    #side-panel .note-line, #side-panel .agenda-say{ font-size: var(--fs-2xs); line-height: 1.7; }
+    #side-panel .side-panel-head h2{ margin-top: var(--sp-7); }
+    #side-panel .h-num{ display: none; }   /* the chapter numbers belong to the measure */
+  }
+
+  /* Below that there is no room for a margin, so it folds under the measure —
+     inside it, which is what the fold-in styling always assumed. */
+  @media (max-width: 1179px){
+    #side-panel{
+      max-width: var(--col);
+      margin: var(--sp-10) auto 0;
+      padding: 0 var(--sp-8) var(--sp-13);
+      border-top: 1px solid var(--line);
+      padding-top: var(--sp-9);
+    }
+  }
+
+  /* ---------- chrome that has to leave the flow ----------------------------- */
+  #btn-fab-add{
+    position: fixed; right: var(--sp-9); bottom: var(--sp-9); z-index: 90;
+    width: 52px; height: 52px; border-radius: var(--r-pill);
+    border: 1px solid var(--line-strong);
+    background: var(--raised); color: var(--accent);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    box-shadow: var(--elev-2);
+    transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+  }
+  @media (hover: hover){ #btn-fab-add:hover{ background: var(--over); color: var(--accent-dark); } }
+  #btn-fab-add.is-current{ outline: 2px solid var(--accent); outline-offset: 3px; }
+  #btn-fab-add svg{ width: 20px; height: 20px; }
+
+  /* Centred on the measure, not on the window: it is a note about the document. */
+  #toast{
+    position: fixed; z-index: 999;
+    left: 50%; bottom: var(--sp-9);
+    transform: translateX(-50%) translateY(8px);
+    width: min(92vw, 46ch); max-width: none;
+    opacity: 0; pointer-events: none;
+    box-shadow: var(--elev-3);
+    transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+  }
+  #toast.show{ opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  @media (min-width: 1180px){
+    /* Under the measure specifically, since the page is no longer centred on
+       the window once the margin column is there. */
+    #toast{ left: calc(50% - (var(--margin-col) + var(--sp-10)) / 2); }
+  }
+
 </style>
 </head>
 

@@ -1394,6 +1394,39 @@
   .tg-dot{ width:7px; height:7px; border-radius:50%; display:block; }
   .tg-meta{ grid-area: meta; font-size: var(--fs-3xs); color: var(--ink-faint); }
 
+
+  /* ---------- chrome that has to leave the flow ----------------------------- */
+  #btn-fab-add{
+    position: fixed; right: var(--sp-7); bottom: var(--sp-7); z-index: 90;
+    width: 54px; height: 54px; border-radius: var(--r-pill);
+    border: none;
+    background: linear-gradient(155deg, var(--accent-dark), var(--accent) 70%);
+    color: var(--on-accent);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    box-shadow: var(--elev-3);
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){ #btn-fab-add:hover{ transform: translateY(-1px); box-shadow: var(--elev-4); } }
+  #btn-fab-add:active{ transform: scale(0.94); }
+  #btn-fab-add.is-current{ outline: 2px solid var(--accent-dark); outline-offset: 3px; }
+  #btn-fab-add svg{ width: 22px; height: 22px; }
+
+  /* It was already fixed, but with no anchor and no hidden state: an empty
+     toast card was sitting on the page at all times. */
+  #toast{
+    right: var(--sp-7); bottom: calc(54px + var(--sp-7) * 2); left: auto;
+    z-index: 999; max-width: min(92vw, 420px);
+    opacity: 0; pointer-events: none; transform: translateY(8px);
+    transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+  }
+  #toast.show{ opacity: 1; transform: none; pointer-events: auto; }
+
+  @media (max-width: 1000px){
+    #btn-fab-add{ bottom: calc(64px + var(--sp-6)); }
+    #toast{ right: var(--sp-6); left: var(--sp-6); max-width: none;
+      bottom: calc(64px + 54px + var(--sp-6) * 2); }
+  }
+
 </style>
 </head>
 
