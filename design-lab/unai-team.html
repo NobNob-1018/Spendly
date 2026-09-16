@@ -1529,6 +1529,76 @@
     .ln-value{ margin-left: auto; }
   }
 
+
+  /* ---------- the document as chapters ------------------------------------- */
+  /* A chapter that is not the current one is not on the page at all: this is a
+     book, not an accordion, and half-open sections are neither. */
+  .tab-panel.is-paged > .ch{ display: none; }
+  .tab-panel.is-paged > .ch.is-current{ display: block; }
+  .ch > .card{ border-bottom: 0; padding-top: var(--sp-7); }
+  /* VUI-SCR-003: a jumped-to heading must clear the fixed masthead. */
+  .ch{ scroll-margin-top: calc(var(--bar-h) + var(--sp-8)); }
+
+  /* ---------- contents, in the margin -------------------------------------- */
+  #ch-contents{ padding-bottom: var(--sp-8); margin-bottom: var(--sp-8);
+    border-bottom: 1px solid var(--line); }
+  .ch-contents-head{ display:flex; align-items:center; justify-content:space-between;
+    gap: var(--sp-5); margin: 0 0 var(--sp-5);
+    font-size: var(--fs-3xs); text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim); }
+  /* VUI-KBD-001: the shortcut is shown where the action is, not in a help page. */
+  .ch-kbd{ display:inline-flex; gap: 2px; }
+  .ch-kbd kbd{ border:1px solid var(--line-strong); border-radius: 3px; padding: 0 3px;
+    font: inherit; font-size: 10px; color: var(--ink-dim); }
+  .ch-list{ list-style: none; margin: 0; padding: 0; counter-reset: none; }
+  .ch-list li{ margin: 0; }
+  .ch-link{ display:grid; grid-template-columns: auto 1fr auto; grid-template-areas:
+      "n t key" "n f key";
+    align-items: baseline; gap: 0 var(--sp-5); width: 100%;
+    background: none; border: 0; border-left: 2px solid transparent;
+    padding: var(--sp-4) var(--sp-5) var(--sp-4) var(--sp-6);
+    text-align: left; cursor: pointer; color: var(--ink-soft); }
+  @media (hover: hover){ .ch-link:hover{ color: var(--ink); background: var(--sunken); } }
+  .ch-link.is-current{ border-left-color: var(--accent); color: var(--ink); background: var(--sunken); }
+  .ch-n{ grid-area: n; font-size: var(--fs-3xs); color: var(--ink-dim);
+    font-variant-numeric: tabular-nums; }
+  .ch-link.is-current .ch-n{ color: var(--accent); }
+  .ch-t{ grid-area: t; font-size: var(--fs-2xs); line-height: 1.4; }
+  .ch-f{ grid-area: f; font-size: var(--fs-3xs); color: var(--ink-dim);
+    font-variant-numeric: tabular-nums; }
+  .ch-key{ grid-area: key; align-self: center; font-size: 10px; color: var(--ink-dim);
+    border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; opacity: 0; }
+  .ch-link:hover .ch-key, .ch-link.is-current .ch-key{ opacity: 1; }
+
+  /* ---------- the pager: the page has a bottom (VUI-LST-001) --------------- */
+  .ch-pager{ display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    gap: var(--sp-6); margin-top: var(--sp-10); padding-top: var(--sp-7);
+    border-top: 1px solid var(--line-strong); }
+  .tab-panel:not(.is-paged) > .ch-pager{ display: none; }
+  .ch-turn{ display: flex; flex-direction: column; gap: 2px; background: none; border: 0;
+    padding: var(--sp-4) 0; cursor: pointer; text-align: left; min-width: 0; }
+  .ch-turn.is-next{ text-align: right; align-items: flex-end; }
+  .ch-turn.is-empty{ cursor: default; }
+  .ch-turn-k{ font-size: var(--fs-3xs); text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--accent); }
+  .ch-turn-t{ font-size: var(--fs-sm); color: var(--ink-soft);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  @media (hover: hover){ .ch-turn:hover .ch-turn-t{ color: var(--ink); } }
+  .ch-count{ font-size: var(--fs-3xs); color: var(--ink-dim); white-space: nowrap;
+    font-variant-numeric: tabular-nums; }
+  .ch-count strong{ color: var(--ink); }
+
+  /* On a phone the contents fold under the measure with everything else, so the
+     pager is the primary way through and gets more room. */
+  @media (max-width: 1179px){
+    #ch-contents{ border-bottom: 0; }
+    .ch-pager{ grid-template-columns: 1fr auto; row-gap: var(--sp-5); }
+    .ch-count{ grid-column: 1 / -1; order: -1; text-align: center; }
+  }
+
+
+  .tab-panel.is-paged .h-num{ display: none; }
+
 </style>
 </head>
 
@@ -9660,6 +9730,13 @@
 
       /* ---------- mount ---------------------------------------------------- */
       function mountStatement(){
+        // Retired: superseded by the Statement of account (#st-card), which
+        // carries the opening and closing position, subtotals under every
+        // heading, a plain-text export and a print view. Two statements sat on
+        // one page two sections apart, each with its own month picker and its
+        // own Copy as text and Print doing different things. That is the same
+        // feature built twice, not two features.
+        return;
         const panel = document.getElementById("tab-dashboard");
         if (!panel || panel.querySelector("#stm-card")) return;
         const keys = monthsWithData();
@@ -9928,6 +10005,7 @@
         const card = document.createElement("div");
         card.className = "card";
         card.id = "run-card";
+        card.dataset.chapterTitle = "Where the month stands";
         card.innerHTML = `<div id="run-body"></div>`;
         panel.insertBefore(card, panel.firstChild);
         card.querySelector("#run-body").innerHTML = buildRunning();
@@ -11023,6 +11101,264 @@
 
       mount();
       document.addEventListener("click", () => setTimeout(mount, 220), true);
+    })();
+
+
+    /* ======================================================================
+       THE DOCUMENT GETS PAGES — /unai-team ledger
+
+       The dashboard was 9,733px. The corpus's own example of this failure is a
+       footer measured 5,139px away and marked "never reached" (VUI-SCR-004);
+       this was nearly twice that. A statement that has to be scrolled for ten
+       screens is not a statement, it is a feed with serifs.
+
+       VUI-SCR-004  endless scroll buries what is below it — paginate, or move
+                    that content into persistent navigation. This does both.
+       VUI-LST-001  numbered pagination with a visible total, so the page has a
+                    bottom: "Section 3 of 8", not an infinite tail.
+       VUI-KBD-001  every action displays its own shortcut, in place.
+       VUI-PRN-002  what the user established is state: the section you were
+                    reading is where you come back to, per tab.
+       VUI-PRN-003  every action is answered in the same frame: turning a page
+                    moves the contents mark and the pager immediately.
+       VUI-SCR-003  jump targets carry scroll-margin-top so a heading does not
+                    land under the masthead.
+
+       A book is the right model and it was never applied: a book has a contents
+       page, numbered chapters, and one spread in front of you at a time. That
+       is what this builds. Nothing is removed — every section is still there,
+       one turn away, and the contents lists all of them with the figure that
+       matters on each so you can choose without opening them.
+       ====================================================================== */
+    (function ledgerChapters(){
+      "use strict";
+
+      // Settings has its own group navigation and its cards are addressed by
+      // walking panel.children; wrapping them would break that. Charts and Loans
+      // are two screens — paginating them would be ceremony for nothing.
+      const PAGED = ["dashboard", "history", "savings", "charts", "loans"];
+      const state = {};                       // tab -> current chapter index
+      const KEY = "spendly_ledger_chapter_v1";
+      try { Object.assign(state, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) {}
+      function remember(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+      function panelOf(tab){ return document.getElementById("tab-" + tab); }
+
+      /* Wrap each top-level card in a chapter shell we control, so showing and
+         hiding a chapter never fights a card's own display — the card keeps
+         deciding whether IT is visible inside its chapter. */
+      function wrap(tab){
+        const panel = panelOf(tab);
+        if (!panel) return [];
+        // A bento grid is a workspace idea and this surface sets it to display:block
+        // anyway, so it does nothing here except bundle five cards into one
+        // chapter 4.7 screens long. Its children are hoisted out and become
+        // chapters in their own right.
+        [...panel.querySelectorAll(":scope > .bento")].forEach(b => {
+          while (b.firstChild) panel.insertBefore(b.firstChild, b);
+          b.remove();
+        });
+        [...panel.children].forEach(el => {
+          if (el.classList.contains("ch")) return;
+          if (!el.classList.contains("card")) return;
+          // The onboarding prompt is an aside, not a chapter. Numbering it would
+          // put "Set up Spendly" in the contents of a statement, and burying it
+          // on page two would hide the one thing a new reader needs.
+          if (el.classList.contains("onboard")) return;
+          const sec = document.createElement("section");
+          sec.className = "ch";
+          el.parentNode.insertBefore(sec, el);
+          sec.appendChild(el);
+        });
+        const chs = [...panel.querySelectorAll(":scope > .ch")];
+        chs.forEach(ensureHeading);
+        return chs;
+      }
+
+      // A chapter with nothing in it is not a page. Cards hide themselves when
+      // they have nothing to say (no recurring entries, no insights), and an
+      // empty page in a contents list is worse than no page.
+      function alive(ch){
+        if (!ch.querySelector(".card, .bento")) return false;
+        const box = ch.getBoundingClientRect();
+        return ch.innerText.trim().length > 20 || box.height > 40;
+      }
+
+      /* Four sections carry no heading at all — not in the contents and not on
+         the page either, which is the actual defect. A statement names its
+         parts. These get a real one rather than the contents inventing a label
+         for something the reader will find unlabelled when they open it. */
+      const TITLES = {
+        "run-card":      "Where the month stands",
+        "insights-card": "What stands out",
+        "summary-card":  "The last seven days",
+        "recap-card":    "The month in brief"
+      };
+      function ensureHeading(ch){
+        const card = ch.querySelector(".card");
+        if (!card || ch.querySelector("h2")) return;
+        let t = TITLES[card.id];
+        if (!t){
+          const h3 = ch.querySelector("h3");
+          if (h3) t = h3.innerText.trim();
+        }
+        if (!t) return;
+        const head = document.createElement("header");
+        head.className = "panel-head is-chapter";
+        head.innerHTML = "<h2>" + escapeHtml(t) + "</h2>";
+        card.insertBefore(head, card.firstChild);
+      }
+
+      function titleOf(ch, i){
+        // A section can name itself when it has no heading of its own — the
+        // opening paragraph is a chapter but not a headed one.
+        const named = ch.querySelector("[data-chapter-title]");
+        if (named) return named.dataset.chapterTitle;
+        const h = ch.querySelector("h2");
+        // The markup numbers headings 01-25 across the whole document; inside a
+        // paged tab the chapter index is the number, so the printed one is
+        // stripped here and hidden on the page.
+        let t = h ? h.innerText.replace(/^\s*\d+\s*/, "").trim() : "";
+        if (!t) t = "Section " + (i + 1);
+        return t;
+      }
+
+      /* A figure for each line of the contents, so the list is worth reading on
+         its own — the first tabular number or money figure the section shows. */
+      function figureOf(ch){
+        const els = ch.querySelectorAll(".ln-value, .fig-v, .wk-v, .rcp-v, .tm-value, .st-line.is-final .st-amount");
+        for (const el of els){
+          const t = el.innerText.trim();
+          // A money figure or nothing. The first draft took the first vaguely
+          // numeric thing it found, which labelled one section "1" and another
+          // "May 2026" — a contents line with the wrong number on it is worse
+          // than a contents line with no number at all.
+          if (/^₱[\d,]+(\.\d\d)?$/.test(t)) return t;
+        }
+        return "";
+      }
+
+      function show(tab, idx, opts){
+        const chs = [...panelOf(tab).querySelectorAll(":scope > .ch")];
+        const live = chs.filter(alive);
+        if (!live.length) return;
+        idx = Math.max(0, Math.min(live.length - 1, idx));
+        state[tab] = idx;
+        remember();
+        chs.forEach(c => c.classList.remove("is-current"));
+        live[idx].classList.add("is-current");
+        paintContents(tab, live, idx);
+        paintPager(tab, live, idx);
+        if (!opts || !opts.quiet){
+          // The masthead is fixed, so scrolling to 0 is the honest top here;
+          // a jump target would otherwise land under it (VUI-SCR-003).
+          window.scrollTo({ top: 0, behavior: "auto" });
+        }
+      }
+
+      function paintContents(tab, live, idx){
+        const host = document.getElementById("side-panel");
+        if (!host) return;
+        let nav = document.getElementById("ch-contents");
+        if (!nav){
+          nav = document.createElement("nav");
+          nav.id = "ch-contents";
+          nav.setAttribute("aria-label", "Contents");
+          host.insertBefore(nav, host.firstChild);
+        }
+        nav.innerHTML =
+          '<p class="ch-contents-head">Contents' +
+            '<span class="ch-kbd"><kbd>←</kbd><kbd>→</kbd></span></p>' +
+          '<ol class="ch-list">' + live.map((c, i) => {
+            const fig = figureOf(c);
+            return '<li><button class="ch-link' + (i === idx ? " is-current" : "") + '" data-ch="' + i + '"' +
+              (i === idx ? ' aria-current="true"' : '') + '>' +
+              '<span class="ch-n">' + String(i + 1).padStart(2, "0") + '</span>' +
+              '<span class="ch-t">' + escapeHtml(titleOf(c, i)) + '</span>' +
+              (fig ? '<span class="ch-f">' + escapeHtml(fig) + '</span>' : '') +
+
+            '</button></li>';
+          }).join("") + '</ol>';
+        nav.querySelectorAll("[data-ch]").forEach(b => {
+          b.addEventListener("click", () => show(tab, parseInt(b.dataset.ch, 10)));
+        });
+      }
+
+      function paintPager(tab, live, idx){
+        const panel = panelOf(tab);
+        let pager = panel.querySelector(":scope > .ch-pager");
+        if (!pager){
+          pager = document.createElement("div");
+          pager.className = "ch-pager";
+          panel.appendChild(pager);
+        }
+        const prev = idx > 0 ? live[idx - 1] : null;
+        const next = idx < live.length - 1 ? live[idx + 1] : null;
+        pager.innerHTML =
+          (prev ? '<button class="ch-turn is-prev" data-turn="-1">' +
+                    '<span class="ch-turn-k">← Back</span>' +
+                    '<span class="ch-turn-t">' + escapeHtml(titleOf(prev, idx - 1)) + '</span></button>'
+                : '<span class="ch-turn is-empty"></span>') +
+          '<span class="ch-count">Section <strong>' + (idx + 1) + '</strong> of ' + live.length + '</span>' +
+          (next ? '<button class="ch-turn is-next" data-turn="1">' +
+                    '<span class="ch-turn-k">Next →</span>' +
+                    '<span class="ch-turn-t">' + escapeHtml(titleOf(next, idx + 1)) + '</span></button>'
+                : '<span class="ch-turn is-empty"></span>');
+        pager.querySelectorAll("[data-turn]").forEach(b => {
+          b.addEventListener("click", () => show(tab, idx + parseInt(b.dataset.turn, 10)));
+        });
+      }
+
+      function currentTab(){
+        const open = [...document.querySelectorAll(".tab-panel")].find(p => p.style.display !== "none");
+        return open ? open.id.replace("tab-", "") : null;
+      }
+
+      function apply(tab, quiet){
+        if (PAGED.indexOf(tab) === -1) return;
+        const live = wrap(tab).filter(alive);
+        const panel = panelOf(tab);
+        panel.classList.toggle("is-paged", live.length > 2);
+        if (live.length <= 2){
+          // Two sections do not need a contents page; show them as one run.
+          [...panel.querySelectorAll(":scope > .ch")].forEach(c => c.classList.add("is-current"));
+          const p = panel.querySelector(":scope > .ch-pager"); if (p) p.remove();
+          const n = document.getElementById("ch-contents"); if (n) n.remove();
+          return;
+        }
+        show(tab, state[tab] != null ? state[tab] : 0, { quiet: quiet });
+      }
+
+      // Turning a page from the keyboard, guarded so it can never fire while
+      // someone is typing into a field.
+      document.addEventListener("keydown", e => {
+        const tab = currentTab();
+        if (!tab || PAGED.indexOf(tab) === -1) return;
+        const a = document.activeElement;
+        if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT" || a.isContentEditable)) return;
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const panel = panelOf(tab);
+        if (!panel || !panel.classList.contains("is-paged")) return;
+        const live = [...panel.querySelectorAll(":scope > .ch")].filter(alive);
+        const idx = state[tab] || 0;
+        if (e.key === "ArrowRight"){ e.preventDefault(); show(tab, idx + 1); }
+        else if (e.key === "ArrowLeft"){ e.preventDefault(); show(tab, idx - 1); }
+        // No digit shortcut here: 1-6 already switch tabs, and a second meaning
+        // for the same key is how a keyboard layer stops being trustworthy.
+      });
+
+      function refresh(quiet){
+        const tab = currentTab();
+        if (tab) apply(tab, quiet);
+        else PAGED.forEach(t => apply(t, true));
+      }
+
+      // The feature modules append their cards after this runs, and a re-render
+      // can empty a section, so the chapter set is rebuilt rather than assumed.
+      refresh(true);
+      document.addEventListener("click", () => setTimeout(() => refresh(true), 260), true);
+      setTimeout(() => refresh(true), 900);
+      setTimeout(() => refresh(true), 2200);
     })();
 
 
