@@ -61,6 +61,9 @@
     --ink:      rgb(255 255 255 / .92);
     --ink-soft: rgb(255 255 255 / .62);
     --ink-dim:  rgb(255 255 255 / .45);
+    /* A fourth text level. In a dense readout the index and age columns must sit
+       below the label level, or every column reads as equally important. */
+    --ink-faint: rgb(255 255 255 / .30);
     --on-accent: #06211F;
 
     /* VUI-DRK-004: desaturated and lifted for a dark ground. */
@@ -1206,6 +1209,73 @@
   .insight.is-bad .insight-flag{ color: var(--negative); }
   .insight.is-warn .insight-flag{ color: var(--warn); }
   .insights-strip{ flex-direction:column; gap:0; }
+
+
+  /* ---------- the column as a readout ------------------------------------- */
+  .ro{ display:flex; flex-direction:column; }
+  .ro-row{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-5);
+    height: var(--row-h); border-bottom:1px solid var(--line); }
+  .ro-row:last-child{ border-bottom:0; }
+  .ro-k{ font-size: var(--fs-3xs); letter-spacing:.06em; text-transform:uppercase; color: var(--ink-dim); }
+  .ro-v{ font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+  .ro-row.is-strong .ro-v{ font-weight:700; }
+  .ro-v[data-tone="pos"]{ color: var(--positive); }
+  .ro-v[data-tone="neg"]{ color: var(--negative); }
+  .ro-note{ margin: var(--sp-5) 0 0; font-size: var(--fs-3xs); }
+
+  .rk{ margin-top: var(--sp-6); border-top:1px solid var(--line); }
+  .rk-row{ display:grid; grid-template-columns: 18px 1fr auto 30px; align-items:baseline;
+    gap: var(--sp-4); height: var(--row-h); border-bottom:1px solid var(--line); }
+  .rk-row:last-child{ border-bottom:0; }
+  .rk-n{ font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .rk-label{ font-size: var(--fs-2xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rk-amt{ font-size: var(--fs-2xs); font-variant-numeric: tabular-nums; }
+  .rk-pct{ font-size: var(--fs-3xs); color: var(--ink-dim); text-align:right; font-variant-numeric: tabular-nums; }
+
+  /* ---------- trackers as fixed columns ----------------------------------- */
+  .trk-head, .trk-row{ display:grid; grid-template-columns: 34px 1fr 46px auto 26px;
+    align-items:center; gap: var(--sp-4); height: var(--row-h); }
+  .trk-head{ height:auto; padding-bottom: var(--sp-3); border-bottom:1px solid var(--line);
+    font-size: var(--fs-3xs); letter-spacing:.06em; text-transform:uppercase; color: var(--ink-faint); }
+  .trk-head .num, .trk-row .num{ text-align:right; }
+  .trk-row{ border-bottom:1px solid var(--line); }
+  .trk-row:last-child{ border-bottom:0; }
+  .trk-row.is-stale{ opacity:.55; }
+  .trk-code{ font-size: var(--fs-2xs); font-weight:700; letter-spacing:.02em; }
+  .trk-name{ font-size: var(--fs-3xs); color: var(--ink-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .trk-plot{ line-height:0; }
+  .trk-val{ font-size: var(--fs-2xs); font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .trk-age{ font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .trk-d{ margin-left: var(--sp-3); font-size: var(--fs-3xs); }
+  .trk-d.is-up{ color: var(--positive); } .trk-d.is-down{ color: var(--negative); }
+  .trk-d.is-flat{ color: var(--ink-faint); }
+
+  /* ---------- the due queue ----------------------------------------------- */
+  .q-summary{ font-size: var(--fs-3xs); letter-spacing:.04em; text-transform:uppercase;
+    color: var(--ink-dim); padding-bottom: var(--sp-4); }
+  .q-summary .is-overdue{ color: var(--negative); font-weight:700; }
+  .q-head, .q-row{ display:grid; grid-template-columns: 34px 1fr 30px auto; align-items:center;
+    gap: var(--sp-4); height: var(--row-h); }
+  .q-head{ height:auto; padding-bottom: var(--sp-3); border-bottom:1px solid var(--line);
+    font-size: var(--fs-3xs); letter-spacing:.06em; text-transform:uppercase; color: var(--ink-faint); }
+  .q-head .num, .q-row .num{ text-align:right; font-variant-numeric: tabular-nums; }
+  .q-row{ border-bottom:1px solid var(--line); font-size: var(--fs-2xs); }
+  .q-row:last-of-type{ border-bottom:0; }
+  .q-days{ font-weight:700; color: var(--ink-dim); }
+  .q-row.is-soon .q-days{ color: var(--warn); }
+  .q-row.is-overdue .q-days{ color: var(--negative); }
+  .q-who{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .q-dir{ font-size: var(--fs-3xs); letter-spacing:.06em; color: var(--ink-faint); }
+  .q-amt.is-in{ color: var(--positive); } .q-amt.is-out{ color: var(--negative); }
+  .q-more{ padding-top: var(--sp-4); font-size: var(--fs-3xs); color: var(--ink-faint); }
+
+  .tm-sign{ margin-right: 1px; }
+
+
+  /* The trend badge carries its rate again: the span used to hold only "30d",
+     which was noise, and was hidden for that reason. It now holds the slope. */
+  .tm-trend .tm-trend-period{ display:inline; margin-left: var(--sp-4);
+    font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 
 </style>
 </head>
@@ -4685,46 +4755,44 @@
   // side-panel wording ("Nd ago" vs "N days ago"); the null case (crypto that's
   // never been synced) is handled by the caller since currencies don't have it.
   function daysAgoLabel(dateStr, compact){
-    const age = Math.floor((Date.now() - new Date(dateStr+"T00:00:00").getTime()) / (1000*60*60*24));
-    if (age <= 0) return compact ? "Today" : "today";
-    if (age === 1) return "1 day ago";
-    return compact ? `${age}d ago` : `${age} days ago`;
+    const t = dateStr ? new Date(dateStr + "T00:00:00").getTime() : NaN;
+    if (!isFinite(t)) return compact ? "—" : "never";
+    const age = Math.floor((Date.now() - t) / 864e5);
+    if (age <= 0) return "today";
+    return compact ? age + "d" : age + "d ago";
   }
+
+
 
   // Shared by the currency/crypto rows (small, bare line) and the Total money hero
   // (wide, area-filled). Options rather than a second near-identical function.
   let sparkSeq = 0;
   function buildSparkline(history, opts){
+    // A console plots samples, not a curve: each reading is its own bar, so they
+    // can be counted. A smoothed line implies data between the readings.
     if (!history || history.length < 2) return "";
     const o = opts || {};
     const key = o.valueKey || "rate";
-    const w = o.width || 46, h = o.height || 22, pad = o.pad != null ? o.pad : 2;
-    const values = history.map(x=>x[key]);
-    const min = Math.min(...values), max = Math.max(...values);
+    const w = o.width || 46, h = o.height || 22;
+    const values = history.map(x => x[key]);
+    const min = Math.min.apply(null, values), max = Math.max.apply(null, values);
     const range = (max - min) || 1;
-    const xy = values.map((v,i)=>{
-      const x = pad + (i / (values.length - 1)) * (w - pad*2);
-      const y = pad + (1 - (v - min) / range) * (h - pad*2);
-      return [x, y];
-    });
-    const points = xy.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-    const up = values[values.length-1] >= values[0];
+    const up = values[values.length - 1] >= values[0];
     const color = o.color || (up ? "var(--positive)" : "var(--negative)");
-    const stroke = o.strokeWidth || 1.6;
-    let fill = "";
-    if (o.area){
-      const id = "spk" + (++sparkSeq);
-      const area = `${xy[0][0].toFixed(1)},${h} ` + points + ` ${xy[xy.length-1][0].toFixed(1)},${h}`;
-      fill = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${color}" stop-opacity="0.28"/>
-          <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-        </linearGradient></defs>
-        <polygon points="${area}" fill="url(#${id})"/>`;
-    }
-    return `<svg viewBox="0 0 ${w} ${h}"${o.area ? ' preserveAspectRatio="none"' : ` width="${w}" height="${h}"`} fill="none">
-      ${fill}<polyline points="${points}" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
+    const n = values.length;
+    const slot = w / n;
+    const bw = Math.max(1, slot - (slot > 4 ? 1 : 0.4));
+    const bars = values.map((v, i) => {
+      const bh = Math.max(1, ((v - min) / range) * (h - 2));
+      return '<rect x="' + (i * slot).toFixed(2) + '" y="' + (h - bh).toFixed(2) +
+             '" width="' + bw.toFixed(2) + '" height="' + bh.toFixed(2) +
+             '" fill="' + color + '" opacity="' + (i === n - 1 ? "1" : "0.42") + '"/>';
+    }).join("");
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '"' +
+      (o.area ? ' preserveAspectRatio="none"' : ' width="' + w + '" height="' + h + '"') +
+      ' shape-rendering="crispEdges">' + bars + '</svg>';
   }
+
 
   // Count the hero figure up to its value. This single effect does more for how
   // the app reads than any static styling — but it is motion, so anyone who asked
@@ -4754,46 +4822,67 @@
   function renderTotalMoneyTrend(current){
     const el = document.getElementById("tm-trend");
     if (!el) return;
-    const cutoff = toLocalISO(new Date(Date.now() - 30*864e5));
-    const past = netWorthHistory.filter(h=>h.date <= cutoff);
+    const cutoff = toLocalISO(new Date(Date.now() - 30 * 864e5));
+    const past = netWorthHistory.filter(h => h.date <= cutoff);
     if (!past.length){ el.style.display = "none"; return; }
-    const then = past[past.length-1].netWorth;
+    const then = past[past.length - 1].netWorth;
     const diff = round2(current - then);
+    const pct = then ? (diff / then) * 100 : 0;
     el.style.display = "";
     el.classList.toggle("is-down", diff < 0);
     el.classList.toggle("is-flat", Math.abs(diff) < 0.01);
-    const arrow = Math.abs(diff) < 0.01 ? "" : (diff > 0 ? "▲ " : "▼ ");
-    el.innerHTML = `${arrow}${fmtMoney(Math.abs(diff))}<span class="tm-trend-period">30d</span>`;
+    // Signed figure plus its rate. A console gives the delta and the slope.
+    const sign = Math.abs(diff) < 0.01 ? "" : (diff > 0 ? "+" : "\u2212");
+    const rate = Math.abs(pct) >= 0.05
+      ? (pct > 0 ? "+" : "\u2212") + Math.abs(pct).toFixed(1) + "% / 30d"
+      : "30d";
+    el.innerHTML = '<span class="tm-sign">' + sign + '</span>' + fmtMoney(Math.abs(diff)) +
+      '<span class="tm-trend-period">' + rate + '</span>';
   }
+
 
   function renderSideCurrencyList(){
     const wrap = document.getElementById("side-currency-list");
-    if (!wrap) return; // panel only exists on wide screens
+    if (!wrap) return;
     if (!currencies.length){
-      wrap.innerHTML = `<p class="hint">Track a currency in Settings and it'll show up here.</p>`;
+      wrap.innerHTML = '<p class="hint">No currencies tracked. Settings \u203A Currencies.</p>';
       return;
     }
-    const sorted = currencies.slice().sort((a,b)=>a.code.localeCompare(b.code));
-    wrap.innerHTML = sorted.map((c,i)=>{
-      const name = (CURRENCY_OPTIONS.find(o=>o.code===c.code) || {}).name || "";
-      const ageLabel = daysAgoLabel(c.lastUpdated, true);
-      const badgeClass = CURRENCY_BADGE_COLORS[i % CURRENCY_BADGE_COLORS.length];
-      const spark = buildSparkline(c.history);
-      return `
-        <div class="side-currency-item">
-          <div class="side-currency-badge ${badgeClass}">${c.code.slice(0,2)}</div>
-          <div class="side-currency-info">
-            <div class="side-currency-code">${c.code}</div>
-            <div class="side-currency-name">${escapeHtml(name)}</div>
-          </div>
-          <div class="side-currency-spark">${spark}</div>
-          <div class="side-currency-rate">
-            <div class="side-currency-value">${fmtMoney(c.rate)}</div>
-            <div class="side-currency-updated">${ageLabel}</div>
-          </div>
-        </div>`;
-    }).join("");
+    const sorted = currencies.slice().sort((a, b) => a.code.localeCompare(b.code));
+    wrap.innerHTML =
+      '<div class="trk-head"><span>Code</span><span>Name</span><span>14d</span><span class="num">Rate</span><span class="num">Age</span></div>'
+      + sorted.map(c => {
+        const name = (CURRENCY_OPTIONS.find(o => o.code === c.code) || {}).name || "";
+        const age = Math.floor((Date.now() - new Date(c.lastUpdated + "T00:00:00").getTime()) / 864e5);
+        return trackerRowHtml(c.code, name,
+          fmtMoney(c.rate) + trackerDelta(c.history, "rate"),
+          daysAgoLabel(c.lastUpdated, true), c.history, age > 7);
+      }).join("");
   }
+
+  // One row shape for both trackers, so currencies and crypto align with each
+  // other down the column instead of each inventing its own spacing.
+  function trackerRowHtml(code, name, valueHtml, ageLabel, history, stale){
+    return '<div class="trk-row' + (stale ? " is-stale" : "") + '">' +
+      '<span class="trk-code">' + code + '</span>' +
+      '<span class="trk-name">' + escapeHtml(name || "") + '</span>' +
+      '<span class="trk-plot">' + buildSparkline(history) + '</span>' +
+      '<span class="trk-val num">' + valueHtml + '</span>' +
+      '<span class="trk-age num">' + ageLabel + '</span>' +
+    '</div>';
+  }
+
+  function trackerDelta(history, key){
+    if (!history || history.length < 2) return "";
+    const k = key || "rate";
+    const a = history[0][k], b = history[history.length - 1][k];
+    if (!a) return "";
+    const pct = ((b - a) / a) * 100;
+    if (Math.abs(pct) < 0.05) return '<span class="trk-d is-flat">\u2014</span>';
+    return '<span class="trk-d ' + (pct > 0 ? "is-up" : "is-down") + '">' +
+      (pct > 0 ? "+" : "\u2212") + Math.abs(pct).toFixed(1) + '%</span>';
+  }
+
 
   async function syncCurrencyRates(){
     const statusEl = document.getElementById("currency-sync-status");
@@ -4870,19 +4959,40 @@
   // Overdue items are included and sort to the top — they're the most urgent.
   // One row of a proportional breakdown: label, amount, and a bar showing share.
   function shareRowHtml(label, amount, pct, color){
-    return `
-      <div class="share-row">
-        <div class="share-row-top">
-          <span class="share-label">${escapeHtml(label)}</span>
-          <span class="share-amount">${fmtMoney(amount)}</span>
-        </div>
-        <div class="share-track"><div class="share-fill" style="--fill:${(Math.max(2, Math.min(100, pct))/100).toFixed(3)}; background:${color};"></div></div>
-      </div>`;
+    // Kept for callers outside the side column; rendered as one readout line.
+    return '<div class="rk-row"><span class="rk-n num"></span><span class="rk-label">' +
+      escapeHtml(label) + '</span><span class="rk-amt num">' + fmtMoney(amount) +
+      '</span><span class="rk-pct num">' + Math.round(pct) + '%</span></div>';
   }
 
+
   function sideSection(title, bodyHtml){
-    return `<div class="side-panel-head"><div class="side-panel-head-row"><h2>${escapeHtml(title)}</h2></div></div>${bodyHtml}`;
+    return '<div class="side-panel-head"><div class="side-panel-head-row"><h2>' +
+      escapeHtml(title) + '</h2></div></div>' + bodyHtml;
   }
+
+  // Key/value readout: label left, figure right, figures on tabular numerals so
+  // the decimal points line up down the column.
+  function readoutHtml(rows){
+    return '<div class="ro">' + rows.map(r =>
+      '<div class="ro-row' + (r.strong ? " is-strong" : "") + '">' +
+        '<span class="ro-k">' + escapeHtml(r.k) + '</span>' +
+        '<span class="ro-v num"' + (r.tone ? ' data-tone="' + r.tone + '"' : "") + '>' + r.v + '</span>' +
+      '</div>').join("") + '</div>';
+  }
+
+  // A ranked list carries its order in the index column. No bars: in a 240px
+  // column a bar repeats what the percentage already says.
+  function rankHtml(rows, total){
+    return '<div class="rk">' + rows.map((r, i) =>
+      '<div class="rk-row">' +
+        '<span class="rk-n num">' + String(i + 1).padStart(2, "0") + '</span>' +
+        '<span class="rk-label">' + escapeHtml(r.label) + '</span>' +
+        '<span class="rk-amt num">' + fmtMoney(r.amount) + '</span>' +
+        '<span class="rk-pct num">' + (total ? ((r.amount / total) * 100).toFixed(0) : "0") + '%</span>' +
+      '</div>').join("") + '</div>';
+  }
+
 
   // What the right-hand column shows depends on where you are. Currencies and
   // crypto stay for the dashboard and settings, where they are ambient reference;
@@ -4895,131 +5005,135 @@
     if (trackers) trackers.style.display = showTrackers ? "" : "none";
 
     if (tabName === "charts"){
-      const { start, end } = getRangeBounds(currentRange);
-      const inRange = expenses.filter(e=>{ const d = new Date(e.date + "T00:00:00"); return d >= start && d <= end; });
-      const total = inRange.reduce((s,e)=>s+e.amount, 0);
+      const b = getRangeBounds(currentRange);
+      const inRange = expenses.filter(e => { const d = new Date(e.date + "T00:00:00"); return d >= b.start && d <= b.end; });
+      const total = round2(inRange.reduce((s, e) => s + e.amount, 0));
       const byCat = {};
-      inRange.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + e.amount; });
-      const rows = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0, 8);
-      ctx.innerHTML = sideSection("Where it went",
-        !rows.length
-          ? `<p class="hint">Nothing in this range yet.</p>`
-          : `<p class="hint">${inRange.length} expense(s) · ${fmtMoney(total)}</p>`
-            + rows.map(([cat, amt])=> shareRowHtml(cat, amt, total ? (amt/total)*100 : 0, colorFor(cat))).join(""));
+      inRange.forEach(e => { byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
+      const rows = Object.keys(byCat).map(k => ({ label: k, amount: byCat[k] }))
+        .sort((a, b2) => b2.amount - a.amount).slice(0, 10);
+      ctx.innerHTML = sideSection("BREAKDOWN",
+        !rows.length ? '<p class="hint">No rows in range.</p>'
+          : readoutHtml([
+              { k: "Rows", v: String(inRange.length) },
+              { k: "Total", v: fmtMoney(total), strong: true },
+              { k: "Categories", v: String(Object.keys(byCat).length) }
+            ]) + rankHtml(rows, total));
       return;
     }
 
     if (tabName === "history"){
       const list = entryMode === "income" ? incomes : expenses;
-      const label = entryMode === "income" ? "income entries" : "expenses";
-      const total = list.reduce((s,e)=>s+e.amount, 0);
-      const avg = list.length ? total / list.length : 0;
-      const biggest = list.slice().sort((a,b)=>b.amount-a.amount)[0];
-      ctx.innerHTML = sideSection("At a glance",
-        !list.length
-          ? `<p class="hint">No ${label} logged yet.</p>`
-          : `<div class="side-figures">
-               <div><span class="sf-label">Entries</span><span class="sf-value">${list.length}</span></div>
-               <div><span class="sf-label">Total</span><span class="sf-value">${fmtMoneyRich(total)}</span></div>
-               <div><span class="sf-label">Average</span><span class="sf-value">${fmtMoneyRich(round2(avg))}</span></div>
-             </div>
-             ${biggest ? `<p class="hint" style="margin-top:var(--sp-6);">Largest: <strong>${escapeHtml(biggest.description)}</strong> — ${fmtMoney(biggest.amount)}</p>` : ""}`);
+      const total = round2(list.reduce((s, e) => s + e.amount, 0));
+      const sorted = list.slice().sort((a, b) => b.amount - a.amount);
+      const biggest = sorted[0];
+      const med = sorted.length ? sorted[Math.floor(sorted.length / 2)].amount : 0;
+      ctx.innerHTML = sideSection(entryMode === "income" ? "INCOME SET" : "EXPENSE SET",
+        !list.length ? '<p class="hint">Set is empty.</p>'
+          : readoutHtml([
+              { k: "Rows", v: String(list.length) },
+              { k: "Sum", v: fmtMoney(total), strong: true },
+              { k: "Mean", v: fmtMoney(round2(total / list.length)) },
+              { k: "Median", v: fmtMoney(med) },
+              { k: "Max", v: fmtMoney(biggest.amount) }
+            ]) + '<p class="hint ro-note">max: ' + escapeHtml(biggest.description) + '</p>');
       return;
     }
 
     if (tabName === "savings"){
-      const total = savings.reduce((s,a)=>s+a.amount, 0);
-      const monthly = savings.reduce((s,a)=>s+netMonthlyInterest(a), 0);
-      const rows = savings.slice().sort((a,b)=>b.amount-a.amount);
-      ctx.innerHTML = sideSection("Allocation",
-        !rows.length
-          ? `<p class="hint">No accounts yet.</p>`
-          : `<p class="hint">${fmtMoney(total)} across ${rows.length} account(s) · ${fmtMoney(monthly)}/mo interest</p>`
-            + rows.map(a=> shareRowHtml(a.provider, a.amount, total ? (a.amount/total)*100 : 0, "var(--accent)")).join(""));
+      const total = round2(savings.reduce((s, a) => s + a.amount, 0));
+      const monthly = round2(savings.reduce((s, a) => s + netMonthlyInterest(a), 0));
+      const rows = savings.slice().sort((a, b) => b.amount - a.amount)
+        .map(a => ({ label: a.provider, amount: a.amount }));
+      ctx.innerHTML = sideSection("ACCOUNTS",
+        !rows.length ? '<p class="hint">No accounts.</p>'
+          : readoutHtml([
+              { k: "Accounts", v: String(rows.length) },
+              { k: "Held", v: fmtMoney(total), strong: true },
+              { k: "Interest/mo", v: fmtMoney(monthly), tone: "pos" },
+              { k: "Effective", v: (total ? (monthly * 12 / total * 100).toFixed(2) : "0.00") + "%" }
+            ]) + rankHtml(rows, total));
       return;
     }
 
     if (tabName === "loans"){
-      const lent = loansGiven.filter(l=>l.status==="outstanding").reduce((s,l)=>s+l.amount,0);
-      const owed = loansTaken.filter(l=>l.status==="outstanding").reduce((s,l)=>s+l.amount,0);
-      const unsold = investments.filter(i=>i.actualSoldPrice == null);
-      const invested = unsold.reduce((s,i)=>s+i.amount,0);
-      const projected = unsold.reduce((s,i)=>s+(i.projectedPrice != null ? i.projectedPrice : i.amount),0);
-      ctx.innerHTML = sideSection("Position",
-        `<div class="side-figures">
-           <div><span class="sf-label">Owed to you</span><span class="sf-value">${fmtMoneyRich(lent)}</span></div>
-           <div><span class="sf-label">You owe</span><span class="sf-value" style="color:var(--warn);">${fmtMoneyRich(owed)}</span></div>
-           <div><span class="sf-label">Invested</span><span class="sf-value">${fmtMoneyRich(invested)}</span></div>
-         </div>
-         ${unsold.length ? `<p class="hint" style="margin-top:var(--sp-6);">If projections hold, ${unsold.length} holding(s) reach <strong>${fmtMoney(projected)}</strong>.</p>` : ""}`);
+      const lent = round2(loansGiven.filter(l => l.status === "outstanding").reduce((s, l) => s + l.amount, 0));
+      const owed = round2(loansTaken.filter(l => l.status === "outstanding").reduce((s, l) => s + l.amount, 0));
+      const unsold = investments.filter(i => i.actualSoldPrice == null);
+      const invested = round2(unsold.reduce((s, i) => s + i.amount, 0));
+      const projected = round2(unsold.reduce((s, i) => s + (i.projectedPrice != null ? i.projectedPrice : i.amount), 0));
+      const openLoans = loansGiven.filter(l => l.status === "outstanding").length +
+                        loansTaken.filter(l => l.status === "outstanding").length;
+      ctx.innerHTML = sideSection("POSITION",
+        readoutHtml([
+          { k: "Receivable", v: fmtMoney(lent), tone: "pos" },
+          { k: "Payable", v: fmtMoney(owed), tone: "neg" },
+          { k: "Net", v: fmtMoney(round2(lent - owed)), strong: true },
+          { k: "Invested", v: fmtMoney(invested) },
+          { k: "Projected", v: fmtMoney(projected) },
+          { k: "Unrealised", v: fmtMoney(round2(projected - invested)), tone: projected >= invested ? "pos" : "neg" }
+        ]) + '<p class="hint ro-note">' + unsold.length + ' open holding(s) \u00B7 ' + openLoans + ' open loan(s)</p>');
       return;
     }
 
     ctx.innerHTML = "";
   }
 
-  function renderSideUpcoming(){
 
+  function renderSideUpcoming(){
     const wrap = document.getElementById("side-upcoming-list");
     if (!wrap) return;
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayStr = toLocalISO(today);
     const horizon = new Date(today); horizon.setDate(horizon.getDate() + 30);
     const horizonStr = toLocalISO(horizon);
 
-    const items = [
-      ...loansGiven.filter(l=>l.status === "outstanding" && l.deadline)
-        .map(l=>({ ...l, dir:"in", label:`${l.person} owes you` })),
-      ...loansTaken.filter(l=>l.status === "outstanding" && l.deadline)
-        .map(l=>({ ...l, dir:"out", label:`You owe ${l.person}` }))
-    ]
-      .filter(l=>l.deadline <= horizonStr)
-      .sort((a,b)=>a.deadline.localeCompare(b.deadline))
-      .slice(0, 5);
+    const items = [].concat(
+      loansGiven.filter(l => l.status === "outstanding" && l.deadline).map(l => ({ deadline: l.deadline, amount: l.amount, dir: "in", who: l.person })),
+      loansTaken.filter(l => l.status === "outstanding" && l.deadline).map(l => ({ deadline: l.deadline, amount: l.amount, dir: "out", who: l.person }))
+    ).filter(l => l.deadline <= horizonStr)
+     .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
     if (!items.length){
-      wrap.innerHTML = `<p class="hint">Nothing due in the next 30 days.</p>`;
+      wrap.innerHTML = '<p class="hint">Queue empty \u2014 nothing due inside 30 days.</p>';
       return;
     }
-    wrap.innerHTML = items.map(l=>{
-      const due = new Date(l.deadline + "T00:00:00");
-      const days = Math.round((due - today) / (1000*60*60*24));
-      const when = days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? "Due today" : `in ${days}d`;
-      const cls = days < 0 ? "deadline-overdue" : days <= 7 ? "deadline-soon" : "";
-      return `
-        <div class="side-upcoming-item">
-          <div class="side-upcoming-info">
-            <div class="side-upcoming-who">${escapeHtml(l.label)}</div>
-            <div class="side-upcoming-when ${cls}">${when}</div>
-          </div>
-          <div class="side-upcoming-amt ${l.dir === "in" ? "is-in" : "is-out"}">${fmtMoneyRich(l.amount)}</div>
-        </div>`;
-    }).join("");
+    const overdue = items.filter(l => l.deadline < todayStr);
+    const shown = items.slice(0, 7);
+    // A queue states its own size and its worst case before listing rows.
+    wrap.innerHTML =
+      '<div class="q-summary">' + items.length + ' due \u00B7 ' +
+        (overdue.length ? '<span class="is-overdue">' + overdue.length + ' overdue</span>' : 'none overdue') + '</div>'
+      + '<div class="q-head"><span class="num">Days</span><span>Counterparty</span><span>Dir</span><span class="num">Amount</span></div>'
+      + shown.map(l => {
+        const days = Math.round((new Date(l.deadline + "T00:00:00") - today) / 864e5);
+        const cls = days < 0 ? "is-overdue" : days <= 7 ? "is-soon" : "";
+        return '<div class="q-row ' + cls + '" title="' + escapeHtml(l.deadline) + '">' +
+          '<span class="q-days num">' + (days < 0 ? "\u2212" + Math.abs(days) : "+" + days) + '</span>' +
+          '<span class="q-who">' + escapeHtml(l.who) + '</span>' +
+          '<span class="q-dir">' + (l.dir === "in" ? "IN" : "OUT") + '</span>' +
+          '<span class="q-amt num ' + (l.dir === "in" ? "is-in" : "is-out") + '">' + fmtMoney(l.amount) + '</span>' +
+        '</div>';
+      }).join("")
+      + (items.length > shown.length ? '<div class="q-more">+' + (items.length - shown.length) + ' further out</div>' : "");
   }
+
 
   function renderSideCryptoList(){
     const wrap = document.getElementById("side-crypto-list");
-    if (!wrap) return; // panel only exists on wide screens
-    const sorted = cryptos.slice().sort((a,b)=>a.code.localeCompare(b.code));
-    wrap.innerHTML = sorted.map((c,i)=>{
-      const asset = CRYPTO_ASSETS.find(a=>a.code===c.code) || {};
-      const ageLabel = !c.lastUpdated ? "Not synced" : daysAgoLabel(c.lastUpdated, true);
-      const badgeClass = CURRENCY_BADGE_COLORS[i % CURRENCY_BADGE_COLORS.length];
-      const spark = buildSparkline(c.history);
-      return `
-        <div class="side-currency-item">
-          <div class="side-currency-badge ${badgeClass}">${c.code.slice(0,2)}</div>
-          <div class="side-currency-info">
-            <div class="side-currency-code">${c.code}</div>
-            <div class="side-currency-name">${escapeHtml(asset.name||"")}</div>
-          </div>
-          <div class="side-currency-spark">${spark}</div>
-          <div class="side-currency-rate">
-            <div class="side-currency-value">${c.price ? fmtMoney(c.price) : "—"}</div>
-            <div class="side-currency-updated">${ageLabel}</div>
-          </div>
-        </div>`;
-    }).join("");
+    if (!wrap) return;
+    const sorted = cryptos.slice().sort((a, b) => a.code.localeCompare(b.code));
+    wrap.innerHTML =
+      '<div class="trk-head"><span>Code</span><span>Name</span><span>14d</span><span class="num">Price</span><span class="num">Age</span></div>'
+      + sorted.map(c => {
+        const asset = CRYPTO_ASSETS.find(a => a.code === c.code) || {};
+        const age = c.lastUpdated ? Math.floor((Date.now() - new Date(c.lastUpdated + "T00:00:00").getTime()) / 864e5) : 999;
+        return trackerRowHtml(c.code, asset.name || "",
+          (c.price ? fmtMoney(c.price) : "\u2014") + trackerDelta(c.history, "rate"),
+          c.lastUpdated ? daysAgoLabel(c.lastUpdated, true) : "never", c.history, age > 2);
+      }).join("");
   }
+
 
   async function syncCryptoPrices(){
     const statusEl = document.getElementById("crypto-sync-status");

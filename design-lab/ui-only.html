@@ -66,6 +66,9 @@
     --ink:      #E8EDF5;
     --ink-soft: #9AA7B8;
     --ink-dim:  #6B7788;
+    /* A fourth text level, for the metadata under a figure: units, ranges, ages.
+       Three levels are not enough once a panel labels its own numbers. */
+    --ink-faint: #4E5868;
     --on-accent: #06211F;
 
     --accent:       #37C8B8;
@@ -914,6 +917,79 @@
   .rec-bar i{ position:absolute; inset:0 auto 0 0; border-radius:2px; background: var(--accent); }
   .rec-meta{ font-size: var(--fs-3xs); color: var(--ink-dim); }
   .insight-body{ min-width:0; }
+
+
+  /* ---------- analysis panels in the column -------------------------------- */
+  .fig-row{ display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-5);
+    padding-bottom: var(--sp-6); margin-bottom: var(--sp-6); border-bottom:1px solid var(--line); }
+  .fig-row + .fig-row{ margin-top: calc(var(--sp-6) * -1 + var(--sp-7)); }
+  .fig-cell{ display:flex; flex-direction:column; gap: 2px; min-width:0; }
+  .fig-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.05em; color: var(--ink-dim); }
+  .fig-v{ font-size: var(--fs-sm); font-weight:700; font-variant-numeric: tabular-nums; }
+  .fig-v.is-pos{ color: var(--positive); } .fig-v.is-neg{ color: var(--negative); }
+  .fig-v.is-warn{ color: var(--warn); }
+  .fig-sub{ font-size: var(--fs-3xs); color: var(--ink-faint); overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .concentration{ margin: 0 0 var(--sp-6); font-size: var(--fs-2xs); line-height:1.6; color: var(--ink-dim); }
+  .concentration strong{ color: var(--ink); font-variant-numeric: tabular-nums; }
+  .share-row-top{ display:grid; grid-template-columns: 1fr auto auto; gap: var(--sp-4); align-items:baseline; }
+  .share-pct{ font-size: var(--fs-3xs); color: var(--ink-dim); font-variant-numeric: tabular-nums; min-width:34px; text-align:right; }
+
+  /* ---------- tracker panels ---------------------------------------------- */
+  .tp-grid{ display:grid; gap: var(--sp-6); }
+  .tp{ display:flex; flex-direction:column; gap: var(--sp-4); padding: var(--sp-6);
+    background: var(--sunken); border:1px solid var(--line); border-radius: var(--r-md); }
+  .tp-top{ display:grid; grid-template-columns: auto 1fr auto; gap: var(--sp-5); align-items:center; }
+  .tp-badge{ width:26px; height:26px; border-radius: var(--r-sm); display:grid; place-items:center;
+    font-size: var(--fs-3xs); font-weight:700; letter-spacing:.02em; }
+  .tp-id{ display:flex; flex-direction:column; min-width:0; }
+  .tp-code{ font-size: var(--fs-2xs); font-weight:700; }
+  .tp-name{ font-size: var(--fs-3xs); color: var(--ink-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tp-delta{ font-size: var(--fs-3xs); font-weight:700; font-variant-numeric: tabular-nums; }
+  .tp-delta.is-up{ color: var(--positive); } .tp-delta.is-down{ color: var(--negative); }
+  .tp-delta.is-flat{ color: var(--ink-faint); }
+  .tp-figure{ display:flex; align-items:baseline; gap: var(--sp-4); }
+  .tp-value{ font-size: var(--fs-md); font-weight:700; font-variant-numeric: tabular-nums; }
+  .tp-unit{ font-size: var(--fs-3xs); color: var(--ink-faint); }
+  .tp-plot{ line-height:0; }
+  .tp-foot{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-4);
+    font-size: var(--fs-3xs); color: var(--ink-faint); }
+  .tp-range{ font-variant-numeric: tabular-nums; }
+  .tp-range.is-none{ font-style: italic; }
+
+  /* ---------- the 30-day strip -------------------------------------------- */
+  .up-summary{ display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-5);
+    padding-bottom: var(--sp-6); border-bottom:1px solid var(--line); margin-bottom: var(--sp-5); }
+  .up-sum-cell{ display:flex; flex-direction:column; gap:2px; }
+  .up-sum-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.05em; color: var(--ink-dim); }
+  .up-sum-v{ font-size: var(--fs-2xs); font-weight:700; font-variant-numeric: tabular-nums; }
+  .up-sum-v.is-in{ color: var(--positive); } .up-sum-v.is-out{ color: var(--negative); }
+  .up-track{ display:flex; justify-content:space-between; font-size: var(--fs-3xs);
+    color: var(--ink-faint); padding-bottom: var(--sp-3); }
+  .up-item{ padding: var(--sp-5) 0; border-bottom:1px solid var(--line); }
+  .up-item:last-of-type{ border-bottom:0; }
+  .up-item-top{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-4); }
+  .up-who{ font-size: var(--fs-2xs); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .up-amt{ font-size: var(--fs-2xs); font-variant-numeric: tabular-nums; }
+  .up-amt.is-in{ color: var(--positive); } .up-amt.is-out{ color: var(--negative); }
+  .up-rail{ position:relative; height:6px; margin: var(--sp-4) 0 var(--sp-3);
+    background: var(--line); border-radius:3px; }
+  .up-bar{ position:absolute; inset:0 auto 0 0; border-radius:3px; opacity:.5; }
+  .up-bar.is-in{ background: var(--positive); } .up-bar.is-out{ background: var(--negative); }
+  .up-pin{ position:absolute; top:-3px; width:2px; height:12px; background: var(--ink);
+    border-radius:1px; transform: translateX(-1px); }
+  .up-item.is-overdue .up-pin{ background: var(--negative); }
+  .up-item.is-soon .up-pin{ background: var(--warn); }
+  .up-when{ font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .up-item.is-overdue .up-when{ color: var(--negative); }
+
+  .tm-trend-pct{ margin-left: var(--sp-4); opacity:.7; font-variant-numeric: tabular-nums; }
+
+
+  /* The trend badge now carries a rate as well as an amount, so the window it
+     was measured over has to be visible: 28.2% over what? */
+  #tm-trend .tm-trend-period{ display:inline; margin-left: var(--sp-4);
+    font-size: var(--fs-3xs); color: var(--ink-faint); letter-spacing:.04em; }
 
 </style>
 </head>
@@ -4391,46 +4467,61 @@
   // side-panel wording ("Nd ago" vs "N days ago"); the null case (crypto that's
   // never been synced) is handled by the caller since currencies don't have it.
   function daysAgoLabel(dateStr, compact){
-    const age = Math.floor((Date.now() - new Date(dateStr+"T00:00:00").getTime()) / (1000*60*60*24));
-    if (age <= 0) return compact ? "Today" : "today";
-    if (age === 1) return "1 day ago";
-    return compact ? `${age}d ago` : `${age} days ago`;
+    const t = dateStr ? new Date(dateStr + "T00:00:00").getTime() : NaN;
+    if (!isFinite(t)) return compact ? "—" : "never";
+    const age = Math.floor((Date.now() - t) / 864e5);
+    if (age <= 0) return compact ? "now" : "today";
+    if (age === 1) return compact ? "1d" : "yesterday";
+    if (age < 14) return compact ? age + "d" : age + " days ago";
+    if (age < 60) return compact ? Math.round(age / 7) + "w" : Math.round(age / 7) + " weeks ago";
+    return compact ? Math.round(age / 30) + "mo" : Math.round(age / 30) + " months ago";
   }
+
+
 
   // Shared by the currency/crypto rows (small, bare line) and the Total money hero
   // (wide, area-filled). Options rather than a second near-identical function.
   let sparkSeq = 0;
   function buildSparkline(history, opts){
+    // Smoothed area with the range marked: on an analytical surface the useful
+    // part of a sparkline is not the shape but how far it travelled.
     if (!history || history.length < 2) return "";
     const o = opts || {};
     const key = o.valueKey || "rate";
     const w = o.width || 46, h = o.height || 22, pad = o.pad != null ? o.pad : 2;
-    const values = history.map(x=>x[key]);
-    const min = Math.min(...values), max = Math.max(...values);
+    const values = history.map(x => x[key]);
+    const min = Math.min.apply(null, values), max = Math.max.apply(null, values);
     const range = (max - min) || 1;
-    const xy = values.map((v,i)=>{
-      const x = pad + (i / (values.length - 1)) * (w - pad*2);
-      const y = pad + (1 - (v - min) / range) * (h - pad*2);
-      return [x, y];
-    });
-    const points = xy.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-    const up = values[values.length-1] >= values[0];
-    const color = o.color || (up ? "var(--positive)" : "var(--negative)");
-    const stroke = o.strokeWidth || 1.6;
-    let fill = "";
-    if (o.area){
-      const id = "spk" + (++sparkSeq);
-      const area = `${xy[0][0].toFixed(1)},${h} ` + points + ` ${xy[xy.length-1][0].toFixed(1)},${h}`;
-      fill = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${color}" stop-opacity="0.28"/>
-          <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-        </linearGradient></defs>
-        <polygon points="${area}" fill="url(#${id})"/>`;
+    const xy = values.map((v, i) => [
+      pad + (i / (values.length - 1)) * (w - pad * 2),
+      pad + (1 - (v - min) / range) * (h - pad * 2)
+    ]);
+    // Catmull-Rom to cubic: the reading is continuous, so the line should be.
+    let d = "M" + xy[0][0].toFixed(1) + "," + xy[0][1].toFixed(1);
+    for (let i = 0; i < xy.length - 1; i++){
+      const p0 = xy[i - 1] || xy[i], p1 = xy[i], p2 = xy[i + 1], p3 = xy[i + 2] || p2;
+      d += " C" + (p1[0] + (p2[0] - p0[0]) / 6).toFixed(1) + "," + (p1[1] + (p2[1] - p0[1]) / 6).toFixed(1) +
+           " " + (p2[0] - (p3[0] - p1[0]) / 6).toFixed(1) + "," + (p2[1] - (p3[1] - p1[1]) / 6).toFixed(1) +
+           " " + p2[0].toFixed(1) + "," + p2[1].toFixed(1);
     }
-    return `<svg viewBox="0 0 ${w} ${h}"${o.area ? ' preserveAspectRatio="none"' : ` width="${w}" height="${h}"`} fill="none">
-      ${fill}<polyline points="${points}" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
+    const up = values[values.length - 1] >= values[0];
+    const color = o.color || (up ? "var(--positive)" : "var(--negative)");
+    const id = "spk" + (++sparkSeq);
+    const area = '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="' + color + '" stop-opacity="' + (o.area ? "0.30" : "0.16") + '"/>' +
+      '<stop offset="100%" stop-color="' + color + '" stop-opacity="0"/></linearGradient></defs>' +
+      '<path d="' + d + ' L' + xy[xy.length - 1][0].toFixed(1) + ',' + h + ' L' + xy[0][0].toFixed(1) + ',' + h +
+      ' Z" fill="url(#' + id + ')"/>';
+    const hi = xy[values.indexOf(max)], lo = xy[values.indexOf(min)];
+    const marks = o.area ? "" :
+      '<circle cx="' + hi[0].toFixed(1) + '" cy="' + hi[1].toFixed(1) + '" r="1.5" fill="' + color + '" opacity=".55"/>' +
+      '<circle cx="' + lo[0].toFixed(1) + '" cy="' + lo[1].toFixed(1) + '" r="1.5" fill="' + color + '" opacity=".55"/>';
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '"' +
+      (o.area ? ' preserveAspectRatio="none"' : ' width="' + w + '" height="' + h + '"') + ' fill="none">' +
+      area + '<path d="' + d + '" stroke="' + color + '" stroke-width="' + (o.strokeWidth || 1.7) +
+      '" stroke-linecap="round" stroke-linejoin="round"/>' + marks + '</svg>';
   }
+
 
   // Count the hero figure up to its value. This single effect does more for how
   // the app reads than any static styling — but it is motion, so anyone who asked
@@ -4460,46 +4551,76 @@
   function renderTotalMoneyTrend(current){
     const el = document.getElementById("tm-trend");
     if (!el) return;
-    const cutoff = toLocalISO(new Date(Date.now() - 30*864e5));
-    const past = netWorthHistory.filter(h=>h.date <= cutoff);
+    const cutoff = toLocalISO(new Date(Date.now() - 30 * 864e5));
+    const past = netWorthHistory.filter(h => h.date <= cutoff);
     if (!past.length){ el.style.display = "none"; return; }
-    const then = past[past.length-1].netWorth;
+    const then = past[past.length - 1].netWorth;
     const diff = round2(current - then);
+    const pct = then ? (diff / then) * 100 : 0;
     el.style.display = "";
     el.classList.toggle("is-down", diff < 0);
     el.classList.toggle("is-flat", Math.abs(diff) < 0.01);
-    const arrow = Math.abs(diff) < 0.01 ? "" : (diff > 0 ? "▲ " : "▼ ");
-    el.innerHTML = `${arrow}${fmtMoney(Math.abs(diff))}<span class="tm-trend-period">30d</span>`;
+    // Both the absolute and the relative move: one without the other is half a
+    // fact. A gain of a thousand means something different on ten thousand.
+    el.innerHTML = (Math.abs(diff) < 0.01 ? "" : (diff > 0 ? "\u25B2 " : "\u25BC ")) +
+      fmtMoney(Math.abs(diff)) +
+      (Math.abs(pct) >= 0.05 ? '<span class="tm-trend-pct">' + Math.abs(pct).toFixed(1) + '%</span>' : "") +
+      '<span class="tm-trend-period">30d</span>';
   }
+
 
   function renderSideCurrencyList(){
     const wrap = document.getElementById("side-currency-list");
-    if (!wrap) return; // panel only exists on wide screens
+    if (!wrap) return;
     if (!currencies.length){
-      wrap.innerHTML = `<p class="hint">Track a currency in Settings and it'll show up here.</p>`;
+      wrap.innerHTML = '<p class="hint">Track a currency in Settings to see it here.</p>';
       return;
     }
-    const sorted = currencies.slice().sort((a,b)=>a.code.localeCompare(b.code));
-    wrap.innerHTML = sorted.map((c,i)=>{
-      const name = (CURRENCY_OPTIONS.find(o=>o.code===c.code) || {}).name || "";
-      const ageLabel = daysAgoLabel(c.lastUpdated, true);
-      const badgeClass = CURRENCY_BADGE_COLORS[i % CURRENCY_BADGE_COLORS.length];
-      const spark = buildSparkline(c.history);
-      return `
-        <div class="side-currency-item">
-          <div class="side-currency-badge ${badgeClass}">${c.code.slice(0,2)}</div>
-          <div class="side-currency-info">
-            <div class="side-currency-code">${c.code}</div>
-            <div class="side-currency-name">${escapeHtml(name)}</div>
-          </div>
-          <div class="side-currency-spark">${spark}</div>
-          <div class="side-currency-rate">
-            <div class="side-currency-value">${fmtMoney(c.rate)}</div>
-            <div class="side-currency-updated">${ageLabel}</div>
-          </div>
-        </div>`;
-    }).join("");
+    // Ordered by how much they have moved, not alphabetically: the point of the
+    // panel is which rate needs attention.
+    const sorted = currencies.slice().sort((a, b) => Math.abs(driftPct(b.history)) - Math.abs(driftPct(a.history)));
+    wrap.innerHTML = '<div class="tp-grid">' + sorted.map((c, i) => {
+      const name = (CURRENCY_OPTIONS.find(o => o.code === c.code) || {}).name || "";
+      return trackerPanelHtml({
+        code: c.code, name: name, value: fmtMoney(c.rate), unit: "per PHP",
+        history: c.history, age: daysAgoLabel(c.lastUpdated, true),
+        badge: CURRENCY_BADGE_COLORS[i % CURRENCY_BADGE_COLORS.length]
+      });
+    }).join("") + '</div>';
   }
+
+  function driftPct(history, key){
+    if (!history || history.length < 2) return 0;
+    const k = key || "rate";
+    const a = history[0][k], b = history[history.length - 1][k];
+    return a ? ((b - a) / a) * 100 : 0;
+  }
+
+  // One panel shape for both trackers: identity, current reading, the fortnight's
+  // move and the observed range. The range is what stops a 2% move being read as
+  // dramatic when the thing swings 8% in a normal fortnight.
+  function trackerPanelHtml(o){
+    const pct = driftPct(o.history);
+    const vals = (o.history || []).map(h => h.rate).filter(v => typeof v === "number");
+    const spread = vals.length > 1
+      ? '<span class="tp-range">' + fmtMoney(Math.min.apply(null, vals)) + ' \u2013 ' + fmtMoney(Math.max.apply(null, vals)) + '</span>'
+      : '<span class="tp-range is-none">no range yet</span>';
+    const dir = Math.abs(pct) < 0.05 ? "is-flat" : pct > 0 ? "is-up" : "is-down";
+    return '<div class="tp">' +
+      '<div class="tp-top">' +
+        '<span class="tp-badge ' + o.badge + '">' + o.code.slice(0, 2) + '</span>' +
+        '<span class="tp-id"><span class="tp-code">' + o.code + '</span>' +
+          '<span class="tp-name">' + escapeHtml(o.name || "") + '</span></span>' +
+        '<span class="tp-delta ' + dir + '">' + (Math.abs(pct) < 0.05 ? "\u2014" :
+          (pct > 0 ? "+" : "\u2212") + Math.abs(pct).toFixed(1) + "%") + '</span>' +
+      '</div>' +
+      '<div class="tp-figure"><span class="tp-value">' + o.value + '</span>' +
+        '<span class="tp-unit">' + o.unit + '</span></div>' +
+      '<div class="tp-plot">' + buildSparkline(o.history, { width: 132, height: 30, pad: 3 }) + '</div>' +
+      '<div class="tp-foot">' + spread + '<span class="tp-age">' + o.age + '</span></div>' +
+    '</div>';
+  }
+
 
   async function syncCurrencyRates(){
     const statusEl = document.getElementById("currency-sync-status");
@@ -4576,19 +4697,43 @@
   // Overdue items are included and sort to the top — they're the most urgent.
   // One row of a proportional breakdown: label, amount, and a bar showing share.
   function shareRowHtml(label, amount, pct, color){
-    return `
-      <div class="share-row">
-        <div class="share-row-top">
-          <span class="share-label">${escapeHtml(label)}</span>
-          <span class="share-amount">${fmtMoney(amount)}</span>
-        </div>
-        <div class="share-track"><div class="share-fill" style="--fill:${(Math.max(2, Math.min(100, pct))/100).toFixed(3)}; background:${color};"></div></div>
-      </div>`;
+    const p = Math.max(0, Math.min(100, pct));
+    return '<div class="share-row is-drillable" data-share-label="' + escapeHtml(label) + '">' +
+      '<div class="share-row-top">' +
+        '<span class="share-label">' + escapeHtml(label) + '</span>' +
+        '<span class="share-amount">' + fmtMoney(amount) + '</span>' +
+        '<span class="share-pct">' + p.toFixed(1) + '%</span>' +
+      '</div>' +
+      '<div class="share-track"><div class="share-fill" style="--fill:' + (Math.max(2, p) / 100).toFixed(3) +
+        '; background:' + (color || "var(--accent)") + ';"></div></div>' +
+    '</div>';
   }
 
+
   function sideSection(title, bodyHtml){
-    return `<div class="side-panel-head"><div class="side-panel-head-row"><h2>${escapeHtml(title)}</h2></div></div>${bodyHtml}`;
+    return '<div class="side-panel-head"><div class="side-panel-head-row"><h2>' +
+      escapeHtml(title) + '</h2></div></div>' + bodyHtml;
   }
+
+  // The figure row that heads every analysis panel: three cells, each labelled,
+  // so a number is never shown without saying what it is.
+  function figureRowHtml(cells){
+    return '<div class="fig-row">' + cells.map(c =>
+      '<div class="fig-cell"><span class="fig-k">' + escapeHtml(c.k) + '</span>' +
+        '<span class="fig-v' + (c.tone ? " is-" + c.tone : "") + '">' + c.v + '</span>' +
+        (c.sub ? '<span class="fig-sub">' + escapeHtml(c.sub) + '</span>' : "") + '</div>').join("") + '</div>';
+  }
+
+  // Concentration: how much of the whole the top few account for. A list of
+  // shares without this leaves the reader to add the first three up themselves.
+  function concentrationHtml(rows, total, noun){
+    if (rows.length < 3 || !total) return "";
+    const top3 = round2(rows.slice(0, 3).reduce((t, r) => t + r.amount, 0));
+    return '<p class="concentration">Top three ' + noun + ' make up <strong>' +
+      Math.round((top3 / total) * 100) + '%</strong> of the total \u2014 ' + fmtMoney(top3) +
+      ' of ' + fmtMoney(total) + '.</p>';
+  }
+
 
   // What the right-hand column shows depends on where you are. Currencies and
   // crypto stay for the dashboard and settings, where they are ambient reference;
@@ -4601,131 +4746,161 @@
     if (trackers) trackers.style.display = showTrackers ? "" : "none";
 
     if (tabName === "charts"){
-      const { start, end } = getRangeBounds(currentRange);
-      const inRange = expenses.filter(e=>{ const d = new Date(e.date + "T00:00:00"); return d >= start && d <= end; });
-      const total = inRange.reduce((s,e)=>s+e.amount, 0);
+      const b = getRangeBounds(currentRange);
+      const inRange = expenses.filter(e => { const d = new Date(e.date + "T00:00:00"); return d >= b.start && d <= b.end; });
+      const total = round2(inRange.reduce((s, e) => s + e.amount, 0));
       const byCat = {};
-      inRange.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + e.amount; });
-      const rows = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0, 8);
-      ctx.innerHTML = sideSection("Where it went",
-        !rows.length
-          ? `<p class="hint">Nothing in this range yet.</p>`
-          : `<p class="hint">${inRange.length} expense(s) · ${fmtMoney(total)}</p>`
-            + rows.map(([cat, amt])=> shareRowHtml(cat, amt, total ? (amt/total)*100 : 0, colorFor(cat))).join(""));
+      inRange.forEach(e => { byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
+      const rows = Object.keys(byCat).map(k => ({ label: k, amount: byCat[k] })).sort((a, b2) => b2.amount - a.amount);
+      const days = Math.max(1, Math.round((b.end - b.start) / 864e5) + 1);
+      ctx.innerHTML = sideSection("Composition",
+        !rows.length ? '<p class="hint">Nothing in this range yet.</p>'
+          : figureRowHtml([
+              { k: "Total", v: fmtMoney(total) },
+              { k: "Entries", v: String(inRange.length) },
+              { k: "Per day", v: fmtMoney(round2(total / days)), sub: days + " days" }
+            ])
+            + concentrationHtml(rows, total, "categories")
+            + rows.slice(0, 8).map(r => shareRowHtml(r.label, r.amount, total ? (r.amount / total) * 100 : 0, colorFor(r.label))).join(""));
       return;
     }
 
     if (tabName === "history"){
       const list = entryMode === "income" ? incomes : expenses;
-      const label = entryMode === "income" ? "income entries" : "expenses";
-      const total = list.reduce((s,e)=>s+e.amount, 0);
-      const avg = list.length ? total / list.length : 0;
-      const biggest = list.slice().sort((a,b)=>b.amount-a.amount)[0];
-      ctx.innerHTML = sideSection("At a glance",
-        !list.length
-          ? `<p class="hint">No ${label} logged yet.</p>`
-          : `<div class="side-figures">
-               <div><span class="sf-label">Entries</span><span class="sf-value">${list.length}</span></div>
-               <div><span class="sf-label">Total</span><span class="sf-value">${fmtMoneyRich(total)}</span></div>
-               <div><span class="sf-label">Average</span><span class="sf-value">${fmtMoneyRich(round2(avg))}</span></div>
-             </div>
-             ${biggest ? `<p class="hint" style="margin-top:var(--sp-6);">Largest: <strong>${escapeHtml(biggest.description)}</strong> — ${fmtMoney(biggest.amount)}</p>` : ""}`);
+      const total = round2(list.reduce((s, e) => s + e.amount, 0));
+      const sorted = list.slice().sort((a, b) => b.amount - a.amount);
+      const biggest = sorted[0];
+      const med = sorted.length ? sorted[Math.floor(sorted.length / 2)].amount : 0;
+      const byCat = {};
+      list.forEach(e => { byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
+      const rows = Object.keys(byCat).map(k => ({ label: k, amount: byCat[k] })).sort((a, b2) => b2.amount - a.amount);
+      ctx.innerHTML = sideSection(entryMode === "income" ? "Income profile" : "Expense profile",
+        !list.length ? '<p class="hint">Nothing logged yet.</p>'
+          : figureRowHtml([
+              { k: "Total", v: fmtMoney(total) },
+              { k: "Median", v: fmtMoney(med), sub: "typical entry" },
+              { k: "Largest", v: fmtMoney(biggest.amount), sub: biggest.description }
+            ])
+            + '<p class="concentration">The median is <strong>' + fmtMoney(med) +
+              '</strong> against a mean of ' + fmtMoney(round2(total / list.length)) +
+              (med && total / list.length > med * 1.3
+                ? ' \u2014 a few large entries are pulling the average up.'
+                : ' \u2014 the distribution is fairly even.') + '</p>'
+            + rows.slice(0, 6).map(r => shareRowHtml(r.label, r.amount, total ? (r.amount / total) * 100 : 0, colorFor(r.label))).join(""));
       return;
     }
 
     if (tabName === "savings"){
-      const total = savings.reduce((s,a)=>s+a.amount, 0);
-      const monthly = savings.reduce((s,a)=>s+netMonthlyInterest(a), 0);
-      const rows = savings.slice().sort((a,b)=>b.amount-a.amount);
+      const total = round2(savings.reduce((s, a) => s + a.amount, 0));
+      const monthly = round2(savings.reduce((s, a) => s + netMonthlyInterest(a), 0));
+      const rows = savings.slice().sort((a, b) => b.amount - a.amount)
+        .map(a => ({ label: a.provider, amount: a.amount }));
       ctx.innerHTML = sideSection("Allocation",
-        !rows.length
-          ? `<p class="hint">No accounts yet.</p>`
-          : `<p class="hint">${fmtMoney(total)} across ${rows.length} account(s) · ${fmtMoney(monthly)}/mo interest</p>`
-            + rows.map(a=> shareRowHtml(a.provider, a.amount, total ? (a.amount/total)*100 : 0, "var(--accent)")).join(""));
+        !rows.length ? '<p class="hint">No accounts yet.</p>'
+          : figureRowHtml([
+              { k: "Held", v: fmtMoney(total), sub: rows.length + " accounts" },
+              { k: "Interest", v: fmtMoney(monthly), tone: "pos", sub: "per month, net" },
+              { k: "Effective", v: (total ? (monthly * 12 / total * 100).toFixed(2) : "0.00") + "%", sub: "annualised" }
+            ])
+            + concentrationHtml(rows, total, "accounts")
+            + rows.map(r => shareRowHtml(r.label, r.amount, total ? (r.amount / total) * 100 : 0, "var(--accent)")).join(""));
       return;
     }
 
     if (tabName === "loans"){
-      const lent = loansGiven.filter(l=>l.status==="outstanding").reduce((s,l)=>s+l.amount,0);
-      const owed = loansTaken.filter(l=>l.status==="outstanding").reduce((s,l)=>s+l.amount,0);
-      const unsold = investments.filter(i=>i.actualSoldPrice == null);
-      const invested = unsold.reduce((s,i)=>s+i.amount,0);
-      const projected = unsold.reduce((s,i)=>s+(i.projectedPrice != null ? i.projectedPrice : i.amount),0);
+      const lent = round2(loansGiven.filter(l => l.status === "outstanding").reduce((s, l) => s + l.amount, 0));
+      const owed = round2(loansTaken.filter(l => l.status === "outstanding").reduce((s, l) => s + l.amount, 0));
+      const unsold = investments.filter(i => i.actualSoldPrice == null);
+      const invested = round2(unsold.reduce((s, i) => s + i.amount, 0));
+      const projected = round2(unsold.reduce((s, i) => s + (i.projectedPrice != null ? i.projectedPrice : i.amount), 0));
+      const upside = round2(projected - invested);
       ctx.innerHTML = sideSection("Position",
-        `<div class="side-figures">
-           <div><span class="sf-label">Owed to you</span><span class="sf-value">${fmtMoneyRich(lent)}</span></div>
-           <div><span class="sf-label">You owe</span><span class="sf-value" style="color:var(--warn);">${fmtMoneyRich(owed)}</span></div>
-           <div><span class="sf-label">Invested</span><span class="sf-value">${fmtMoneyRich(invested)}</span></div>
-         </div>
-         ${unsold.length ? `<p class="hint" style="margin-top:var(--sp-6);">If projections hold, ${unsold.length} holding(s) reach <strong>${fmtMoney(projected)}</strong>.</p>` : ""}`);
+        figureRowHtml([
+          { k: "Owed to you", v: fmtMoney(lent), tone: "pos" },
+          { k: "You owe", v: fmtMoney(owed), tone: "warn" },
+          { k: "Net", v: fmtMoney(round2(lent - owed)) }
+        ])
+        + figureRowHtml([
+          { k: "Invested", v: fmtMoney(invested), sub: unsold.length + " open" },
+          { k: "Projected", v: fmtMoney(projected) },
+          { k: "Upside", v: fmtMoney(upside), tone: upside >= 0 ? "pos" : "neg",
+            sub: invested ? ((upside / invested) * 100).toFixed(1) + "%" : "" }
+        ])
+        + (unsold.length
+            ? '<p class="concentration">Projections are your own estimates, not market data \u2014 the upside figure is only as good as the numbers entered against each holding.</p>'
+            : ''));
       return;
     }
 
     ctx.innerHTML = "";
   }
 
-  function renderSideUpcoming(){
 
+  function renderSideUpcoming(){
     const wrap = document.getElementById("side-upcoming-list");
     if (!wrap) return;
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayStr = toLocalISO(today);
     const horizon = new Date(today); horizon.setDate(horizon.getDate() + 30);
     const horizonStr = toLocalISO(horizon);
 
-    const items = [
-      ...loansGiven.filter(l=>l.status === "outstanding" && l.deadline)
-        .map(l=>({ ...l, dir:"in", label:`${l.person} owes you` })),
-      ...loansTaken.filter(l=>l.status === "outstanding" && l.deadline)
-        .map(l=>({ ...l, dir:"out", label:`You owe ${l.person}` }))
-    ]
-      .filter(l=>l.deadline <= horizonStr)
-      .sort((a,b)=>a.deadline.localeCompare(b.deadline))
-      .slice(0, 5);
+    const items = [].concat(
+      loansGiven.filter(l => l.status === "outstanding" && l.deadline)
+        .map(l => ({ deadline: l.deadline, amount: l.amount, dir: "in", who: l.person })),
+      loansTaken.filter(l => l.status === "outstanding" && l.deadline)
+        .map(l => ({ deadline: l.deadline, amount: l.amount, dir: "out", who: l.person }))
+    ).filter(l => l.deadline <= horizonStr)
+     .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
     if (!items.length){
-      wrap.innerHTML = `<p class="hint">Nothing due in the next 30 days.</p>`;
+      wrap.innerHTML = '<p class="hint">Nothing due in the next 30 days.</p>';
       return;
     }
-    wrap.innerHTML = items.map(l=>{
-      const due = new Date(l.deadline + "T00:00:00");
-      const days = Math.round((due - today) / (1000*60*60*24));
-      const when = days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? "Due today" : `in ${days}d`;
-      const cls = days < 0 ? "deadline-overdue" : days <= 7 ? "deadline-soon" : "";
-      return `
-        <div class="side-upcoming-item">
-          <div class="side-upcoming-info">
-            <div class="side-upcoming-who">${escapeHtml(l.label)}</div>
-            <div class="side-upcoming-when ${cls}">${when}</div>
-          </div>
-          <div class="side-upcoming-amt ${l.dir === "in" ? "is-in" : "is-out"}">${fmtMoneyRich(l.amount)}</div>
-        </div>`;
-    }).join("");
+    const inSum = round2(items.filter(l => l.dir === "in").reduce((t, l) => t + l.amount, 0));
+    const outSum = round2(items.filter(l => l.dir === "out").reduce((t, l) => t + l.amount, 0));
+    // A 30-day track, so position on the strip carries the timing and the bar
+    // width carries the size. Both facts at once is the point of the panel.
+    const maxAmt = Math.max.apply(null, items.map(l => l.amount).concat([1]));
+    wrap.innerHTML =
+      '<div class="up-summary">' +
+        '<div class="up-sum-cell"><span class="up-sum-k">Coming in</span><span class="up-sum-v is-in">' + fmtMoney(inSum) + '</span></div>' +
+        '<div class="up-sum-cell"><span class="up-sum-k">Going out</span><span class="up-sum-v is-out">' + fmtMoney(outSum) + '</span></div>' +
+        '<div class="up-sum-cell"><span class="up-sum-k">Net</span><span class="up-sum-v">' +
+          (inSum - outSum >= 0 ? "" : "\u2212") + fmtMoney(Math.abs(round2(inSum - outSum))) + '</span></div>' +
+      '</div>'
+      + '<div class="up-track"><span class="up-track-now">today</span><span class="up-track-end">+30d</span></div>'
+      + items.slice(0, 6).map(l => {
+        const days = Math.round((new Date(l.deadline + "T00:00:00") - today) / 864e5);
+        const pos = Math.max(0, Math.min(100, (days / 30) * 100));
+        const cls = l.deadline < todayStr ? "is-overdue" : days <= 7 ? "is-soon" : "";
+        return '<div class="up-item ' + cls + '">' +
+          '<div class="up-item-top"><span class="up-who">' + escapeHtml(l.who) + '</span>' +
+            '<span class="up-amt ' + (l.dir === "in" ? "is-in" : "is-out") + '">' + fmtMoney(l.amount) + '</span></div>' +
+          '<div class="up-rail"><i class="up-bar ' + (l.dir === "in" ? "is-in" : "is-out") +
+            '" style="width:' + Math.round((l.amount / maxAmt) * 100) + '%"></i>' +
+            '<i class="up-pin" style="left:' + pos.toFixed(1) + '%"></i></div>' +
+          '<div class="up-when">' + (days < 0 ? Math.abs(days) + " days overdue" : days === 0 ? "due today" : "in " + days + " days") +
+            ' \u00B7 ' + l.deadline + '</div>' +
+        '</div>';
+      }).join("")
+      + (items.length > 6 ? '<p class="hint">' + (items.length - 6) + ' more beyond the six shown.</p>' : "");
   }
+
 
   function renderSideCryptoList(){
     const wrap = document.getElementById("side-crypto-list");
-    if (!wrap) return; // panel only exists on wide screens
-    const sorted = cryptos.slice().sort((a,b)=>a.code.localeCompare(b.code));
-    wrap.innerHTML = sorted.map((c,i)=>{
-      const asset = CRYPTO_ASSETS.find(a=>a.code===c.code) || {};
-      const ageLabel = !c.lastUpdated ? "Not synced" : daysAgoLabel(c.lastUpdated, true);
-      const badgeClass = CURRENCY_BADGE_COLORS[i % CURRENCY_BADGE_COLORS.length];
-      const spark = buildSparkline(c.history);
-      return `
-        <div class="side-currency-item">
-          <div class="side-currency-badge ${badgeClass}">${c.code.slice(0,2)}</div>
-          <div class="side-currency-info">
-            <div class="side-currency-code">${c.code}</div>
-            <div class="side-currency-name">${escapeHtml(asset.name||"")}</div>
-          </div>
-          <div class="side-currency-spark">${spark}</div>
-          <div class="side-currency-rate">
-            <div class="side-currency-value">${c.price ? fmtMoney(c.price) : "—"}</div>
-            <div class="side-currency-updated">${ageLabel}</div>
-          </div>
-        </div>`;
-    }).join("");
+    if (!wrap) return;
+    const sorted = cryptos.slice().sort((a, b) => Math.abs(driftPct(b.history)) - Math.abs(driftPct(a.history)));
+    wrap.innerHTML = '<div class="tp-grid">' + sorted.map((c, i) => {
+      const asset = CRYPTO_ASSETS.find(a => a.code === c.code) || {};
+      return trackerPanelHtml({
+        code: c.code, name: asset.name || "", value: c.price ? fmtMoney(c.price) : "\u2014", unit: "PHP",
+        history: c.history, age: c.lastUpdated ? daysAgoLabel(c.lastUpdated, true) : "never",
+        badge: CURRENCY_BADGE_COLORS[i % CURRENCY_BADGE_COLORS.length]
+      });
+    }).join("") + '</div>';
   }
+
 
   async function syncCryptoPrices(){
     const statusEl = document.getElementById("crypto-sync-status");

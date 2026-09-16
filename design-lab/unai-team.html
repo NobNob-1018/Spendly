@@ -969,6 +969,37 @@
   .insight-prose .insight.is-warn{ color: var(--warn); }
   .insights-strip{ flex-direction:column; }
 
+
+  /* ---------- the margin as written notes --------------------------------- */
+  .note-line{ margin: 0 0 var(--sp-6); font-size: var(--fs-sm); line-height: 1.75;
+    color: var(--ink-soft); max-width: 40ch; }
+  .note-line:last-child{ margin-bottom:0; }
+  .note-line strong{ color: var(--ink); font-weight:600; font-variant-numeric: tabular-nums; }
+  .note-line.is-quiet{ color: var(--ink-dim); font-style: italic; }
+  .note-lead{ margin: 0 0 var(--sp-6); font-size: var(--fs-sm); line-height:1.7;
+    color: var(--ink); padding-bottom: var(--sp-6); border-bottom:1px solid var(--line); }
+  .note-spark{ display:inline-block; vertical-align:-3px; margin-left: 2px; opacity:.7; }
+
+  .share-said{ margin: 0; padding: var(--sp-4) 0; font-size: var(--fs-sm); line-height:1.6;
+    color: var(--ink-soft); border-bottom:1px solid var(--line); display:flex;
+    align-items:baseline; justify-content:space-between; gap: var(--sp-5); }
+  .share-said:last-child{ border-bottom:0; }
+  .share-said strong{ color: var(--ink); font-weight:500; }
+  .share-said-pct{ color: var(--ink-dim); font-size: var(--fs-2xs); margin-left: var(--sp-5);
+    font-variant-numeric: tabular-nums; }
+
+  .agenda{ list-style:none; margin:0; padding:0; }
+  .agenda-item{ padding: var(--sp-5) 0; border-bottom:1px solid var(--line); }
+  .agenda-item:last-child{ border-bottom:0; }
+  .agenda-date{ display:block; font-size: var(--fs-3xs); letter-spacing:.05em;
+    text-transform:uppercase; color: var(--ink-dim); margin-bottom: var(--sp-3); }
+  .agenda-say{ display:block; font-size: var(--fs-sm); line-height:1.65; color: var(--ink-soft); }
+  .agenda-say strong{ color: var(--ink); font-weight:600; font-variant-numeric: tabular-nums; }
+  .agenda-item.is-late .agenda-date{ color: var(--negative); }
+
+  .tm-trend-words{ font-size: var(--fs-sm); font-style: italic; color: var(--ink-dim); letter-spacing:0; }
+  #tm-trend{ background:none; border:0; padding:0; }
+
 </style>
 </head>
 
@@ -4446,46 +4477,57 @@
   // side-panel wording ("Nd ago" vs "N days ago"); the null case (crypto that's
   // never been synced) is handled by the caller since currencies don't have it.
   function daysAgoLabel(dateStr, compact){
-    const age = Math.floor((Date.now() - new Date(dateStr+"T00:00:00").getTime()) / (1000*60*60*24));
-    if (age <= 0) return compact ? "Today" : "today";
-    if (age === 1) return "1 day ago";
-    return compact ? `${age}d ago` : `${age} days ago`;
+    // Written, not abbreviated. "a fortnight ago" is how a note would put it.
+    const t = dateStr ? new Date(dateStr + "T00:00:00").getTime() : NaN;
+    if (!isFinite(t)) return "not yet noted";
+    const age = Math.floor((Date.now() - t) / 864e5);
+    if (age <= 0) return "today";
+    if (age === 1) return "yesterday";
+    if (age < 7) return age + " days ago";
+    if (age < 10) return "a week ago";
+    if (age < 18) return "a fortnight ago";
+    if (age < 45) return "about a month ago";
+    return Math.round(age / 30) + " months ago";
   }
+
+
 
   // Shared by the currency/crypto rows (small, bare line) and the Total money hero
   // (wide, area-filled). Options rather than a second near-identical function.
   let sparkSeq = 0;
   function buildSparkline(history, opts){
+    // A hairline, no fill, no colour coding. In a reading column the shape is a
+    // footnote to the sentence; if it shouted it would pull the eye off the words.
     if (!history || history.length < 2) return "";
     const o = opts || {};
     const key = o.valueKey || "rate";
     const w = o.width || 46, h = o.height || 22, pad = o.pad != null ? o.pad : 2;
-    const values = history.map(x=>x[key]);
-    const min = Math.min(...values), max = Math.max(...values);
+    const values = history.map(x => x[key]);
+    const min = Math.min.apply(null, values), max = Math.max.apply(null, values);
     const range = (max - min) || 1;
-    const xy = values.map((v,i)=>{
-      const x = pad + (i / (values.length - 1)) * (w - pad*2);
-      const y = pad + (1 - (v - min) / range) * (h - pad*2);
-      return [x, y];
-    });
-    const points = xy.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-    const up = values[values.length-1] >= values[0];
-    const color = o.color || (up ? "var(--positive)" : "var(--negative)");
-    const stroke = o.strokeWidth || 1.6;
+    const xy = values.map((v, i) => [
+      pad + (i / (values.length - 1)) * (w - pad * 2),
+      pad + (1 - (v - min) / range) * (h - pad * 2)
+    ]);
+    const points = xy.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+    const last = xy[xy.length - 1];
+    const color = o.color || "var(--line-strong)";
     let fill = "";
     if (o.area){
       const id = "spk" + (++sparkSeq);
-      const area = `${xy[0][0].toFixed(1)},${h} ` + points + ` ${xy[xy.length-1][0].toFixed(1)},${h}`;
-      fill = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${color}" stop-opacity="0.28"/>
-          <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-        </linearGradient></defs>
-        <polygon points="${area}" fill="url(#${id})"/>`;
+      fill = '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="' + color + '" stop-opacity="0.16"/>' +
+        '<stop offset="100%" stop-color="' + color + '" stop-opacity="0"/></linearGradient></defs>' +
+        '<polygon points="' + xy[0][0].toFixed(1) + ',' + h + ' ' + points + ' ' + last[0].toFixed(1) + ',' + h +
+        '" fill="url(#' + id + ')"/>';
     }
-    return `<svg viewBox="0 0 ${w} ${h}"${o.area ? ' preserveAspectRatio="none"' : ` width="${w}" height="${h}"`} fill="none">
-      ${fill}<polyline points="${points}" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '"' +
+      (o.area ? ' preserveAspectRatio="none"' : ' width="' + w + '" height="' + h + '"') + ' fill="none">' +
+      fill + '<polyline points="' + points + '" stroke="' + color + '" stroke-width="' + (o.strokeWidth || 1) +
+      '" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="1.4" fill="' + color + '"/></svg>';
   }
+
 
   // Count the hero figure up to its value. This single effect does more for how
   // the app reads than any static styling — but it is motion, so anyone who asked
@@ -4515,46 +4557,60 @@
   function renderTotalMoneyTrend(current){
     const el = document.getElementById("tm-trend");
     if (!el) return;
-    const cutoff = toLocalISO(new Date(Date.now() - 30*864e5));
-    const past = netWorthHistory.filter(h=>h.date <= cutoff);
+    const cutoff = toLocalISO(new Date(Date.now() - 30 * 864e5));
+    const past = netWorthHistory.filter(h => h.date <= cutoff);
     if (!past.length){ el.style.display = "none"; return; }
-    const then = past[past.length-1].netWorth;
+    const then = past[past.length - 1].netWorth;
     const diff = round2(current - then);
     el.style.display = "";
     el.classList.toggle("is-down", diff < 0);
     el.classList.toggle("is-flat", Math.abs(diff) < 0.01);
-    const arrow = Math.abs(diff) < 0.01 ? "" : (diff > 0 ? "▲ " : "▼ ");
-    el.innerHTML = `${arrow}${fmtMoney(Math.abs(diff))}<span class="tm-trend-period">30d</span>`;
+    // The hero already gives the figure; the line under it says what happened.
+    const verb = Math.abs(diff) < 0.01 ? "unchanged over the last thirty days"
+      : (diff > 0 ? "up " : "down ") + fmtMoney(Math.abs(diff)) + " over the last thirty days";
+    el.innerHTML = '<span class="tm-trend-words">' + verb + '</span>';
   }
+
 
   function renderSideCurrencyList(){
     const wrap = document.getElementById("side-currency-list");
-    if (!wrap) return; // panel only exists on wide screens
+    if (!wrap) return;
     if (!currencies.length){
-      wrap.innerHTML = `<p class="hint">Track a currency in Settings and it'll show up here.</p>`;
+      wrap.innerHTML = '<p class="note-line">Nothing is being tracked. Add a currency in Settings and its rate will be noted here.</p>';
       return;
     }
-    const sorted = currencies.slice().sort((a,b)=>a.code.localeCompare(b.code));
-    wrap.innerHTML = sorted.map((c,i)=>{
-      const name = (CURRENCY_OPTIONS.find(o=>o.code===c.code) || {}).name || "";
-      const ageLabel = daysAgoLabel(c.lastUpdated, true);
-      const badgeClass = CURRENCY_BADGE_COLORS[i % CURRENCY_BADGE_COLORS.length];
-      const spark = buildSparkline(c.history);
-      return `
-        <div class="side-currency-item">
-          <div class="side-currency-badge ${badgeClass}">${c.code.slice(0,2)}</div>
-          <div class="side-currency-info">
-            <div class="side-currency-code">${c.code}</div>
-            <div class="side-currency-name">${escapeHtml(name)}</div>
-          </div>
-          <div class="side-currency-spark">${spark}</div>
-          <div class="side-currency-rate">
-            <div class="side-currency-value">${fmtMoney(c.rate)}</div>
-            <div class="side-currency-updated">${ageLabel}</div>
-          </div>
-        </div>`;
+    const sorted = currencies.slice().sort((a, b) => a.code.localeCompare(b.code));
+    wrap.innerHTML = sorted.map(c => {
+      const name = (CURRENCY_OPTIONS.find(o => o.code === c.code) || {}).name || c.code;
+      return '<p class="note-line">' +
+        '<strong>' + escapeHtml(name) + '</strong> stands at <strong>' + fmtMoney(c.rate) + '</strong> to the peso' +
+        driftClause(c.history, 'rate') + notedClause(c.lastUpdated) + '. ' +
+        '<span class="note-spark">' + buildSparkline(c.history) + '</span>' +
+      '</p>';
     }).join("");
   }
+
+  // "noted not yet noted" was the old composition: the sentence supplied the
+  // word and the label supplied it again. The clause owns the whole phrase now.
+  function notedClause(dateStr){
+    const t = dateStr ? new Date(dateStr + "T00:00:00").getTime() : NaN;
+    return isFinite(t) ? ", noted " + daysAgoLabel(dateStr, false) : ", not yet noted";
+  }
+
+  // The clause that says whether the figure has moved, written rather than
+  // signalled. A reader wants "a little higher than a fortnight ago", not "+0.4%".
+  function driftClause(history, key){
+    if (!history || history.length < 2) return "";
+    const k = key || "rate";
+    const a = history[0][k], b = history[history.length - 1][k];
+    if (!a) return "";
+    const pct = ((b - a) / a) * 100;
+    const mag = Math.abs(pct);
+    if (mag < 0.2) return ", steady over the fortnight";
+    const size = mag < 1 ? "a little" : mag < 4 ? "somewhat" : "markedly";
+    return ", " + size + " " + (pct > 0 ? "higher" : "lower") + " than a fortnight ago";
+  }
+
 
   async function syncCurrencyRates(){
     const statusEl = document.getElementById("currency-sync-status");
@@ -4631,19 +4687,31 @@
   // Overdue items are included and sort to the top — they're the most urgent.
   // One row of a proportional breakdown: label, amount, and a bar showing share.
   function shareRowHtml(label, amount, pct, color){
-    return `
-      <div class="share-row">
-        <div class="share-row-top">
-          <span class="share-label">${escapeHtml(label)}</span>
-          <span class="share-amount">${fmtMoney(amount)}</span>
-        </div>
-        <div class="share-track"><div class="share-fill" style="--fill:${(Math.max(2, Math.min(100, pct))/100).toFixed(3)}; background:${color};"></div></div>
-      </div>`;
+    // A line of the margin's own prose, not a bar chart in a narrow column.
+    return '<p class="share-said"><strong>' + escapeHtml(label) + '</strong> \u2014 ' +
+      fmtMoney(amount) + '<span class="share-said-pct">' + Math.round(pct) + '%</span></p>';
   }
 
+
   function sideSection(title, bodyHtml){
-    return `<div class="side-panel-head"><div class="side-panel-head-row"><h2>${escapeHtml(title)}</h2></div></div>${bodyHtml}`;
+    // In the margin a heading is set small and lettered, not boxed.
+    return '<div class="side-panel-head"><div class="side-panel-head-row"><h2>' +
+      escapeHtml(title) + '</h2></div></div>' + bodyHtml;
   }
+
+  // A share stated in words: the figure, then how much of the whole it is, in
+  // the plainest fraction that is honest.
+  function fractionWord(pct){
+    if (pct >= 72) return "very nearly all of it";
+    if (pct >= 60) return "close to two thirds";
+    if (pct >= 47) return "about half";
+    if (pct >= 30) return "roughly a third";
+    if (pct >= 22) return "about a quarter";
+    if (pct >= 15) return "a fifth or so";
+    if (pct >= 8) return "around a tenth";
+    return "a small part";
+  }
+
 
   // What the right-hand column shows depends on where you are. Currencies and
   // crypto stay for the dashboard and settings, where they are ambient reference;
@@ -4656,131 +4724,146 @@
     if (trackers) trackers.style.display = showTrackers ? "" : "none";
 
     if (tabName === "charts"){
-      const { start, end } = getRangeBounds(currentRange);
-      const inRange = expenses.filter(e=>{ const d = new Date(e.date + "T00:00:00"); return d >= start && d <= end; });
-      const total = inRange.reduce((s,e)=>s+e.amount, 0);
+      const b = getRangeBounds(currentRange);
+      const inRange = expenses.filter(e => { const d = new Date(e.date + "T00:00:00"); return d >= b.start && d <= b.end; });
+      const total = round2(inRange.reduce((s, e) => s + e.amount, 0));
       const byCat = {};
-      inRange.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + e.amount; });
-      const rows = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0, 8);
-      ctx.innerHTML = sideSection("Where it went",
+      inRange.forEach(e => { byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
+      const rows = Object.keys(byCat).map(k => ({ label: k, amount: byCat[k] })).sort((a, b2) => b2.amount - a.amount);
+      const top = rows[0];
+      ctx.innerHTML = sideSection("On this range",
         !rows.length
-          ? `<p class="hint">Nothing in this range yet.</p>`
-          : `<p class="hint">${inRange.length} expense(s) · ${fmtMoney(total)}</p>`
-            + rows.map(([cat, amt])=> shareRowHtml(cat, amt, total ? (amt/total)*100 : 0, colorFor(cat))).join(""));
+          ? '<p class="note-line">No entries fall inside this range.</p>'
+          : '<p class="note-line">Across <strong>' + inRange.length + '</strong> entries, <strong>' +
+              fmtMoney(total) + '</strong> left the account. <strong>' + escapeHtml(top.label) +
+              '</strong> took the largest share at ' + fmtMoney(top.amount) + ' \u2014 ' +
+              fractionWord(total ? (top.amount / total) * 100 : 0) + '.</p>'
+            + rows.slice(0, 7).map(r => shareRowHtml(r.label, r.amount, total ? (r.amount / total) * 100 : 0)).join(""));
       return;
     }
 
     if (tabName === "history"){
       const list = entryMode === "income" ? incomes : expenses;
-      const label = entryMode === "income" ? "income entries" : "expenses";
-      const total = list.reduce((s,e)=>s+e.amount, 0);
-      const avg = list.length ? total / list.length : 0;
-      const biggest = list.slice().sort((a,b)=>b.amount-a.amount)[0];
-      ctx.innerHTML = sideSection("At a glance",
+      const noun = entryMode === "income" ? "receipts" : "payments";
+      const total = round2(list.reduce((s, e) => s + e.amount, 0));
+      const sorted = list.slice().sort((a, b) => b.amount - a.amount);
+      const biggest = sorted[0];
+      ctx.innerHTML = sideSection("On the record",
         !list.length
-          ? `<p class="hint">No ${label} logged yet.</p>`
-          : `<div class="side-figures">
-               <div><span class="sf-label">Entries</span><span class="sf-value">${list.length}</span></div>
-               <div><span class="sf-label">Total</span><span class="sf-value">${fmtMoneyRich(total)}</span></div>
-               <div><span class="sf-label">Average</span><span class="sf-value">${fmtMoneyRich(round2(avg))}</span></div>
-             </div>
-             ${biggest ? `<p class="hint" style="margin-top:var(--sp-6);">Largest: <strong>${escapeHtml(biggest.description)}</strong> — ${fmtMoney(biggest.amount)}</p>` : ""}`);
+          ? '<p class="note-line">Nothing has been entered under ' + noun + ' yet.</p>'
+          : '<p class="note-line">The book holds <strong>' + list.length + '</strong> ' + noun +
+              ' totalling <strong>' + fmtMoney(total) + '</strong>, an average of ' +
+              fmtMoney(round2(total / list.length)) + ' apiece.</p>' +
+            '<p class="note-line">The largest single entry is <strong>' + escapeHtml(biggest.description) +
+              '</strong> at ' + fmtMoney(biggest.amount) + ', entered ' + daysAgoLabel(biggest.date, false) + '.</p>');
       return;
     }
 
     if (tabName === "savings"){
-      const total = savings.reduce((s,a)=>s+a.amount, 0);
-      const monthly = savings.reduce((s,a)=>s+netMonthlyInterest(a), 0);
-      const rows = savings.slice().sort((a,b)=>b.amount-a.amount);
-      ctx.innerHTML = sideSection("Allocation",
+      const total = round2(savings.reduce((s, a) => s + a.amount, 0));
+      const monthly = round2(savings.reduce((s, a) => s + netMonthlyInterest(a), 0));
+      const rows = savings.slice().sort((a, b) => b.amount - a.amount);
+      ctx.innerHTML = sideSection("How it is held",
         !rows.length
-          ? `<p class="hint">No accounts yet.</p>`
-          : `<p class="hint">${fmtMoney(total)} across ${rows.length} account(s) · ${fmtMoney(monthly)}/mo interest</p>`
-            + rows.map(a=> shareRowHtml(a.provider, a.amount, total ? (a.amount/total)*100 : 0, "var(--accent)")).join(""));
+          ? '<p class="note-line">No accounts have been opened.</p>'
+          : '<p class="note-line"><strong>' + fmtMoney(total) + '</strong> sits across ' + rows.length +
+              ' account' + (rows.length === 1 ? "" : "s") + ', earning about <strong>' + fmtMoney(monthly) +
+              '</strong> a month after tax. ' + (rows.length > 1
+                ? escapeHtml(rows[0].provider) + ' holds ' + fractionWord(total ? (rows[0].amount / total) * 100 : 0) + '.'
+                : '') + '</p>'
+            + rows.map(a => shareRowHtml(a.provider, a.amount, total ? (a.amount / total) * 100 : 0)).join(""));
       return;
     }
 
     if (tabName === "loans"){
-      const lent = loansGiven.filter(l=>l.status==="outstanding").reduce((s,l)=>s+l.amount,0);
-      const owed = loansTaken.filter(l=>l.status==="outstanding").reduce((s,l)=>s+l.amount,0);
-      const unsold = investments.filter(i=>i.actualSoldPrice == null);
-      const invested = unsold.reduce((s,i)=>s+i.amount,0);
-      const projected = unsold.reduce((s,i)=>s+(i.projectedPrice != null ? i.projectedPrice : i.amount),0);
-      ctx.innerHTML = sideSection("Position",
-        `<div class="side-figures">
-           <div><span class="sf-label">Owed to you</span><span class="sf-value">${fmtMoneyRich(lent)}</span></div>
-           <div><span class="sf-label">You owe</span><span class="sf-value" style="color:var(--warn);">${fmtMoneyRich(owed)}</span></div>
-           <div><span class="sf-label">Invested</span><span class="sf-value">${fmtMoneyRich(invested)}</span></div>
-         </div>
-         ${unsold.length ? `<p class="hint" style="margin-top:var(--sp-6);">If projections hold, ${unsold.length} holding(s) reach <strong>${fmtMoney(projected)}</strong>.</p>` : ""}`);
+      const lent = round2(loansGiven.filter(l => l.status === "outstanding").reduce((s, l) => s + l.amount, 0));
+      const owed = round2(loansTaken.filter(l => l.status === "outstanding").reduce((s, l) => s + l.amount, 0));
+      const unsold = investments.filter(i => i.actualSoldPrice == null);
+      const invested = round2(unsold.reduce((s, i) => s + i.amount, 0));
+      const projected = round2(unsold.reduce((s, i) => s + (i.projectedPrice != null ? i.projectedPrice : i.amount), 0));
+      const net = round2(lent - owed);
+      ctx.innerHTML = sideSection("Where you stand",
+        '<p class="note-line">Others hold <strong>' + fmtMoney(lent) + '</strong> of yours; you hold <strong>' +
+          fmtMoney(owed) + '</strong> of theirs. On balance that is <strong>' +
+          (net >= 0 ? fmtMoney(net) + '</strong> in your favour' : fmtMoney(Math.abs(net)) + '</strong> against you') + '.</p>'
+        + (unsold.length
+            ? '<p class="note-line">A further <strong>' + fmtMoney(invested) + '</strong> is placed in ' +
+              unsold.length + ' holding' + (unsold.length === 1 ? "" : "s") + '. Should the projections hold they come back at <strong>' +
+              fmtMoney(projected) + '</strong>, a gain of ' + fmtMoney(round2(projected - invested)) + '.</p>'
+            : '<p class="note-line is-quiet">Nothing is currently placed in investments.</p>'));
       return;
     }
 
     ctx.innerHTML = "";
   }
 
-  function renderSideUpcoming(){
 
+  function renderSideUpcoming(){
     const wrap = document.getElementById("side-upcoming-list");
     if (!wrap) return;
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayStr = toLocalISO(today);
     const horizon = new Date(today); horizon.setDate(horizon.getDate() + 30);
     const horizonStr = toLocalISO(horizon);
 
-    const items = [
-      ...loansGiven.filter(l=>l.status === "outstanding" && l.deadline)
-        .map(l=>({ ...l, dir:"in", label:`${l.person} owes you` })),
-      ...loansTaken.filter(l=>l.status === "outstanding" && l.deadline)
-        .map(l=>({ ...l, dir:"out", label:`You owe ${l.person}` }))
-    ]
-      .filter(l=>l.deadline <= horizonStr)
-      .sort((a,b)=>a.deadline.localeCompare(b.deadline))
-      .slice(0, 5);
+    const items = [].concat(
+      loansGiven.filter(l => l.status === "outstanding" && l.deadline)
+        .map(l => ({ deadline: l.deadline, amount: l.amount, dir: "in", who: l.person })),
+      loansTaken.filter(l => l.status === "outstanding" && l.deadline)
+        .map(l => ({ deadline: l.deadline, amount: l.amount, dir: "out", who: l.person }))
+    ).filter(l => l.deadline <= horizonStr)
+     .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
     if (!items.length){
-      wrap.innerHTML = `<p class="hint">Nothing due in the next 30 days.</p>`;
+      wrap.innerHTML = '<p class="note-line">Nothing falls due in the next thirty days.</p>';
       return;
     }
-    wrap.innerHTML = items.map(l=>{
-      const due = new Date(l.deadline + "T00:00:00");
-      const days = Math.round((due - today) / (1000*60*60*24));
-      const when = days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? "Due today" : `in ${days}d`;
-      const cls = days < 0 ? "deadline-overdue" : days <= 7 ? "deadline-soon" : "";
-      return `
-        <div class="side-upcoming-item">
-          <div class="side-upcoming-info">
-            <div class="side-upcoming-who">${escapeHtml(l.label)}</div>
-            <div class="side-upcoming-when ${cls}">${when}</div>
-          </div>
-          <div class="side-upcoming-amt ${l.dir === "in" ? "is-in" : "is-out"}">${fmtMoneyRich(l.amount)}</div>
-        </div>`;
-    }).join("");
+    const net = round2(items.reduce((t, l) => t + (l.dir === "in" ? l.amount : -l.amount), 0));
+    // An agenda: the date spelled out, then the obligation as a sentence.
+    wrap.innerHTML =
+      '<p class="note-lead">' + (items.length === 1 ? "One settlement falls" : items.length + " settlements fall") +
+        ' due before ' + longDate(horizonStr) + ', leaving <strong>' +
+        (net >= 0 ? "" : "\u2212") + fmtMoney(Math.abs(net)) + '</strong> on balance.</p>'
+      + '<ol class="agenda">' + items.slice(0, 6).map(l => {
+        const late = l.deadline < todayStr;
+        return '<li class="agenda-item' + (late ? " is-late" : "") + '">' +
+          '<span class="agenda-date">' + longDate(l.deadline) + '</span>' +
+          '<span class="agenda-say">' + (l.dir === "in"
+            ? escapeHtml(l.who) + ' is to repay <strong>' + fmtMoney(l.amount) + '</strong>'
+            : '<strong>' + fmtMoney(l.amount) + '</strong> is owed to ' + escapeHtml(l.who)) +
+          (late ? ', already past' : '') + '.</span>' +
+        '</li>';
+      }).join("") + '</ol>'
+      + (items.length > 6 ? '<p class="note-line is-quiet">' + (items.length - 6) + ' further out.</p>' : "");
   }
+
+  function longDate(iso){
+    const d = new Date(iso + "T00:00:00");
+    const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const DAY = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    return DAY[d.getDay()] + ", " + d.getDate() + " " + MON[d.getMonth()];
+  }
+
 
   function renderSideCryptoList(){
     const wrap = document.getElementById("side-crypto-list");
-    if (!wrap) return; // panel only exists on wide screens
-    const sorted = cryptos.slice().sort((a,b)=>a.code.localeCompare(b.code));
-    wrap.innerHTML = sorted.map((c,i)=>{
-      const asset = CRYPTO_ASSETS.find(a=>a.code===c.code) || {};
-      const ageLabel = !c.lastUpdated ? "Not synced" : daysAgoLabel(c.lastUpdated, true);
-      const badgeClass = CURRENCY_BADGE_COLORS[i % CURRENCY_BADGE_COLORS.length];
-      const spark = buildSparkline(c.history);
-      return `
-        <div class="side-currency-item">
-          <div class="side-currency-badge ${badgeClass}">${c.code.slice(0,2)}</div>
-          <div class="side-currency-info">
-            <div class="side-currency-code">${c.code}</div>
-            <div class="side-currency-name">${escapeHtml(asset.name||"")}</div>
-          </div>
-          <div class="side-currency-spark">${spark}</div>
-          <div class="side-currency-rate">
-            <div class="side-currency-value">${c.price ? fmtMoney(c.price) : "—"}</div>
-            <div class="side-currency-updated">${ageLabel}</div>
-          </div>
-        </div>`;
+    if (!wrap) return;
+    const sorted = cryptos.slice().sort((a, b) => a.code.localeCompare(b.code));
+    wrap.innerHTML = sorted.map(c => {
+      const asset = CRYPTO_ASSETS.find(a => a.code === c.code) || {};
+      if (!c.price){
+        return '<p class="note-line is-quiet"><strong>' + escapeHtml(asset.name || c.code) +
+          '</strong> has no price on file yet.</p>';
+      }
+      return '<p class="note-line">' +
+        '<strong>' + escapeHtml(asset.name || c.code) + '</strong> last changed hands at <strong>' +
+        fmtMoney(c.price) + '</strong>' + driftClause(c.history, "rate") + ', ' +
+        notedClause(c.lastUpdated).replace(/^, /, '') + '. ' +
+        '<span class="note-spark">' + buildSparkline(c.history) + '</span>' +
+      '</p>';
     }).join("");
   }
+
 
   async function syncCryptoPrices(){
     const statusEl = document.getElementById("crypto-sync-status");
