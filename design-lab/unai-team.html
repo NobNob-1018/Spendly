@@ -3960,6 +3960,35 @@
      stain, and this design's own note says to shadow only what opens above the
      page — a fixed gradient over the whole viewport opens nothing. */
   body::before{ display: none; }
+
+  /* The signature figure is 25px in a column sized for 11px type. It takes the
+     amount track as well — the today rule has no amount — so it has 202px to
+     sit in and the right edge, which is the thing every other balance is read
+     against, does not move. */
+  .sp-today-label{ grid-column: 3 / 5; }
+  .sp-today-bal{ grid-column: 5 / -1; text-align: right; }
+  @media (max-width: 1080px){
+    .sp-today-label{ grid-column: 3 / 4; }
+    .sp-today-bal{ grid-column: 4 / -1; }
+  }
+  @media (max-width: 620px){
+    .sp-today-label{ grid-column: 3 / -1; grid-row: 1; }
+    .sp-today-bal{ grid-column: 1 / -1; grid-row: 2; text-align: left; padding-left: 80px; }
+  }
+
+  /* The tag ran to the end of the row and the balance is placed in column 4,
+     so the two shared a cell on every line. */
+  @media (max-width: 620px){
+    .sp-tag{ grid-column: 3 / 4; }
+  }
+
+  /* Identity and controls, then nothing else — this masthead has no figure in
+     it, so it only needs to stop asking for more room than a phone has. */
+  @media (max-width: 620px){
+    header.top{ gap: var(--sp-5); padding: 0 var(--sp-6); }
+    .brand p{ display: none; }
+    #save-status{ display: none; }
+  }
 </style>
 <script>
 /* Runs before anything is painted. A reader who chose the night edition should

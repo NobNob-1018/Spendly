@@ -1654,6 +1654,26 @@
     .ml-table, .rec-table{ min-width: 520px; }
   }
 
+
+  /* Two rows on a phone: the readout is the point of this surface and it keeps
+     its own line rather than being squeezed out of the row. --bar-h carries the
+     change to every sticky offset and to the app's top padding. */
+  @media (max-width: 720px){
+    :root{ --bar-h: 84px; }
+    header.top{
+      flex-wrap: wrap; align-content: center; row-gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-6);
+    }
+    .brand{ flex: 1 1 auto; min-width: 0; }
+    .brand h1{ white-space: nowrap; }
+    header.top > div:last-of-type{ flex: 0 0 auto; margin-left: auto; }
+    .sticky-top{
+      order: 3; flex: 1 1 100%; margin-left: 0;
+      justify-content: space-between; gap: var(--sp-5);
+      overflow-x: auto; overscroll-behavior-x: contain;
+    }
+    #app-period{ display: none; }
+  }
 </style>
 </head>
 

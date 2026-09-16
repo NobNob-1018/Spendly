@@ -1477,6 +1477,39 @@
   .deadline-note[data-band="overdue"]{ color: #FF9C8E; }
   .deadline-note[data-band="today"], .deadline-note[data-band="week"]{ color: #F5C078; }
 
+
+  /* The label column is the only one with an explicit zero minimum, so it is
+     the only one that can give way — and it did, to 2.875px, while the figures
+     beside it held their min-content width. */
+  .cmp-head, .cmp-row{
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 90px;
+  }
+  /* Below this there is no honest way to fit four columns of figures, so the
+     row stops trying and stacks. */
+  @media (max-width: 620px){
+    .cmp-head{ display: none; }
+    .cmp-row{ grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; column-gap: var(--sp-5); }
+    .cmp-label{ grid-column: 1; grid-row: 1; }
+    .cmp-now{ grid-column: 2; grid-row: 1; text-align: right; }
+    .cmp-prev{ grid-column: 1; grid-row: 2; font-size: var(--fs-2xs); }
+    .cmp-delta{ grid-column: 2; grid-row: 2; }
+  }
+
+  @media (max-width: 720px){
+    :root{ --bar-h: 88px; }
+    header.top{
+      flex-wrap: wrap; align-content: center; row-gap: var(--sp-3);
+      padding: var(--sp-4) var(--sp-7);
+    }
+    header.top > *:first-child{ width: auto; flex: 1 1 auto; min-width: 0; }
+    header.top > div:last-of-type{ flex: 0 0 auto; margin-left: auto; }
+    .sticky-top{
+      order: 3; flex: 1 1 100%; margin-left: 0;
+      justify-content: space-between; gap: var(--sp-5);
+      overflow-x: auto; overscroll-behavior-x: contain;
+    }
+    .brand p{ display: none; }
+  }
 </style>
 </head>
 

@@ -6,11 +6,17 @@
  * OUT. A seven-column chart collapsed to 60px still reports the right seven day
  * names. This measures boxes instead.
  *
- * WHAT IT REPORTS, for the visible surface of whatever tab is open:
+ * WHAT IT REPORTS, for the whole visible document — not just the open tab
+ * panel, because a design whose main surface is not inside one would otherwise
+ * be reported clean without having been looked at:
  *   overlaps   two text-bearing boxes that intersect (excluding ancestor pairs
- *              and anything fixed, which is allowed to sit over things)
+ *              and anything painted in the fixed layer, itself or via an
+ *              ancestor, which is allowed to sit over things)
  *   collapsed  a grid whose every track computed to ~0
- *   overflow   an element outside the parent that should contain it
+ *   overflow   an element whose BOX is outside the parent that should contain it
+ *   bleed      an element whose INK is wider than its own box, with nothing
+ *              downstream to clip or scroll it — a rect can sit perfectly
+ *              inside its parent while the glyphs run out of the column
  *   sticky     a sticky element with a NON-ZERO offset inside a scroll
  *              container — i.e. an offset measured for the viewport being
  *              applied against a container, which parks it on the content.
@@ -36,7 +42,7 @@
  * parent by the margin. Its CONTENT lines up; only its box hangs out.
  */
 (function(){
-  const out = { overlaps: [], collapsed: [], overflow: [], sticky: [], clipped: [] };
+  const out = { overlaps: [], collapsed: [], overflow: [], bleed: [], sticky: [], clipped: [] };
   const name = el => el.tagName.toLowerCase() +
     (el.id ? '#' + el.id : (el.className && typeof el.className === 'string' && el.className.trim()
       ? '.' + el.className.trim().split(/\s+/)[0] : ''));
@@ -47,16 +53,31 @@
     return r.width > 0 && r.height > 0;
   };
   const clipRect = el => { let r = el.getBoundingClientRect(); let p = el.parentElement; while (p && p !== document.body){ const s = getComputedStyle(p); if (["auto","scroll","hidden"].includes(s.overflowY) || ["auto","scroll","hidden"].includes(s.overflowX)){ const c = p.getBoundingClientRect(); const top=Math.max(r.top,c.top), bottom=Math.min(r.bottom,c.bottom), left=Math.max(r.left,c.left), right=Math.min(r.right,c.right); if (bottom<=top||right<=left) return null; r={top,bottom,left,right,width:right-left,height:bottom-top}; } p=p.parentElement; } return r; };
+  const inFixed = el => {
+    let n = el;
+    while (n && n.nodeType === 1 && n !== document.body){
+      if (getComputedStyle(n).position === 'fixed') return true;
+      n = n.parentElement;
+    }
+    return false;
+  };
   const ownText = el => {
     let t = '';
     for (const n of el.childNodes) if (n.nodeType === 3) t += n.textContent;
     return t.trim();
   };
 
-  const panel = document.querySelector('.tab-panel[style*="display: block"], .tab-panel.is-active')
-             || document.querySelector('.tab-panel:not([style*="none"])');
-  const root = panel || document.body;
-  const all = [...root.querySelectorAll('*')].filter(shown);
+  // The whole visible document. Scoping this to the active .tab-panel meant the
+  // ledger — whose frame is a SIBLING of the panels, not inside one — was never
+  // measured at all, and reported clean for it. shown() already rejects
+  // display:none, visibility:hidden, zero opacity and zero-sized boxes, so a
+  // closed drawer and an inactive panel stay out on their own merits.
+  // The TEST BUILD badge is the harness, not the design: it is fixed, it sits
+  // over the page deliberately, and it was reporting as overlapping the rail.
+  const badge = document.getElementById('lab-badge');
+  const all = [...document.body.querySelectorAll('*')]
+    .filter(el => !(badge && (el === badge || badge.contains(el))))
+    .filter(shown);
 
   // ---- overlapping text -------------------------------------------------
   // Only leaf-ish elements that carry their own text, and never an
@@ -71,9 +92,10 @@
       const ox = Math.min(A.right, B.right) - Math.max(A.left, B.left);
       const oy = Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top);
       if (ox > 2 && oy > 2){
-        // absolutely positioned things are allowed to sit over things
-        const pa = getComputedStyle(a).position, pb = getComputedStyle(b).position;
-        if (pa === 'fixed' || pb === 'fixed') continue;
+        // Anything painted in the fixed layer is allowed to sit over the page —
+        // and that is true of its CHILDREN too, which is why this walks up
+        // rather than reading one element's own position.
+        if (inFixed(a) || inFixed(b)) continue;
         out.overlaps.push(name(a) + ' "' + ownText(a).slice(0,18) + '" over ' +
                           name(b) + ' "' + ownText(b).slice(0,18) + '"');
       }
@@ -104,6 +126,28 @@
     if (r.right > pr.right + 2 || r.left < pr.left - 2)
       out.overflow.push(name(el) + ' outside ' + name(p) + ' by ' +
         Math.round(Math.max(r.right - pr.right, pr.left - r.left)) + 'px');
+  });
+
+  // ---- ink wider than the box, with nothing to clip it -------------------
+  // A rect is where the box is; scrollWidth is where the ink is. They may
+  // differ under overflow:visible, and that only matters when no ancestor
+  // clips or scrolls — at which point the glyphs land on the neighbour.
+  all.forEach(el => {
+    const s = getComputedStyle(el);
+    if (s.overflowX !== 'visible') return;
+    if (s.position === 'absolute' || s.position === 'fixed') return;
+    const bleed = el.scrollWidth - el.clientWidth;
+    if (bleed <= 1 || el.clientWidth < 2) return;
+    // Only if nothing above it takes responsibility for the excess.
+    let p = el.parentElement, contained = false;
+    while (p && p !== document.body){
+      const ps = getComputedStyle(p);
+      if (ps.overflowX === 'auto' || ps.overflowX === 'scroll' || ps.overflowX === 'hidden'){ contained = true; break; }
+      p = p.parentElement;
+    }
+    if (contained) return;
+    out.bleed.push(name(el) + ' paints ' + bleed + 'px past its own box (' +
+      el.scrollWidth + ' into ' + el.clientWidth + ')');
   });
 
   // ---- sticky inside an unintended scroll container ----------------------
@@ -140,11 +184,18 @@
         (el.scrollWidth - el.clientWidth) + 'px');
   });
 
+  // Built from the keys of the collector rather than named one at a time, so adding a
+  // check to the top of this file cannot silently fail to reach the caller —
+  // which is what happened when the bleed check was added and the hand-written return
+  // below it was not.
   const dedupe = a => [...new Set(a)];
-  return { overlaps: dedupe(out.overlaps).slice(0,10), collapsed: dedupe(out.collapsed).slice(0,6),
-           overflow: dedupe(out.overflow).slice(0,8), sticky: dedupe(out.sticky).slice(0,6),
-           clipped: dedupe(out.clipped).slice(0,6),
-           counts: { overlaps: dedupe(out.overlaps).length, collapsed: dedupe(out.collapsed).length,
-                     overflow: dedupe(out.overflow).length, sticky: dedupe(out.sticky).length,
-                     clipped: dedupe(out.clipped).length } };
+  const LIMIT = { overlaps: 10, collapsed: 6, overflow: 8, bleed: 8, sticky: 6, clipped: 6 };
+  const report = { counts: {} };
+  Object.keys(out).forEach(k => {
+    const list = dedupe(out[k]);
+    report[k] = list.slice(0, LIMIT[k] || 8);
+    report.counts[k] = list.length;
+  });
+  report.total = Object.values(report.counts).reduce((t, n) => t + n, 0);
+  return report;
 })()
