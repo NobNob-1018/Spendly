@@ -1993,9 +1993,14 @@
   #search-overlay.is-under-bar{
     position: fixed; inset: var(--bar-h) 0 auto 0;
     background: none; backdrop-filter: none; padding: 0;
-    display: block; pointer-events: none;
+    /* display:block belongs to the OPEN state. It was unconditional, and it
+       beats the base display:none by being later at the same specificity - so
+       the closed overlay was laid out at 9px tall and its panel, empty but
+       still bordered, painted a 560px hairline under the search bar on every
+       screen. Nothing about it was visible except the line. */
+    display: none; pointer-events: none;
   }
-  #search-overlay.is-under-bar.show{ pointer-events: auto; }
+  #search-overlay.is-under-bar.show{ display: block; pointer-events: auto; }
   #search-overlay.is-under-bar .search-panel{
     width: min(560px, calc(100vw - var(--sp-8) * 2));
     margin: var(--sp-4) auto 0;
