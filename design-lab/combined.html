@@ -12629,6 +12629,45 @@
          are reading should not rearrange itself under the cursor. */
       let railMoveTo = null;
       let dragCard = null;
+      /* ---- the seam between two cards on a line ---------------------------- */
+      // Module scope on purpose: the rebuild has to be able to ask whether a
+      // drag is live, and it runs before wireCardDrag's own declarations.
+      let seamDrag = null;
+      const SPAN_KEY = "spendly_card_spans_v1";
+      let spans = {};
+      try { spans = JSON.parse(localStorage.getItem(SPAN_KEY) || "{}") || {}; } catch (e){ spans = {}; }
+      const saveSpans = () => { try { localStorage.setItem(SPAN_KEY, JSON.stringify(spans)); } catch (e){} };
+      const SPAN_MIN = 3, SPAN_MAX = 9, SPAN_OF = 12;
+
+      // The width it was designed with, read off the class rather than kept in a
+      // second list that could disagree with it.
+      function bornSpan(el){
+        if (el.classList.contains("bento-span-5")) return 5;
+        if (el.classList.contains("bento-span-7")) return 7;
+        return 12;
+      }
+      function spanOf(tab, el){
+        const id = el.dataset.arrangeId;
+        const saved = spans[tab] && spans[tab][id];
+        return (saved >= SPAN_MIN && saved <= SPAN_MAX) ? saved : bornSpan(el);
+      }
+      function setSpan(el, n){ el.style.setProperty("--span", String(n)); }
+      function rememberSpan(tab, el, n){
+        const id = el.dataset.arrangeId;
+        if (!id) return;
+        spans[tab] = spans[tab] || {};
+        if (n === bornSpan(el)) delete spans[tab][id]; else spans[tab][id] = n;
+        saveSpans();
+      }
+      // Its neighbour on the SAME line. Two cards that merely follow each other
+      // in the DOM may be on different lines, and there is no seam between those.
+      function lineMate(el){
+        const next = el.nextElementSibling;
+        if (!next || next.getBoundingClientRect().height < 1) return null;
+        const a = el.getBoundingClientRect(), b = next.getBoundingClientRect();
+        return Math.abs(a.top - b.top) < 2 ? next : null;
+      }
+
       /* The handle. A grip so the card reads as draggable, and two buttons so
          dragging is not the only way to move it. */
       function arrangeTag(at, of){
@@ -12665,7 +12704,32 @@
           // pass would carry the last pass's position in its labels.
           const old = b.querySelector(".arrange-tag");
           if (old) old.remove();
+          // Not while a drag is live: the remembered span is still the old one
+          // until the pointer comes up, so re-applying it here would undo the
+          // drag, and removing the seam would take the handle out of the hand
+          // holding it.
+          if (!seamDrag){
+            const oldSeam = b.querySelector(".card-seam");
+            if (oldSeam) oldSeam.remove();
+            // The remembered width applies whether or not you are arranging; the
+            // handle for changing it only appears while you are.
+            setSpan(b, spanOf(tab, b));
+          }
           if (editing) b.appendChild(arrangeTag(i + 1, secs.length));
+        });
+        // After the spans are applied, because whether two cards share a line
+        // depends on how wide they just became.
+        if (editing && !seamDrag) secs.forEach(sec => {
+          const b = sec.block;
+          // Anything with a card after it, not just one already sharing a line:
+          // the pair you want may not exist until you have made room for it.
+          const next = b.nextElementSibling;
+          if (!next || next.getBoundingClientRect().height < 1) return;
+          const seam = document.createElement("div");
+          seam.className = "card-seam";
+          seam.title = "Drag to share the width. Double-click to reset.";
+          seam.setAttribute("aria-hidden", "true");
+          b.appendChild(seam);
         });
         if (host.dataset.dragWired) return;
         host.dataset.dragWired = "1";
@@ -12679,6 +12743,101 @@
             if (at && typeof showToast === "function") showToast("Moved to " + at + " of " + now.length + ".");
           }, 80);
         }
+
+        // Dragging the seam, which is a different gesture from dragging the card
+        // and must not start one: the card is draggable while arranging, so the
+        // flag comes off for the duration and goes back on after.
+        host.addEventListener("pointerdown", ev => {
+          const seam = ev.target.closest(".card-seam");
+          if (!seam || !editing || ev.button !== 0) return;
+          const left = seam.closest("[data-arrange-id]");
+          if (!left) return;
+          // Whoever is beside it NOW. If nobody is, this drag only narrows the
+          // card, and the next one arrives on its own when it fits.
+          const right = lineMate(left);
+          ev.preventDefault();
+          ev.stopPropagation();
+          const total = right ? spanOf(tab, left) + spanOf(tab, right) : 0;
+          // What the cards before it on this line already take. The seam reads
+          // as the right edge of everything up to and including this card, so
+          // this card's own span is that figure less theirs.
+          const hostBox = host.getBoundingClientRect();
+          const myTop = left.getBoundingClientRect().top;
+          let beforeSpan = 0;
+          for (let p = left.previousElementSibling; p; p = p.previousElementSibling){
+            const pr = p.getBoundingClientRect();
+            if (pr.height < 1) continue;
+            if (Math.abs(pr.top - myTop) >= 2) break;   // a different line
+            beforeSpan += spanOf(tab, p);
+          }
+          seamDrag = {
+            left, right, total, beforeSpan,
+            hostLeft: hostBox.left,
+            hostW: hostBox.width,
+            wasDraggable: left.draggable
+          };
+          left.draggable = false;
+          try { seam.setPointerCapture(ev.pointerId); } catch (e){}
+          document.body.classList.add("is-seam-resizing");
+        });
+        // On the window, not the bento: the seam under the pointer can be
+        // replaced by a rebuild, and a drag must not depend on the element it
+        // started from still existing.
+        window.addEventListener("pointermove", ev => {
+          if (!seamDrag) return;
+          const { left, right, total, beforeSpan, hostLeft, hostW } = seamDrag;
+          // Where the seam IS, in twelfths across the bento, less what the cards
+          // before it on this line already take. Pixels to twelfths, rounded:
+          // every width you can stop on is one the layout already knew how to be.
+          const want = ((ev.clientX - hostLeft) / hostW * SPAN_OF) - beforeSpan;
+          let a = Math.round(want);
+          if (!right){
+            // Alone on its line: it may take anything from a quarter to all of
+            // it, and the card after it decides for itself whether it fits.
+            a = Math.max(SPAN_MIN, Math.min(SPAN_OF, a));
+            setSpan(left, a);
+            seamDrag.a = a;
+            return;
+          }
+          a = Math.max(SPAN_MIN, Math.min(SPAN_MAX, a));
+          let b = total - a;
+          if (b < SPAN_MIN){ b = SPAN_MIN; a = total - b; }
+          if (b > SPAN_MAX){ b = SPAN_MAX; a = total - b; }
+          setSpan(left, a);
+          setSpan(right, b);
+          seamDrag.a = a; seamDrag.b = b;
+        });
+        function endSeam(ev){
+          if (!seamDrag) return;
+          const { left, right, wasDraggable, a, b } = seamDrag;
+          seamDrag = null;
+          document.body.classList.remove("is-seam-resizing");
+          left.draggable = wasDraggable;
+          if (a != null){
+            rememberSpan(tab, left, a);
+            if (right && b != null) rememberSpan(tab, right, b);
+          }
+          // The rebuilds that were held off may have left the seams stale, and
+          // which cards share a line has very likely just changed.
+          signature = ""; buildContents(false);
+        }
+        window.addEventListener("pointerup", endSeam);
+        window.addEventListener("pointercancel", endSeam);
+        host.addEventListener("dblclick", ev => {
+          const seam = ev.target.closest(".card-seam");
+          if (!seam || !editing) return;
+          const left = seam.closest("[data-arrange-id]");
+          if (!left) return;
+          const right = lineMate(left);
+          ev.preventDefault();
+          setSpan(left, bornSpan(left));
+          rememberSpan(tab, left, bornSpan(left));
+          if (right){
+            setSpan(right, bornSpan(right));
+            rememberSpan(tab, right, bornSpan(right));
+          }
+          if (typeof showToast === "function") showToast("Widths back to their usual share.");
+        });
 
         host.addEventListener("dragstart", ev => {
           const card = ev.target.closest("[data-arrange-id]");
@@ -13673,8 +13832,12 @@
      is height to spare in a stretched tile, so the label takes a second line
      instead of losing its own words. */
   .kpi-label{
-    white-space: normal; overflow: visible; text-overflow: clip;
+    white-space: normal; text-overflow: clip;
     line-height: 1.25;
+    /* A word wider than the cell has to break, not escape: at 900px the tile
+       is narrow enough that INTEREST painted 7px past its own box. overflow
+       stays hidden as the backstop for a word that cannot break at all. */
+    overflow-wrap: anywhere; overflow: hidden;
   }
 
   /* ---------- a card takes the spot it is put in -------------------------- */
@@ -13690,12 +13853,41 @@
   }
   .bento > *{ min-width: 0; }
   /* 7/12 and 5/12, less this item's share of the one gap between them. */
-  .bento-span-7{ flex: 1 1 calc(58.333% - (var(--sp-7) / 2)); }
-  .bento-span-5{ flex: 1 1 calc(41.667% - (var(--sp-7) / 2)); }
-  .bento-span-12{ flex: 1 1 100%; }
+  /* The span is a number on the element now, so a drag can change it without
+     swapping classes, and the class is only its starting value. */
+  .bento > *{ --span: 12; flex: 1 1 calc(var(--span) / 12 * 100% - (var(--sp-7) / 2)); }
+  .bento-span-7{ --span: 7; }
+  .bento-span-5{ --span: 5; }
+  .bento-span-12{ --span: 12; }
+  /* Under 1100 there is not room for two, so a dragged width is set aside
+     rather than honoured - and comes back when there is room again. */
   @media (max-width: 1100px){
-    .bento-span-5, .bento-span-7{ flex-basis: 100%; }
+    .bento > *{ flex-basis: 100%; }
   }
+
+  /* ---------- the seam between two cards ---------------------------------- */
+  /* It sits in the gap, not on either card: the target is the space between
+     them, which is where a person aims. */
+  .card-seam{
+    position: absolute; top: 0; bottom: 0;
+    /* Inside the card, not hanging into the gap: a negative offset made
+       every card paint 11px past its own box, and the last card on a line
+       paint past the bento. The target is the last 14px of the card, which is
+       where a column resizer lives anyway. */
+    right: 0; width: 14px;
+    z-index: 4; cursor: col-resize; touch-action: none;
+  }
+  .card-seam::after{
+    content: ""; position: absolute; top: 12px; bottom: 12px; right: 4px; width: 3px;
+    border-radius: var(--r-pill); background: var(--accent);
+    opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){ .card-seam:hover::after{ opacity: .85; } }
+  body.is-seam-resizing{ cursor: col-resize; user-select: none; }
+  body.is-seam-resizing .card-seam::after{ opacity: 1; }
+  /* The card is the seam's positioning context; .is-arrangeable is already
+     relative, and this only exists while arranging. */
+  .is-arrangeable{ position: relative; }
 </style>
 </body>
 </html>
