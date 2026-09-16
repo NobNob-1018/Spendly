@@ -1545,6 +1545,30 @@
     color: var(--ink-faint); max-width: 74ch; }
   .rec-actions{ display:flex; gap: var(--sp-5); padding-top: var(--sp-5); border-top:1px solid var(--line); }
 
+
+  /* ---------- movement log ---------------------------------------------------- */
+  .ml-bar{ display:flex; flex-wrap:wrap; align-items:center; gap: var(--sp-5);
+    padding-bottom: var(--sp-5); margin-bottom: var(--sp-5); border-bottom:1px solid var(--line); }
+  .ml-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.07em; color: var(--ink-dim); }
+  .ml-sum{ font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .ml-sum b{ color: var(--ink); }
+  .ml-sum .is-in{ color: var(--positive); } .ml-sum .is-out{ color: var(--negative); }
+  .ml-table{ width:100%; border-collapse:collapse; font-size: var(--fs-2xs); }
+  .ml-table th{ text-align:left; font-size: var(--fs-3xs); text-transform:uppercase;
+    letter-spacing:.06em; color: var(--ink-faint); font-weight:600;
+    padding-bottom: var(--sp-3); border-bottom:1px solid var(--line); }
+  .ml-table th.num, .ml-table td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+  .ml-table tbody tr{ height: var(--row-h); border-bottom:1px solid var(--line); }
+  .ml-table tbody tr:last-child{ border-bottom:0; }
+  .ml-table tbody tr.is-orphan{ opacity:.6; }
+  .ml-table td{ padding: 0 var(--sp-5); }
+  .ml-when{ color: var(--ink-faint); font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .ml-acct{ white-space:nowrap; }
+  .ml-warn{ color: var(--negative); font-size: var(--fs-3xs); }
+  .ml-why{ color: var(--ink-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:0; width:44%; }
+  .ml-table .is-in{ color: var(--positive); } .ml-table .is-out{ color: var(--negative); }
+  .ml-after{ font-weight:700; }
+
 </style>
 </head>
 
@@ -10969,6 +10993,134 @@
       mount();
       // Settings is built by the app after this runs on some paths, so re-check
       // on interaction rather than assuming one mount is enough.
+      document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
+
+    /* ======================================================================
+       THE MOVEMENT LOG — /unai console, round four
+
+       Every peso that has entered or left an account, in one place, newest
+       first, with the running balance beside it. balanceOps has always held
+       this; nothing has ever shown it, so the only way to answer "why is this
+       account 1,699 lighter than I expected" was to work it out from the
+       history tables.
+
+       Reads only. Filterable by account, and it states the arithmetic at the
+       top so the column of numbers can be checked rather than believed.
+       ====================================================================== */
+    (function consoleMovementLog(){
+      "use strict";
+
+      const money = n => fmtMoney(round2(n));
+      let filterAccount = "";
+
+      function ops(){
+        // Oldest first for the running balance, reversed for display: a running
+        // total computed newest-first is a different number.
+        return balanceOps.slice().filter(o => o && o.delta)
+          .sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
+      }
+
+      function accountOf(op){
+        if (op.accountId){
+          const hit = savings.find(a => a.id === op.accountId);
+          if (hit) return hit.provider;
+        }
+        return op.account || "(unattributed)";
+      }
+
+      function build(){
+        const all = ops();
+        if (!all.length){
+          return '<p class="hint">No movements recorded. Money moves into this log when a loan is ' +
+                 'settled, an investment is bought or sold, or a balance is corrected.</p>';
+        }
+
+        // Running balance per account, then the row is stamped with it.
+        const running = {};
+        const stamped = all.map(op => {
+          const name = accountOf(op);
+          const acct = savings.find(a => a.provider === name);
+          if (!(name in running)) running[name] = acct ? (Number(acct.opening) || 0) : 0;
+          running[name] = round2(running[name] + (Number(op.delta) || 0));
+          return { op: op, name: name, after: running[name], known: !!acct };
+        });
+
+        const rows = stamped.slice().reverse()
+          .filter(r => !filterAccount || r.name === filterAccount);
+
+        const inSum = round2(rows.filter(r => r.op.delta > 0).reduce((t, r) => t + r.op.delta, 0));
+        const outSum = round2(rows.filter(r => r.op.delta < 0).reduce((t, r) => t + r.op.delta, 0));
+        const names = [];
+        stamped.forEach(r => { if (names.indexOf(r.name) === -1) names.push(r.name); });
+
+        const picker =
+          '<div class="ml-bar">' +
+            '<span class="ml-k">Account</span>' +
+            '<select id="ml-account" class="th-filter' + (filterAccount ? " is-active" : "") + '">' +
+              '<option value="">all accounts</option>' +
+              names.map(n => '<option value="' + escapeHtml(n) + '"' +
+                (n === filterAccount ? " selected" : "") + '>' + escapeHtml(n) + '</option>').join("") +
+            '</select>' +
+            '<span class="ml-sum">' + rows.length + ' movement' + (rows.length === 1 ? "" : "s") +
+              ' · in <b class="is-in">' + money(inSum) + '</b>' +
+              ' · out <b class="is-out">' + money(Math.abs(outSum)) + '</b>' +
+              ' · net <b>' + (inSum + outSum >= 0 ? "" : "−") + money(Math.abs(round2(inSum + outSum))) + '</b></span>' +
+          '</div>';
+
+        const table =
+          '<table class="ml-table"><thead><tr>' +
+            '<th>When</th><th>Account</th><th>Why</th><th class="num">Delta</th><th class="num">Balance after</th>' +
+          '</tr></thead><tbody>' +
+          rows.slice(0, 120).map(r => {
+            const at = String(r.op.at || "");
+            const when = at ? at.slice(0, 10) + " " + at.slice(11, 16) : "—";
+            return '<tr class="' + (r.known ? "" : "is-orphan") + '">' +
+              '<td class="ml-when">' + escapeHtml(when) + '</td>' +
+              '<td class="ml-acct">' + escapeHtml(r.name) + (r.known ? "" : ' <span class="ml-warn">gone</span>') + '</td>' +
+              '<td class="ml-why">' + escapeHtml(r.op.note || "(no note)") + '</td>' +
+              '<td class="num ' + (r.op.delta > 0 ? "is-in" : "is-out") + '">' +
+                (r.op.delta > 0 ? "+" : "−") + money(Math.abs(r.op.delta)) + '</td>' +
+              '<td class="num ml-after">' + (r.known ? money(r.after) : "—") + '</td>' +
+            '</tr>';
+          }).join("") +
+          '</tbody></table>' +
+          (rows.length > 120 ? '<p class="hint">Showing the most recent 120 of ' + rows.length + '.</p>' : "");
+
+        const note = '<p class="hint">Balance after is the account’s opening figure plus every movement ' +
+          'up to and including that row — the same arithmetic the app uses for the balance it shows, ' +
+          'run one row at a time. A row marked gone names an account this device no longer has; its ' +
+          'movement is left where it is rather than attributed to the wrong one, which is why it carries ' +
+          'no running balance.</p>';
+
+        return picker + table + note;
+      }
+
+      function paint(){
+        const body = document.getElementById("ml-body");
+        if (!body) return;
+        body.innerHTML = build();
+        const sel = document.getElementById("ml-account");
+        if (sel) sel.addEventListener("change", () => { filterAccount = sel.value; paint(); });
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-savings");
+        if (!panel || panel.querySelector("#ml-card")) return;
+        const card = document.createElement("div");
+        card.className = "card is-panel";
+        card.id = "ml-card";
+        card.innerHTML =
+          '<header class="panel-head is-toolbar">' +
+            '<h2><span class="h-rule" aria-hidden="true"></span>Movement log</h2>' +
+            '<p class="sub">Every peso in or out of an account, newest first, with the balance it left behind.</p>' +
+          '</header><div id="ml-body"></div>';
+        panel.appendChild(card);
+        paint();
+      }
+
+      mount();
       document.addEventListener("click", () => setTimeout(mount, 200), true);
     })();
 

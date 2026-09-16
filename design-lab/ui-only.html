@@ -1308,6 +1308,34 @@
   .pl-up{ color: var(--warn); } .pl-down{ color: var(--positive); }
   #pl-card .fig-row{ margin-bottom: var(--sp-6); }
 
+
+  /* ---------- what changed ------------------------------------------------------ */
+  .wc-list{ margin: var(--sp-6) 0; }
+  .wc-row{ display:grid; grid-template-columns: minmax(120px, 1.1fr) minmax(120px, 1.6fr) auto;
+    grid-template-areas: "name bars diff" "basis basis basis";
+    align-items:center; gap: var(--sp-3) var(--sp-6); padding: var(--sp-5) 0;
+    border-bottom:1px solid var(--line); }
+  .wc-row:last-child{ border-bottom:0; }
+  .wc-name{ grid-area: name; display:flex; flex-direction:column; gap:1px;
+    font-size: var(--fs-2xs); font-weight:600; min-width:0; }
+  .wc-flag{ font-size: 9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+    color: var(--warn); }
+  .wc-bars{ grid-area: bars; position:relative; display:flex; align-items:center;
+    justify-content:center; height:10px; }
+  .wc-bars .wc-neg, .wc-bars .wc-pos{ height:8px; border-radius:2px; }
+  .wc-neg{ background: var(--positive); opacity:.75; margin-left:auto; }
+  .wc-pos{ background: var(--negative); opacity:.75; margin-right:auto; }
+  .wc-mid{ width:1px; height:12px; background: var(--line-strong); flex:none; }
+  .wc-diff{ grid-area: diff; font-size: var(--fs-2xs); font-weight:700;
+    font-variant-numeric: tabular-nums; white-space:nowrap; text-align:right; }
+  .wc-diff.is-up{ color: var(--negative); } .wc-diff.is-down{ color: var(--positive); }
+  .wc-pct{ margin-left: var(--sp-4); font-weight:600; opacity:.75; }
+  .wc-basis{ grid-area: basis; font-size: var(--fs-3xs); color: var(--ink-faint);
+    font-variant-numeric: tabular-nums; }
+  .wc-row.is-notable{ box-shadow: inset 2px 0 0 var(--warn); padding-left: var(--sp-5); }
+
+
+  .wc-pct.is-quiet{ font-weight:600; opacity:.6; font-variant-numeric:normal; }
 </style>
 </head>
 
@@ -10309,6 +10337,160 @@
           '</header><div id="pl-body"></div>';
         panel.appendChild(card);
         paint();
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
+
+    /* ======================================================================
+       WHAT CHANGED — /ui workspace, round four
+
+       The dashboard says what this month is. It could not say what moved, and
+       "what moved" is the question an analytical surface exists to answer.
+
+       Ranks every category by how much it shifted against the same stretch of
+       the previous month, separates a real move from a small one by comparing
+       the shift against that category's own normal spread, and names the single
+       entries responsible where one entry accounts for most of the change.
+       ====================================================================== */
+    (function workspaceWhatChanged(){
+      "use strict";
+
+      const money = n => fmtMoney(round2(n));
+      const monthKeyOf = d => String(d).slice(0, 7);
+
+      function prevKey(k){
+        const y = Number(k.slice(0, 4)), m = Number(k.slice(5, 7));
+        const d = new Date(y, m - 2, 1);
+        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+      }
+
+      function slice(key, upToDay){
+        return expenses.filter(e => monthKeyOf(e.date) === key &&
+          (upToDay == null || Number(e.date.slice(8, 10)) <= upToDay));
+      }
+
+      function sumBy(list){
+        const out = {};
+        list.forEach(e => { out[e.category] = round2((out[e.category] || 0) + e.amount); });
+        return out;
+      }
+
+      // A category's own normal month-to-month swing, from the complete months
+      // on file. Without it, "+₱1,200 on Food" and "+₱1,200 on Rent" read the
+      // same, and only one of them is news.
+      function normalSwing(cat){
+        const now = new Date();
+        const totals = [];
+        for (let i = 1; i <= 6; i++){
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const k = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+          totals.push(round2(expenses.filter(e => e.category === cat && monthKeyOf(e.date) === k)
+            .reduce((t, e) => t + e.amount, 0)));
+        }
+        const used = totals.filter(v => v > 0);
+        if (used.length < 2) return null;
+        const diffs = [];
+        for (let i = 1; i < used.length; i++) diffs.push(Math.abs(used[i] - used[i - 1]));
+        return round2(diffs.reduce((t, v) => t + v, 0) / diffs.length);
+      }
+
+      function build(){
+        const now = new Date();
+        const day = now.getDate();
+        const thisKey = monthKeyOf(todayISO());
+        const lastKey = prevKey(thisKey);
+
+        const A = sumBy(slice(thisKey));
+        const B = sumBy(slice(lastKey, day));
+        const names = Object.keys(A).concat(Object.keys(B)).filter((v, i, a) => a.indexOf(v) === i);
+
+        const rows = names.map(cat => {
+          const a = A[cat] || 0, b = B[cat] || 0;
+          const diff = round2(a - b);
+          const swing = normalSwing(cat);
+          // Notable when the move is bigger than this category's usual swing,
+          // or when it is more than half of the month's own total change.
+          const notable = swing != null ? Math.abs(diff) > swing : Math.abs(diff) > 0;
+          const pct = b ? (diff / b) * 100 : null;
+          // The entries that account for the change, if one or two do.
+          const culprits = expenses
+            .filter(e => e.category === cat && monthKeyOf(e.date) === thisKey)
+            .sort((x, y) => y.amount - x.amount).slice(0, 2);
+          return { cat: cat, a: a, b: b, diff: diff, pct: pct, swing: swing,
+                   notable: notable, culprits: culprits };
+        }).filter(r => Math.abs(r.diff) >= 1)
+          .sort((x, y) => Math.abs(y.diff) - Math.abs(x.diff));
+
+        if (!rows.length){
+          return '<p class="hint">Nothing has moved by as much as a peso against the same point last month.</p>';
+        }
+
+        const totalA = round2(Object.keys(A).reduce((t, k) => t + A[k], 0));
+        const totalB = round2(Object.keys(B).reduce((t, k) => t + B[k], 0));
+        const net = round2(totalA - totalB);
+        const up = rows.filter(r => r.diff > 0), down = rows.filter(r => r.diff < 0);
+
+        const head =
+          '<div class="fig-row">' +
+            '<div class="fig-cell"><span class="fig-k">Net change</span><span class="fig-v' +
+              (net > 0 ? " is-neg" : " is-pos") + '">' + (net > 0 ? "+" : "−") + money(Math.abs(net)) +
+              '</span><span class="fig-sub">by day ' + day + ', both months</span></div>' +
+            '<div class="fig-cell"><span class="fig-k">Up</span><span class="fig-v">' + up.length +
+              '</span><span class="fig-sub">+' + money(up.reduce((t, r) => t + r.diff, 0)) + '</span></div>' +
+            '<div class="fig-cell"><span class="fig-k">Down</span><span class="fig-v">' + down.length +
+              '</span><span class="fig-sub">−' + money(Math.abs(down.reduce((t, r) => t + r.diff, 0))) + '</span></div>' +
+          '</div>';
+
+        const max = Math.max.apply(null, rows.map(r => Math.abs(r.diff)).concat([1]));
+        const list = '<div class="wc-list">' + rows.map(r => {
+          const w = Math.round((Math.abs(r.diff) / max) * 50);
+          return '<div class="wc-row' + (r.notable ? " is-notable" : "") + '">' +
+            '<span class="wc-name">' + escapeHtml(r.cat) +
+              (r.notable ? '<span class="wc-flag">unusual for this category</span>' : "") + '</span>' +
+            '<span class="wc-bars">' +
+              '<i class="wc-neg" style="width:' + (r.diff < 0 ? w : 0) + '%"></i>' +
+              '<b class="wc-mid"></b>' +
+              '<i class="wc-pos" style="width:' + (r.diff > 0 ? w : 0) + '%"></i>' +
+            '</span>' +
+            '<span class="wc-diff ' + (r.diff > 0 ? "is-up" : "is-down") + '">' +
+              (r.diff > 0 ? "+" : "−") + money(Math.abs(r.diff)) +
+              (r.pct != null && Math.abs(r.b) >= Math.abs(r.diff) * 0.1
+                ? '<span class="wc-pct">' + (r.pct > 0 ? "+" : "−") + Math.abs(r.pct).toFixed(0) + '%</span>'
+                : '<span class="wc-pct is-quiet">' + (r.b === 0 ? "new" : "from almost nothing") + '</span>') + '</span>' +
+            '<span class="wc-basis">' + money(r.b) + ' → ' + money(r.a) +
+              (r.swing != null ? ' · usual swing ' + money(r.swing) : ' · no swing on file yet') +
+              (r.diff > 0 && r.culprits.length && r.culprits[0].amount >= Math.abs(r.diff) * 0.6
+                ? ' · mostly ' + escapeHtml(r.culprits[0].description || "one entry") : '') +
+            '</span>' +
+          '</div>';
+        }).join("") + '</div>';
+
+        const method = '<p class="hint">Both months are measured to day ' + day + ', so a part month is never ' +
+          'compared against a whole one. A row is flagged unusual when the change is larger than that ' +
+          'category’s own average month-to-month swing over the complete months on file — the same ' +
+          'move is news for a steady heading and noise for a volatile one.</p>';
+
+        return head + list + method;
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-dashboard");
+        if (!panel || panel.querySelector("#wc-card")) return;
+        const bento = panel.querySelector(".bento") || panel;
+        const card = document.createElement("div");
+        card.className = "card is-board bento-span-12";
+        card.id = "wc-card";
+        card.innerHTML =
+          '<header class="panel-head is-toolbar">' +
+            '<h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></span><span class="h-text">What changed</span></h2>' +
+            '<p class="sub">Against the same stretch of last month, ranked by how much it moved.</p>' +
+          '</header><div id="wc-body"></div>';
+        bento.appendChild(card);
+        const body = document.getElementById("wc-body");
+        if (body) body.innerHTML = build();
       }
 
       mount();

@@ -1226,6 +1226,49 @@
   }
   body.is-printing-statement{ background:#fff; }
 
+
+  /* ---------- the index -------------------------------------------------------- */
+  .ix-find{ display:flex; flex-direction:column; gap: var(--sp-3); max-width: 34ch;
+    padding-bottom: var(--sp-7); margin-bottom: var(--sp-7); border-bottom:1px solid var(--line); }
+  .ix-lead{ margin-bottom: var(--sp-6); }
+  .ix-jump{ display:flex; flex-wrap:wrap; gap: var(--sp-4); padding-bottom: var(--sp-6);
+    margin-bottom: var(--sp-6); border-bottom:1px solid var(--line); }
+  .ix-jump a{ font-size: var(--fs-2xs); color: var(--ink-dim); text-decoration:none;
+    letter-spacing: var(--track-caps); }
+  .ix-jump a:hover{ color: var(--accent); }
+  .ix-letter{ margin-bottom: var(--sp-8); }
+  .ix-letter-head{ margin: 0 0 var(--sp-5); font-size: var(--fs-3xs); letter-spacing: var(--track-caps);
+    text-transform:uppercase; color: var(--ink-dim); border-bottom:1px solid var(--line);
+    padding-bottom: var(--sp-3); }
+  .ix-entry{ display:grid; grid-template-columns: auto 1fr auto; grid-template-areas:
+    "name leader total" "detail detail detail" "months months months";
+    align-items:baseline; gap: 0 var(--sp-5); padding: var(--sp-5) 0;
+    border-bottom:1px solid var(--line); cursor:pointer; }
+  .ix-entry:last-child{ border-bottom:0; }
+  @media (hover: hover){ .ix-entry:hover .ix-name{ color: var(--accent); } }
+  .ix-name{ grid-area: name; font-size: var(--fs-md); color: var(--ink); }
+  .ix-leader{ grid-area: leader; border-bottom:1px dotted var(--line); transform: translateY(-4px); }
+  .ix-total{ grid-area: total; font-size: var(--fs-md); font-weight:600;
+    font-variant-numeric: tabular-nums; color: var(--ink); }
+  .ix-total.is-in{ color: var(--positive); }
+  .ix-detail{ grid-area: detail; font-size: var(--fs-3xs); color: var(--ink-dim); margin-top: 2px; }
+  .ix-months{ grid-area: months; display:flex; flex-wrap:wrap; gap: var(--sp-3); margin-top: var(--sp-3); }
+  .ix-mon{ font-size: 10px; letter-spacing:.04em; color: var(--ink-dim);
+    border:1px solid var(--line); border-radius: var(--r-sm); padding: 0 var(--sp-3); }
+
+  /* ---------- two months compared ---------------------------------------------- */
+  .cmp-pick{ display:flex; flex-wrap:wrap; align-items:flex-end; gap: var(--sp-6);
+    padding-bottom: var(--sp-7); margin-bottom: var(--sp-7); border-bottom:1px solid var(--line); }
+  .cmp-pick select{ min-width: 170px; }
+  .cmp-list{ margin: var(--sp-6) 0; }
+  .cmp-line{ margin: 0; padding: var(--sp-5) 0; border-bottom:1px solid var(--line);
+    font-size: var(--fs-sm); line-height:1.7; color: var(--ink-soft); max-width: 62ch;
+    display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-6); }
+  .cmp-line:last-child{ border-bottom:0; }
+  .cmp-line strong{ color: var(--ink); font-weight:600; }
+  .cmp-figs{ flex:none; font-size: var(--fs-3xs); color: var(--ink-dim);
+    font-variant-numeric: tabular-nums; white-space:nowrap; }
+
 </style>
 </head>
 
@@ -9868,6 +9911,265 @@
           // afterprint does not fire everywhere; this is the way back regardless.
           setTimeout(done, 8000);
         });
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
+
+    /* ======================================================================
+       THE INDEX — /unai-team ledger, round four
+
+       A book with four months in it and no index. "How much have I spent at
+       Jollibee, ever" is the question the app could not answer without
+       scrolling, and it is the question people actually have.
+
+       Every description that appears more than once is an entry: what it comes
+       to in total, how many times, when it first and last appeared, and which
+       months it falls in. Ordered alphabetically, because that is what an index
+       is for — you arrive knowing the word.
+       ====================================================================== */
+    (function ledgerIndex(){
+      "use strict";
+
+      const money = n => fmtMoney(round2(n));
+      const monthKeyOf = d => String(d).slice(0, 7);
+      const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const shortMonth = k => MON[Number(String(k).slice(5, 7)) - 1] + " " + String(k).slice(2, 4);
+
+      // Entries are grouped on the description as written, case-folded and with
+      // its spacing tidied. Not stemmed and not fuzzy-matched: "Globe postpaid"
+      // and "Globe Postpaid" are the same thing, "Globe" and "Globe fibre" are
+      // not, and guessing which is which is how an index starts lying.
+      function key(s){ return String(s || "").trim().replace(/\s+/g, " ").toLowerCase(); }
+
+      function build(filter){
+        const rows = {};
+        const add = (x, kind) => {
+          const k = key(x.description);
+          if (!k) return;
+          const e = rows[k] || (rows[k] = {
+            label: String(x.description).trim(), kind: kind, n: 0, total: 0,
+            first: x.date, last: x.date, months: {}, cats: {}
+          });
+          e.n++;
+          e.total = round2(e.total + x.amount);
+          if (x.date < e.first) e.first = x.date;
+          if (x.date > e.last) e.last = x.date;
+          e.months[monthKeyOf(x.date)] = true;
+          if (x.category) e.cats[x.category] = (e.cats[x.category] || 0) + 1;
+          if (e.kind !== kind) e.kind = "both";
+        };
+        expenses.forEach(e => add(e, "out"));
+        incomes.forEach(i => add(i, "in"));
+
+        let list = Object.keys(rows).map(k => rows[k])
+          .filter(e => e.n > 1)
+          .sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase()));
+
+        const q = String(filter || "").trim().toLowerCase();
+        if (q) list = list.filter(e => e.label.toLowerCase().indexOf(q) !== -1);
+
+        if (!list.length){
+          return q
+            ? '<p class="wk">Nothing in the index matches “' + escapeHtml(q) + '”.</p>'
+            : '<p class="wk">Nothing yet appears more than once. The index fills itself as the book repeats.</p>';
+        }
+
+        const letters = {};
+        list.forEach(e => {
+          const L = e.label.charAt(0).toUpperCase();
+          const bucket = /[A-Z]/.test(L) ? L : "#";
+          (letters[bucket] = letters[bucket] || []).push(e);
+        });
+        const order = Object.keys(letters).sort();
+        const totalOut = round2(list.filter(e => e.kind !== "in").reduce((t, e) => t + e.total, 0));
+
+        const lead = '<p class="wk ix-lead">' + list.length + ' things recur in the book, ' +
+          'accounting for <strong>' + money(totalOut) + '</strong> between them. ' +
+          'Anything entered only once is left out — an index of singletons is the list you already have.</p>';
+
+        const jump = '<nav class="ix-jump" aria-label="Jump to a letter">' +
+          order.map(L => '<a href="#ix-' + L.replace("#", "sym") + '">' + L + '</a>').join("") + '</nav>';
+
+        const body = order.map(L =>
+          '<section class="ix-letter" id="ix-' + L.replace("#", "sym") + '">' +
+            '<h3 class="ix-letter-head">' + L + '</h3>' +
+            letters[L].map(e => {
+              const months = Object.keys(e.months).sort();
+              const cat = Object.keys(e.cats).sort((a, b) => e.cats[b] - e.cats[a])[0] || "";
+              return '<div class="ix-entry" data-label="' + escapeHtml(e.label) + '">' +
+                '<span class="ix-name">' + escapeHtml(e.label) + '</span>' +
+                '<span class="ix-leader"></span>' +
+                '<span class="ix-total' + (e.kind === "in" ? " is-in" : "") + '">' + money(e.total) + '</span>' +
+                '<span class="ix-detail">' + e.n + ' times' +
+                  (cat ? ', mostly under ' + escapeHtml(cat) : '') +
+                  ', averaging ' + money(e.total / e.n) +
+                  ' · ' + fmtDate(e.first) + ' to ' + fmtDate(e.last) + '</span>' +
+                '<span class="ix-months">' + months.map(m =>
+                  '<span class="ix-mon">' + shortMonth(m) + '</span>').join("") + '</span>' +
+              '</div>';
+            }).join("") +
+          '</section>').join("");
+
+        return lead + jump + body;
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-history");
+        if (!panel || panel.querySelector("#ix-card")) return;
+        const card = document.createElement("div");
+        card.className = "card is-sheet";
+        card.id = "ix-card";
+        card.innerHTML =
+          '<header class="panel-head is-chapter">' +
+            '<h2>The index</h2>' +
+            '<p class="sub">Everything that recurs, alphabetically, with what it has come to. Follow a name to see every time it appears.</p>' +
+          '</header>' +
+          '<div class="ix-find"><label class="fld-k" for="ix-filter">Look up</label>' +
+            '<input type="text" id="ix-filter" placeholder="A name, or part of one"></div>' +
+          '<div id="ix-body"></div>';
+        panel.appendChild(card);
+
+        const body = document.getElementById("ix-body");
+        const box = document.getElementById("ix-filter");
+        const draw = () => { body.innerHTML = build(box.value); };
+        let t = null;
+        box.addEventListener("input", () => { clearTimeout(t); t = setTimeout(draw, 140); });
+        draw();
+
+        // Following a name puts it into the book's own search, so the index is a
+        // way in rather than a second place the same rows are listed.
+        body.addEventListener("click", ev => {
+          const row = ev.target.closest(".ix-entry");
+          if (!row) return;
+          const search = document.getElementById("filter-search");
+          if (!search) return;
+          search.value = row.dataset.label;
+          search.dispatchEvent(new Event("input", { bubbles: true }));
+          search.scrollIntoView({ block: "center" });
+          showToast("Showing every entry for " + row.dataset.label + ".");
+        });
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
+    /* ======================================================================
+       TWO MONTHS COMPARED — /unai-team ledger, round four
+
+       A comparison written out rather than charted. The app can already draw
+       last period behind this one; what it could not do is say which headings
+       moved and by how much, in the order that matters, in words.
+       ====================================================================== */
+    (function ledgerCompare(){
+      "use strict";
+
+      const money = n => fmtMoney(round2(n));
+      const monthKeyOf = d => String(d).slice(0, 7);
+      const MONL = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
+      const longMonth = k => MONL[Number(String(k).slice(5, 7)) - 1] + " " + String(k).slice(0, 4);
+
+      function monthsOnFile(){
+        const keys = {};
+        expenses.forEach(e => keys[monthKeyOf(e.date)] = true);
+        incomes.forEach(i => keys[monthKeyOf(i.date)] = true);
+        return Object.keys(keys).sort().reverse();
+      }
+
+      function byCategory(key){
+        const out = {};
+        expenses.filter(e => monthKeyOf(e.date) === key)
+          .forEach(e => { out[e.category] = round2((out[e.category] || 0) + e.amount); });
+        return out;
+      }
+
+      // "More" and "less" are only meaningful against a size. A category that
+      // went from 40 to 80 doubled; one that went from 4,000 to 4,040 did not
+      // move, and both are +40 if you only report the difference.
+      function describe(diff, from){
+        const pct = from ? (diff / from) * 100 : null;
+        const mag = Math.abs(pct == null ? 100 : pct);
+        if (from === 0) return "appeared, at " + money(Math.abs(diff));
+        if (mag < 5) return "held level";
+        const word = mag > 60 ? "far" : mag > 25 ? "noticeably" : "a little";
+        return word + " " + (diff > 0 ? "more" : "less") + ", by " + money(Math.abs(diff)) +
+               " (" + Math.round(mag) + "%)";
+      }
+
+      function build(aKey, bKey){
+        if (!aKey || !bKey || aKey === bKey){
+          return '<p class="wk">Pick two different months to compare.</p>';
+        }
+        const A = byCategory(aKey), B = byCategory(bKey);
+        const aTot = round2(Object.keys(A).reduce((t, k) => t + A[k], 0));
+        const bTot = round2(Object.keys(B).reduce((t, k) => t + B[k], 0));
+        const names = Object.keys(A).concat(Object.keys(B))
+          .filter((v, i, arr) => arr.indexOf(v) === i);
+        const rows = names.map(n => ({
+          name: n, a: A[n] || 0, b: B[n] || 0, diff: round2((A[n] || 0) - (B[n] || 0))
+        })).filter(r => Math.abs(r.diff) >= 1)
+           .sort((x, y) => Math.abs(y.diff) - Math.abs(x.diff));
+
+        const overall = round2(aTot - bTot);
+        const lead = '<p class="wk"><strong>' + escapeHtml(longMonth(aKey)) + '</strong> cost <strong>' +
+          money(aTot) + '</strong> against <strong>' + money(bTot) + '</strong> in ' +
+          escapeHtml(longMonth(bKey)) + ' — ' +
+          (Math.abs(overall) < 1 ? 'the same to within a peso.'
+            : money(Math.abs(overall)) + ' ' + (overall > 0 ? 'more' : 'less') + ' overall' +
+              (bTot ? ', ' + Math.abs(Math.round((overall / bTot) * 100)) + '%.' : '.')) + '</p>';
+
+        if (!rows.length){
+          return lead + '<p class="wk">No heading moved by as much as a peso between them.</p>';
+        }
+
+        const gone = rows.filter(r => r.a === 0);
+        const nw = rows.filter(r => r.b === 0);
+
+        const said = '<div class="cmp-list">' + rows.slice(0, 10).map(r =>
+          '<p class="cmp-line"><strong>' + escapeHtml(r.name) + '</strong> ' + describe(r.diff, r.b) +
+          '<span class="cmp-figs">' + money(r.b) + ' → ' + money(r.a) + '</span></p>').join("") + '</div>';
+
+        const tail =
+          (nw.length ? '<p class="wk">Appearing for the first time: <strong>' +
+            nw.map(r => escapeHtml(r.name)).join(", ") + '</strong>.</p>' : '') +
+          (gone.length ? '<p class="wk">Nothing at all under <strong>' +
+            gone.map(r => escapeHtml(r.name)).join(", ") + '</strong> this time.</p>' : '');
+
+        return lead + said + tail;
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-charts");
+        if (!panel || panel.querySelector("#cmp-card")) return;
+        const months = monthsOnFile();
+        if (months.length < 2) return;
+
+        const card = document.createElement("div");
+        card.className = "card is-sheet";
+        card.id = "cmp-card";
+        const opts = sel => months.map(m =>
+          '<option value="' + m + '"' + (m === sel ? " selected" : "") + '>' + escapeHtml(longMonth(m)) + '</option>').join("");
+        card.innerHTML =
+          '<header class="panel-head is-chapter">' +
+            '<h2>Two months compared</h2>' +
+            '<p class="sub">Which headings moved, by how much, and whether that is a lot for a heading of that size.</p>' +
+          '</header>' +
+          '<div class="cmp-pick">' +
+            '<label class="fld-k" for="cmp-a">This one</label><select id="cmp-a">' + opts(months[0]) + '</select>' +
+            '<label class="fld-k" for="cmp-b">Against</label><select id="cmp-b">' + opts(months[1]) + '</select>' +
+          '</div><div id="cmp-body"></div>';
+        panel.appendChild(card);
+
+        const a = document.getElementById("cmp-a"), b = document.getElementById("cmp-b");
+        const body = document.getElementById("cmp-body");
+        const draw = () => { body.innerHTML = build(a.value, b.value); };
+        a.addEventListener("change", draw);
+        b.addEventListener("change", draw);
+        draw();
       }
 
       mount();
