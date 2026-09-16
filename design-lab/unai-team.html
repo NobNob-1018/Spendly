@@ -3441,6 +3441,17 @@
   .sp-row.is-future .sp-date.is-late + .sp-node::before{ border-color: var(--out); border-style: solid; }
 
 </style>
+<script>
+/* Runs before anything is painted. A reader who chose the night edition should
+   never be shown a white page on the way to it. Wrapped because storage throws
+   outright in a locked-down browser, and a theme is not worth a blank app. */
+(function(){
+  try{
+    var t = localStorage.getItem("spendly_ledger_theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  }catch(e){}
+})();
+</script>
 </head>
 
 <body>
@@ -11040,121 +11051,203 @@
       const $ = id => document.getElementById(id);
       const money = n => fmtMoney(round2(n));
       const iso = d => toLocalISO(d);
-      const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-      const DAY = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      const MON  = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
+      const MON3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const DAY  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      const HORIZON = 45;                       // days of committed future the book carries
 
-      let mode = "all";                                   // all | out | in | owed
-      let placeFilter = "";                               // an account name, or ""
-      const HORIZON = 45;                                 // days ahead the spine shows
+      /* ---- state ----------------------------------------------------------
+         One object, because every field in it has to survive a trip into the
+         drawer and back. A reader returning to a rail they did not leave has
+         lost their place, and the app looks like it forgot. */
+      const S = {
+        ym: "",          // which page — "YYYY-MM"
+        mode: "all",     // all | out | in | owed
+        place: "",       // an account name, or ""
+        find: "",        // free text
+        open: "",        // the key of the one expanded line
+        cursor: -1       // keyboard position on the rail
+      };
 
       function dlabel(s){
         const d = new Date(s + "T00:00:00");
         if (isNaN(d)) return s;
-        return DAY[d.getDay()] + " " + d.getDate() + " " + MON[d.getMonth()];
+        return DAY[d.getDay()] + " " + d.getDate() + " " + MON3[d.getMonth()];
+      }
+      function pageName(ym){
+        const y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1;
+        const thisYear = new Date().getFullYear();
+        return MON[m] + (y === thisYear ? "" : " " + y);
+      }
+      function shiftMonth(ym, by){
+        const d = new Date(+ym.slice(0, 4), +ym.slice(5, 7) - 1 + by, 1);
+        return iso(d).slice(0, 7);
       }
 
-      /* ---- what is on the rail -------------------------------------------
-         Past: what actually happened, newest last so the rail reads downward in
-         time like a calendar rather than upward like a feed.
-         Future: what is already committed — recurring entries that have not
-         posted yet, loan deadlines both ways, and the interest that will post.
-         A projection is marked as one; it is never mixed in with a record. */
-      function events(){
+      /* ---- the book's pages -----------------------------------------------
+         A page per month, from the first thing ever recorded to the far edge of
+         the horizon, with no gaps: a month with nothing in it is still a page,
+         because an empty month is information. */
+      function pages(){
         const today = todayISO();
-        const back = new Date(); back.setDate(back.getDate() - 30);
-        const from = iso(back);
-        const ahead = new Date(); ahead.setDate(ahead.getDate() + HORIZON);
-        const to = iso(ahead);
+        let first = today;
+        expenses.concat(incomes).forEach(r => { if (r.date && r.date < first) first = r.date; });
+        const far = new Date(); far.setDate(far.getDate() + HORIZON);
         const out = [];
-
-        if (mode === "all" || mode === "out"){
-          expenses.filter(e => e.date >= from && e.date <= today).forEach(e => {
-            if (placeFilter && e.account !== placeFilter) return;
-            out.push({ date: e.date, dir: "out", what: e.description || "(no description)",
-                       tag: e.category, amt: -e.amount, kind: "record" });
-          });
-        }
-        if (mode === "all" || mode === "in"){
-          incomes.filter(i => i.date >= from && i.date <= today).forEach(i => {
-            if (placeFilter && i.account !== placeFilter) return;
-            out.push({ date: i.date, dir: "in", what: i.description || "(no description)",
-                       tag: i.category, amt: i.amount, kind: "record" });
-          });
-        }
-
-        // --- ahead ---------------------------------------------------------
-        if (!placeFilter && (mode === "all" || mode === "out" || mode === "in")){
-          // Standing orders that have not posted yet this month, and the next
-          // occurrence after that, inside the horizon.
-          recurring.forEach(r => {
-            for (let m = 0; m <= 2; m++){
-              const d = new Date();
-              d.setMonth(d.getMonth() + m);
-              d.setDate(Math.min(r.dayOfMonth, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
-              const on = iso(d);
-              if (on <= today || on > to) continue;
-              const isIn = r.type === "income";
-              if (mode === "out" && isIn) continue;
-              if (mode === "in" && !isIn) continue;
-              out.push({ date: on, dir: isIn ? "in" : "out", what: r.description,
-                         tag: r.category + " · every month", amt: isIn ? r.amount : -r.amount,
-                         kind: "due" });
-            }
-          });
-        }
-        if (mode === "all" || mode === "owed"){
-          loansGiven.filter(l => l.status === "outstanding" && l.deadline && l.deadline <= to)
-            .forEach(l => out.push({ date: l.deadline, dir: "in", what: l.person + " repays you",
-                                     tag: "lent out", amt: l.amount, kind: "due" }));
-          loansTaken.filter(l => l.status === "outstanding" && l.deadline && l.deadline <= to)
-            .forEach(l => out.push({ date: l.deadline, dir: "out", what: "You repay " + l.person,
-                                     tag: "borrowed", amt: -l.amount, kind: "due" }));
-        }
-
-        out.sort((a, b) => a.date.localeCompare(b.date) ||
-          (a.kind === b.kind ? 0 : a.kind === "record" ? -1 : 1));
+        let cur = first.slice(0, 7);
+        const end = iso(far).slice(0, 7);
+        // Guard the walk rather than trusting the dates: one corrupt record
+        // with the year 1970 in it should not hang the page on a loop.
+        for (let i = 0; i < 480 && cur <= end; i++){ out.push(cur); cur = shiftMonth(cur, 1); }
         return out;
       }
 
-      /* ---- the rail ------------------------------------------------------ */
+      /* ---- what is on a page ----------------------------------------------
+         Records are things that happened. Everything else is committed: a
+         standing order that has not posted, a loan with a date on it, and those
+         are never mixed together, because a plan that reads as a receipt makes
+         every figure above it wrong. */
+      function events(ym){
+        const today = todayISO();
+        const isNow = ym === today.slice(0, 7);
+        const from = ym + "-01", to = ym + "-31";
+        const far = new Date(); far.setDate(far.getDate() + HORIZON);
+        const horizon = iso(far);
+        const out = [];
+
+        const wantOut = S.mode === "all" || S.mode === "out";
+        const wantIn  = S.mode === "all" || S.mode === "in";
+        const owed    = S.mode === "owed";
+        const inPage  = d => d >= from && d <= to;
+        const mine    = r => !S.place || r.bank === S.place;
+
+        if (!owed){
+          if (wantOut) expenses.forEach(e => {
+            if (!inPage(e.date) || !mine(e)) return;
+            out.push({ key: "e" + e.id, id: e.id, src: "expense", date: e.date, dir: "out",
+                       what: e.description || "(no description)", tag: e.category,
+                       amt: -e.amount, kind: "record", rec: e });
+          });
+          if (wantIn) incomes.forEach(i => {
+            if (!inPage(i.date) || !mine(i)) return;
+            out.push({ key: "i" + i.id, id: i.id, src: "income", date: i.date, dir: "in",
+                       what: i.description || "(no description)", tag: i.category,
+                       amt: i.amount, kind: "record", rec: i });
+          });
+        }
+
+        // Standing orders that have not posted yet. They carry no account of
+        // their own in this app, so a place filter hides them rather than
+        // guessing: a projection charged to the wrong wallet is a lie.
+        if (!owed && !S.place){
+          recurring.forEach(r => {
+            for (let m = -1; m <= 3; m++){
+              const probe = new Date(+ym.slice(0, 4), +ym.slice(5, 7) - 1 + m, 1);
+              const last = new Date(probe.getFullYear(), probe.getMonth() + 1, 0).getDate();
+              probe.setDate(Math.min(r.dayOfMonth || 1, last));
+              const on = iso(probe);
+              if (!inPage(on) || on <= today || on > horizon) continue;
+              const isIn = r.type === "income";
+              if ((isIn && !wantIn) || (!isIn && !wantOut)) continue;
+              out.push({ key: "r" + r.id + on, id: r.id, src: "recurring", date: on,
+                         dir: isIn ? "in" : "out", what: r.description,
+                         tag: r.category + " · every month",
+                         amt: isIn ? r.amount : -r.amount, kind: "due", rec: r });
+            }
+          });
+        }
+
+        // Obligations. On the page you are standing on, an overdue one appears
+        // whatever month its deadline fell in — arrears do not stay behind.
+        if (S.mode === "all" || owed){
+          const due = (l, dir, who) => {
+            if (l.status !== "outstanding" || !l.deadline) return;
+            if (S.place && l.bank !== S.place) return;
+            const late = l.deadline < today;
+            if (!(inPage(l.deadline) || (isNow && late))) return;
+            if (l.deadline > horizon && !late) return;
+            out.push({ key: "l" + dir + l.id, id: l.id, src: dir === "in" ? "loanGiven" : "loanTaken",
+                       date: l.deadline, dir: dir, what: who, tag: dir === "in" ? "lent out" : "borrowed",
+                       amt: dir === "in" ? l.amount : -l.amount, kind: "due", late: late, rec: l });
+          };
+          loansGiven.forEach(l => due(l, "in", l.person + " repays you"));
+          loansTaken.forEach(l => due(l, "out", "You repay " + l.person));
+        }
+
+        const q = S.find.trim().toLowerCase();
+        const kept = q
+          ? out.filter(e => (e.what + " " + (e.tag || "")).toLowerCase().indexOf(q) !== -1)
+          : out;
+        kept.sort((a, b) => a.date.localeCompare(b.date) ||
+          (a.kind === b.kind ? 0 : a.kind === "record" ? -1 : 1));
+        return { rows: kept, hidden: out.length - kept.length };
+      }
+
+      /* ---- the balance carried down the rail -------------------------------
+         What you hold is a fact about now, so every historical figure is
+         derived by walking back from it. Filtered to one place, the column is
+         that account's balance; unfiltered it is everything. Either way the
+         figure beside a line is what you held once that line had happened. */
+      function anchorBalance(){
+        if (!S.place) return computeTotalMoney().total;
+        const a = savings.find(x => x.provider === S.place);
+        return a ? round2(Number(a.amount) || 0) : 0;
+      }
+      function recordsAfter(dateStr){
+        // Everything that has happened since the end of this page, which is what
+        // has to be undone to get back to it.
+        let sum = 0;
+        const mine = r => !S.place || r.bank === S.place;
+        expenses.forEach(e => { if (e.date > dateStr && e.date <= todayISO() && mine(e)) sum -= e.amount; });
+        incomes.forEach(i => { if (i.date > dateStr && i.date <= todayISO() && mine(i)) sum += i.amount; });
+        return round2(sum);
+      }
+
+      /* ---- the rail -------------------------------------------------------- */
       function renderSpine(){
         const host = $("spine");
         if (!host) return;
         const today = todayISO();
-        const list = events();
-        const balanceNow = computeTotalMoney().total;
+        const ym = S.ym;
+        const isNow = ym === today.slice(0, 7);
+        const { rows, hidden } = events(ym);
 
-        // Records are the only things that can be in the past: they happened.
-        const past = list.filter(e => e.kind === "record" && e.date <= today);
-        // Everything committed is ahead, however old its date. An overdue
-        // obligation is not history, it is arrears, and it leads.
-        const future = list.filter(e => e.kind !== "record" || e.date > today)
+        const past = rows.filter(e => e.kind === "record");
+        const ahead = rows.filter(e => e.kind !== "record")
           .sort((x, y) => {
-            const xl = x.date < today, yl = y.date < today;
+            const xl = !!x.late, yl = !!y.late;
             if (xl !== yl) return xl ? -1 : 1;
             return x.date.localeCompare(y.date);
           });
 
-        // The balance beside a past row is what you held after it. Working
-        // backwards from today is the only version that agrees with the header.
-        let running = balanceNow;
+        // Walk back from the anchor to the foot of this page, then forward
+        // through it, so the last figure on a past page is the balance that
+        // month closed on.
+        const pageEnd = past.length ? past[past.length - 1].date : ym + "-31";
+        const closing = round2(anchorBalance() - recordsAfter(pageEnd));
+        let run = closing;
         const pastRows = [];
         for (let i = past.length - 1; i >= 0; i--){
-          pastRows.unshift({ ...past[i], bal: running });
-          running = round2(running - past[i].amt);
+          pastRows.unshift(Object.assign({}, past[i], { bal: run }));
+          run = round2(run - past[i].amt);
         }
-        // Ahead, the balance is a projection: each committed event applied in turn.
-        let ahead = balanceNow;
-        const futureRows = future.map(e => {
-          ahead = round2(ahead + e.amt);
-          return { ...e, bal: ahead, late: e.date < today };
+        const opening = run;
+
+        let proj = isNow ? anchorBalance() : closing;
+        const aheadRows = ahead.map(e => {
+          proj = round2(proj + e.amt);
+          return Object.assign({}, e, { bal: proj });
         });
 
-        const row = (e, prev) => {
-          const same = prev && prev.date === e.date && !e.late;
-          const future = e.date > today || e.late;
+        const line = (e, prev, idx) => {
+          const sameDay = prev && prev.date === e.date && !e.late;
+          const future = e.kind !== "record";
+          const isOpen = S.open === e.key;
           return '<div class="sp-row is-' + e.dir + (future ? " is-future" : "") +
-                   (same ? " is-same-day" : "") + '">' +
+                   (sameDay ? " is-same-day" : "") + (isOpen ? " is-open" : "") +
+                   '" data-key="' + escapeHtml(e.key) + '" data-idx="' + idx + '" ' +
+                   'tabindex="-1" role="button" aria-expanded="' + (isOpen ? "true" : "false") + '">' +
             '<span class="sp-date' + (e.late ? " is-late" : "") + '">' +
               (e.late ? "overdue" : escapeHtml(dlabel(e.date))) + '</span>' +
             '<span class="sp-node" aria-hidden="true"></span>' +
@@ -11162,51 +11255,157 @@
             '<span class="sp-tag">' + escapeHtml(e.tag || "") + '</span>' +
             '<span class="sp-amt">' + (e.amt >= 0 ? "+" : "−") + money(Math.abs(e.amt)) + '</span>' +
             '<span class="sp-bal">' + money(e.bal) + '</span>' +
-          '</div>';
+          '</div>' + (isOpen ? detail(e) : "");
         };
 
-        const lowest = futureRows.length ? Math.min.apply(null, futureRows.map(r => r.bal)) : balanceNow;
-        const lowAt = futureRows.find(r => r.bal === lowest);
+        let idx = 0;
+        const pastHtml = pastRows.length
+          ? pastRows.map((e, i) => line(e, pastRows[i - 1], idx++)).join("")
+          : '<p class="sp-empty">' + (hidden || S.find.trim()
+              ? "Nothing on this page matches what you are looking for."
+              : "Nothing was recorded in " + pageName(ym) + ".") + '</p>' + elsewhere();
 
-        host.innerHTML =
-          (pastRows.length
-            ? pastRows.map((e, i) => row(e, pastRows[i - 1])).join("")
-            : '<p class="sp-empty">Nothing recorded in the last thirty days.</p>') +
+        const rule = isNow
+          ? '<div class="sp-today" id="sp-today">' +
+              '<span class="sp-today-k">Today</span>' +
+              '<span class="sp-today-node" aria-hidden="true"></span>' +
+              '<span class="sp-today-label">' + escapeHtml(dlabel(today)) +
+                ' · ' + (S.place ? "what " + escapeHtml(S.place) + " holds" : "what you hold") +
+                ' right now</span>' +
+              '<span class="sp-today-bal">' + money(anchorBalance()) + '</span>' +
+            '</div>'
+          : (aheadRows.length ? '<div class="sp-fold-rule"><span>Committed</span></div>' : "");
 
-          '<div class="sp-today">' +
-            '<span class="sp-today-k">Today</span>' +
-            '<span class="sp-today-node" aria-hidden="true"></span>' +
-            '<span class="sp-today-label">' + escapeHtml(dlabel(today)) + ' · what you hold right now</span>' +
-            '<span class="sp-today-bal">' + money(balanceNow) + '</span>' +
-          '</div>' +
+        const low = aheadRows.length ? Math.min.apply(null, aheadRows.map(r => r.bal)) : null;
+        const lowAt = low !== null ? aheadRows.find(r => r.bal === low) : null;
+        const aheadHtml = aheadRows.length
+          ? aheadRows.map((e, i) => line(e, aheadRows[i - 1], idx++)).join("") +
+            '<p class="sp-gap">Committed only — standing orders, and loans with a date on ' +
+              'them. Day-to-day spending is not projected, so this line is the best case, ' +
+              'not the likely one.' +
+              (lowAt && low < anchorBalance()
+                ? ' It dips lowest at ' + money(low) + ' on ' + escapeHtml(dlabel(lowAt.date)) + '.'
+                : '') + '</p>'
+          : (isNow ? '<p class="sp-gap">Nothing is committed for the rest of ' +
+              pageName(ym) + '. Turn the page for what comes after.</p>' : "");
 
-          (futureRows.length
-            ? futureRows.map((e, i) => row(e, futureRows[i - 1])).join("") +
-              '<p class="sp-gap">' +
-                'Committed only — standing orders, and loans with a date on them. ' +
-                'Day-to-day spending is not projected, so the line below today is the ' +
-                'best case, not the likely one.' +
-                (lowAt && lowest < balanceNow
-                  ? ' It dips lowest at ' + money(lowest) + ' on ' + escapeHtml(dlabel(lowAt.date)) + '.'
-                  : '') +
-              '</p>'
-            : '<p class="sp-gap">Nothing is committed in the next ' + HORIZON + ' days.</p>');
+        const fold = $("fold");
+        if (fold) fold.innerHTML = foot(ym, pastRows, aheadRows, opening, closing, isNow);
+        host.innerHTML = pastHtml + rule + aheadHtml;
+        host.querySelectorAll(".sp-row").forEach(r => {
+          r.addEventListener("click", ev => {
+            if (ev.target.closest(".sp-detail")) return;
+            S.open = S.open === r.dataset.key ? "" : r.dataset.key;
+            S.cursor = +r.dataset.idx;
+            renderSpine();
+            const again = host.querySelector('[data-key="' + CSS.escape(r.dataset.key) + '"]');
+            if (again) again.focus({ preventScroll: true });
+          });
+        });
+        if (S.cursor >= 0){
+          const cur = host.querySelector('[data-idx="' + S.cursor + '"]');
+          if (cur) cur.classList.add("is-cursor");
+        }
       }
 
-      /* ---- the places ---------------------------------------------------- */
+      function elsewhere(){
+        if (!S.find.trim()) return "";
+        const found = findElsewhere();
+        if (!found.length) return '<p class="sp-elsewhere">Nothing anywhere in the book ' +
+          'matches that, on any page.</p>';
+        const total = found.reduce((t, f) => t + f.n, 0);
+        return '<p class="sp-elsewhere">' + total + ' line' + (total === 1 ? " is" : "s are") +
+          ' on other pages: ' +
+          found.map(f => '<button class="sp-jump" data-jump="' + f.ym + '">' +
+            escapeHtml(pageName(f.ym)) + ' <span class="sp-jump-n">' + f.n + '</span></button>').join("") +
+        '</p>';
+      }
+
+      /* ---- the fold ---------------------------------------------------------
+         What a ledger has always had and this app never did: the column footed.
+         It sits at the head of the page because that is the question ("how did
+         this month go") you ask before you read the lines. */
+      function foot(ym, pastRows, aheadRows, opening, closing, isNow){
+        const inSum  = round2(pastRows.filter(r => r.amt > 0).reduce((t, r) => t + r.amt, 0));
+        const outSum = round2(pastRows.filter(r => r.amt < 0).reduce((t, r) => t - r.amt, 0));
+        const net = round2(inSum - outSum);
+        const committed = round2(aheadRows.reduce((t, r) => t + r.amt, 0));
+        const cell = (k, v, cls) => '<div class="fold-cell' + (cls ? " " + cls : "") + '">' +
+          '<span class="fold-k">' + k + '</span><span class="fold-v num">' + v + '</span></div>';
+        // The cells only. #fold is the grid; wrapping them in another .fold
+        // nested one grid inside a single track of the other.
+        return cell(isNow ? "Received so far" : "Received", money(inSum), "is-in") +
+          cell(isNow ? "Paid out so far" : "Paid out", money(outSum), "is-out") +
+          cell("Net", (net >= 0 ? "+" : "−") + money(Math.abs(net)), net >= 0 ? "is-in" : "is-out") +
+          cell(pastRows.length ? "Opened at" : "Carried in", money(opening)) +
+          (aheadRows.length
+            ? cell("Still committed", (committed >= 0 ? "+" : "−") + money(Math.abs(committed)),
+                   committed >= 0 ? "is-in" : "is-out")
+            : cell(isNow ? "Held now" : "Closed at", money(closing)));
+      }
+
+      /* ---- one line, opened -------------------------------------------------
+         Opened in place, indented under the line it belongs to. A record does
+         not deserve a modal, and a modal would cost the reader their place on
+         the rail to read four fields. */
+      function detail(e){
+        const r = e.rec || {};
+        const bit = (k, v) => v ? '<div class="sp-d-row"><span class="sp-d-k">' + k +
+          '</span><span class="sp-d-v">' + escapeHtml(String(v)) + '</span></div>' : "";
+        let body = "";
+        if (e.kind === "record"){
+          body = bit("Account", r.bank) + bit("Filed under", r.category) +
+            bit("Tags", (Array.isArray(r.tags) && r.tags.length) ? r.tags.join(", ") : "") +
+            (r.originalCurrency && r.originalCurrency !== "PHP"
+              ? bit("Entered as", r.originalAmount + " " + r.originalCurrency) : "") +
+            bit("Dated", dlabel(e.date));
+        } else if (e.src === "recurring"){
+          body = bit("Posts on", "day " + (r.dayOfMonth || 1) + " of every month") +
+            bit("Filed under", r.category) +
+            '<p class="sp-d-note">Nothing has been charged yet. This line is the app ' +
+              'telling you what it is going to do, not what it has done.</p>';
+        } else {
+          body = bit(e.dir === "in" ? "Owed to you by" : "You owe", r.person) +
+            bit("Since", r.date ? dlabel(r.date) : "") +
+            bit("Due", dlabel(e.date)) + bit("Against", r.bank) +
+            (e.late ? '<p class="sp-d-note">The date has gone by and it is still ' +
+              'outstanding, so it sits above the rest — it is arrears, not history.</p>' : "");
+        }
+        const go = e.kind === "record"
+          ? '<button class="sp-d-go" data-go="' + (e.src === "income" ? "income" : "expense") +
+            '" data-goid="' + escapeHtml(String(e.id)) + '">Find it in the record list</button>'
+          : e.src === "recurring"
+            ? '<button class="sp-d-go" data-go="recurring">Open standing orders</button>'
+            : '<button class="sp-d-go" data-go="loans">Open loans</button>';
+        return '<div class="sp-detail">' + body + '<div class="sp-d-act">' + go + '</div></div>';
+      }
+
+      /* ---- where the money is ----------------------------------------------- */
       function renderPlaces(){
         const host = $("places-body");
         if (!host) return;
         const rows = savings.slice().sort((a, b) => b.amount - a.amount);
         const total = round2(rows.reduce((t, a) => t + a.amount, 0));
+        // A place with nothing on this page is not hidden, it is dimmed and
+        // said so: the empty path is the system saving the reader a click.
+        const onPage = {};
+        const from = S.ym + "-01", to = S.ym + "-31";
+        expenses.concat(incomes).forEach(r => {
+          if (r.date >= from && r.date <= to && r.bank) onPage[r.bank] = (onPage[r.bank] || 0) + 1;
+        });
         host.innerHTML =
-          rows.map(a =>
-            '<button class="place' + (placeFilter === a.provider ? " is-on" : "") +
-              '" data-place="' + escapeHtml(a.provider) + '">' +
+          rows.map(a => {
+            const n = onPage[a.provider] || 0;
+            return '<button class="place' + (S.place === a.provider ? " is-on" : "") +
+              (n ? "" : " is-empty") + '" data-place="' + escapeHtml(a.provider) + '"' +
+              (n ? "" : ' title="Nothing moved through this account in ' + escapeHtml(pageName(S.ym)) + '"') +
+              ' aria-pressed="' + (S.place === a.provider ? "true" : "false") + '">' +
               '<span class="place-tick" aria-hidden="true"></span>' +
               '<span class="place-name">' + escapeHtml(a.provider) + '</span>' +
               '<span class="place-amt num">' + money(a.amount) + '</span>' +
-            '</button>').join("") +
+              '<span class="place-n">' + (n ? n + " here" : "none here") + '</span>' +
+            '</button>';
+          }).join("") +
           '<div class="places-total"><span class="places-total-k">All places</span>' +
             '<span class="places-total-v num">' + money(total) + '</span></div>' +
           '<p class="places-note">Money out on loan is not counted here — it is on the rail, ' +
@@ -11214,15 +11413,18 @@
 
         host.querySelectorAll("[data-place]").forEach(b => {
           b.addEventListener("click", () => {
-            placeFilter = (placeFilter === b.dataset.place) ? "" : b.dataset.place;
-            renderPlaces(); renderSpine(); paintHead();
+            S.place = (S.place === b.dataset.place) ? "" : b.dataset.place;
+            S.open = ""; S.cursor = -1;
+            repaint();
           });
         });
       }
 
-      /* ---- what now ------------------------------------------------------ */
-      function renderAct(){
-        const host = $("act-body");
+      /* ---- what needs deciding ----------------------------------------------
+         Rebuilt freely. The quick form below it is not, because it holds
+         half-typed text and a rebuild would throw it away. */
+      function renderDecisions(){
+        const host = $("act-decisions");
         if (!host) return;
         const today = todayISO();
         const soon = new Date(); soon.setDate(soon.getDate() + 30);
@@ -11234,52 +11436,50 @@
         ).filter(x => x.on <= iso(soon)).sort((a, b) => a.on.localeCompare(b.on));
 
         host.innerHTML =
-          '<div class="act-block">' +
-            '<p class="act-head">Put something on the rail</p>' +
-            '<form class="quick" id="quick-form">' +
-              '<input type="text" id="q-desc" placeholder="What was it?" autocomplete="off" aria-label="What was it">' +
-              '<div class="quick-row">' +
-                '<input type="number" id="q-amt" placeholder="0.00" min="0" step="0.01" aria-label="Amount">' +
-                '<select id="q-dir" aria-label="Direction"><option value="out">Out</option><option value="in">In</option></select>' +
-              '</div>' +
-              // Not optional: every entry in this app moves a named balance, and
-              // both writers refuse one without an account. Asking here is the
-              // difference between a quick form and a form that fails silently.
-              '<select id="q-acct" aria-label="Which account">' +
-                savings.slice().sort((a, b) => b.amount - a.amount)
-                  .map(a => '<option value="' + escapeHtml(a.provider) + '">' +
-                    escapeHtml(a.provider) + ' · ' + money(a.amount) + '</option>').join("") +
-              '</select>' +
-              '<button type="submit" class="quick-go">Add to today</button>' +
-              '<p class="quick-hint">Dated today, filed by guess from the description. ' +
-                'Tags, a different date and another currency are in the full form.</p>' +
-            '</form>' +
-          '</div>' +
-          '<div class="act-block">' +
-            '<p class="act-head">Needs a decision</p>' +
-            (items.length
-              ? items.map(x => {
-                  const days = Math.round((new Date(x.on + "T00:00:00") - new Date(today + "T00:00:00")) / 864e5);
-                  const cls = days < 0 ? " is-late" : days <= 7 ? " is-due" : "";
-                  return '<div class="act-item' + cls + '">' +
-                    '<span class="act-who">' + escapeHtml(x.who) + '</span>' +
-                    '<span class="act-amt num" style="color:' + (x.dir === "in" ? "var(--in)" : "var(--ink-2)") + '">' +
-                      money(Math.abs(x.amt)) + '</span>' +
-                    '<span class="act-when">' + (days < 0 ? Math.abs(days) + " days overdue"
-                      : days === 0 ? "due today" : "in " + days + " days") + ' · ' + escapeHtml(dlabel(x.on)) + '</span>' +
-                  '</div>';
-                }).join("")
-              : '<p class="hint">Nothing owed either way in the next thirty days.</p>') +
-          '</div>';
+          '<p class="act-head">Needs a decision</p>' +
+          (items.length
+            ? items.map(x => {
+                const days = Math.round((new Date(x.on + "T00:00:00") - new Date(today + "T00:00:00")) / 864e5);
+                const cls = days < 0 ? " is-late" : days <= 7 ? " is-due" : "";
+                return '<div class="act-item' + cls + '">' +
+                  '<span class="act-who">' + escapeHtml(x.who) + '</span>' +
+                  '<span class="act-amt num ' + (x.dir === "in" ? "is-in" : "is-out") + '">' +
+                    money(Math.abs(x.amt)) + '</span>' +
+                  '<span class="act-when">' + (days < 0 ? Math.abs(days) + " days overdue"
+                    : days === 0 ? "due today" : "in " + days + " days") + ' · ' +
+                    escapeHtml(dlabel(x.on)) + '</span>' +
+                '</div>';
+              }).join("")
+            : '<p class="hint">Nothing owed either way in the next thirty days.</p>');
+      }
 
-        const form = $("quick-form");
-        if (form) form.addEventListener("submit", ev => {
+      /* ---- quick entry: built once, never rebuilt under the reader ----------- */
+      function buildQuick(){
+        const host = $("act-quick");
+        if (!host || host.dataset.built) return;
+        host.dataset.built = "1";
+        host.innerHTML =
+          '<p class="act-head">Put something on the rail</p>' +
+          '<form class="quick" id="quick-form">' +
+            '<input type="text" id="q-desc" placeholder="What was it?" autocomplete="off" aria-label="What was it">' +
+            '<div class="quick-row">' +
+              '<input type="number" id="q-amt" placeholder="0.00" min="0" step="0.01" aria-label="Amount">' +
+              '<select id="q-dir" aria-label="Direction"><option value="out">Out</option><option value="in">In</option></select>' +
+            '</div>' +
+            '<select id="q-acct" aria-label="Which account"></select>' +
+            '<button type="submit" class="quick-go">Add to today</button>' +
+            '<p class="quick-hint">Dated today, filed by guess from the description. ' +
+              'Tags, a different date and another currency are in the full form. ' +
+              '<kbd>n</kbd> puts the cursor here.</p>' +
+          '</form>';
+        refreshAccounts();
+        $("quick-form").addEventListener("submit", ev => {
           ev.preventDefault();
           const desc = $("q-desc").value.trim();
           const amt = parseFloat($("q-amt").value);
           if (!desc){ showToast("Say what it was."); $("q-desc").focus(); return; }
           if (isNaN(amt) || amt <= 0){ showToast("Enter an amount above zero."); $("q-amt").focus(); return; }
-          const acct = $("q-acct") ? $("q-acct").value : "";
+          const acct = $("q-acct").value;
           if (!acct){ showToast("Add an account first — money has to come from somewhere."); return; }
           // Straight through the app's own writers, so a record made here is
           // identical to one made in the full form: same validation, same
@@ -11300,23 +11500,259 @@
           $("in-category").value = cats.indexOf(guess) !== -1 ? guess : cats[0];
           if (dir === "in") addIncome(); else addExpense();
           $("q-desc").value = ""; $("q-amt").value = "";
+          // An entry lands today, so the book turns to today's page to show it
+          // arriving rather than leaving the reader on a page it is not on.
+          S.ym = todayISO().slice(0, 7);
           repaint();
           $("q-desc").focus();
         });
       }
-
-      function paintHead(){
-        const el = $("spine-sub");
-        if (!el) return;
-        el.textContent = placeFilter
-          ? "Only what moves through " + placeFilter + ". The balance beside each line is everything you hold, not just this account."
-          : "Everything dated, past and committed. The balance beside each line is what you hold after it.";
+      function refreshAccounts(){
+        const sel = $("q-acct");
+        if (!sel || document.activeElement === sel) return;
+        const keep = sel.value;
+        sel.innerHTML = savings.slice().sort((a, b) => b.amount - a.amount)
+          .map(a => '<option value="' + escapeHtml(a.provider) + '">' +
+            escapeHtml(a.provider) + ' · ' + money(a.amount) + '</option>').join("");
+        if (keep) sel.value = keep;
       }
 
-      /* ---- the frame ------------------------------------------------------ */
+      /* ---- the page bar and the filters ------------------------------------- */
+      function renderControls(){
+        const list = pages();
+        const at = list.indexOf(S.ym);
+        const today = todayISO().slice(0, 7);
+        $("spine-title").textContent = pageName(S.ym);
+        $("page-pos").textContent = "page " + (at + 1) + " of " + list.length;
+        const prev = $("page-prev"), next = $("page-next"), now = $("page-now");
+        prev.disabled = at <= 0;
+        next.disabled = at >= list.length - 1;
+        prev.innerHTML = '<span aria-hidden="true">←</span> ' +
+          (at > 0 ? escapeHtml(pageName(list[at - 1])) : "Start of the book");
+        next.innerHTML = (at < list.length - 1 ? escapeHtml(pageName(list[at + 1])) : "End of the book") +
+          ' <span aria-hidden="true">→</span>';
+        now.hidden = S.ym === today;
+
+        const sub = $("spine-sub");
+        sub.textContent = S.ym === today
+          ? "Everything dated, past and committed. The figure beside each line is what " +
+            (S.place ? S.place + " held" : "you held") + " once it had happened."
+          : S.ym > today
+            ? "Ahead of today. Only what is already committed can appear here."
+            : "A closed page. The figure beside each line is what " +
+              (S.place ? S.place + " held" : "you held") + " once it had happened.";
+
+        // Mode chips. A mode with nothing behind it on this page is disabled
+        // rather than left looking live, because an empty result the reader
+        // could have been warned about reads as a broken app.
+        const counts = {};
+        ["all", "out", "in", "owed"].forEach(m => {
+          const was = S.mode; S.mode = m;
+          counts[m] = events(S.ym).rows.length;
+          S.mode = was;
+        });
+        document.querySelectorAll("[data-mode]").forEach(b => {
+          const on = b.dataset.mode === S.mode;
+          b.classList.toggle("is-on", on);
+          b.setAttribute("aria-pressed", on ? "true" : "false");
+          const n = counts[b.dataset.mode];
+          b.disabled = n === 0 && !on;
+          const c = b.querySelector(".chip-n");
+          if (c) c.textContent = n;
+        });
+
+        // Every tap answered in the same frame: what is on, what it costs, and
+        // one exit that says what it will undo.
+        const strip = $("active-filters");
+        const on = [];
+        if (S.mode !== "all") on.push({ k: "mode", label: ({ out: "Money out", in: "Money in", owed: "Owed either way" })[S.mode] });
+        if (S.place) on.push({ k: "place", label: "Through " + S.place });
+        if (S.find.trim()) on.push({ k: "find", label: "“" + S.find.trim() + "”" });
+        const shown = events(S.ym).rows.length;
+        if (!on.length){
+          strip.hidden = true;
+          strip.innerHTML = "";
+        } else {
+          strip.hidden = false;
+          strip.innerHTML =
+            '<span class="af-k">Showing</span>' +
+            on.map(f => '<button class="af-chip" data-drop="' + f.k + '">' +
+              escapeHtml(f.label) + '<span class="af-x" aria-hidden="true">×</span>' +
+              '<span class="sr-only"> — remove this filter</span></button>').join("") +
+            '<span class="af-logic">all three must match</span>' +
+            '<span class="af-count">' + shown + ' line' + (shown === 1 ? "" : "s") + ' on this page</span>' +
+            '<button class="af-clear" id="af-clear">Clear all ' + on.length + '</button>';
+          strip.querySelectorAll("[data-drop]").forEach(b => b.addEventListener("click", () => {
+            if (b.dataset.drop === "mode") S.mode = "all";
+            if (b.dataset.drop === "place") S.place = "";
+            if (b.dataset.drop === "find"){ S.find = ""; $("rail-find").value = ""; }
+            S.open = ""; S.cursor = -1;
+            repaint();
+          }));
+          $("af-clear").addEventListener("click", () => {
+            S.mode = "all"; S.place = ""; S.find = ""; $("rail-find").value = "";
+            S.open = ""; S.cursor = -1;
+            repaint();
+            showToast("Back to everything on this page.");
+          });
+        }
+      }
+
+      function turn(to){
+        const list = pages();
+        const at = list.indexOf(to);
+        if (at === -1) return;
+        S.ym = to; S.open = ""; S.cursor = -1;
+        repaint();
+        const wrap = document.querySelector(".spine-wrap");
+        if (wrap) wrap.scrollTop = 0;
+        const sp = $("spine");
+        if (sp) sp.scrollIntoView({ block: "start", behavior: prefersStill() ? "auto" : "smooth" });
+      }
+      function prefersStill(){
+        return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      }
+
+      /* ---- keyboard ---------------------------------------------------------
+         Named in place under the rail rather than hidden behind a help key,
+         because a shortcut nobody is told about is a shortcut nobody has. */
+      function moveCursor(by){
+        const rows = [...document.querySelectorAll("#spine .sp-row")];
+        if (!rows.length) return;
+        S.cursor = Math.max(0, Math.min(rows.length - 1, (S.cursor < 0 ? -1 : S.cursor) + by));
+        rows.forEach(r => r.classList.toggle("is-cursor", +r.dataset.idx === S.cursor));
+        const cur = rows.find(r => +r.dataset.idx === S.cursor);
+        if (cur){ cur.focus({ preventScroll: true }); cur.scrollIntoView({ block: "nearest" }); }
+      }
+      function typing(){
+        const a = document.activeElement;
+        return a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT" || a.isContentEditable);
+      }
+      // Matches on the other pages, so a page with nothing on it can say where
+      // the thing being looked for actually is.
+      function findElsewhere(){
+        const q = S.find.trim().toLowerCase();
+        if (!q) return [];
+        const was = S.ym, out = [];
+        pages().forEach(ym => {
+          if (ym === was) return;
+          S.ym = ym;
+          const n = events(ym).rows.length;
+          if (n) out.push({ ym: ym, n: n });
+        });
+        S.ym = was;
+        return out;
+      }
+
+      const REF_ORDER = ["dashboard", "history", "savings", "loans", "charts", "settings"];
+
+      function wireKeys(){
+        // Capture, because the baseline claims "/" for its own overlay and the
+        // first listener to run is the one that gets to decide.
+        document.addEventListener("keydown", e => {
+          if (e.ctrlKey || e.metaKey || e.altKey) return;
+          // Escape belongs to the drawer whenever the drawer is up, wherever the
+          // focus happens to be sitting — including nowhere, which is where a
+          // click on the scrim leaves it.
+          if (e.key === "Escape" && document.body.classList.contains("drawer-open")){
+            e.preventDefault(); e.stopPropagation();
+            closeRef();
+            return;
+          }
+          if (typing() || document.body.classList.contains("drawer-open")) return;
+          if (e.key === "/"){
+            e.preventDefault(); e.stopPropagation();
+            const f = $("rail-find"); f.focus(); f.select();
+            return;
+          }
+          if (/^[1-6]$/.test(e.key)){
+            e.preventDefault(); e.stopPropagation();
+            openRef(REF_ORDER[+e.key - 1]);
+          }
+        }, true);
+
+        document.addEventListener("keydown", e => {
+          if (e.ctrlKey || e.metaKey || e.altKey) return;
+          const drawerOpen = document.body.classList.contains("drawer-open");
+          if (e.key === "Escape"){
+            if (drawerOpen) return;                       // the drawer owns Escape when it is up
+            if (S.open){ S.open = ""; renderSpine(); e.preventDefault(); return; }
+            if (typing()){ document.activeElement.blur(); return; }
+          }
+          if (typing() || drawerOpen) return;
+          const list = pages(), at = list.indexOf(S.ym);
+          switch (e.key){
+            case "j": case "ArrowDown": moveCursor(1); e.preventDefault(); break;
+            case "k": case "ArrowUp":   moveCursor(-1); e.preventDefault(); break;
+            case "Enter": {
+              const cur = document.querySelector("#spine .sp-row.is-cursor");
+              if (cur){ cur.click(); e.preventDefault(); }
+              break;
+            }
+            case "[": if (at > 0) turn(list[at - 1]); e.preventDefault(); break;
+            case "]": if (at < list.length - 1) turn(list[at + 1]); e.preventDefault(); break;
+            case "t": turn(todayISO().slice(0, 7)); e.preventDefault(); break;
+            case "n": { const q = $("q-desc"); if (q){ q.focus(); e.preventDefault(); } break; }
+            // "/" is this page, "?" is the whole book. Both are named on the strip.
+            case "?": { const b = $("btn-global-search"); if (b){ b.click(); e.preventDefault(); } break; }
+          }
+        });
+      }
+
+      /* ---- the drawer: the rest of the book ---------------------------------- */
+      const NAMES = { dashboard: "Overview", charts: "Charts", history: "Every record",
+                      savings: "Accounts", loans: "Loans & investments", settings: "Settings",
+                      add: "Add an entry", recurring: "Standing orders" };
+      let lastFocus = null;
+      function openRef(tab, deep){
+        const drawer = $("ref-drawer"), scrim = $("drawer-scrim");
+        lastFocus = document.activeElement;
+        const real = tab === "recurring" ? "savings" : tab;
+        $("drawer-title").textContent = NAMES[tab] || tab;
+        activateTab(real);
+        drawer.classList.add("is-open");
+        scrim.classList.add("is-open");
+        document.body.classList.add("drawer-open");
+        drawer.scrollTop = 0;
+        document.querySelectorAll("[data-ref]").forEach(b =>
+          b.classList.toggle("is-on", b.dataset.ref === tab));
+        $("drawer-close").focus();
+        if (deep) setTimeout(() => deep(), 60);
+      }
+      function closeRef(){
+        $("ref-drawer").classList.remove("is-open");
+        $("drawer-scrim").classList.remove("is-open");
+        document.body.classList.remove("drawer-open");
+        document.querySelectorAll("[data-ref]").forEach(b => b.classList.remove("is-on"));
+        if (lastFocus && document.contains(lastFocus)) lastFocus.focus({ preventScroll: true });
+        repaint();
+      }
+      // From a line on the rail to the row that line came from, with the row
+      // marked so the reader can see they arrived somewhere, not just that a
+      // panel opened.
+      function findRecord(kind, id){
+        openRef("history", () => {
+          jumpToHistoryMode(kind);
+          setTimeout(() => {
+            const tr = document.querySelector('#' + (kind === "income" ? "income" : "expense") +
+              '-table-wrap tr[data-id="' + CSS.escape(String(id)) + '"]') ||
+              document.querySelector('tr[data-id="' + CSS.escape(String(id)) + '"]');
+            if (tr){
+              tr.scrollIntoView({ block: "center", behavior: prefersStill() ? "auto" : "smooth" });
+              tr.classList.add("is-found");
+              setTimeout(() => tr.classList.remove("is-found"), 2400);
+            } else {
+              showToast("That line is outside the filters the record list is holding.");
+            }
+          }, 120);
+        });
+      }
+
+      /* ---- the frame --------------------------------------------------------- */
       function build(){
         const app = document.querySelector(".app");
         if (!app || $("spine")) return;
+        S.ym = todayISO().slice(0, 7);
 
         const frame = document.createElement("div");
         frame.className = "frame";
@@ -11324,31 +11760,69 @@
           '<aside class="places" aria-label="Where your money is">' +
             '<div class="places-head"><span>Places</span><span>Balance</span></div>' +
             '<div id="places-body"></div>' +
-            '<div class="ref-list" id="ref-list"></div>' +
+            '<nav class="ref-list" id="ref-list" aria-label="The rest of the book"></nav>' +
           '</aside>' +
           '<main class="spine-wrap">' +
             '<div class="spine-head">' +
-              '<div><h2 class="spine-title">The rail</h2>' +
-                '<p class="spine-sub" id="spine-sub"></p></div>' +
-              '<div class="spine-modes" role="group" aria-label="What the rail shows">' +
-                '<button class="spine-mode is-on" data-mode="all">Everything</button>' +
-                '<button class="spine-mode" data-mode="out">Out</button>' +
-                '<button class="spine-mode" data-mode="in">In</button>' +
-                '<button class="spine-mode" data-mode="owed">Owed</button>' +
+              '<div class="spine-head-top">' +
+                '<div class="spine-id">' +
+                  '<h2 class="spine-title" id="spine-title"></h2>' +
+                  '<p class="spine-sub" id="spine-sub"></p>' +
+                '</div>' +
+                '<div class="pager">' +
+                  '<button class="pager-btn" id="page-prev" type="button"></button>' +
+                  '<span class="pager-mid">' +
+                    '<span class="pager-pos" id="page-pos"></span>' +
+                    '<button class="pager-now" id="page-now" type="button">Back to today</button>' +
+                  '</span>' +
+                  '<button class="pager-btn" id="page-next" type="button"></button>' +
+                '</div>' +
               '</div>' +
+              '<div class="rail-controls">' +
+                '<div class="spine-modes" role="group" aria-label="What the rail shows">' +
+                  ['all,Everything', 'out,Out', 'in,In', 'owed,Owed'].map(p => {
+                    const [k, label] = p.split(",");
+                    return '<button class="spine-mode" type="button" data-mode="' + k + '">' +
+                      '<span class="chip-tick" aria-hidden="true"></span>' + label +
+                      '<span class="chip-n"></span></button>';
+                  }).join("") +
+                '</div>' +
+                '<label class="rail-find">' +
+                  '<span class="sr-only">Search this page</span>' +
+                  '<input type="search" id="rail-find" placeholder="Search this page" autocomplete="off">' +
+                  '<kbd>/</kbd>' +
+                '</label>' +
+              '</div>' +
+              '<div class="active-filters" id="active-filters" hidden></div>' +
             '</div>' +
+            '<div class="fold" id="fold"></div>' +
             '<div class="spine" id="spine"></div>' +
+            '<p class="keycap-strip">' +
+              '<kbd>j</kbd><kbd>k</kbd> move · <kbd>↵</kbd> open a line · ' +
+              '<kbd>[</kbd><kbd>]</kbd> turn the page · <kbd>t</kbd> today · ' +
+              '<kbd>/</kbd> search this page · <kbd>?</kbd> search the whole book · ' +
+              '<kbd>n</kbd> new entry · <kbd>1</kbd>–<kbd>6</kbd> the sections' +
+            '</p>' +
           '</main>' +
-          '<aside class="act" aria-label="What needs doing"><div id="act-body"></div></aside>';
+          '<aside class="act" aria-label="What needs doing">' +
+            '<div id="act-quick"></div>' +
+            '<div id="act-decisions"></div>' +
+          '</aside>';
 
-        // The tab panels move into a drawer rather than being removed: every
-        // existing screen keeps working, addressed from the rail.
         const drawer = document.createElement("div");
         drawer.className = "drawer";
         drawer.id = "ref-drawer";
+        drawer.setAttribute("role", "dialog");
+        drawer.setAttribute("aria-modal", "true");
+        drawer.setAttribute("aria-labelledby", "drawer-title");
         drawer.innerHTML =
-          '<div class="drawer-bar"><h2 class="drawer-title" id="drawer-title"></h2>' +
-            '<button class="btn btn-ghost btn-sm" id="drawer-close" type="button">Close</button></div>' +
+          '<div class="drawer-bar">' +
+            '<p class="drawer-where">The rest of the book</p>' +
+            '<h2 class="drawer-title" id="drawer-title"></h2>' +
+            '<nav class="drawer-tabs" id="drawer-tabs" aria-label="Sections"></nav>' +
+            '<button class="drawer-close" id="drawer-close" type="button">' +
+              'Back to the rail <kbd>esc</kbd></button>' +
+          '</div>' +
           '<div class="drawer-body" id="drawer-body"></div>';
         const scrim = document.createElement("div");
         scrim.className = "drawer-scrim";
@@ -11357,59 +11831,171 @@
         app.insertBefore(frame, app.firstChild);
         document.body.appendChild(scrim);
         document.body.appendChild(drawer);
+        [...document.querySelectorAll(".tab-panel")].forEach(p => $("drawer-body").appendChild(p));
 
-        const body = $("drawer-body");
-        [...document.querySelectorAll(".tab-panel")].forEach(p => body.appendChild(p));
-
-        const NAMES = { dashboard: "Overview", charts: "Charts", history: "Every record",
-                        savings: "Accounts", loans: "Loans & investments", settings: "Settings",
-                        add: "Add an entry" };
-        const order = ["history", "savings", "loans", "charts", "settings"];
+        const order = REF_ORDER;
+        const links = order.map((t, i) => '<button class="ref-link" type="button" data-ref="' + t + '">' +
+          '<span class="ref-name">' + escapeHtml(NAMES[t]) + '</span>' +
+          '<kbd>' + (i + 1) + '</kbd></button>').join("");
         $("ref-list").innerHTML =
-          '<p class="places-head" style="margin-top:0">The rest of the book</p>' +
-          order.map(t => '<button class="ref-link" data-ref="' + t + '">' +
-            escapeHtml(NAMES[t]) + '<span class="ref-go">→</span></button>').join("");
+          '<p class="ref-head">The rest of the book</p>' + links;
+        // The same six inside the drawer, so moving between sections does not
+        // mean closing the drawer and starting again.
+        $("drawer-tabs").innerHTML = order.map(t =>
+          '<button class="drawer-tab" type="button" data-ref="' + t + '">' +
+            escapeHtml(NAMES[t]) + '</button>').join("");
 
-        function open(tab){
-          $("drawer-title").textContent = NAMES[tab] || tab;
-          activateTab(tab);
-          drawer.classList.add("is-open");
-          scrim.classList.add("is-open");
-          document.body.classList.add("drawer-open");
-          drawer.scrollTop = 0;
-        }
-        function close(){
-          drawer.classList.remove("is-open");
-          scrim.classList.remove("is-open");
-          document.body.classList.remove("drawer-open");
-          repaint();
-        }
-        $("ref-list").querySelectorAll("[data-ref]").forEach(b =>
-          b.addEventListener("click", () => open(b.dataset.ref)));
-        $("drawer-close").addEventListener("click", close);
-        scrim.addEventListener("click", close);
-        document.addEventListener("keydown", e => {
-          if (e.key === "Escape" && drawer.classList.contains("is-open")) close();
+        document.querySelectorAll("[data-ref]").forEach(b =>
+          b.addEventListener("click", () => openRef(b.dataset.ref)));
+        $("drawer-close").addEventListener("click", closeRef);
+        scrim.addEventListener("click", closeRef);
+        drawer.addEventListener("keydown", e => {
+          // A drawer that says aria-modal must hold the focus it claims.
+          if (e.key !== "Tab") return;
+          const f = [...drawer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+            .filter(el => el.offsetParent !== null && !el.disabled);
+          if (!f.length) return;
+          const first = f[0], last = f[f.length - 1];
+          if (e.shiftKey && document.activeElement === first){ last.focus(); e.preventDefault(); }
+          else if (!e.shiftKey && document.activeElement === last){ first.focus(); e.preventDefault(); }
         });
-        window.__openRef = open;
+        window.__openRef = openRef;
 
-        frame.querySelectorAll("[data-mode]").forEach(b => {
+        frame.querySelectorAll("[data-mode]").forEach(b =>
           b.addEventListener("click", () => {
-            mode = b.dataset.mode;
-            frame.querySelectorAll("[data-mode]").forEach(x => x.classList.toggle("is-on", x === b));
-            renderSpine();
-          });
+            S.mode = b.dataset.mode; S.open = ""; S.cursor = -1;
+            repaint();
+          }));
+        $("page-prev").addEventListener("click", () => {
+          const l = pages(), at = l.indexOf(S.ym); if (at > 0) turn(l[at - 1]);
         });
+        $("page-next").addEventListener("click", () => {
+          const l = pages(), at = l.indexOf(S.ym); if (at < l.length - 1) turn(l[at + 1]);
+        });
+        $("page-now").addEventListener("click", () => turn(todayISO().slice(0, 7)));
+
+        let findTimer = null;
+        $("rail-find").addEventListener("input", ev => {
+          clearTimeout(findTimer);
+          const v = ev.target.value;
+          findTimer = setTimeout(() => {
+            S.find = v; S.open = ""; S.cursor = -1;
+            renderControls(); renderSpine();
+          }, 120);
+        });
+
+        // One listener for every "open this line's source", delegated so a
+        // re-render never leaves a dead button behind.
+        $("spine").addEventListener("click", ev => {
+          const jump = ev.target.closest("[data-jump]");
+          if (jump){ ev.stopPropagation(); turn(jump.dataset.jump); return; }
+          const go = ev.target.closest("[data-go]");
+          if (!go) return;
+          ev.stopPropagation();
+          if (go.dataset.go === "expense" || go.dataset.go === "income")
+            findRecord(go.dataset.go, go.dataset.goid);
+          else if (go.dataset.go === "recurring") openRef("savings");
+          else openRef("loans");
+        });
+
+        buildQuick();
+        wireKeys();
       }
 
-      function repaint(){ renderPlaces(); renderSpine(); renderAct(); paintHead(); }
+      function repaint(){
+        renderControls(); renderPlaces(); renderSpine(); renderDecisions(); refreshAccounts();
+      }
 
       build();
       repaint();
-      // The app re-renders on its own after a write; the rail follows.
+      // The app re-renders itself after a write, and the rail follows. The quick
+      // form is deliberately left out of that: rebuilding it 240ms after a click
+      // threw away whatever was half-typed the moment the cursor moved on.
       document.addEventListener("click", () => setTimeout(repaint, 240), true);
     })();
 
+    /* ======================================================================
+       THE LAMP — light edition or night edition.
+
+       Three states, not two: the reader may also have no opinion, in which case
+       the book follows the room. That third state is the default and it is
+       labelled, because a toggle that silently tracks the system looks broken
+       the first time the system changes under it.
+       ====================================================================== */
+    (function ledgerLamp(){
+      "use strict";
+      const KEY = "spendly_ledger_theme";
+      const root = document.documentElement;
+      const sysDark = () => window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+      function read(){
+        try{ const v = localStorage.getItem(KEY); return (v === "dark" || v === "light") ? v : "system"; }
+        catch(e){ return "system"; }
+      }
+      function write(v){
+        try{ v === "system" ? localStorage.removeItem(KEY) : localStorage.setItem(KEY, v); }catch(e){}
+      }
+      function apply(v){
+        if (v === "system") root.removeAttribute("data-theme");
+        else root.setAttribute("data-theme", v);
+        paint(v);
+      }
+
+      const SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/>' +
+        '<path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4' +
+        'M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>';
+      const MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/></svg>';
+      const AUTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/>' +
+        '<path d="M12 4v16" /><path d="M12 4a8 8 0 0 1 0 16" fill="currentColor" stroke="none"/></svg>';
+
+      let btn = null;
+      function paint(v){
+        if (!btn) return;
+        const dark = v === "dark" || (v === "system" && sysDark());
+        btn.innerHTML = (v === "system" ? AUTO : dark ? MOON : SUN) +
+          '<span class="lamp-label">' +
+            (v === "system" ? "Follows the room" : dark ? "Night edition" : "Light edition") +
+          '</span>';
+        btn.setAttribute("aria-label",
+          "Lighting: " + (v === "system" ? "following the room" : dark ? "night edition" : "light edition") +
+          ". Press to change.");
+        btn.title = btn.getAttribute("aria-label");
+      }
+
+      function mount(){
+        const bar = document.querySelector("header.top > div:last-child");
+        if (!bar || document.getElementById("btn-lamp")) return;
+        btn = document.createElement("button");
+        btn.type = "button";
+        btn.id = "btn-lamp";
+        btn.className = "lamp";
+        bar.insertBefore(btn, bar.firstChild);
+        const ORDER = ["system", "light", "dark"];
+        btn.addEventListener("click", () => {
+          const next = ORDER[(ORDER.indexOf(read()) + 1) % 3];
+          write(next);
+          apply(next);
+          // Said out loud, because the change is visible but the reason for it
+          // (which of three settings you landed on) is not.
+          showToast(next === "system" ? "Lighting follows the room now."
+                  : next === "dark" ? "Night edition." : "Light edition.");
+        });
+        paint(read());
+      }
+
+      mount();
+      // Following the room means following it as it changes, not only at load.
+      if (window.matchMedia){
+        const mq = window.matchMedia("(prefers-color-scheme: dark)");
+        const onChange = () => { if (read() === "system") paint("system"); };
+        if (mq.addEventListener) mq.addEventListener("change", onChange);
+        else if (mq.addListener) mq.addListener(onChange);
+      }
+    })();
 
 })();
 
@@ -11451,6 +12037,377 @@
   @media (max-width: 720px){
     #lab-badge{ bottom: auto; top: 6px; left: 6px; font-size: 10px; padding: 4px 8px; }
     #lab-badge small{ display: none; }
+  }
+
+  /* ======================================================================
+     THE SPINE, ROUND TWO — pages, the fold, an opened line, and the night
+     edition of the paper.
+     ====================================================================== */
+
+  /* ---------- the page bar --------------------------------------------------
+     A book is turned, not scrolled forever. The bar says which page, how many
+     there are, and names the two either side rather than offering two arrows
+     that could go anywhere (VUI-LST-001: numbered, with a visible total). */
+  .spine-head{ display: block; margin-bottom: var(--sp-6); }
+  .spine-head-top{
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: var(--sp-7); flex-wrap: wrap;
+  }
+  .spine-id{ min-width: 0; }
+  .pager{ display: flex; align-items: stretch; gap: var(--sp-2); flex-shrink: 0; }
+  .pager-btn{
+    display: flex; align-items: center; gap: var(--sp-3);
+    max-width: 17ch; padding: var(--sp-4) var(--sp-6);
+    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-sm);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2); cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  @media (hover: hover){ .pager-btn:not(:disabled):hover{ border-color: var(--accent); color: var(--ink); } }
+  /* Disabled is not decoration: it is the book telling you there is no page
+     that way, which saves a click that would have done nothing. */
+  .pager-btn:disabled{ opacity: .42; cursor: default; border-color: var(--rule); }
+  .pager-mid{
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1px; padding: 0 var(--sp-5); min-width: 96px;
+  }
+  .pager-pos{ font-size: var(--fs-3xs); color: var(--ink-3); white-space: nowrap;
+    font-variant-numeric: tabular-nums; }
+  .pager-now{
+    border: 0; background: none; padding: 0; cursor: pointer;
+    font-size: var(--fs-3xs); font-weight: 700; color: var(--accent);
+    text-decoration: underline; text-underline-offset: 2px; white-space: nowrap;
+  }
+  .pager-now[hidden]{ display: none; }
+
+  /* ---------- the filter row ------------------------------------------------ */
+  .rail-controls{
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--sp-6); flex-wrap: wrap; margin-top: var(--sp-6);
+  }
+  /* Idle is surface plus border; active is filled and ticked. The difference
+     between chosen and not chosen is the highest-value contrast in the
+     component, so it is not a five-percent background shift. */
+  .spine-modes{ display: flex; gap: var(--sp-3); padding: 0; background: none; border-radius: 0; flex-wrap: wrap; }
+  .spine-mode{
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+    padding: var(--sp-4) var(--sp-6);
+    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-pill);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2);
+    cursor: pointer; white-space: nowrap;
+    transition: background var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){ .spine-mode:not(:disabled):not(.is-on):hover{ border-color: var(--accent); color: var(--ink); } }
+  .spine-mode.is-on{
+    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  }
+  .spine-mode:disabled{ opacity: .45; cursor: default; background: none; }
+  .chip-tick{ width: 0; overflow: hidden; transition: width var(--dur-fast) var(--ease-out); }
+  .chip-tick::before{ content: "\2713"; font-size: 11px; }
+  .spine-mode.is-on .chip-tick{ width: 11px; }
+  .chip-n{
+    font-size: var(--fs-3xs); font-weight: 600; font-variant-numeric: tabular-nums;
+    padding: 0 var(--sp-3); border-radius: var(--r-pill);
+    background: var(--paper-3); color: var(--ink-3);
+  }
+  .spine-mode.is-on .chip-n{ background: rgb(255 255 255 / .22); color: var(--on-accent); }
+
+  .rail-find{ position: relative; display: flex; align-items: center; flex: 0 1 260px; min-width: 170px; }
+  .rail-find input{
+    width: 100%; height: 32px; padding: 0 34px 0 var(--sp-6);
+    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-pill);
+    font-size: var(--fs-xs); color: var(--ink);
+  }
+  .rail-find input::placeholder{ color: var(--ink-4); }
+  /* VUI-KBD-001: the key is shown where the thing it does lives, not in a
+     help panel nobody opens. */
+  .rail-find kbd{ position: absolute; right: 8px; pointer-events: none; }
+  kbd{
+    display: inline-block; min-width: 15px; padding: 0 4px;
+    background: var(--paper-3); border: 1px solid var(--rule-2); border-bottom-width: 2px;
+    border-radius: 3px; font: 600 10px/16px var(--mono); color: var(--ink-3);
+    text-align: center; vertical-align: baseline;
+  }
+
+  /* ---------- what is currently on -------------------------------------------
+     Pinned above the results, each one individually removable, with the count
+     and one exit that says how much it will undo. */
+  .active-filters{
+    display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap;
+    margin-top: var(--sp-5); padding: var(--sp-4) var(--sp-5);
+    background: var(--accent-l); border-radius: var(--r-md);
+  }
+  .active-filters[hidden]{ display: none; }
+  .af-k{ font-size: var(--fs-3xs); text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-3); }
+  .af-chip{
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+    padding: 2px var(--sp-4) 2px var(--sp-5);
+    background: var(--card); border: 1px solid var(--accent); border-radius: var(--r-pill);
+    font-size: var(--fs-xs); color: var(--ink); cursor: pointer;
+  }
+  .af-x{ font-size: 13px; line-height: 1; color: var(--ink-3); }
+  @media (hover: hover){ .af-chip:hover .af-x{ color: var(--out); } }
+  .af-logic{ font-size: var(--fs-3xs); color: var(--ink-3); font-style: italic; }
+  .af-count{ font-size: var(--fs-3xs); color: var(--ink-2); font-weight: 600;
+    font-variant-numeric: tabular-nums; margin-left: auto; }
+  .af-clear{
+    border: 0; background: none; padding: 2px var(--sp-4); cursor: pointer;
+    font-size: var(--fs-xs); font-weight: 700; color: var(--accent);
+    text-decoration: underline; text-underline-offset: 2px;
+  }
+
+  /* ---------- the fold -------------------------------------------------------
+     A ledger foots its columns. This app never did, so a month could be read
+     line by line and still not answer "how did it go". It sits above the lines
+     because that is the order the question is actually asked in. */
+  .fold{
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1px; margin: var(--sp-6) 0 var(--sp-7);
+    background: var(--rule); border: 1px solid var(--rule);
+    border-radius: var(--r-md); overflow: hidden;
+  }
+  .fold-cell{ display: flex; flex-direction: column; gap: 2px;
+    padding: var(--sp-5) var(--sp-6); background: var(--paper-2); min-width: 0; }
+  .fold-k{ font-size: var(--fs-3xs); text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-3); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .fold-v{ font-size: var(--fs-lg); font-weight: 700; color: var(--ink); }
+  .fold-cell.is-in .fold-v{ color: var(--in); }
+  .fold-cell.is-out .fold-v{ color: var(--out); }
+  @media (max-width: 900px){
+    .fold{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .fold-cell:last-child:nth-child(odd){ grid-column: 1 / -1; }
+  }
+
+  /* ---------- an opened line -------------------------------------------------
+     In place and indented to the rail, because a record of four fields does not
+     deserve a modal and a modal would cost the reader their place. */
+  .sp-row{ cursor: pointer; scroll-margin-top: calc(var(--bar-h) + 8px); }
+  .sp-row.is-open{ background: var(--paper-2); border-bottom-color: var(--rule-2); }
+  .sp-row.is-cursor{ box-shadow: inset 3px 0 0 var(--accent); background: var(--paper-2); }
+  .sp-row:focus-visible{ outline: 2px solid var(--accent); outline-offset: -2px; }
+  .sp-detail{
+    padding: var(--sp-6) var(--sp-5) var(--sp-7) 116px;
+    background: var(--paper-2); border-bottom: 1px solid var(--rule-2);
+    animation: sp-open var(--dur-base) var(--ease-out);
+  }
+  @keyframes sp-open{ from{ opacity: 0; transform: translateY(-3px); } to{ opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce){ .sp-detail{ animation: none; } }
+  .sp-d-row{ display: grid; grid-template-columns: 116px minmax(0, 1fr);
+    gap: var(--sp-5); padding: var(--sp-3) 0; font-size: var(--fs-sm); }
+  .sp-d-k{ color: var(--ink-3); }
+  .sp-d-v{ color: var(--ink); }
+  .sp-d-note{ margin: var(--sp-5) 0 0; max-width: 62ch;
+    font-size: var(--fs-xs); line-height: 1.6; color: var(--ink-3); }
+  .sp-d-act{ margin-top: var(--sp-6); }
+  .sp-d-go{
+    padding: var(--sp-4) var(--sp-6);
+    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-sm);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink); cursor: pointer;
+  }
+  @media (hover: hover){ .sp-d-go:hover{ border-color: var(--accent); color: var(--accent); } }
+  @media (max-width: 720px){
+    .sp-detail{ padding-left: var(--sp-6); }
+    .sp-d-row{ grid-template-columns: minmax(0, 1fr); gap: 0; }
+  }
+
+  /* The rule that separates what happened from what is only committed, on a
+     page that is not today's and so has no "today" on it. */
+  .sp-fold-rule{
+    display: flex; align-items: center; gap: var(--sp-5);
+    margin: var(--sp-7) 0 var(--sp-5); padding-left: 116px;
+    font-size: var(--fs-3xs); text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-3);
+  }
+  .sp-fold-rule::after{ content: ""; flex: 1; height: 1px; background: var(--rule-2); }
+
+  .keycap-strip{
+    margin: var(--sp-8) 0 0; padding-top: var(--sp-5);
+    border-top: 1px solid var(--rule);
+    font-size: var(--fs-3xs); color: var(--ink-3); line-height: 2.1;
+  }
+  .keycap-strip kbd{ margin: 0 2px; }
+
+  /* ---------- places, with what is on this page ----------------------------- */
+  .place{ grid-template-columns: 3px minmax(0, 1fr) auto; row-gap: 1px; }
+  .place-n{
+    grid-column: 2 / -1; font-size: var(--fs-3xs); color: var(--ink-4);
+    font-variant-numeric: tabular-nums;
+  }
+  .place.is-on .place-n{ color: var(--accent); font-weight: 600; }
+  /* Dimmed, not hidden: an account with nothing on this page is information. */
+  .place.is-empty:not(.is-on){ opacity: .5; }
+
+  /* ---------- the rest of the book ------------------------------------------ */
+  .ref-head{ margin: 0 0 var(--sp-4); font-size: var(--fs-3xs); text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-3); }
+  .ref-link.is-on{ background: var(--card); color: var(--ink); font-weight: 600; }
+  .ref-link.is-on .ref-go{ color: var(--accent); }
+  .ref-name{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .drawer-bar{ flex-wrap: wrap; row-gap: var(--sp-4); }
+  .drawer-where{ width: 100%; margin: 0; font-size: var(--fs-3xs);
+    text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--ink-4); }
+  /* Sections are reachable from inside the drawer, so moving between them is
+     not "close, find the rail, open another". */
+  .drawer-tabs{ display: flex; gap: var(--sp-2); flex-wrap: wrap; order: 3; width: 100%;
+    padding-top: var(--sp-4); border-top: 1px solid var(--rule); }
+  .drawer-tab{
+    padding: var(--sp-3) var(--sp-5); background: none; border: 0; border-radius: var(--r-sm);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-3); cursor: pointer;
+  }
+  @media (hover: hover){ .drawer-tab:hover{ background: var(--paper-2); color: var(--ink); } }
+  .drawer-tab.is-on{ background: var(--accent); color: var(--on-accent); }
+  .drawer-close{
+    display: inline-flex; align-items: center; gap: var(--sp-4);
+    padding: var(--sp-4) var(--sp-6); background: var(--card);
+    border: 1px solid var(--rule-2); border-radius: var(--r-sm);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2); cursor: pointer;
+  }
+  @media (hover: hover){ .drawer-close:hover{ border-color: var(--accent); color: var(--ink); } }
+
+  /* Arriving somewhere should look like arriving, not like a panel opening. */
+  tr.is-found > td{ background: var(--accent-l) !important; }
+  tr.is-found{ animation: found-flash 2.4s var(--ease-out); }
+  @keyframes found-flash{ 0%,18%{ box-shadow: inset 3px 0 0 var(--accent); } 100%{ box-shadow: none; } }
+  @media (prefers-reduced-motion: reduce){ tr.is-found{ animation: none; } }
+
+  .act-amt.is-in{ color: var(--in); }
+  .act-amt.is-out{ color: var(--ink-2); }
+  #act-quick{ margin-bottom: var(--sp-9); }
+
+  /* ---------- the theme switch ---------------------------------------------- */
+  .lamp{
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-5); background: none;
+    border: 1px solid var(--rule-2); border-radius: var(--r-pill);
+    font-size: var(--fs-2xs); font-weight: 600; color: var(--ink-3); cursor: pointer;
+    white-space: nowrap;
+  }
+  @media (hover: hover){ .lamp:hover{ border-color: var(--accent); color: var(--ink); } }
+  .lamp svg{ width: 14px; height: 14px; }
+  @media (max-width: 640px){ .lamp-label{ display: none; } }
+
+  /* ======================================================================
+     THE NIGHT EDITION
+
+     Not the light palette inverted. Paper under a lamp is warm and the ink on
+     it never reaches white, so the ground keeps its brown and the ink stops
+     short of #FFF. The banknote colours are lifted and desaturated
+     (VUI-DRK-004) because the daylight versions — a 5F3382 violet, a 1F5B3B
+     green — are unreadable on anything dark.
+     ====================================================================== */
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+
+    --paper:      #17150F;
+    --paper-2:    #1F1C15;
+    --paper-3:    #2A251C;
+    --card:       #262119;      /* raised, which on paper meant white and here means nearer the lamp */
+    --rule:       #38322A;
+    --rule-2:     #4E4739;
+
+    --ink:        #F4EFE4;
+    --ink-2:      #D3CABA;
+    --ink-3:      #AEA593;
+    --ink-4:      #9A917F;
+
+    --peso-100:   #C49AE4;
+    --peso-100-d: #DCC2F0;
+    --peso-100-l: #2E2437;
+    --peso-200:   #7FCB9F;
+    --peso-50:    #F0958A;
+    --peso-500:   #E5BA6D;
+    --peso-1000:  #93BCE0;
+
+    --on-accent:  #1B1023;      /* the accent is now the light one, so its ink is dark */
+    --caution:    #E5BA6D;
+    --selected:   rgb(196 154 228 / .18);
+    --violet-soft: #B98ADB;
+    --accent-quiet: #B98ADB;
+
+    --elev-3: 0 6px 22px rgb(0 0 0 / .55);
+    --elev-4: 0 18px 48px rgb(0 0 0 / .68);
+  }
+  :root[data-theme="dark"] ::selection{ background: var(--peso-100-l); color: var(--ink); }
+  :root[data-theme="dark"] .drawer-scrim{ background: rgb(0 0 0 / .58); }
+  /* The tick and the count inside a filled chip sit on a LIGHT accent at night,
+     so a white wash would disappear. */
+  :root[data-theme="dark"] .spine-mode.is-on .chip-n{ background: rgb(27 16 35 / .18); }
+  /* The card white the app uses for inputs is the raised surface here, and a
+     hairline is needed to keep a field from dissolving into the page. */
+  :root[data-theme="dark"] .quick input,
+  :root[data-theme="dark"] .quick select,
+  :root[data-theme="dark"] .rail-find input{ background: var(--paper-3); }
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --paper: #17150F; --paper-2: #1F1C15; --paper-3: #2A251C; --card: #262119;
+      --rule: #38322A; --rule-2: #4E4739;
+      --ink: #F4EFE4; --ink-2: #D3CABA; --ink-3: #AEA593; --ink-4: #9A917F;
+      --peso-100: #C49AE4; --peso-100-d: #DCC2F0; --peso-100-l: #2E2437;
+      --peso-200: #7FCB9F; --peso-50: #F0958A; --peso-500: #E5BA6D; --peso-1000: #93BCE0;
+      --on-accent: #1B1023; --caution: #E5BA6D; --selected: rgb(196 154 228 / .18);
+      --violet-soft: #B98ADB; --accent-quiet: #B98ADB;
+      --elev-3: 0 6px 22px rgb(0 0 0 / .55);
+      --elev-4: 0 18px 48px rgb(0 0 0 / .68);
+    }
+    :root:not([data-theme="light"]) ::selection{ background: var(--peso-100-l); color: var(--ink); }
+    :root:not([data-theme="light"]) .drawer-scrim{ background: rgb(0 0 0 / .58); }
+    :root:not([data-theme="light"]) .spine-mode.is-on .chip-n{ background: rgb(27 16 35 / .18); }
+    :root:not([data-theme="light"]) .quick input,
+    :root:not([data-theme="light"]) .quick select,
+    :root:not([data-theme="light"]) .rail-find input{ background: var(--paper-3); }
+  }
+
+
+  .sp-elsewhere{
+    margin: var(--sp-6) 0 0; padding-left: 116px;
+    font-size: var(--fs-xs); line-height: 2; color: var(--ink-3);
+  }
+  .sp-jump{
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+    margin: 0 var(--sp-3); padding: 2px var(--sp-5);
+    background: var(--card); border: 1px solid var(--rule-2); border-radius: var(--r-pill);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink); cursor: pointer;
+  }
+  @media (hover: hover){ .sp-jump:hover{ border-color: var(--accent); color: var(--accent); } }
+  .sp-jump-n{ font-size: var(--fs-3xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .ref-link kbd{ flex-shrink: 0; }
+  @media (max-width: 720px){ .sp-elsewhere{ padding-left: var(--sp-6); } }
+
+  /* The rail is six columns, not five: date, node, what, tag, amount, balance.
+     The sixth was missing and the balance was being auto-placed onto a second
+     row underneath the date, which is not "beside" anything. */
+  .sp-row{
+    grid-template-columns: 84px 24px minmax(0, 1fr) auto minmax(88px, auto) 104px;
+  }
+  .sp-bal{ min-width: 0; }
+  /* Today is measured against the same column or it is not a comparison. */
+  .sp-today{
+    grid-template-columns: 84px 24px minmax(0, 1fr) auto minmax(88px, auto) 104px;
+  }
+  .sp-today-label{ grid-column: 3 / 6; }
+  .sp-today-bal{ grid-column: 6; text-align: right; }
+  /* Below the act column the tag has nowhere to go; it drops under the
+     description rather than squeezing the two figures that carry the meaning. */
+  @media (max-width: 1080px){
+    .sp-row{ grid-template-columns: 76px 20px minmax(0, 1fr) minmax(80px, auto) 96px; }
+    .sp-tag{ grid-column: 3 / -1; grid-row: 2; font-size: var(--fs-3xs); }
+    .sp-today{ grid-template-columns: 76px 20px minmax(0, 1fr) minmax(80px, auto) 96px; }
+    .sp-today-label{ grid-column: 3 / 5; }
+    .sp-today-bal{ grid-column: 5; }
+  }
+  @media (max-width: 620px){
+    .sp-row{ grid-template-columns: 64px 16px minmax(0, 1fr) auto; }
+    .sp-tag{ grid-column: 3 / -1; grid-row: 2; }
+    .sp-bal{ grid-column: 4; grid-row: 2; }
+    .sp-today{ grid-template-columns: 64px 16px minmax(0, 1fr) auto; }
+    .sp-today-label{ grid-column: 3; }
+    .sp-today-bal{ grid-column: 4; }
   }
 </style>
 </body>
