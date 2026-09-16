@@ -10951,6 +10951,164 @@
       document.addEventListener("click", () => setTimeout(mount, 200), true);
     })();
 
+    /* ======================================================================
+       CONTENTS — /ui workspace navigation.
+
+       The sidebar names its six destinations and then stops. Behind one of them
+       is 3,383px of bento — eighteen blocks, nine screens at this height — with
+       no index, no marker for where you are in it, and no shortcut named
+       anywhere although the digits 1-6 have always worked.
+
+       An analytical surface that long needs a table of contents, and a table of
+       contents that does not track the reader is a list of links. This one
+       tracks. It goes under the destination it belongs to, so the sidebar stays
+       the one place navigation lives rather than growing a third column.
+       ====================================================================== */
+    (function workspaceContents(){
+      "use strict";
+
+      const nav = document.querySelector("nav.tabs");
+      if (!nav) return;
+      const buttons = [...nav.querySelectorAll("button[data-tab]")];
+      if (!buttons.length) return;
+
+      const NAMES = { dashboard: "Dashboard", charts: "Charts", history: "History",
+                      savings: "Savings", loans: "Loans & Invest", settings: "Settings" };
+      const trail = [];
+      let ignoreNext = false;
+
+      /* ---- the key, shown where the thing it does is ------------------------ */
+      buttons.forEach((b, i) => {
+        if (b.querySelector(".nav-key")) return;
+        const k = document.createElement("kbd");
+        k.className = "nav-key";
+        k.textContent = String(i + 1);
+        b.appendChild(k);
+      });
+
+      function still(){
+        return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      }
+
+      function sectionsOf(panel){
+        // Two levels, because an h3 here is a subhead and not a caption: losing
+        // them cost a 3,383px dashboard two of its seven blocks.
+        return [...panel.querySelectorAll("h2, h3")]
+          .filter(h => h.getBoundingClientRect().width > 0 && h.textContent.trim());
+      }
+
+      let spyTargets = [];
+      let signature = "";
+      function buildContents(){
+        const active = buttons.find(b => b.classList.contains("active"));
+        const panel = active && document.getElementById("tab-" + active.dataset.tab);
+        const heads = panel ? sectionsOf(panel) : [];
+        // This list lives inside the element being observed, so building it is
+        // a mutation of the watched tree. The signature is what makes that
+        // safe rather than recursive.
+        const sig = (active ? active.dataset.tab : "") + "|" +
+          heads.map(h => h.textContent.trim()).join("␟");
+        if (sig === signature) return;
+        signature = sig;
+
+        nav.querySelectorAll(".nav-contents").forEach(el => el.remove());
+        spyTargets = [];
+        if (!active || !panel || heads.length < 2) return;
+
+        const box = document.createElement("div");
+        box.className = "nav-contents";
+        const head = document.createElement("p");
+        head.className = "nav-contents-k";
+        head.textContent = "On this page";
+        box.appendChild(head);
+        heads.forEach((h, i) => {
+          if (!h.id) h.id = "sec-" + active.dataset.tab + "-" + i;
+          const a = document.createElement("button");
+          a.type = "button";
+          a.className = "nav-content" + (h.tagName === "H3" ? " is-sub" : "");
+          a.dataset.sec = h.id;
+          a.innerHTML = '<span class="nav-content-dot" aria-hidden="true"></span>' +
+            '<span class="nav-content-t">' + escapeHtml(h.textContent.trim()) + '</span>';
+          box.appendChild(a);
+          spyTargets.push({ el: h, btn: a });
+        });
+        active.insertAdjacentElement("afterend", box);
+        box.addEventListener("click", ev => {
+          const b = ev.target.closest("[data-sec]");
+          if (!b) return;
+          const t = document.getElementById(b.dataset.sec);
+          if (t) t.scrollIntoView({ block: "start", behavior: still() ? "auto" : "smooth" });
+        });
+        spy();
+      }
+
+      /* Measured off scroll, not an IntersectionObserver, because this has to
+         keep working in a document that is never given a frame. */
+      function spy(){
+        if (!spyTargets.length) return;
+        const line = 150;
+        let current = spyTargets[0];
+        for (const t of spyTargets){
+          if (t.el.getBoundingClientRect().top - line <= 0) current = t;
+        }
+        spyTargets.forEach(t => t.btn.classList.toggle("is-here", t === current));
+      }
+
+      /* ---- the way back ------------------------------------------------------ */
+      const back = document.createElement("button");
+      back.type = "button";
+      back.className = "nav-back";
+      nav.appendChild(back);
+      function paintBack(){
+        const to = trail[trail.length - 1];
+        back.disabled = !to;
+        back.innerHTML = to
+          ? '<span aria-hidden="true">←</span> Back to ' + escapeHtml(NAMES[to] || to) +
+            '<kbd class="nav-key">alt ←</kbd>'
+          : '<span aria-hidden="true">←</span> <span class="is-none">Nothing to go back to</span>';
+      }
+      function goBack(){
+        const to = trail.pop();
+        if (!to) return;
+        ignoreNext = true;
+        activateTab(to);
+        paintBack();
+      }
+      back.addEventListener("click", goBack);
+      document.addEventListener("keydown", e => {
+        if (e.altKey && e.key === "ArrowLeft"){ e.preventDefault(); goBack(); }
+      });
+
+      let last = (buttons.find(b => b.classList.contains("active")) || buttons[0]).dataset.tab;
+      function onChange(){
+        const active = buttons.find(b => b.classList.contains("active"));
+        if (!active || active.dataset.tab === last){ spy(); return; }
+        if (ignoreNext) ignoreNext = false;
+        else { trail.push(last); if (trail.length > 24) trail.shift(); }
+        last = active.dataset.tab;
+        paintBack();
+        buildContents();
+        // A new panel starts at its own top. Carrying the last one's scroll
+        // position into it is how a reader lands halfway down something they
+        // have never seen.
+        window.scrollTo({ top: 0, behavior: "auto" });
+      }
+      new MutationObserver(onChange).observe(nav, {
+        subtree: true, attributes: true, attributeFilter: ["class"]
+      });
+
+      window.addEventListener("scroll", spy, { passive: true });
+      let settle = null;
+      new MutationObserver(records => {
+        if (records.every(r => nav.contains(r.target))) return;
+        clearTimeout(settle);
+        settle = setTimeout(buildContents, 220);
+      }).observe(document.querySelector(".app") || document.body,
+                 { childList: true, subtree: true });
+
+      paintBack();
+      buildContents();
+    })();
 
 })();
 
@@ -10992,6 +11150,70 @@
   @media (max-width: 720px){
     #lab-badge{ bottom: auto; top: 6px; left: 6px; font-size: 10px; padding: 4px 8px; }
     #lab-badge small{ display: none; }
+  }
+
+  /* ---------- contents, under the section they belong to -------------------- */
+  nav.tabs button[data-tab]{ position: relative; }
+  .nav-key{
+    margin-left: auto; font: 600 10px/16px ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    min-width: 16px; padding: 0 4px; text-align: center;
+    color: var(--ink-dim); background: var(--sunken);
+    border: 1px solid var(--line); border-radius: 3px; white-space: nowrap;
+  }
+  nav.tabs button.active .nav-key{ color: var(--accent); border-color: var(--accent); }
+
+  .nav-contents{
+    display: flex; flex-direction: column; gap: 1px;
+    margin: var(--sp-4) 0 var(--sp-6) var(--sp-7);
+    padding-left: var(--sp-6); border-left: 1px solid var(--line);
+  }
+  .nav-contents-k{
+    margin: 0 0 var(--sp-3); font-size: var(--fs-3xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--ink-dim);
+  }
+  .nav-content{
+    display: grid; grid-template-columns: 6px minmax(0, 1fr); align-items: center;
+    gap: var(--sp-5); width: 100%; padding: var(--sp-3) var(--sp-4);
+    background: none; border: 0; border-radius: var(--r-sm);
+    font-size: var(--fs-xs); color: var(--ink-dim); text-align: left; cursor: pointer;
+    transition: color var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){ .nav-content:hover{ color: var(--ink); background: var(--hover); } }
+  .nav-content-dot{
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--line-strong); transition: background var(--dur-fast) var(--ease-out);
+  }
+  .nav-content-t{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-content.is-here{ color: var(--ink); font-weight: 600; }
+  .nav-content.is-here .nav-content-dot{ background: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+
+  .nav-back{
+    margin-top: auto; display: flex; align-items: center; gap: var(--sp-4);
+    width: 100%; padding: var(--sp-5) var(--sp-6);
+    background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0;
+    font-size: var(--fs-xs); color: var(--ink-dim); cursor: pointer; text-align: left;
+  }
+  @media (hover: hover){ .nav-back:not(:disabled):hover{ color: var(--ink); background: var(--hover); } }
+  .nav-back:disabled{ cursor: default; opacity: .55; }
+  .nav-back .is-none{ font-style: italic; }
+  h2{ scroll-margin-top: calc(var(--bar-h) + 20px); }
+
+  @media (max-width: 1000px){
+    .nav-contents, .nav-back, .nav-key{ display: none; }
+  }
+
+
+  .nav-content.is-sub{ padding-left: var(--sp-6); }
+  .nav-content.is-sub .nav-content-dot{ width: 4px; height: 4px; }
+  .nav-content.is-sub .nav-content-t{ font-size: var(--fs-2xs); }
+  h3{ scroll-margin-top: calc(var(--bar-h) + 20px); }
+
+  .nav-content{ align-items: start; }
+  .nav-content-dot{ margin-top: 6px; }
+  .nav-content-t{
+    white-space: normal; text-overflow: clip; line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 </style>
 </body>

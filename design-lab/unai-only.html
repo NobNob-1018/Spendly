@@ -1197,6 +1197,9 @@
   /* recurring as a table */
   .rec-table{ width:100%; border-collapse:collapse; font-size: var(--fs-sm); }
   .rec-table thead th{ position:static; }
+  /* Same reason as the line above: a short table inside a panel that scrolls
+     sideways on a phone, where a pinned header lands on the rows. */
+  .ml-table thead th{ position:static; }
   .rec-table tbody tr{ height: var(--row-h); border-bottom:1px solid var(--line); }
   .rec-table tbody tr:last-child{ border-bottom:0; }
   .rec-table td{ padding: 0 var(--sp-5); }
@@ -11210,6 +11213,195 @@
       document.addEventListener("click", () => setTimeout(mount, 200), true);
     })();
 
+    /* ======================================================================
+       THE INDEX — /unai console navigation.
+
+       The rail was six unlabelled icons in a 52px column with eight hundred
+       pixels of nothing under them. Nothing on it was named until you hovered,
+       the digits 1-6 worked and said so nowhere, and a settings panel with
+       eleven sections in it had no way to reach the ninth except scrolling.
+
+       So the rail becomes what an instrument panel's edge always is: an index.
+       Every destination named and keyed, the one you are on opened into its
+       own sections, and the section you are actually looking at marked as you
+       scroll past it. Plus a way back, because an operator jumps and an
+       operator returns.
+       ====================================================================== */
+    (function consoleIndex(){
+      "use strict";
+
+      const nav = document.querySelector("nav.tabs");
+      if (!nav) return;
+      const buttons = [...nav.querySelectorAll("button[data-tab]")];
+      if (!buttons.length) return;
+
+      // Only the one that does not fit is shortened. Everything else keeps the
+      // name the app already gave it, so there is one name per destination.
+      const SHORT = { loans: "Loans" };
+      const nameOf = tab => {
+        const b = buttons.find(x => x.dataset.tab === tab);
+        const l = b && b.querySelector(".tab-label");
+        return l ? l.textContent : tab;
+      };
+
+      // Where we have been, most recent last. Capped, because a register that
+      // grows without bound is a leak wearing a feature's coat.
+      const trail = [];
+      let ignoreNext = false;
+
+      /* ---- name and key every destination ---------------------------------- */
+      buttons.forEach((b, i) => {
+        if (b.querySelector(".rail-key")) return;
+        // .tab-label already holds the full name and was only ever hidden for
+        // sighted readers. Showing it is the whole change; a second copy of the
+        // same string beside it is not.
+        const label = b.querySelector(".tab-label");
+        if (label){
+          label.classList.add("rail-name");
+          if (SHORT[b.dataset.tab]) label.textContent = SHORT[b.dataset.tab];
+        }
+        const key = document.createElement("kbd");
+        key.className = "rail-key";
+        key.textContent = String(i + 1);
+        b.appendChild(key);
+        b.removeAttribute("data-tip");     // the name is on the button now
+      });
+
+      /* ---- the sections of whatever is open --------------------------------
+         h2 is the only heading every panel in this app agrees on, so it is the
+         anchor. Anything without one is not indexed rather than indexed wrong. */
+      function sectionsOf(panel){
+        // Two levels. An h3 inside a panel is a subhead of the h2 above it, and
+        // a reader looking for "Recent activity" should not have to know it was
+        // set one size smaller than the thing it sits under.
+        return [...panel.querySelectorAll("h2, h3")].filter(h => {
+          const r = h.getBoundingClientRect();
+          return r.width > 0 && h.textContent.trim();
+        });
+      }
+
+      let spyTargets = [];
+      let signature = "";
+      function buildSections(){
+        const active = buttons.find(b => b.classList.contains("active"));
+        const panel = active && document.getElementById("tab-" + active.dataset.tab);
+        const heads = panel ? sectionsOf(panel) : [];
+        // The rail lives inside .app, so rebuilding it is itself a mutation of
+        // the thing being watched. Comparing what the index WOULD say against
+        // what it already says is what stops that being a loop.
+        const sig = (active ? active.dataset.tab : "") + "|" +
+          heads.map(h => h.textContent.trim()).join("␟");
+        if (sig === signature) return;
+        signature = sig;
+
+        nav.querySelectorAll(".rail-sections").forEach(el => el.remove());
+        spyTargets = [];
+        if (!active || !panel) return;
+        if (heads.length < 2) return;      // one section is not an index
+
+        const list = document.createElement("div");
+        list.className = "rail-sections";
+        list.setAttribute("role", "list");
+        heads.forEach((h, i) => {
+          if (!h.id) h.id = "sec-" + active.dataset.tab + "-" + i;
+          h.classList.add("is-indexed");
+          const a = document.createElement("button");
+          a.type = "button";
+          a.className = "rail-section" + (h.tagName === "H3" ? " is-sub" : "");
+          a.dataset.sec = h.id;
+          a.textContent = h.textContent.trim();
+          list.appendChild(a);
+          spyTargets.push({ el: h, btn: a });
+        });
+        active.insertAdjacentElement("afterend", list);
+        list.addEventListener("click", ev => {
+          const b = ev.target.closest("[data-sec]");
+          if (!b) return;
+          const t = document.getElementById(b.dataset.sec);
+          if (t) t.scrollIntoView({ block: "start", behavior: still() ? "auto" : "smooth" });
+        });
+        spy();
+      }
+
+      function still(){
+        return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      }
+
+      /* ---- which one you are actually looking at ----------------------------
+         Measured off scroll rather than an IntersectionObserver, because this
+         has to keep working in a document that never gets a frame. */
+      function spy(){
+        if (!spyTargets.length) return;
+        const line = 140;                  // just under the bar, where reading starts
+        let current = spyTargets[0];
+        for (const t of spyTargets){
+          if (t.el.getBoundingClientRect().top - line <= 0) current = t;
+        }
+        spyTargets.forEach(t => t.btn.classList.toggle("is-here", t === current));
+      }
+
+      /* ---- the way back ----------------------------------------------------- */
+      const back = document.createElement("button");
+      back.type = "button";
+      back.className = "rail-back";
+      back.id = "rail-back";
+      nav.appendChild(back);
+      function paintBack(){
+        const to = trail[trail.length - 1];
+        back.disabled = !to;
+        back.innerHTML = to
+          ? '<span class="rail-back-k" aria-hidden="true">←</span>' +
+            '<span class="rail-back-n">' + escapeHtml(nameOf(to)) + '</span>' +
+            '<kbd class="rail-key">alt ←</kbd>'
+          : '<span class="rail-back-k" aria-hidden="true">←</span>' +
+            '<span class="rail-back-n is-none">Nowhere yet</span>';
+        back.title = to ? "Back to " + nameOf(to) : "Nothing visited before this";
+      }
+      function goBack(){
+        const to = trail.pop();
+        if (!to) return;
+        ignoreNext = true;
+        activateTab(to);
+        paintBack();
+      }
+      back.addEventListener("click", goBack);
+      document.addEventListener("keydown", e => {
+        if (e.altKey && e.key === "ArrowLeft"){ e.preventDefault(); goBack(); }
+      });
+
+      /* ---- follow the app rather than intercepting it -----------------------
+         activateTab is the app's, and wrapping it would mean two places decide
+         what "active" means. The rail watches the class the app sets. */
+      let last = (buttons.find(b => b.classList.contains("active")) || buttons[0]).dataset.tab;
+      function onChange(){
+        const active = buttons.find(b => b.classList.contains("active"));
+        if (!active || active.dataset.tab === last){ spy(); return; }
+        if (ignoreNext) ignoreNext = false;
+        else { trail.push(last); if (trail.length > 24) trail.shift(); }
+        last = active.dataset.tab;
+        paintBack();
+        buildSections();
+      }
+      new MutationObserver(onChange).observe(nav, {
+        subtree: true, attributes: true, attributeFilter: ["class"]
+      });
+
+      window.addEventListener("scroll", spy, { passive: true });
+      // Panels grow and shrink as tables filter, so the index is rebuilt when
+      // the open panel's own content changes, not only when the tab does. The
+      // rail's own mutations are skipped outright; the signature check behind
+      // them is the belt to this pair of braces.
+      let settle = null;
+      new MutationObserver(records => {
+        if (records.every(r => nav.contains(r.target))) return;
+        clearTimeout(settle);
+        settle = setTimeout(buildSections, 220);
+      }).observe(document.querySelector(".app") || document.body,
+                 { childList: true, subtree: true });
+
+      paintBack();
+      buildSections();
+    })();
 
 })();
 
@@ -11251,6 +11443,88 @@
   @media (max-width: 720px){
     #lab-badge{ bottom: auto; top: 6px; left: 6px; font-size: 10px; padding: 4px 8px; }
     #lab-badge small{ display: none; }
+  }
+
+  /* ---------- the rail becomes an index ------------------------------------ */
+  /* 52px held six icons and eight hundred pixels of nothing. An operator panel
+     labels its own controls; it does not make you hover to learn what a switch
+     does. */
+  :root{ --rail-w: 188px; }
+  /* Everything in this rail is a button, including the index entries and the
+     way back, so the icon sizing has to be undone for them by name. */
+  nav.tabs .rail-section, nav.tabs .rail-back{ width: 100%; height: auto; }
+  nav.tabs{
+    align-items: stretch; padding: var(--sp-5) var(--sp-4);
+    gap: 1px; overflow-y: auto; overscroll-behavior: contain;
+  }
+  nav.tabs button[data-tab]{
+    width: 100%; height: auto; min-height: 30px;
+    display: grid; grid-template-columns: 18px minmax(0, 1fr) auto;
+    align-items: center; gap: var(--sp-5);
+    padding: var(--sp-3) var(--sp-5);
+    text-align: left;
+  }
+  nav.tabs button .tab-label{
+    position: static; width: auto; height: auto; clip-path: none;
+    font-size: var(--fs-2xs); font-weight: 700; letter-spacing: var(--track-caps);
+    text-transform: uppercase; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; min-width: 0;
+  }
+  nav.tabs .rail-key{
+    font: 600 9px/14px ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace; min-width: 14px; padding: 0 3px;
+    color: var(--ink-dim); background: var(--sunken);
+    border: 1px solid var(--line); border-radius: 2px; text-align: center;
+    white-space: nowrap;
+  }
+  nav.tabs button.active .rail-key{ color: var(--accent); border-color: var(--accent); }
+
+  /* The open destination is opened: its sections hang off it, and the one in
+     the reading position is the one marked. */
+  .rail-sections{
+    display: flex; flex-direction: column; gap: 0;
+    margin: var(--sp-2) 0 var(--sp-5) 0; padding-left: 26px;
+    border-left: 1px solid var(--line); margin-left: 12px;
+  }
+  .rail-section{
+    display: block; width: 100%; padding: var(--sp-2) var(--sp-4);
+    background: none; border: 0; border-radius: var(--r-sm);
+    font-size: var(--fs-3xs); line-height: 1.5; color: var(--ink-dim);
+    text-align: left; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  @media (hover: hover){ .rail-section:hover{ color: var(--ink); background: var(--raised); } }
+  .rail-section.is-here{ color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
+
+  .rail-back{
+    margin-top: auto; display: grid;
+    grid-template-columns: 12px minmax(0, 1fr) auto; align-items: center;
+    gap: var(--sp-4); width: 100%; padding: var(--sp-4) var(--sp-5);
+    background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0;
+    font-size: var(--fs-3xs); color: var(--ink-dim); cursor: pointer; text-align: left;
+  }
+  @media (hover: hover){ .rail-back:not(:disabled):hover{ color: var(--ink); background: var(--raised); } }
+  .rail-back:disabled{ cursor: default; opacity: .55; }
+  .rail-back-n{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-transform: uppercase; letter-spacing: var(--track-caps); font-weight: 700; }
+  .rail-back-n.is-none{ text-transform: none; letter-spacing: 0; font-weight: 400; font-style: italic; }
+  /* VUI-SCR-003: a heading jumped to must not land under the fixed bar. */
+  h2.is-indexed{ scroll-margin-top: calc(var(--bar-h) + 18px); }
+
+  /* On a phone the rail is the bottom bar again, and an index does not belong
+     in a 56px strip: the names go back to icons and the sections stand down. */
+  @media (max-width: 720px){
+    nav.tabs button[data-tab]{ grid-template-columns: 1fr; justify-items: center; gap: 0; }
+    nav.tabs .rail-name, nav.tabs .rail-key, .rail-sections, .rail-back{ display: none; }
+  }
+
+
+  .rail-section.is-sub{ padding-left: var(--sp-7); opacity: .88; }
+  .rail-section.is-sub::before{ content: "\2013\00A0"; color: var(--ink-dim); }
+
+  .rail-section{
+    white-space: normal; overflow: visible; text-overflow: clip;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 </style>
 </body>
