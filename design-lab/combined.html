@@ -1906,11 +1906,105 @@
     background: transparent; border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-light);
   }
-  .nav-content.is-beside .nav-content-t::after{
-    content: "beside"; margin-left: var(--sp-4);
-    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
-    letter-spacing: var(--track-caps); color: var(--accent);
+  /* No word: the tint and the bar have already said it. */
+
+  /* ---------- the masthead, in three ---------------------------------------- */
+  header.top{
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr) auto auto;
+    align-items: center; gap: var(--sp-6);
   }
+  header.top > *:first-child{ width: auto; }
+  .sticky-top{ margin-left: 0; }
+
+  .top-search{
+    justify-self: center; position: relative;
+    display: flex; align-items: center; gap: var(--sp-4);
+    width: min(520px, 100%); height: 34px;
+    padding: 0 var(--sp-5); border-radius: var(--r-pill);
+    background: var(--sunken); border: 1px solid var(--line);
+    transition: border-color var(--dur-fast) var(--ease-out),
+                background-color var(--dur-fast) var(--ease-out);
+  }
+  .top-search:focus-within{ border-color: var(--accent); background: var(--raised); }
+  .top-search-icon{ width: 15px; height: 15px; color: var(--ink-dim); flex: 0 0 auto; }
+  #top-search-input{
+    flex: 1 1 auto; min-width: 0; height: 100%;
+    background: none; border: 0; outline: none; padding: 0;
+    color: var(--ink); font: inherit; font-size: var(--fs-sm);
+  }
+  #top-search-input::placeholder{ color: var(--ink-dim); }
+  #top-search-input::-webkit-search-cancel-button{ -webkit-appearance: none; appearance: none; }
+  /* The key hint follows the same rule as the rail's: shown while Shift is held. */
+  .top-search .nav-key{
+    flex: 0 0 auto; padding: 0 4px; border: 1px solid var(--line);
+    border-radius: 3px; background: var(--bg);
+    font: 600 10px/16px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--ink-dim);
+  }
+
+  /* ---------- the results, under the bar rather than over the page --------- */
+  #search-overlay.is-under-bar{
+    position: fixed; inset: var(--bar-h) 0 auto 0;
+    background: none; backdrop-filter: none; padding: 0;
+    display: block; pointer-events: none;
+  }
+  #search-overlay.is-under-bar.show{ pointer-events: auto; }
+  #search-overlay.is-under-bar .search-panel{
+    width: min(560px, calc(100vw - var(--sp-8) * 2));
+    margin: var(--sp-4) auto 0;
+    max-height: min(70vh, 640px);
+    border: 1px solid var(--line-strong); border-radius: var(--r-lg);
+    box-shadow: var(--elev-4);
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  /* Its own input is the app's field; the bar above is the one being typed in. */
+  #search-overlay.is-under-bar .search-panel-header{ display: none; }
+  #search-overlay.is-under-bar #global-search-results{
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  }
+
+  /* On a narrow window the middle is not wide enough to be a search bar, so the
+     icon at the right does the job it always did. */
+  @media (max-width: 1000px){
+    header.top{ grid-template-columns: minmax(0, 1fr) auto auto; }
+    .top-search{ display: none; }
+  }
+  @media (min-width: 1001px){
+    #btn-global-search{ display: none; }
+  }
+
+  /* The middle column, bounded: a search field stretched across a wide masthead
+     is a trough, not a control. */
+  header.top{ grid-template-columns: var(--sidebar-w) minmax(0, 1fr) auto auto; }
+  .top-search{ width: min(460px, 100%); }
+
+  /* Two rows on a phone: identity and controls, then the figure across the
+     bottom. --bar-h is raised in the same query, so every sticky offset and the
+     app's top padding follow rather than being corrected one at a time. */
+  @media (max-width: 720px){
+    header.top{
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-content: center; row-gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-6);
+    }
+    header.top > .brand{ grid-column: 1; grid-row: 1; width: auto; }
+    header.top > div:last-of-type{ grid-column: 2; grid-row: 1; justify-self: end; }
+    .sticky-top{
+      grid-column: 1 / -1; grid-row: 2; margin-left: 0;
+      justify-content: space-between; gap: var(--sp-5);
+      overflow-x: auto; overscroll-behavior-x: contain;
+    }
+    .top-search{ display: none; }
+  }
+
+  /* On the search panel's lighter ground the page's red falls to 4.34. */
+  #search-overlay .sr-amount.is-out{ color: #E17064; }
+
+  /* A sticky offset is measured from whatever scrolls. In the page that is the
+     window, and 72px clears the masthead; in the side panel it is the panel,
+     and 72px would park this on top of the form it belongs to. */
+  #rd-body #entry-preview{ top: 0; }
 </style>
 </head>
 
@@ -1923,6 +2017,14 @@
       <div>
         <h1>Spendly</h1>
       </div>
+    </div>
+    <!-- The search is a field in the middle, not an icon at the edge: it is the
+         one control here used with the keyboard rather than the mouse. -->
+    <div class="top-search" id="top-search">
+      <svg class="top-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="top-search-input" autocomplete="off" spellcheck="false"
+             placeholder="Search everything" aria-label="Search everything">
+      <kbd class="nav-key">/</kbd>
     </div>
     <!-- Toolbar figure: the workspace keeps the running total beside its global
          actions, where a workspace keeps status. -->
@@ -11901,6 +12003,26 @@
         body.scrollTop = 0;
         document.getElementById("rd-close").focus();
       }
+      // A whole panel rather than a section of one: same drawer, no peer strip,
+      // and it is put back exactly as a section is.
+      function openPanelBeside(el, title){
+        const body = document.getElementById("rd-body");
+        if (besideNow) putBack();
+        if (!homeOf.has(el))
+          homeOf.set(el, { parent: el.parentElement, next: el.nextElementSibling });
+        lastFocus = document.activeElement;
+        setBlock(el, true);
+        body.appendChild(el);
+        besideNow = { block: el, id: "__panel__" + el.id, head: null, tab: null, inside: [] };
+        document.getElementById("rd-title").textContent = title;
+        document.getElementById("rd-tabs").innerHTML = "";
+        drawer.classList.add("is-open");
+        scrim.classList.add("is-open");
+        document.body.classList.add("beside-open");
+        body.scrollTop = 0;
+        document.getElementById("rd-close").focus();
+      }
+
       function putBack(){
         if (!besideNow) return;
         const home = homeOf.get(besideNow.block);
@@ -11914,6 +12036,7 @@
         besideNow = null;
         signature = ""; buildContents(false);   // and when nothing is
       }
+
       function closeBeside(){
         if (!besideNow) return;
         putBack();
@@ -12004,6 +12127,85 @@
         settle = setTimeout(() => { buildContents(false); renderPlaces(); }, 220);
       }).observe(document.querySelector(".app") || document.body,
                  { childList: true, subtree: true });
+
+      /* ---- the search, in the masthead ------------------------------------
+         The app's own search, shown under the field instead of over the page.
+         Not opened as a dialog: openSearchOverlay traps focus and moves it into
+         the overlay's input, which would take the cursor out of the field on
+         the first keystroke. */
+      (function topSearch(){
+        const wrap = document.getElementById("top-search");
+        const input = document.getElementById("top-search-input");
+        const overlay = document.getElementById("search-overlay");
+        const mirror = document.getElementById("global-search-input");
+        if (!wrap || !input || !overlay) return;
+        overlay.classList.add("is-under-bar");
+
+        function show(q){
+          if (mirror) mirror.value = q;          // the app reads its own field
+          renderGlobalSearchResults(q.trim().toLowerCase());
+          overlay.classList.remove("is-closing");
+          overlay.classList.add("show");
+          wrap.classList.add("is-live");
+        }
+        function hide(){
+          overlay.classList.remove("show");
+          wrap.classList.remove("is-live");
+        }
+        input.addEventListener("input", () => {
+          const q = input.value;
+          if (q.trim()) show(q); else hide();
+        });
+        input.addEventListener("focus", () => { if (input.value.trim()) show(input.value); });
+        input.addEventListener("keydown", e => {
+          if (e.key === "Escape"){ e.stopPropagation(); input.value = ""; hide(); input.blur(); }
+        });
+        // A click anywhere else is a dismissal; a click inside the results is not.
+        document.addEventListener("click", e => {
+          if (!overlay.classList.contains("show")) return;
+          if (wrap.contains(e.target) || overlay.contains(e.target)) return;
+          hide();
+        });
+        // The results run an action and then the app moves; the bar gets out of
+        // the way rather than hanging over wherever you landed.
+        overlay.addEventListener("click", e => {
+          if (e.target.closest(".search-result")) setTimeout(() => { input.value = ""; hide(); }, 0);
+        });
+
+        // "/" belongs to this field now. Taken in capture so the baseline's own
+        // binding, which opens the full overlay, never sees it.
+        document.addEventListener("keydown", e => {
+          if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+          if (typing()) return;
+          // On a narrow window the bar is not there; the key belongs to the
+          // app's overlay, which is what the icon opens. Focusing a hidden
+          // field would swallow the keystroke and do nothing.
+          if (input.offsetParent === null) return;
+          e.preventDefault(); e.stopPropagation();
+          input.focus(); input.select();
+        }, true);
+
+        const icon = document.getElementById("btn-global-search");
+        if (icon) icon.addEventListener("click", e => {
+          e.preventDefault(); e.stopPropagation(); input.focus();
+        }, true);
+      })();
+
+      /* ---- "+" opens the full form at the side ----------------------------
+         It used to switch the whole app to the Add screen, so writing down one
+         expense cost you the page you were reading. */
+      (function addBeside(){
+        const fab = document.getElementById("btn-fab-add");
+        const panel = document.getElementById("tab-add");
+        if (!fab || !panel) return;
+        fab.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          openPanelBeside(panel, "Add an entry");
+          const d = document.getElementById("in-desc");
+          if (d) setTimeout(() => d.focus(), 80);
+        }, true);
+      })();
 
       paintBack();
       buildContents(false);
