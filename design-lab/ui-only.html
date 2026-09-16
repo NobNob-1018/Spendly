@@ -337,18 +337,30 @@
   .status-select{ width:auto; max-width:140px; }
   .deadline-cell input{ width:140px; }
   .deadline-note{ font-size: var(--fs-3xs); color: var(--ink-dim); }
-  .row-action{ width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid transparent; border-radius: var(--r-sm); color: var(--ink-soft); cursor:pointer; }
-  .row-action svg{ width:14px; height:14px; }
-  @media (hover: hover) and (pointer: fine){
-    tbody tr .row-action{ visibility:hidden; opacity:0; transition: opacity var(--dur-fast) var(--ease-out); }
-    tbody tr:hover .row-action, tbody tr:focus-within .row-action, tbody tr:has(input:checked) .row-action{ visibility:visible; opacity:1; }
-    .row-action:hover{ background: var(--over); border-color: var(--line); color: var(--ink); }
+  /* A column headed ACTIONS shows its actions. These were hidden until the row
+     was hovered, and hidden outright on a coarse pointer in favour of a kebab
+     that no renderer in this file emits, which left the column empty on every
+     touch device. Found by audit-wiring.js. */
+  .row-action{
+    width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;
+    background:transparent; border:1px solid var(--line); border-radius: var(--r-sm);
+    color: var(--ink-soft); cursor:pointer; opacity:.75;
+    transition: opacity var(--dur-fast) var(--ease-out),
+                background-color var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
   }
+  .row-action svg{ width:14px; height:14px; }
+  tbody tr:hover .row-action,
+  tbody tr:focus-within .row-action,
+  tbody tr:has(input:checked) .row-action{ opacity:1; }
+  @media (hover: hover) and (pointer: fine){
+    .row-action:hover{ background: var(--over); border-color: var(--line-strong); color: var(--ink); opacity:1; }
+  }
+  .row-action:focus-visible{ opacity:1; }
   .row-action-danger:hover{ color: var(--negative); }
-  .row-kebab{ display:none; }
   @media (hover:none),(pointer:coarse){
-    .row-kebab{ display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; background:transparent; border:1px solid var(--line); border-radius: var(--r-sm); color: var(--ink-soft); cursor:pointer; }
-    tbody tr .row-action{ display:none; }
+    .row-action{ width:34px; height:34px; opacity:1; }
+    .row-action svg{ width:16px; height:16px; }
   }
   .row-action-bar{ display:flex; flex-wrap:wrap; align-items:center; gap: var(--sp-5); }
   .has-action-row td{ border-bottom:0; }
