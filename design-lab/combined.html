@@ -1550,88 +1550,197 @@
   .nav-content.is-here .nav-content-dot{ transform: scale(1.15); }
 
   /* ======================================================================
-     THE RAIL — combined
-     ====================================================================== */
-  nav.tabs{ padding-bottom: var(--sp-9); }
+     THE RAIL — combined, round two
 
-  /* ---------- the breakdown, which switches rather than scrolls ------------ */
+     One pattern twice: a heading, and an indented breakdown that folds open
+     under it. Written once, rather than as the six patches this replaces —
+     three of which existed only to undo an earlier one.
+     ====================================================================== */
+
+  /* ---------- the column --------------------------------------------------- */
+  nav.tabs{ overflow: hidden; padding: var(--sp-7) 0 0; gap: 0; }
+  .rail-scroll{
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 0 var(--sp-5) var(--sp-9);
+  }
+
+  /* ---------- folding ------------------------------------------------------- */
+  /* 0fr to 1fr is the only way to transition to "as tall as the content is".
+     height:auto does not animate and a max-height guess either clips or coasts. */
+  .rail-fold{
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows var(--dur-slow) var(--ease-out);
+  }
+  .rail-fold.is-open{ grid-template-rows: 1fr; }
+  .rail-fold-inner{ overflow: hidden; min-height: 0; }
+
+  /* ---------- the keys, off the wall until asked for ------------------------ */
+  /* Kept in the layout at zero opacity rather than removed, so holding Shift
+     reveals them without every row shifting sideways underneath the cursor. */
+  .nav-key{
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  body.keys-showing .nav-key{ opacity: 1; }
+
+  /* ---------- destinations -------------------------------------------------- */
+  nav.tabs button[data-tab]{
+    padding: var(--sp-5) var(--sp-6); min-height: 44px;
+    font-size: var(--fs-md);
+  }
+
+  /* ---------- the breakdown ------------------------------------------------- */
+  .nav-contents{
+    display: flex; flex-direction: column; gap: 1px;
+    margin: var(--sp-3) 0 var(--sp-5) var(--sp-7);
+    padding-left: var(--sp-6); border-left: 1px solid var(--line);
+  }
   .nav-contents-k{
     display: flex; align-items: baseline; justify-content: space-between;
-    gap: var(--sp-4);
-  }
-  .nav-all{
-    border: 0; background: none; padding: 0; cursor: pointer;
-    font: inherit; font-size: var(--fs-3xs); font-weight: 700;
-    letter-spacing: 0; text-transform: none; color: var(--accent);
-    text-decoration: underline; text-underline-offset: 2px; white-space: nowrap;
-  }
-
-  /* Idle is an outline, on is filled. The difference between a section that is
-     on the page and one that is not is the highest-value contrast in this
-     component, so it is not a five-percent shift. */
-  .nav-content-dot{
-    width: 9px; height: 9px; border-radius: 50%;
-    background: transparent;
-    border: 1.5px solid var(--line-strong);
-    box-shadow: none;
-  }
-  .nav-content{ grid-template-columns: 9px minmax(0, 1fr); }
-  .nav-content.is-on{ color: var(--ink); font-weight: 600; }
-  .nav-content.is-on .nav-content-dot{
-    background: var(--accent); border-color: var(--accent);
-  }
-  .nav-content.is-here .nav-content-dot{ box-shadow: 0 0 0 3px var(--accent-light); }
-  .nav-content.is-sub{ padding-left: var(--sp-8); }
-  .nav-content.is-sub .nav-content-dot{
-    width: 5px; height: 5px; border-width: 1px; margin-left: 2px;
-  }
-  .nav-content.is-sub .nav-content-t{ font-size: var(--fs-2xs); }
-
-  /* ---------- where the money is ------------------------------------------- */
-  .rail-places{
-    margin-top: var(--sp-7); padding-top: var(--sp-6);
-    border-top: 1px solid var(--line);
-  }
-  .rail-places-head{
-    display: flex; align-items: baseline; justify-content: space-between;
-    gap: var(--sp-5); margin: 0 var(--sp-5) var(--sp-4);
+    gap: var(--sp-4); flex-wrap: nowrap;
+    margin: 0 0 var(--sp-3); padding: 0;
     font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
     letter-spacing: var(--track-caps); color: var(--ink-dim);
   }
-  .rail-place{
-    display: grid; grid-template-columns: 3px minmax(0, 1fr) auto;
-    align-items: center; gap: var(--sp-4); row-gap: 0;
-    width: 100%; padding: var(--sp-3) var(--sp-5);
+  .nav-contents-label{ flex: 0 1 auto; min-width: 0; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  nav.tabs .nav-all{
+    width: auto; height: auto; min-height: 0; flex: 0 0 auto;
+    padding: 0; margin: 0; background: none; border: 0; cursor: pointer;
+    font: inherit; font-size: var(--fs-3xs); font-weight: 700;
+    text-transform: none; letter-spacing: 0; color: var(--accent);
+    text-decoration: underline; text-underline-offset: 2px; white-space: nowrap;
+  }
+  .nav-item{ display: flex; flex-direction: column; }
+
+  /* Every control in this rail is a <button>, and nav.tabs has a rule for its
+     six destinations. Anything that is not a destination states its own size,
+     or it silently becomes one. */
+  nav.tabs .nav-content{
+    display: grid; grid-template-columns: 9px minmax(0, 1fr);
+    align-items: center; gap: var(--sp-5);
+    width: 100%; height: auto; min-height: 30px;
+    padding: var(--sp-3) var(--sp-4); margin: 0;
     background: none; border: 0; border-radius: var(--r-sm);
+    font: inherit; font-size: var(--fs-sm); color: var(--ink-dim);
+    text-align: left; cursor: pointer;
+    transition: color var(--dur-fast) var(--ease-out),
+                background-color var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){ nav.tabs .nav-content:hover{ color: var(--ink); background: var(--hover); } }
+  .nav-content-t{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Idle is an outline, on is filled. The difference between a section that is
+     on the page and one that is not is the highest-value contrast here, so it
+     is not a five-percent shift. */
+  .nav-content-dot{
+    width: 9px; height: 9px; border-radius: 50%;
+    background: transparent; border: 1.5px solid var(--line-strong);
+    transition: background-color var(--dur-base) var(--ease-out),
+                border-color var(--dur-base) var(--ease-out),
+                box-shadow var(--dur-base) var(--ease-out);
+  }
+  .nav-content.is-on{ color: var(--ink); font-weight: 600; }
+  .nav-content.is-on .nav-content-dot{ background: var(--accent); border-color: var(--accent); }
+  .nav-content.is-here .nav-content-dot{ box-shadow: 0 0 0 3px var(--accent-light); }
+
+  nav.tabs .nav-content.is-sub{
+    min-height: 26px; padding-left: var(--sp-7);
+    font-size: var(--fs-xs); color: var(--ink-dim);
+  }
+  .nav-content.is-sub .nav-content-dot{ width: 5px; height: 5px; border-width: 1px; margin-left: 2px; }
+  .nav-subs{ margin-left: var(--sp-4); }
+
+  /* ---------- the way back -------------------------------------------------- */
+  nav.tabs .nav-back{
+    display: flex; align-items: center; gap: var(--sp-4);
+    width: 100%; height: auto; min-height: 0;
+    margin: var(--sp-5) 0 0; padding: var(--sp-4) var(--sp-6);
+    background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0;
+    font: inherit; font-size: var(--fs-xs); color: var(--ink-dim);
     cursor: pointer; text-align: left;
-    transition: background-color var(--dur-fast) var(--ease-out);
   }
-  @media (hover: hover){ .rail-place:hover{ background: var(--hover); } }
-  .rail-place-tick{ width: 3px; height: 15px; border-radius: 2px; background: transparent; }
-  @media (hover: hover){ .rail-place:hover .rail-place-tick{ background: var(--accent); } }
-  .rail-place-name{
-    font-size: var(--fs-xs); font-weight: 600; color: var(--ink); min-width: 0;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  nav.tabs .nav-back[hidden]{ display: none; }
+  @media (hover: hover){ nav.tabs .nav-back:hover{ color: var(--ink); background: var(--hover); } }
+
+  /* ---------- where the money is -------------------------------------------- */
+  /* The same shape as a destination, because it is the same idea: a heading
+     with what is inside it folded underneath. */
+  .rail-places{ margin-top: var(--sp-6); padding-top: var(--sp-5);
+    border-top: 1px solid var(--line); }
+  nav.tabs .rail-total{
+    display: grid; grid-template-columns: minmax(0, 1fr) auto 14px;
+    align-items: baseline; gap: 2px var(--sp-5);
+    width: 100%; height: auto; min-height: 0;
+    padding: var(--sp-4) var(--sp-6); margin: 0;
+    background: none; border: 0; border-radius: var(--r-md);
+    font: inherit; text-align: left; cursor: pointer;
   }
-  .rail-place-amt{ font-size: var(--fs-xs); color: var(--ink); white-space: nowrap;
-    font-variant-numeric: tabular-nums; }
-  .rail-place-n{
-    grid-column: 2 / -1; font-size: var(--fs-3xs); color: var(--ink-dim);
+  @media (hover: hover){ nav.tabs .rail-total:hover{ background: var(--hover); } }
+  .rail-total-k{
+    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim);
+  }
+  .rail-total-v{
+    grid-column: 1 / 3; grid-row: 2;
+    font-size: var(--fs-xl); font-weight: 700; color: var(--ink);
     font-variant-numeric: tabular-nums;
   }
-  /* Dimmed, not hidden: an account nothing moved through this month is
-     information, and hiding it would make the total look wrong. */
-  .rail-place.is-empty{ opacity: .55; }
-  .rail-places-total{
-    display: flex; align-items: baseline; justify-content: space-between;
-    gap: var(--sp-5); margin: var(--sp-5) var(--sp-5) 0; padding-top: var(--sp-5);
-    border-top: 1px solid var(--line);
-    font-size: var(--fs-2xs); color: var(--ink-dim);
+  .rail-total-sub{
+    grid-column: 3 / -1; grid-row: 1; justify-self: end;
+    font-size: var(--fs-3xs); color: var(--ink-dim); white-space: nowrap;
   }
-  .rail-places-total .num{ font-size: var(--fs-lg); font-weight: 700; color: var(--ink); }
+  .rail-total-caret{
+    grid-column: 3; grid-row: 2; justify-self: end; align-self: center;
+    width: 8px; height: 8px; border-right: 1.5px solid var(--ink-dim);
+    border-bottom: 1.5px solid var(--ink-dim);
+    transform: rotate(45deg) translate(-2px, -2px);
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+  .rail-total[aria-expanded="true"] .rail-total-caret{
+    transform: rotate(225deg) translate(-2px, -2px);
+  }
+
+  /* Indented under the total, which is what makes them read as its parts. */
+  .rail-place-list{
+    margin: var(--sp-3) 0 0 var(--sp-7);
+    padding-left: var(--sp-6); border-left: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 1px;
+  }
+  nav.tabs .rail-place{
+    display: grid; grid-template-columns: 3px minmax(0, 1fr) max-content;
+    align-items: baseline; gap: 0 var(--sp-4);
+    width: 100%; height: auto; min-height: 0;
+    padding: var(--sp-3) var(--sp-4); margin: 0;
+    background: none; border: 0; border-radius: var(--r-sm);
+    font: inherit; text-align: left; cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){ nav.tabs .rail-place:hover{ background: var(--hover); } }
+  .rail-place-tick{ grid-row: 1 / span 2; align-self: center;
+    width: 3px; height: 18px; border-radius: 2px; background: transparent; }
+  @media (hover: hover){ .rail-place:hover .rail-place-tick{ background: var(--accent); } }
+  .rail-place-name{
+    grid-column: 2; font-size: var(--fs-sm); font-weight: 600; color: var(--ink);
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .rail-place-amt{
+    grid-column: 3; justify-self: end;
+    font-size: var(--fs-sm); color: var(--ink); white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .rail-place-n{
+    grid-column: 2 / -1; grid-row: 2;
+    font-size: var(--fs-3xs); color: var(--ink-dim); line-height: 1.5;
+  }
+  /* Dimmed, not hidden: an account nothing moved through is information, and
+     dropping it would make the total look wrong. */
+  .rail-place.is-empty{ opacity: .55; }
+  .rail-place.is-empty .rail-place-name{ font-weight: 500; }
   .rail-places-note{
-    margin: var(--sp-5) var(--sp-5) 0; font-size: var(--fs-3xs);
-    line-height: 1.5; color: var(--ink-dim);
+    margin: var(--sp-5) var(--sp-6) 0; font-size: var(--fs-3xs);
+    line-height: 1.55; color: var(--ink-dim);
   }
 
   /* Arriving somewhere should look like arriving. */
@@ -1642,137 +1751,36 @@
   }
   @media (prefers-reduced-motion: reduce){ .is-found{ animation: none; } }
 
-  /* On a phone the rail is a bottom bar; a breakdown, a way back and a list of
-     accounts do not belong in a 64px strip. */
+  /* On a phone the rail is a bottom bar; none of this belongs in a 64px strip. */
   @media (max-width: 1000px){
-    .rail-places{ display: none; }
+    .rail-places, .nav-back, .nav-contents-fold{ display: none; }
+    .rail-scroll{ flex-direction: row; padding: 0; gap: 0; overflow: visible; }
   }
 
-  /* The foot: pinned when the list above overflows, pushed down when it does
-     not. Opaque, because the rail scrolls behind it. */
-  nav.tabs{ padding-bottom: 0; }
-  .rail-foot{
-    position: sticky; bottom: 0; margin-top: auto; z-index: 1;
-    background: var(--surface);
-    border-top: 1px solid var(--line);
-    padding-bottom: var(--sp-6);
-  }
-  .rail-foot .nav-back{ margin-top: 0; border-top: 0; }
-  .rail-places{ margin-top: 0; padding-top: 0; border-top: 0; }
-  /* Tightened: seven accounts and a total have to fit above the fold on a
-     900px window, and this is the block that is allowed the least room. */
-  .rail-place{ padding: 2px var(--sp-5); }
-  .rail-place-n{ line-height: 1.35; }
-  .rail-places-note{ margin-top: var(--sp-4); }
-  @media (max-width: 1000px){ .rail-foot{ display: none; } }
+  /* ---------- room ---------------------------------------------------------- */
+  /* A wider rail: the accounts are indented under their total, and that indent
+     was coming out of the names. */
+  :root{ --sidebar-w: 264px; }
 
-  /* ---------- the rail, in two zones --------------------------------------- */
-  nav.tabs{
-    overflow: hidden;                 /* the scroller inside does the scrolling */
-    padding: var(--sp-7) 0 0;
-    gap: 0;
-  }
-  .rail-scroll{
-    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-    display: flex; flex-direction: column; gap: var(--sp-1);
-    padding: 0 var(--sp-5) var(--sp-5);
-  }
-  .rail-foot{
-    flex: 0 0 auto; position: static; margin-top: 0; z-index: auto;
-    padding: var(--sp-4) var(--sp-5) var(--sp-6);
-  }
-  /* Bounded, so adding accounts eats into the list rather than into the
-     destinations above it. The rows scroll; the total never does. */
-  .rail-place-list{
-    max-height: 34vh; overflow-y: auto; overscroll-behavior: contain;
-    margin: 0 calc(var(--sp-5) * -1);
-    padding: 0 var(--sp-5);
-  }
-
-  /* The account rows are buttons inside nav.tabs and were inheriting the
-     sidebar's button sizing, which left "Maya Bank" 19px wide against the 64
-     it needs. Stated, not inherited. */
-  nav.tabs .rail-place{
-    display: grid;
-    grid-template-columns: 3px minmax(0, 1fr) max-content;
-    align-items: center; gap: 0 var(--sp-4); row-gap: 0;
-    width: 100%; height: auto; min-height: 0;
-    padding: 3px var(--sp-4); margin: 0;
-    font: inherit; text-align: left;
-  }
-  nav.tabs .rail-place-name{
-    grid-column: 2; justify-self: stretch;
-    font-size: var(--fs-xs); font-weight: 600; color: var(--ink);
-    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  nav.tabs .rail-place-amt{
-    grid-column: 3; justify-self: end;
-    font-size: var(--fs-xs); color: var(--ink); white-space: nowrap;
-  }
-  nav.tabs .rail-place-n{ grid-column: 2 / -1; }
-
-  /* One line, or it costs a row of the column it is squeezing. */
-  .nav-contents-k{ flex-wrap: nowrap; }
-  .nav-all{ flex: 0 0 auto; }
-
-  /* ---------- the column's budget ------------------------------------------ */
-  /* A panel with many sections scrolls its own list rather than pushing the six
-     destinations out of the rail. */
-  .nav-contents{ max-height: 30vh; overflow-y: auto; overscroll-behavior: contain; }
-
-  /* One line each, so all of them and the total are in view at once. The count
-     is the figure alone; the sentence is on the title and in the label. */
-  nav.tabs .rail-place{
-    grid-template-columns: 3px minmax(0, 1fr) 1.4em max-content;
-    padding: 2px var(--sp-4);
-  }
-  nav.tabs .rail-place-n{
-    grid-column: 3; grid-row: 1; justify-self: end;
-    font-size: var(--fs-3xs); color: var(--ink-dim);
-    font-variant-numeric: tabular-nums;
-  }
-  nav.tabs .rail-place-amt{ grid-column: 4; }
-  .rail-place-list{ max-height: 30vh; }
-  .rail-places-head{ margin-bottom: 2px; }
-  .rail-places-note{ margin-top: var(--sp-3); }
-
-  .nav-contents-label{ flex: 0 1 auto; min-width: 0; white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis; }
-  /* The header does not scroll away from the list it heads. */
-  .nav-contents{ position: relative; padding-top: 0; }
-  .nav-contents-k{ position: sticky; top: 0; z-index: 1;
-    background: var(--surface); padding: var(--sp-3) 0 var(--sp-2); }
-  /* While there is more below, the last line fades rather than stopping dead. */
-  .nav-contents{
-    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
-            mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
-  }
-  .nav-contents.is-whole{ -webkit-mask-image: none; mask-image: none; }
-
-  /* ---------- the rail's own controls are not destinations ----------------- */
-  /* Six buttons in this rail navigate. The rest of them — the breakdown, the
-     exit, the way back, the accounts — are not destinations and must not be
-     sized like one. */
+  /* Level one is the destination's size, which is what makes the list read as
+     part of it. Level two stays smaller — that difference is the only thing
+     saying one sits inside the other. */
   nav.tabs .nav-content{
-    width: 100%; height: auto; min-height: 0;
-    padding: 3px var(--sp-4); margin: 0;
-    font: inherit; font-size: var(--fs-xs);
+    min-height: 34px; padding: var(--sp-4) var(--sp-4);
+    font-size: var(--fs-md);
   }
-  nav.tabs .nav-content.is-sub{ padding-left: var(--sp-8); }
-  nav.tabs .nav-all{
-    width: auto; height: auto; min-height: 0;
-    padding: 0; margin: 0; flex: 0 0 auto;
-    font: inherit; font-size: var(--fs-3xs); font-weight: 700;
+  nav.tabs .nav-content.is-sub{
+    min-height: 28px; padding-top: var(--sp-3); padding-bottom: var(--sp-3);
+    font-size: var(--fs-sm);
   }
-  nav.tabs .nav-back{
-    width: 100%; height: auto; min-height: 0;
-    padding: var(--sp-4) var(--sp-5); margin: 0;
-    font: inherit; font-size: var(--fs-xs);
-  }
-  /* With the entries at their own height the list fits, so the cap is a
-     backstop for a panel with more sections than any of these have — not
-     something the dashboard runs into. */
-  .nav-contents{ max-height: 42vh; }
+  .nav-contents{ gap: 2px; }
+
+  /* The indent still reads, with less of it taken from the name. */
+  .rail-place-list{ margin-left: var(--sp-6); padding-left: var(--sp-5); }
+  nav.tabs .rail-place{ padding: var(--sp-3) var(--sp-3); }
+  .rail-place-name{ font-size: var(--fs-md); }
+  .rail-place-amt{ font-size: var(--fs-sm); }
+  .rail-place-n{ font-size: var(--fs-2xs); }
 </style>
 </head>
 
@@ -11248,24 +11256,31 @@
     })();
 
     /* ======================================================================
-       THE RAIL — combined.
+       THE RAIL — combined, round two.
 
-       Two things taken out of two variants and made into one column.
+       One pattern, used twice. A heading, and an indented breakdown that folds
+       open under it:
 
-       From the workspace: a breakdown under the destination you are on. From
-       the ledger: where the money actually is, with the total, and every
-       destination carrying the key that reaches it.
+         Dashboard  →  the sections of the page you are on
+         All places →  the accounts the money is actually in
 
-       One change to how the breakdown behaves, and it is the reason this
-       exists. In the workspace those entries SCROLL to a section that was
-       already on the page — all 3,383px of it, nine screens of dashboard
-       whether you wanted them or not. Here they SWITCH a section on. The
-       dashboard opens as one card, which is what a glance is, and the rest of
-       it arrives when you ask for it by name.
+       That is the whole idea. The destinations already worked this way; putting
+       the total at the head of the accounts rather than at the foot of them
+       makes the second block the same component as the first, and the rail
+       stops being two unrelated lists stacked on top of each other.
 
-       So the same list does two different jobs depending on which variant you
-       came from: there it was a map of a long page, here it is the page's
-       table of contents in the older sense — you choose what is in it.
+       Nothing is pinned any more. A sticky foot does not make room for itself —
+       it sits ON TOP of whatever overflows, which is how four destinations
+       ended up hidden under an opaque panel while every measurement said they
+       were in view. One column, one scroll, nothing covering anything.
+
+       Folding, not swapping: opening a breakdown pushes what is below it down
+       over 220ms rather than appearing between two frames. grid-template-rows
+       0fr→1fr is what makes that animatable — height:auto is not.
+
+       The shortcuts are off the wall until you ask for them. Holding Shift
+       shows every key at once, which is how you learn a keyboard layer without
+       six badges sitting in the margin forever.
        ====================================================================== */
     (function combinedRail(){
       "use strict";
@@ -11278,15 +11293,17 @@
       const NAMES = { dashboard: "Dashboard", charts: "Charts", history: "History",
                       savings: "Savings", loans: "Loans & Invest", settings: "Settings" };
       const KEY = "spendly_rail_open_v1";
+      const PLACES_KEY = "spendly_rail_places_v1";
 
-      /* ---- what is open -----------------------------------------------------
-         Per destination, the set of blocks the reader has chosen to have on the
-         page. Kept because a rail that forgets is a rail you have to set up
-         again every time you come back to it. */
       let open = {};
       try{ open = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(e){ open = {}; }
+      let placesOpen = true;
+      try{ placesOpen = localStorage.getItem(PLACES_KEY) !== "0"; }catch(e){}
       function save(){
-        try{ localStorage.setItem(KEY, JSON.stringify(open)); }catch(e){}
+        try{
+          localStorage.setItem(KEY, JSON.stringify(open));
+          localStorage.setItem(PLACES_KEY, placesOpen ? "1" : "0");
+        }catch(e){}
       }
 
       const trail = [];
@@ -11296,7 +11313,10 @@
         return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       }
 
-      /* ---- the key, shown on the thing it reaches --------------------------- */
+      /* ---- the keys, which are not on the wall -------------------------------
+         Six numbers sitting in the margin forever is six pieces of furniture to
+         teach one thing. Hold Shift and every key in the rail appears at once;
+         let go and the rail is a list of names again. */
       buttons.forEach((b, i) => {
         if (b.querySelector(".nav-key")) return;
         const k = document.createElement("kbd");
@@ -11304,13 +11324,38 @@
         k.textContent = String(i + 1);
         b.appendChild(k);
       });
+      let shiftOn = false;
+      function setShift(on){
+        if (on === shiftOn) return;
+        shiftOn = on;
+        document.body.classList.toggle("keys-showing", on);
+      }
+      document.addEventListener("keydown", e => { if (e.key === "Shift") setShift(true); });
+      document.addEventListener("keyup", e => { if (e.key === "Shift") setShift(false); });
+      // A window that loses focus never sees the keyup, and the keys would stay
+      // on the wall until the next time Shift was pressed and released.
+      window.addEventListener("blur", () => setShift(false));
 
-      /* ---- sections, and the block each one owns ----------------------------
-         A heading is not a block. The thing that can be switched on and off is
-         the card the heading sits in — the direct child of the bento grid — so
-         that is what this walks up to find. An h3 whose block is the same as
-         the h2 above it is a heading INSIDE that card, not a card of its own,
-         which is exactly what "Biggest movers" is. */
+      /* ---- folding -----------------------------------------------------------
+         A fold is a grid whose single row goes from 0fr to 1fr. That is the only
+         way to transition to "as tall as the content is"; height:auto does not
+         animate, and a max-height guess either clips the content or coasts. */
+      function makeFold(openNow){
+        const wrap = document.createElement("div");
+        wrap.className = "rail-fold" + (openNow ? " is-open" : "");
+        const inner = document.createElement("div");
+        inner.className = "rail-fold-inner";
+        wrap.appendChild(inner);
+        return wrap;
+      }
+      // Built closed and opened a moment later, so the browser has a first state
+      // to move away from. Without the gap it lands open with no motion.
+      function openSoon(fold){
+        if (still()){ fold.classList.add("is-open"); return; }
+        setTimeout(() => fold.classList.add("is-open"), 20);
+      }
+
+      /* ---- sections, and the block each one owns ----------------------------- */
       function blockFor(h, panel){
         let n = h;
         while (n && n.parentElement && n.parentElement !== panel &&
@@ -11320,7 +11365,6 @@
       function idOf(block, head){
         return block.id || ("blk-" + head.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-"));
       }
-
       function sectionsOf(panel){
         const heads = [...panel.querySelectorAll("h2, h3")]
           .filter(h => h.textContent.trim() && h.offsetParent !== null);
@@ -11330,8 +11374,6 @@
           const block = blockFor(h, panel);
           if (!block) return;
           if (block === lastBlock){
-            // A heading inside the card above it: a place to jump to, not a
-            // thing to switch on.
             if (out.length) out[out.length - 1].inside.push(h);
             return;
           }
@@ -11340,25 +11382,6 @@
         });
         return out;
       }
-
-      /* The dashboard opens as one card because that is the whole point; a
-         panel nobody has touched yet shows everything, because hiding a
-         screen's content by default is only defensible where the reader
-         explicitly asked for a glance. */
-      function defaultOpen(tab, secs){
-        if (tab === "dashboard") return secs.slice(0, 1).map(s => s.id);
-        return secs.map(s => s.id);
-      }
-
-      function currentTab(){
-        const b = buttons.find(x => x.classList.contains("active"));
-        return b ? b.dataset.tab : null;
-      }
-
-      // Both halves, always together. The attribute is what assistive tech
-      // reads; the inline display is what beats a CSS rule that sets display on
-      // a card. Undoing one and not the other is how the list that controls
-      // these disappeared.
       function setBlock(el, on){
         if (on){ el.removeAttribute("hidden"); el.style.removeProperty("display"); }
         else { el.setAttribute("hidden", ""); el.style.display = "none"; }
@@ -11366,49 +11389,60 @@
       function showAllBlocks(panel){
         panel.querySelectorAll("[data-rail-block]").forEach(b => setBlock(b, true));
       }
-      function applyOpen(tab, secs){
-        const chosen = new Set(open[tab] || defaultOpen(tab, secs));
-        secs.forEach(s => setBlock(s.block, chosen.has(s.id)));
-        return chosen;
+      function defaultOpen(tab, secs){
+        if (tab === "dashboard") return secs.slice(0, 1).map(s => s.id);
+        return secs.map(s => s.id);
+      }
+      function currentTab(){
+        const b = buttons.find(x => x.classList.contains("active"));
+        return b ? b.dataset.tab : null;
       }
 
-      /* ---- the breakdown ----------------------------------------------------- */
+      /* ---- the breakdown ------------------------------------------------------ */
       let spyTargets = [];
       let signature = "";
-      function buildContents(){
+      function buildContents(animate){
         const tab = currentTab();
         const panel = tab && document.getElementById("tab-" + tab);
-        if (!panel){ return; }
-        // Read the sections with everything visible, or a card that is switched
-        // off would vanish from the list that switches it back on.
-        // Read the page with everything on it, or a card that is switched off
-        // drops out of the very list that switches it back on.
+        if (!panel) return;
+
         showAllBlocks(panel);
         const secs = sectionsOf(panel);
         secs.forEach(s => s.block.setAttribute("data-rail-block", s.id));
 
-        const sig = tab + "|" + secs.map(s => s.id + ":" + s.inside.length).join("␟");
-        const chosen = applyOpen(tab, secs);
-        const openSig = [...chosen].sort().join(",");
-        if (sig + "||" + openSig === signature) return;
-        signature = sig + "||" + openSig;
+        const chosen = new Set(open[tab] || defaultOpen(tab, secs));
+        secs.forEach(s => setBlock(s.block, chosen.has(s.id)));
+
+        const sig = tab + "|" + secs.map(s => s.id + ":" + s.inside.length).join("␟") +
+          "||" + [...chosen].sort().join(",");
+        if (sig === signature) return;
+        signature = sig;
 
         nav.querySelectorAll(".nav-contents").forEach(el => el.remove());
         spyTargets = [];
         const active = buttons.find(b => b.classList.contains("active"));
         if (!active || secs.length < 2) return;
 
+        const fold = makeFold(!animate);
+        fold.classList.add("nav-contents-fold");
         const box = document.createElement("div");
         box.className = "nav-contents";
-        box.innerHTML =
-          '<p class="nav-contents-k"><span class="nav-contents-label">On this page</span>' +
-            '<button type="button" class="nav-all" data-all="' +
-              (chosen.size === secs.length ? "none" : "all") + '">' +
-              (chosen.size === secs.length ? "Hide all" : "Show all") +
-            '</button></p>';
+        fold.firstChild.appendChild(box);
+
+        const head = document.createElement("p");
+        head.className = "nav-contents-k";
+        head.innerHTML =
+          '<span class="nav-contents-label">On this page</span>' +
+          '<button type="button" class="nav-all" data-all="' +
+            (chosen.size === secs.length ? "none" : "all") + '">' +
+            (chosen.size === secs.length ? "Hide all" : "Show all") + '</button>';
+        box.appendChild(head);
 
         secs.forEach(s => {
           const on = chosen.has(s.id);
+          const item = document.createElement("div");
+          item.className = "nav-item";
+
           const b = document.createElement("button");
           b.type = "button";
           b.className = "nav-content" + (on ? " is-on" : "");
@@ -11417,35 +11451,43 @@
           b.innerHTML =
             '<span class="nav-content-dot" aria-hidden="true"></span>' +
             '<span class="nav-content-t">' + escapeHtml(s.head.textContent.trim()) + '</span>';
-          box.appendChild(b);
+          item.appendChild(b);
+
+          // Whatever is inside the card only has somewhere to go while the card
+          // is on the page, so its list folds with it.
+          if (s.inside.length){
+            const sub = makeFold(on);
+            sub.className += " nav-subs";
+            s.inside.forEach((h, i) => {
+              if (!h.id) h.id = "sub-" + tab + "-" + s.id + "-" + i;
+              const j = document.createElement("button");
+              j.type = "button";
+              j.className = "nav-content is-sub";
+              j.dataset.jump = h.id;
+              j.innerHTML =
+                '<span class="nav-content-dot" aria-hidden="true"></span>' +
+                '<span class="nav-content-t">' + escapeHtml(h.textContent.trim()) + '</span>';
+              sub.firstChild.appendChild(j);
+              if (on) spyTargets.push({ el: h, btn: j });
+            });
+            item.appendChild(sub);
+          }
+          box.appendChild(item);
+
           if (on){
             if (!s.head.id) s.head.id = "sec-" + tab + "-" + s.id;
             spyTargets.push({ el: s.head, btn: b });
-            // Only a card that is on the page has anything to jump to inside it.
-            s.inside.forEach((h, i) => {
-              if (!h.id) h.id = "sub-" + tab + "-" + s.id + "-" + i;
-              const sub = document.createElement("button");
-              sub.type = "button";
-              sub.className = "nav-content is-sub";
-              sub.dataset.jump = h.id;
-              sub.innerHTML =
-                '<span class="nav-content-dot" aria-hidden="true"></span>' +
-                '<span class="nav-content-t">' + escapeHtml(h.textContent.trim()) + '</span>';
-              box.appendChild(sub);
-              spyTargets.push({ el: h, btn: sub });
-            });
           }
         });
 
-        active.insertAdjacentElement("afterend", box);
-        // Only fade an edge that has something past it.
-        box.classList.toggle("is-whole", box.scrollHeight <= box.clientHeight + 1);
+        active.insertAdjacentElement("afterend", fold);
+        if (animate) openSoon(fold);
 
         box.addEventListener("click", ev => {
           const all = ev.target.closest("[data-all]");
           if (all){
             open[tab] = all.dataset.all === "all" ? secs.map(s => s.id) : [];
-            save(); signature = ""; buildContents();
+            save(); signature = ""; buildContents(false);
             showToast(all.dataset.all === "all"
               ? "Everything on this page is showing."
               : "Cleared the page. Switch a section back on from the rail.");
@@ -11464,13 +11506,28 @@
           const turningOn = !now.has(id);
           turningOn ? now.add(id) : now.delete(id);
           open[tab] = [...now];
-          save(); signature = ""; buildContents();
-          // Answered in the same frame: the section is there, and the eye is
-          // taken to it rather than left to find what just appeared.
-          if (turningOn){
-            const s = secs.find(x => x.id === id);
-            if (s && s.head) s.head.scrollIntoView({ block: "start", behavior: still() ? "auto" : "smooth" });
+          save();
+
+          // The card itself, and this row's own sub-list, move now. The list is
+          // not rebuilt, so nothing flickers and the fold can be seen to fold.
+          const s = secs.find(x => x.id === id);
+          if (s){
+            setBlock(s.block, turningOn);
+            hit.classList.toggle("is-on", turningOn);
+            hit.setAttribute("aria-pressed", turningOn ? "true" : "false");
+            const subs = hit.parentElement.querySelector(".nav-subs");
+            if (subs) subs.classList.toggle("is-open", turningOn);
+            if (turningOn && s.head)
+              s.head.scrollIntoView({ block: "start", behavior: still() ? "auto" : "smooth" });
           }
+          signature = "";
+          const allBtn = box.querySelector("[data-all]");
+          const n = (open[tab] || []).length;
+          if (allBtn){
+            allBtn.dataset.all = n === secs.length ? "none" : "all";
+            allBtn.textContent = n === secs.length ? "Hide all" : "Show all";
+          }
+          spy();
         });
         spy();
       }
@@ -11485,10 +11542,13 @@
         spyTargets.forEach(t => t.btn.classList.toggle("is-here", t === current));
       }
 
-      /* ---- where the money is ------------------------------------------------
-         The ledger's places rail, on a surface that has no rail to filter. So
-         it does the other thing it was always half doing: it says where the
-         money is, and it is the way to the account. */
+      /* ---- where the money is -------------------------------------------------
+         The total is the heading and the accounts are what is inside it, which
+         makes this the same component as a destination and its sections. It was
+         the other way round in the ledger — accounts first, total underneath —
+         because there it was a filter, and a filter's total is a footnote. Here
+         it is the headline. */
+      let placesSig = "";
       function renderPlaces(){
         const host = document.getElementById("rail-places");
         if (!host) return;
@@ -11500,37 +11560,56 @@
           if (r.date && r.date.slice(0, 7) === month && r.bank) n[r.bank] = (n[r.bank] || 0) + 1;
         });
 
+        // Nothing is rebuilt unless what it would say has changed. Replacing a
+        // block under the cursor loses hover, focus and a fold in mid-flight.
+        const sig = rows.map(a => a.id + ":" + a.provider + ":" + a.amount +
+          ":" + (n[a.provider] || 0)).join("|");
+        if (sig === placesSig && host.firstChild) return;
+        placesSig = sig;
+
+        const accounts = rows.map(a => {
+          const c = n[a.provider] || 0;
+          const said = c === 1 ? "1 entry this month"
+                    : c ? c + " entries this month"
+                        : "nothing here this month";
+          return '<button class="rail-place' + (c ? "" : " is-empty") + '" type="button" ' +
+            'data-place="' + escapeHtml(a.provider) + '" ' +
+            'data-acct="' + escapeHtml(String(a.id)) + '">' +
+            '<span class="rail-place-tick" aria-hidden="true"></span>' +
+            '<span class="rail-place-name">' + escapeHtml(a.provider) + '</span>' +
+            '<span class="rail-place-amt num">' + fmtMoney(a.amount) + '</span>' +
+            '<span class="rail-place-n">' + escapeHtml(said) + '</span>' +
+          '</button>';
+        }).join("");
+
         host.innerHTML =
-          '<p class="rail-places-head"><span>Places</span><span>Balance</span></p>' +
-          '<div class="rail-place-list">' +
-          rows.map(a => {
-            const c = n[a.provider] || 0;
-            const said = c === 1 ? "1 entry this month"
-                      : c ? c + " entries this month"
-                          : "nothing moved through this account this month";
-            return '<button class="rail-place' + (c ? "" : " is-empty") + '" type="button" ' +
-              'data-place="' + escapeHtml(a.provider) + '" ' +
-              'data-acct="' + escapeHtml(String(a.id)) + '" ' +
-              'title="' + escapeHtml(a.provider + " \u2014 " + fmtMoney(a.amount) + ", " + said) + '">' +
-              '<span class="rail-place-tick" aria-hidden="true"></span>' +
-              '<span class="rail-place-name">' + escapeHtml(a.provider) + '</span>' +
-              '<span class="rail-place-n">' + (c || "") +
-                '<span class="sr-only"> ' + escapeHtml(said) + '</span></span>' +
-              '<span class="rail-place-amt num">' + fmtMoney(a.amount) + '</span>' +
-            '</button>';
-          }).join("") + '</div>' +
-          '<div class="rail-places-total"><span>All places</span>' +
-            '<span class="num">' + fmtMoney(total) + '</span></div>' +
-          '<p class="rail-places-note">Money out on loan is not counted here.</p>';
+          '<button class="rail-total" type="button" id="rail-total" ' +
+            'aria-expanded="' + (placesOpen ? "true" : "false") + '">' +
+            '<span class="rail-total-k">All places</span>' +
+            '<span class="rail-total-v num">' + fmtMoney(total) + '</span>' +
+            '<span class="rail-total-sub">' + rows.length + ' accounts</span>' +
+            '<span class="rail-total-caret" aria-hidden="true"></span>' +
+          '</button>' +
+          '<div class="rail-fold rail-places-fold' + (placesOpen ? " is-open" : "") + '">' +
+            '<div class="rail-fold-inner">' +
+              '<div class="rail-place-list">' + accounts + '</div>' +
+              '<p class="rail-places-note">Money out on loan is not counted here — ' +
+                'it comes back on its own date.</p>' +
+            '</div>' +
+          '</div>';
+
+        document.getElementById("rail-total").addEventListener("click", () => {
+          placesOpen = !placesOpen;
+          save();
+          host.querySelector(".rail-places-fold").classList.toggle("is-open", placesOpen);
+          document.getElementById("rail-total").setAttribute("aria-expanded", placesOpen ? "true" : "false");
+        });
 
         host.querySelectorAll("[data-place]").forEach(b =>
           b.addEventListener("click", () => {
             activateTab("savings");
             setTimeout(() => {
               const want = b.dataset.place;
-              // By id. Matching the row's text against the name picked the
-              // wrong account whenever one name was a prefix of another, which
-              // is how "GCash" opened "GCash GSave".
               const row = document.querySelector('#tab-savings [data-id="' +
                 CSS.escape(b.dataset.acct) + '"]');
               if (row){
@@ -11544,17 +11623,18 @@
           }));
       }
 
-      /* ---- the way back ------------------------------------------------------ */
+      /* ---- the way back -------------------------------------------------------
+         Shown when there is somewhere to go. A permanently disabled control
+         saying "nothing yet" is a row of a narrow column spent on nothing. */
       const back = document.createElement("button");
       back.type = "button";
       back.className = "nav-back";
       function paintBack(){
         const to = trail[trail.length - 1];
-        back.disabled = !to;
-        back.innerHTML = to
-          ? '<span aria-hidden="true">←</span> Back to ' + escapeHtml(NAMES[to] || to) +
-            '<kbd class="nav-key">alt ←</kbd>'
-          : '<span aria-hidden="true">←</span> <span class="is-none">Nothing to go back to</span>';
+        back.hidden = !to;
+        if (to) back.innerHTML =
+          '<span aria-hidden="true">←</span> Back to ' + escapeHtml(NAMES[to] || to) +
+          '<kbd class="nav-key">alt ←</kbd>';
       }
       function goBack(){
         const to = trail.pop();
@@ -11568,24 +11648,16 @@
         if (e.altKey && e.key === "ArrowLeft"){ e.preventDefault(); goBack(); }
       });
 
-      /* ---- mount -------------------------------------------------------------- */
-      // One foot, so the two things that must stay in view stay together and
-      // the list above them is the part that scrolls.
+      /* ---- mount ---------------------------------------------------------------- */
       const places = document.createElement("div");
       places.className = "rail-places";
       places.id = "rail-places";
-      const foot = document.createElement("div");
-      foot.className = "rail-foot";
-      foot.appendChild(back);
-      foot.appendChild(places);
-
-      // The destinations and the breakdown go into a scroller of their own, so
-      // the foot takes space rather than sitting on top of them.
       const scroller = document.createElement("div");
       scroller.className = "rail-scroll";
       [...nav.children].forEach(c => scroller.appendChild(c));
+      scroller.appendChild(back);
+      scroller.appendChild(places);
       nav.appendChild(scroller);
-      nav.appendChild(foot);
 
       let last = (buttons.find(b => b.classList.contains("active")) || buttons[0]).dataset.tab;
       function onChange(){
@@ -11596,7 +11668,7 @@
         last = active.dataset.tab;
         paintBack();
         signature = "";
-        buildContents();
+        buildContents(true);          // the new breakdown folds open
         window.scrollTo({ top: 0, behavior: "auto" });
       }
       new MutationObserver(onChange).observe(nav, {
@@ -11608,12 +11680,12 @@
       new MutationObserver(records => {
         if (records.every(r => nav.contains(r.target))) return;
         clearTimeout(settle);
-        settle = setTimeout(() => { buildContents(); renderPlaces(); }, 220);
+        settle = setTimeout(() => { buildContents(false); renderPlaces(); }, 220);
       }).observe(document.querySelector(".app") || document.body,
                  { childList: true, subtree: true });
 
       paintBack();
-      buildContents();
+      buildContents(false);
       renderPlaces();
     })();
 
