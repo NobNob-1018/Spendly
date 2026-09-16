@@ -1277,6 +1277,90 @@
   .tm-trend .tm-trend-period{ display:inline; margin-left: var(--sp-4);
     font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 
+
+  /* ---------- metric cells ------------------------------------------------- */
+  #money-overview-row{ display:grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+    gap:0; border:1px solid var(--line); border-radius: var(--r-sm); overflow:hidden; }
+  .metric{ display:flex; flex-direction:column; gap: var(--sp-3); padding: var(--sp-6);
+    border-right:1px solid var(--line); min-width:0; }
+  .metric:last-child{ border-right:0; }
+  .metric.is-primary{ background: var(--sunken); }
+  .m-label{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.06em; color: var(--ink-dim); }
+  .m-figure{ display:flex; align-items:baseline; gap: var(--sp-4); flex-wrap:wrap; }
+  .m-value{ font-size: var(--fs-lg); font-weight:700; font-variant-numeric: tabular-nums; }
+  .metric.is-primary .m-value{ font-size: var(--fs-xl); }
+  .m-delta{ font-size: var(--fs-3xs); font-weight:700; font-variant-numeric: tabular-nums; }
+  .m-delta.is-good{ color: var(--positive); } .m-delta.is-bad{ color: var(--negative); }
+  .m-context{ font-size: var(--fs-3xs); color: var(--ink-faint); }
+  .m-bars{ display:flex; align-items:flex-end; gap:2px; height:22px; margin-top: var(--sp-3); }
+  .m-bars i{ flex:1; background: var(--ink-faint); min-height:2px; }
+  .m-bars i.is-now{ background: var(--accent); }
+  .m-split{ margin-top: var(--sp-4); padding-top: var(--sp-4); border-top:1px solid var(--line); }
+  .m-split-row{ display:grid; grid-template-columns: 1fr 34px auto; gap: var(--sp-4);
+    align-items:center; padding: 2px 0; }
+  .m-split-k{ font-size: var(--fs-3xs); color: var(--ink-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .m-split-bar{ position:relative; height:3px; background: var(--line); }
+  .m-split-bar i{ position:absolute; inset:0 auto 0 0; background: var(--accent-quiet, var(--accent)); }
+  .m-split-v{ font-size: var(--fs-3xs); font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+  #money-overview-loan-note{ font-size: var(--fs-3xs); letter-spacing:.05em; color: var(--ink-dim); }
+
+  /* ---------- budgets as a table ------------------------------------------- */
+  .bud-summary{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.05em;
+    color: var(--ink-dim); padding-bottom: var(--sp-5); }
+  .bud-summary .is-over{ color: var(--negative); font-weight:700; }
+  .bud-table{ width:100%; border-collapse:collapse; font-size: var(--fs-2xs); }
+  .bud-table th{ text-align:left; font-size: var(--fs-3xs); text-transform:uppercase;
+    letter-spacing:.06em; color: var(--ink-faint); font-weight:600; padding-bottom: var(--sp-3);
+    border-bottom:1px solid var(--line); }
+  .bud-table th.num, .bud-table td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+  .bud-table tbody tr{ height: var(--row-h); border-bottom:1px solid var(--line); }
+  .bud-table tbody tr:last-child{ border-bottom:0; }
+  .bud-table td{ padding: 0 var(--sp-5); }
+  .bud-name{ font-weight:500; }
+  .bud-row.is-over .bud-name{ color: var(--negative); }
+  .bud-row.is-near .bud-name{ color: var(--warn); }
+  .bud-table input[data-budget-input]{ width: 78px; text-align:right; height: 26px;
+    padding: 0 var(--sp-4); font-size: var(--fs-2xs); font-variant-numeric: tabular-nums; }
+  .bud-barcell{ width: 30%; min-width:110px; }
+  .bud-bar{ position:relative; display:block; height:6px; background: var(--line); }
+  .bud-bar i{ position:absolute; inset:0 auto 0 0; background: var(--accent); }
+  .bud-row.is-near .bud-bar i{ background: var(--warn); }
+  .bud-row.is-over .bud-bar i{ background: var(--negative); }
+  .bud-mark{ position:absolute; top:-3px; width:1px; height:12px; background: var(--ink-soft); }
+  .bud-nolimit{ font-size: var(--fs-3xs); color: var(--ink-faint); }
+  .is-ok{ color: var(--positive); } .is-near{ color: var(--warn); } .is-over{ color: var(--negative); }
+  .bud-legend{ margin: var(--sp-5) 0 0; font-size: var(--fs-3xs); color: var(--ink-faint); }
+
+  /* ---------- seven-day readout -------------------------------------------- */
+  .sum-cells{ display:grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    gap:0; border:1px solid var(--line); }
+  .sum-cell{ display:flex; flex-direction:column; gap:2px; padding: var(--sp-5);
+    border-right:1px solid var(--line); min-width:0; }
+  .sum-cell:last-child{ border-right:0; }
+  .sum-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.05em; color: var(--ink-dim); }
+  .sum-v{ font-size: var(--fs-sm); font-weight:700; font-variant-numeric: tabular-nums;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sum-v[data-tone="pos"]{ color: var(--positive); } .sum-v[data-tone="neg"]{ color: var(--negative); }
+  .dayrow{ display:grid; grid-template-columns: repeat(7, 1fr); gap: var(--sp-4);
+    margin-top: var(--sp-6); align-items:end; }
+  .day{ display:flex; flex-direction:column; align-items:center; gap: var(--sp-3); }
+  .day-bar{ display:flex; align-items:flex-end; width:100%; height:34px; background: var(--sunken); }
+  .day-bar i{ width:100%; background: var(--accent); min-height:1px; }
+  .day.is-peak .day-bar i{ background: var(--warn); }
+  .day.is-empty .day-bar i{ background: var(--line); }
+  .day-k{ font-size: var(--fs-3xs); color: var(--ink-faint); }
+
+  /* ---------- recent activity as rows -------------------------------------- */
+  .rc-table{ width:100%; border-collapse:collapse; font-size: var(--fs-2xs); }
+  .rc-row{ height: var(--row-h); border-bottom:1px solid var(--line); }
+  .rc-table tbody tr:last-child{ border-bottom:0; }
+  .rc-table td{ padding: 0 var(--sp-5); }
+  .rc-date{ width:44px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .rc-desc{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:0; width:52%; }
+  .rc-cat{ color: var(--ink-dim); font-size: var(--fs-3xs); white-space:nowrap; }
+  .rc-amt{ text-align:right; font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .rc-amt.income{ color: var(--positive); } .rc-amt.expense{ color: var(--ink); }
+
 </style>
 </head>
 
@@ -6988,48 +7072,44 @@
   //   delta: { value, invert }  invert=true means "down is good" (spending)
   //   series: array of plain numbers, oldest first
   function statTileHtml(o){
+    // A metric cell, not a card: label over figure, the comparison on the same
+    // baseline as the figure so the eye reads value-then-change in one sweep.
     let deltaHtml = "";
     if (o.delta && isFinite(o.delta.value) && Math.abs(o.delta.value) > 0.005){
       const up = o.delta.value > 0;
       const good = o.delta.invert ? !up : up;
       const pct = o.delta.pct != null && isFinite(o.delta.pct);
-      deltaHtml = `<span class="stat-delta ${good ? "is-good" : "is-bad"}">`
-        + `${up ? "▲" : "▼"} ${pct ? Math.abs(o.delta.pct).toFixed(0) + "%" : fmtMoney(Math.abs(o.delta.value))}`
-        + `</span>`;
+      deltaHtml = '<span class="m-delta ' + (good ? "is-good" : "is-bad") + '">' +
+        (up ? "+" : "\u2212") + (pct ? Math.abs(o.delta.pct).toFixed(0) + "%" : fmtMoney(Math.abs(o.delta.value))) +
+        '</span>';
     }
-    // VUI-HIE-001: the primary metric carries its own split, so the headline
-    // number answers "made of what" without a second card being spent on it.
+    // The primary metric carries its own split, so the headline answers
+    // "made of what" without a second cell being spent on it.
     let breakdownHtml = "";
     if (o.breakdown && o.breakdown.length){
-      const top = Math.max.apply(null, o.breakdown.map(b=>Math.abs(b.amount) || 0).concat([1]));
-      breakdownHtml = `<div class="stat-breakdown">`
-        + o.breakdown.map(b=>`<div class="stat-breakdown-row">`
-            + `<span class="bd-label">${escapeHtml(b.label)}</span>`
-            + `<span class="bd-bar"><i style="width:${Math.round((Math.abs(b.amount)/top)*100)}%"></i></span>`
-            + `<span class="bd-value">${fmtMoney(b.amount)}</span>`
-          + `</div>`).join("")
-        + `</div>`;
+      const top = Math.max.apply(null, o.breakdown.map(b => Math.abs(b.amount) || 0).concat([1]));
+      breakdownHtml = '<div class="m-split">' + o.breakdown.map(b =>
+        '<div class="m-split-row"><span class="m-split-k">' + escapeHtml(b.label) + '</span>' +
+        '<span class="m-split-bar"><i style="width:' + Math.round((Math.abs(b.amount) / top) * 100) + '%"></i></span>' +
+        '<span class="m-split-v num">' + fmtMoney(b.amount) + '</span></div>').join("") + '</div>';
     }
+    // A six-month series drawn as six bars: a console plots the samples it has.
     let sparkHtml = "";
     if (o.series && o.series.length > 2){
-      const pts = o.series.map(v=>({ v }));
-      sparkHtml = `<div class="stat-spark">`
-        + buildSparkline(pts, { valueKey:"v", width:88, height:26, pad:2, area:true,
-                                strokeWidth:1.5, color: o.sparkColor || "var(--accent)" })
-        + `</div>`;
+      const max = Math.max.apply(null, o.series.concat([1]));
+      sparkHtml = '<div class="m-bars" title="' + o.series.map(v => fmtMoney(v)).join(" \u00B7 ") + '">' +
+        o.series.map((v, i) => '<i style="height:' + Math.max(6, Math.round((v / max) * 100)) + '%"' +
+          (i === o.series.length - 1 ? ' class="is-now"' : "") + '></i>').join("") + '</div>';
     }
-    return `
-      <div class="stat ${o.primary ? "is-primary" : ""}">
-        <div class="stat-badge ${o.badgeClass}">${badgeIcon(o.icon)}</div>
-        <div class="stat-text">
-          <div class="label">${escapeHtml(o.label)}</div>
-          <div class="value"${o.valueStyle ? ` style="${o.valueStyle}"` : ""}>${o.value}</div>
-          ${o.context ? `<div class="stat-context">${deltaHtml}<span class="stat-context-label">${escapeHtml(o.context)}</span></div>` : deltaHtml}
-        </div>
-        ${sparkHtml}
-        ${breakdownHtml}
-      </div>`;
+    return '<div class="metric' + (o.primary ? " is-primary" : "") + '">' +
+      '<div class="m-label">' + escapeHtml(o.label) + '</div>' +
+      '<div class="m-figure"><span class="m-value num"' + (o.valueStyle ? ' style="' + o.valueStyle + '"' : "") + '>' +
+        o.value + '</span>' + deltaHtml + '</div>' +
+      (o.context ? '<div class="m-context">' + escapeHtml(o.context) + '</div>' : "") +
+      sparkHtml + breakdownHtml +
+    '</div>';
   }
+
 
   // Monthly totals, oldest first, ending with the current month. Pairs with a
   // month-over-month delta so the line and the percentage describe one thing.
@@ -7037,6 +7117,18 @@
     const out = [];
     for (let i = months - 1; i >= 0; i--) out.push(monthTotal(list, i));
     return out;
+  }
+
+  // Totals for the same stretch of a previous month: day 1 up to the same day
+  // of the month as today. Comparing 16 days against 30 says spending fell when
+  // it may be running level.
+  function monthToDate(list, monthsBack, dayOf){
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - monthsBack);
+    const key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    return round2(list.filter(x => x.date.slice(0, 7) === key &&
+      Number(x.date.slice(8, 10)) <= dayOf).reduce((s, x) => s + x.amount, 0));
   }
 
   // Totals for the calendar month n months back from now.
@@ -7148,33 +7240,41 @@
     const wrap = document.getElementById("recap-body");
     if (!wrap) return;
     const now = new Date();
-    const monthKey = todayISO().slice(0,7);
-    const monthName = now.toLocaleDateString(undefined,{ month:"long" });
-    const mExp = expenses.filter(e=>e.date.slice(0,7)===monthKey);
-    const mInc = incomes.filter(i=>i.date.slice(0,7)===monthKey);
+    const monthKey = todayISO().slice(0, 7);
+    const monthName = now.toLocaleDateString(undefined, { month: "long" });
+    const mExp = expenses.filter(e => e.date.slice(0, 7) === monthKey);
+    const mInc = incomes.filter(i => i.date.slice(0, 7) === monthKey);
     if (!mExp.length && !mInc.length){
-      wrap.innerHTML = `<p class="hint">Nothing logged in ${escapeHtml(monthName)} yet.</p>`;
+      wrap.innerHTML = '<p class="hint">No rows for ' + escapeHtml(monthName) + '.</p>';
       return;
     }
-    const spent = round2(mExp.reduce((s,e)=>s+e.amount,0));
-    const earned = round2(mInc.reduce((s,i)=>s+i.amount,0));
+    const spent = round2(mExp.reduce((s, e) => s + e.amount, 0));
     const byCat = {};
-    mExp.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + e.amount; });
-    const top = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
-    const biggest = mExp.slice().sort((a,b)=>b.amount-a.amount)[0];
-    const daysLogged = new Set(mExp.map(e=>e.date)).size;
-    const prevSpent = monthTotal(expenses, 1);
+    mExp.forEach(e => { byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
+    const ranked = Object.keys(byCat).map(k => ({ label: k, amount: byCat[k] })).sort((a, b) => b.amount - a.amount);
+    const biggest = mExp.slice().sort((a, b) => b.amount - a.amount)[0];
+    const daysLogged = new Set(mExp.map(e => e.date)).size;
+    const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const prevSpent = monthToDate(expenses, 1, now.getDate());
     const change = prevSpent > 0 ? ((spent - prevSpent) / prevSpent) * 100 : null;
 
-    wrap.innerHTML = `
-      <div class="recap-head">${escapeHtml(monthName)} highlights</div>
-      <ul class="recap-list">
-        ${top ? `<li><span>Biggest category</span><strong>${escapeHtml(top[0])} · ${fmtMoney(top[1])}</strong></li>` : ""}
-        ${biggest ? `<li><span>Largest single</span><strong>${escapeHtml(biggest.description)} · ${fmtMoney(biggest.amount)}</strong></li>` : ""}
-        <li><span>Days with spending</span><strong>${daysLogged} of ${new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()}</strong></li>
-        <li><span>Average per logged day</span><strong>${fmtMoney(daysLogged ? round2(spent/daysLogged) : 0)}</strong></li>
-      </ul>`;
+    const rows = [
+      { k: "Spent", v: fmtMoney(spent), strong: true },
+      { k: "vs same day last month", v: change == null ? "\u2014" : (change > 0 ? "+" : "\u2212") + Math.abs(change).toFixed(0) + "%",
+        tone: change == null ? null : change > 0 ? "neg" : "pos" },
+      { k: "Categories used", v: String(ranked.length) },
+      { k: "Largest category", v: ranked.length ? escapeHtml(ranked[0].label) + " " + fmtMoney(ranked[0].amount) : "\u2014" },
+      { k: "Largest single", v: biggest ? fmtMoney(biggest.amount) : "\u2014" },
+      { k: "Days with entries", v: daysLogged + " / " + daysIn },
+      { k: "Per logged day", v: fmtMoney(daysLogged ? round2(spent / daysLogged) : 0) }
+    ];
+    wrap.innerHTML = '<div class="ro">' + rows.map(r =>
+      '<div class="ro-row' + (r.strong ? " is-strong" : "") + '">' +
+        '<span class="ro-k">' + r.k + '</span>' +
+        '<span class="ro-v num"' + (r.tone ? ' data-tone="' + r.tone + '"' : "") + '>' + r.v + '</span></div>').join("") +
+      '</div>' + (biggest ? '<p class="hint ro-note">largest: ' + escapeHtml(biggest.description) + '</p>' : "");
   }
+
 
   // Coalesces the expensive downstream re-renders that follow an edit. Without it,
   // changing one amount rebuilt three charts and the entire dashboard synchronously.
@@ -7197,74 +7297,86 @@
   }
 
   function renderMoneyOverview(){
-
-
-
     const row = document.getElementById("money-overview-row");
     if (!row) return;
-    const monthKey = todayISO().slice(0,7);
-    const spentThisMonth = expenses.filter(e=>e.date.slice(0,7) === monthKey).reduce((s,e)=>s+e.amount, 0);
-    const incomeThisMonth = incomes.filter(i=>i.date.slice(0,7) === monthKey).reduce((s,i)=>s+i.amount, 0);
-    const netThisMonth = incomeThisMonth - spentThisMonth;
-    const moneyInfo = computeTotalMoney(); // same figures as the header bar — one source of truth
-    const expectedInterest = savings.reduce((s,a)=> s + netMonthlyInterest(a), 0);
-    // Comparisons: net worth against 30 days ago, spending and net against the
-    // same point in the previous calendar month.
-    const nwCut = toLocalISO(new Date(Date.now() - 30*864e5));
-    const nwPast = netWorthHistory.filter(h=>h.date <= nwCut);
-    const nwThen = nwPast.length ? nwPast[nwPast.length-1].netWorth : null;
+    const now = new Date();
+    const monthKey = todayISO().slice(0, 7);
+    const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const dayOf = now.getDate();
+    const left = daysIn - dayOf;
+
+    const mExp = expenses.filter(e => e.date.slice(0, 7) === monthKey);
+    const mInc = incomes.filter(i => i.date.slice(0, 7) === monthKey);
+    const spent = round2(mExp.reduce((s, e) => s + e.amount, 0));
+    const earned = round2(mInc.reduce((s, i) => s + i.amount, 0));
+    const net = round2(earned - spent);
+    const moneyInfo = computeTotalMoney();
+    const interest = round2(savings.reduce((s, a) => s + netMonthlyInterest(a), 0));
+
     const spentLast = monthTotal(expenses, 1);
     const incomeLast = monthTotal(incomes, 1);
     const netLast = round2(incomeLast - spentLast);
+    const spentLastToDate = monthToDate(expenses, 1, dayOf);
+    const incomeLastToDate = monthToDate(incomes, 1, dayOf);
+    const burn = round2(spent / Math.max(1, dayOf));
 
-    // Total money is deliberately NOT a tile here — the hero states it in 60px type
-    // immediately above. Showing the same figure twice on one screen is what made
-    // this page read as noise rather than a summary.
+    const byCat = {};
+    mExp.forEach(e => { byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
+    const split = Object.keys(byCat).map(k => ({ label: k, amount: byCat[k] }))
+      .sort((a, b) => b.amount - a.amount).slice(0, 3);
+
+    // Six cells rather than three. The extra figures — burn rate, projection,
+    // days remaining — are what turn a summary into something you can act on,
+    // and a console has the room to show them without a second screen.
     row.innerHTML =
       statTileHtml({
-        primary:true, icon:"spend", badgeClass:"stat-badge-rose",
-        label:"Spent this month", value: fmtMoneyRich(spentThisMonth),
-        // Spending down is good, so the chip colour is inverted.
-        delta: spentLast > 0 ? { value: round2(spentThisMonth - spentLast),
-                                 pct: ((spentThisMonth - spentLast)/spentLast)*100, invert:true } : null,
-        context: spentLast > 0 ? "vs last month" : "",
-        series: monthlySeries(expenses, 6), sparkColor:"var(--negative)",
-        breakdown: (()=>{
-          const byCat = {};
-          expenses.filter(e=>e.date.slice(0,7) === monthKey)
-                  .forEach(e=>{ byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
-          return Object.keys(byCat)
-            .map(k=>({ label:k, amount:byCat[k] }))
-            .sort((a,b)=>b.amount - a.amount)
-            .slice(0, 3);
-        })()
+        primary: true, label: "Spent this month", value: fmtMoneyRich(spent),
+        delta: spentLastToDate > 0 ? { value: round2(spent - spentLastToDate), pct: ((spent - spentLastToDate) / spentLastToDate) * 100, invert: true } : null,
+        context: spentLastToDate > 0
+          ? "vs " + fmtMoney(spentLastToDate) + " by day " + dayOf + " last month"
+          : "no prior month on file",
+        series: monthlySeries(expenses, 6), breakdown: split
       })
     + statTileHtml({
-        icon:"balance", badgeClass:"stat-badge-teal",
-        label:"Net this month", value: fmtMoneyRich(netThisMonth),
-        valueStyle: netThisMonth < 0 ? "color:var(--warn);" : "",
-        delta: (spentLast > 0 || incomeLast > 0) ? { value: round2(netThisMonth - netLast) } : null,
-        context: (spentLast > 0 || incomeLast > 0) ? "vs last month" : "",
-        series: null
+        label: "Received", value: fmtMoneyRich(earned),
+        delta: incomeLastToDate > 0 ? { value: round2(earned - incomeLastToDate), pct: ((earned - incomeLastToDate) / incomeLastToDate) * 100 } : null,
+        context: mInc.length + " entr" + (mInc.length === 1 ? "y" : "ies") +
+          (incomeLastToDate > 0 ? " \u00B7 vs " + fmtMoney(incomeLastToDate) + " by day " + dayOf : ""),
+        series: monthlySeries(incomes, 6)
       })
     + statTileHtml({
-        icon:"trend", badgeClass:"stat-badge-green",
-        label:"Expected interest", value: fmtMoneyRich(expectedInterest),
-        context:"per month, after tax", series:null
+        label: "Net", value: fmtMoneyRich(net),
+        valueStyle: net < 0 ? "color:var(--warn);" : "",
+        delta: (spentLast > 0 || incomeLast > 0) ? { value: round2(net - netLast) } : null,
+        context: net < 0 ? "spending exceeds income" : "income exceeds spending"
+      })
+    + statTileHtml({
+        label: "Burn rate", value: fmtMoneyRich(burn),
+        context: "per day over " + dayOf + " day" + (dayOf === 1 ? "" : "s")
+      })
+    + statTileHtml({
+        label: "Projected month", value: fmtMoneyRich(round2(burn * daysIn)),
+        context: left + " day" + (left === 1 ? "" : "s") + " to run \u00B7 " + fmtMoney(spentLast) + " last month in full"
+      })
+    + statTileHtml({
+        label: "Interest", value: fmtMoneyRich(interest),
+        context: "per month, after tax"
       });
+
     const loanNoteEl = document.getElementById("money-overview-loan-note");
     if (loanNoteEl){
       if (moneyInfo.outstandingLent > 0 || moneyInfo.outstandingOwed > 0){
         loanNoteEl.style.display = "";
-        loanNoteEl.innerHTML = `Not counted in Total money above — `
-          + (moneyInfo.outstandingLent > 0 ? `owed to you: <strong style="color:var(--ink);">${fmtMoneyRich(moneyInfo.outstandingLent)}</strong>` : ``)
-          + (moneyInfo.outstandingLent > 0 && moneyInfo.outstandingOwed > 0 ? ` · ` : ``)
-          + (moneyInfo.outstandingOwed > 0 ? `you owe: <strong style="color:var(--warn);">${fmtMoneyRich(moneyInfo.outstandingOwed)}</strong>` : ``);
+        loanNoteEl.innerHTML = 'OUTSIDE TOTAL MONEY \u2014 ' +
+          (moneyInfo.outstandingLent > 0 ? 'receivable <strong class="num">' + fmtMoney(moneyInfo.outstandingLent) + '</strong>' : '') +
+          (moneyInfo.outstandingLent > 0 && moneyInfo.outstandingOwed > 0 ? '  \u00B7  ' : '') +
+          (moneyInfo.outstandingOwed > 0 ? 'payable <strong class="num" style="color:var(--warn);">' + fmtMoney(moneyInfo.outstandingOwed) + '</strong>' : '');
       } else {
         loanNoteEl.style.display = "none";
       }
     }
   }
+
 
   /* ---------- Dashboard ---------- */
   let currentRange = "daily";
@@ -7495,57 +7607,68 @@
 
   function renderBudgets(){
     const list = document.getElementById("budget-list");
+    if (!list) return;
     const spend = currentMonthSpendByCategory();
+    const now = new Date();
+    const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const elapsed = now.getDate() / daysIn;
 
-    list.innerHTML = categories.map(cat=>{
-      const budget = budgets[cat] || 0;
-      const spent = spend[cat] || 0;
-      const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
-      const over = budget > 0 && spent > budget;
-      const barColor = over ? "var(--warn)" : (pct > 80 ? "#E8A33D" : "var(--accent)");
-      const caption = budget > 0
-        ? (over
-            ? `Over by ${fmtMoneyRich(spent - budget)}`
-            : `${fmtMoneyRich(spent)} of ${fmtMoneyRich(budget)} spent this month`)
-        : (spent > 0 ? `${fmtMoneyRich(spent)} spent this month · no budget set` : "No budget set");
+    const rows = categories.map(cat => ({
+      cat: cat, budget: budgets[cat] || 0, spent: round2(spend[cat] || 0)
+    }));
+    // Budgeted categories first, and within those the ones closest to breaching.
+    // A list in alphabetical order makes you read all of it to find the problem.
+    rows.sort((a, b) => {
+      const ra = a.budget > 0 ? a.spent / a.budget : -1;
+      const rb = b.budget > 0 ? b.spent / b.budget : -1;
+      return rb - ra;
+    });
+    const setCount = rows.filter(r => r.budget > 0).length;
+    const overCount = rows.filter(r => r.budget > 0 && r.spent > r.budget).length;
 
-      // A ring reads as a proportion at a glance in a way a thin bar does not,
-      // and it puts the percentage where the eye already is.
-      const C = 100.5;                       // 2 * pi * r, r = 16
-      const shown = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
-      return `
-        <div class="budget-row ${over ? "is-over" : (budget > 0 && pct > 80 ? "is-near" : "")}" data-cat="${escapeHtml(cat)}">
-          <div class="budget-ring" aria-hidden="true">
-            <svg viewBox="0 0 40 40">
-              <circle class="br-track" cx="20" cy="20" r="16"/>
-              <circle class="br-fill" cx="20" cy="20" r="16"
-                      style="stroke:${barColor}; stroke-dasharray:${C}; stroke-dashoffset:${(C*(1-shown/100)).toFixed(1)};"/>
-            </svg>
-            <span class="br-pct" style="${budget > 0 ? "" : "opacity:.35;"}">${budget > 0 ? Math.round((spent/budget)*100) + "%" : "—"}</span>
-          </div>
-          <div class="name">${escapeHtml(cat)}</div>
-          <input type="number" min="0" step="1" placeholder="No limit" value="${budget || ""}" data-budget-input>
-          <div class="budget-progress">
-            <div class="budget-caption ${over?"over":""}">${caption}</div>
-          </div>
-        </div>`;
-    }).join("");
+    list.innerHTML =
+      '<div class="bud-summary">' + setCount + ' of ' + rows.length + ' categories limited \u00B7 ' +
+        (overCount ? '<span class="is-over">' + overCount + ' over</span>' : 'none over') +
+        ' \u00B7 month ' + Math.round(elapsed * 100) + '% elapsed</div>'
+      + '<table class="bud-table"><thead><tr>'
+      + '<th>Category</th><th class="num">Limit</th><th class="num">Spent</th><th class="num">Left</th><th>Progress</th><th class="num">Pace</th>'
+      + '</tr></thead><tbody>'
+      + rows.map(r => {
+        const pct = r.budget > 0 ? (r.spent / r.budget) * 100 : 0;
+        const over = r.budget > 0 && r.spent > r.budget;
+        const near = r.budget > 0 && !over && pct > 80;
+        // Pace: spending as a share of budget against the share of the month
+        // gone. Over 100 means it will breach if nothing changes.
+        const pace = r.budget > 0 && elapsed > 0 ? (pct / 100) / elapsed * 100 : null;
+        return '<tr class="bud-row' + (over ? " is-over" : near ? " is-near" : "") + '" data-cat="' + escapeHtml(r.cat) + '">' +
+          '<td class="bud-name">' + escapeHtml(r.cat) + '</td>' +
+          '<td class="num"><input type="number" min="0" step="1" placeholder="\u2014" value="' + (r.budget || "") + '" data-budget-input></td>' +
+          '<td class="num">' + (r.spent ? fmtMoney(r.spent) : "\u2014") + '</td>' +
+          '<td class="num">' + (r.budget > 0 ? (over ? '<span class="is-over">\u2212' + fmtMoney(r.spent - r.budget) + '</span>' : fmtMoney(round2(r.budget - r.spent))) : "\u2014") + '</td>' +
+          '<td class="bud-barcell">' + (r.budget > 0
+            ? '<span class="bud-bar"><i style="width:' + Math.min(100, pct).toFixed(0) + '%"></i>' +
+              '<b class="bud-mark" style="left:' + (elapsed * 100).toFixed(1) + '%" title="where the month is"></b></span>'
+            : '<span class="bud-nolimit">no limit</span>') + '</td>' +
+          '<td class="num">' + (pace == null ? "\u2014" :
+            '<span class="' + (pace > 110 ? "is-over" : pace > 100 ? "is-near" : "is-ok") + '">' + Math.round(pace) + '%</span>') + '</td>' +
+        '</tr>';
+      }).join("")
+      + '</tbody></table>'
+      + '<p class="bud-legend">Pace compares how much of the limit is gone against how much of the month is gone. The mark on each bar is today.</p>';
 
-    list.querySelectorAll("[data-budget-input]").forEach(input=>{
-      input.addEventListener("change", ()=>{
-        const cat = input.closest(".budget-row").dataset.cat;
+    list.querySelectorAll("[data-budget-input]").forEach(input => {
+      input.addEventListener("change", () => {
+        const cat = input.closest(".bud-row").dataset.cat;
         const v = parseFloat(input.value);
-        if (input.value === "" || isNaN(v) || v <= 0){
-          delete budgets[cat];
-        } else {
-          budgets[cat] = round2(v);
-        }
+        if (input.value === "" || isNaN(v) || v <= 0) delete budgets[cat];
+        else budgets[cat] = round2(v);
         saveBudgets(budgets);
         renderBudgets();
         showToast("Budget saved.");
       });
     });
   }
+
 
   let currentSummaryTab = "activity";
 
@@ -7558,39 +7681,75 @@
   function renderSummaryContent(){
     const container = document.getElementById("summary-content");
     if (!container) return;
-    const { start, end } = get7DayWindow();
-    const exp7 = expenses.filter(e=>{ const d = new Date(e.date+"T00:00:00"); return d >= start && d <= end; });
-    const inc7 = incomes.filter(i=>{ const d = new Date(i.date+"T00:00:00"); return d >= start && d <= end; });
-    const totalSpent7 = exp7.reduce((s,e)=>s+e.amount, 0);
-    const totalIncome7 = inc7.reduce((s,i)=>s+i.amount, 0);
+    const w = get7DayWindow();
+    const exp7 = expenses.filter(e => { const d = new Date(e.date + "T00:00:00"); return d >= w.start && d <= w.end; });
+    const inc7 = incomes.filter(i => { const d = new Date(i.date + "T00:00:00"); return d >= w.start && d <= w.end; });
+    const spent7 = round2(exp7.reduce((s, e) => s + e.amount, 0));
+    const earned7 = round2(inc7.reduce((s, i) => s + i.amount, 0));
 
-    if (currentSummaryTab === "spending"){
-      const catTotals = {};
-      exp7.forEach(e=>{ catTotals[e.category] = (catTotals[e.category]||0) + e.amount; });
-      const topCat = Object.keys(catTotals).sort((a,b)=>catTotals[b]-catTotals[a])[0] || "—";
-      container.innerHTML = `
-        <div class="stat"><div class="stat-badge stat-badge-rose">${badgeIcon("spend")}</div><div class="stat-text"><div class="label">Spent (7 days)</div><div class="value">${fmtMoneyRich(totalSpent7)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-blue">${badgeIcon("tag")}</div><div class="stat-text"><div class="label">Top category</div><div class="value">${escapeHtml(topCat)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-rose">${badgeIcon("chart")}</div><div class="stat-text"><div class="label">Avg per day</div><div class="value">${fmtMoneyRich(totalSpent7/7)}</div></div></div>
-      `;
-    } else if (currentSummaryTab === "income"){
-      const catTotals = {};
-      inc7.forEach(i=>{ catTotals[i.category] = (catTotals[i.category]||0) + i.amount; });
-      const topSrc = Object.keys(catTotals).sort((a,b)=>catTotals[b]-catTotals[a])[0] || "—";
-      container.innerHTML = `
-        <div class="stat"><div class="stat-badge stat-badge-green">${badgeIcon("income")}</div><div class="stat-text"><div class="label">Income (7 days)</div><div class="value">${fmtMoneyRich(totalIncome7)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-blue">${badgeIcon("tag")}</div><div class="stat-text"><div class="label">Top source</div><div class="value">${escapeHtml(topSrc)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-rose">${badgeIcon("chart")}</div><div class="stat-text"><div class="label">Avg per day</div><div class="value">${fmtMoneyRich(totalIncome7/7)}</div></div></div>
-      `;
-    } else { // activity (default)
-      const net = totalIncome7 - totalSpent7;
-      container.innerHTML = `
-        <div class="stat"><div class="stat-badge stat-badge-teal">${badgeIcon("exchange")}</div><div class="stat-text"><div class="label">Total activity</div><div class="value">${fmtMoneyRich(totalSpent7 + totalIncome7)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-teal">${badgeIcon("balance")}</div><div class="stat-text"><div class="label">Net (income − spent)</div><div class="value" style="${net < 0 ? 'color:var(--warn);' : ''}">${fmtMoneyRich(net)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-blue">${badgeIcon("receipt")}</div><div class="stat-text"><div class="label">Transactions</div><div class="value">${exp7.length + inc7.length}</div></div></div>
-      `;
+    // Seven day-columns under the figures: the point of a seven-day window is
+    // which day was heavy, and three averages cannot say that.
+    const days = [];
+    for (let i = 6; i >= 0; i--){
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const iso = toLocalISO(d);
+      days.push({
+        iso: iso,
+        dow: ["S", "M", "T", "W", "T", "F", "S"][d.getDay()],
+        out: round2(expenses.filter(e => e.date === iso).reduce((s, e) => s + e.amount, 0)),
+        in: round2(incomes.filter(x => x.date === iso).reduce((s, x) => s + x.amount, 0))
+      });
     }
+    const key = currentSummaryTab === "income" ? "in" : "out";
+    const peak = Math.max.apply(null, days.map(d => d[key]).concat([1]));
+    const strip = '<div class="dayrow">' + days.map(d =>
+      '<div class="day' + (d[key] >= peak && peak > 0 ? " is-peak" : "") + (d[key] === 0 ? " is-empty" : "") +
+        '" title="' + d.iso + " \u00B7 " + fmtMoney(d[key]) + '">' +
+        '<span class="day-bar"><i style="height:' + Math.round((d[key] / peak) * 100) + '%"></i></span>' +
+        '<span class="day-k">' + d.dow + '</span>' +
+      '</div>').join("") + '</div>';
+
+    let cells;
+    if (currentSummaryTab === "spending"){
+      const t = {};
+      exp7.forEach(e => { t[e.category] = round2((t[e.category] || 0) + e.amount); });
+      const top = Object.keys(t).sort((a, b) => t[b] - t[a])[0];
+      cells = [
+        { k: "Spent, 7 days", v: fmtMoney(spent7) },
+        { k: "Entries", v: String(exp7.length) },
+        { k: "Per day", v: fmtMoney(round2(spent7 / 7)) },
+        { k: "Heaviest day", v: fmtMoney(Math.max.apply(null, days.map(d => d.out).concat([0]))) },
+        { k: "Top category", v: top ? escapeHtml(top) + " " + fmtMoney(t[top]) : "\u2014" }
+      ];
+    } else if (currentSummaryTab === "income"){
+      const t = {};
+      inc7.forEach(i => { t[i.category] = round2((t[i.category] || 0) + i.amount); });
+      const top = Object.keys(t).sort((a, b) => t[b] - t[a])[0];
+      cells = [
+        { k: "Received, 7 days", v: fmtMoney(earned7) },
+        { k: "Entries", v: String(inc7.length) },
+        { k: "Per day", v: fmtMoney(round2(earned7 / 7)) },
+        { k: "Largest day", v: fmtMoney(Math.max.apply(null, days.map(d => d.in).concat([0]))) },
+        { k: "Top source", v: top ? escapeHtml(top) + " " + fmtMoney(t[top]) : "\u2014" }
+      ];
+    } else {
+      const net = round2(earned7 - spent7);
+      const active = days.filter(d => d.out > 0 || d.in > 0).length;
+      cells = [
+        { k: "Activity", v: fmtMoney(round2(spent7 + earned7)) },
+        { k: "Net", v: fmtMoney(net), tone: net < 0 ? "neg" : "pos" },
+        { k: "Transactions", v: String(exp7.length + inc7.length) },
+        { k: "Active days", v: active + " of 7" },
+        { k: "Quiet days", v: String(7 - active) }
+      ];
+    }
+
+    container.innerHTML = '<div class="sum-cells">' + cells.map(c =>
+      '<div class="sum-cell"><span class="sum-k">' + c.k + '</span>' +
+      '<span class="sum-v num"' + (c.tone ? ' data-tone="' + c.tone + '"' : "") + '>' + c.v + '</span></div>').join("") +
+      '</div>' + strip;
   }
+
 
   document.querySelectorAll("#summary-toggle button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -7610,39 +7769,33 @@
 
     let source, emptyLabel, titleLabel;
     if (currentSummaryTab === "spending"){
-      source = expenses.map(e=>({ description:e.description, category:e.category, amount:e.amount, date:e.date, type:"expense" }));
-      emptyLabel = "No spending in the last 7 days.";
-      titleLabel = "Recent spending";
+      source = expenses.map(e => ({ description: e.description, category: e.category, amount: e.amount, date: e.date, type: "expense" }));
+      emptyLabel = "No spending in the last 7 days."; titleLabel = "Recent spending";
     } else if (currentSummaryTab === "income"){
-      source = incomes.map(i=>({ description:i.description, category:i.category, amount:i.amount, date:i.date, type:"income" }));
-      emptyLabel = "No income in the last 7 days.";
-      titleLabel = "Recent income";
+      source = incomes.map(i => ({ description: i.description, category: i.category, amount: i.amount, date: i.date, type: "income" }));
+      emptyLabel = "No income in the last 7 days."; titleLabel = "Recent income";
     } else {
-      source = [
-        ...expenses.map(e=>({ description:e.description, category:e.category, amount:e.amount, date:e.date, type:"expense" })),
-        ...incomes.map(i=>({ description:i.description, category:i.category, amount:i.amount, date:i.date, type:"income" }))
-      ];
-      emptyLabel = "No transactions yet.";
-      titleLabel = "Recent activity";
+      source = [].concat(
+        expenses.map(e => ({ description: e.description, category: e.category, amount: e.amount, date: e.date, type: "expense" })),
+        incomes.map(i => ({ description: i.description, category: i.category, amount: i.amount, date: i.date, type: "income" })));
+      emptyLabel = "No transactions yet."; titleLabel = "Recent activity";
     }
     if (titleEl) titleEl.textContent = titleLabel;
 
-    const filtered = source.sort((a,b)=> b.date.localeCompare(a.date)).slice(0, 7);
+    const rows = source.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 9);
+    if (!rows.length){ container.innerHTML = emptyStateHtml("list", emptyLabel, ""); return; }
 
-    if (!filtered.length){
-      container.innerHTML = emptyStateHtml("list", emptyLabel, "");
-      return;
-    }
-    container.innerHTML = filtered.map(tx=>`
-      <div class="recent-tx-item">
-        <div>
-          <div class="recent-tx-desc">${escapeHtml(tx.description)}</div>
-          <div class="recent-tx-meta">${fmtDate(tx.date)} · ${escapeHtml(tx.category)}</div>
-        </div>
-        <div class="recent-tx-amount ${tx.type}">${tx.type === "income" ? "+" : "−"}${fmtMoneyRich(tx.amount)}</div>
-      </div>
-    `).join("");
+    // A table, because these are records. Nine rows fit where seven cards did.
+    container.innerHTML =
+      '<table class="rc-table"><tbody>' + rows.map(tx =>
+        '<tr class="rc-row">' +
+          '<td class="rc-date num">' + tx.date.slice(5) + '</td>' +
+          '<td class="rc-desc">' + escapeHtml(tx.description) + '</td>' +
+          '<td class="rc-cat">' + escapeHtml(tx.category) + '</td>' +
+          '<td class="rc-amt num ' + tx.type + '">' + (tx.type === "income" ? "+" : "\u2212") + fmtMoney(tx.amount) + '</td>' +
+        '</tr>').join("") + '</tbody></table>';
   }
+
 
   function renderDashboardSummary(){
     renderInsights();

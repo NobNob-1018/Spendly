@@ -991,6 +991,115 @@
   #tm-trend .tm-trend-period{ display:inline; margin-left: var(--sp-4);
     font-size: var(--fs-3xs); color: var(--ink-faint); letter-spacing:.04em; }
 
+
+  /* ---------- KPI cards ---------------------------------------------------- */
+  #money-overview-row{ display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: var(--sp-6); }
+  .kpi{ display:flex; flex-direction:column; gap: var(--sp-4); padding: var(--sp-7);
+    background: var(--card); border:1px solid var(--line); border-radius: var(--r-lg); min-width:0; }
+  .kpi.is-primary{ border-color: var(--accent-deep); }
+  .kpi-head{ display:flex; align-items:center; gap: var(--sp-5); }
+  .kpi-badge{ width:28px; height:28px; border-radius: var(--r-sm); display:grid; place-items:center; flex:none; }
+  .kpi-badge svg{ width:15px; height:15px; }
+  .kpi-label{ flex:1; min-width:0; font-size: var(--fs-3xs); text-transform:uppercase;
+    letter-spacing:.06em; color: var(--ink-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .kpi-delta{ display:inline-flex; align-items:center; gap:3px; font-size: var(--fs-3xs);
+    font-weight:700; font-variant-numeric: tabular-nums; padding: 2px var(--sp-4);
+    border-radius: var(--r-pill); }
+  .kpi-delta.is-good{ color: var(--positive); background: rgb(79 201 138 / .12); }
+  .kpi-delta.is-bad{ color: var(--negative); background: rgb(228 105 92 / .12); }
+  .kpi-arrow{ font-size: 8px; }
+  .kpi-value{ font-size: var(--fs-2xl); font-weight:700; font-variant-numeric: tabular-nums; line-height:1.1; }
+  .kpi.is-primary .kpi-value{ font-size: var(--fs-3xl); }
+  .kpi-basis{ font-size: var(--fs-3xs); color: var(--ink-faint); }
+  .kpi-gauge{ display:flex; flex-direction:column; gap: var(--sp-3); margin-top: var(--sp-3); }
+  .kpi-gauge-rail{ position:relative; height:5px; background: var(--line); border-radius:3px; overflow:hidden; }
+  .kpi-gauge-rail i{ position:absolute; inset:0 auto 0 0; background: var(--accent); border-radius:3px; }
+  .kpi-gauge-k{ font-size: var(--fs-3xs); color: var(--ink-faint); }
+  .kpi-trend{ margin-top: auto; padding-top: var(--sp-5); }
+  .kpi-trend svg{ width:100%; height:34px; }
+  .kpi-trend-scale{ display:flex; justify-content:space-between; font-size: var(--fs-3xs);
+    color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+  /* ---------- budgets as cards with pace ----------------------------------- */
+  .bg-head{ display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--sp-6); padding-bottom: var(--sp-7); margin-bottom: var(--sp-7);
+    border-bottom:1px solid var(--line); }
+  .bg-h-cell{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .bg-h-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.05em; color: var(--ink-dim); }
+  .bg-h-v{ font-size: var(--fs-lg); font-weight:700; font-variant-numeric: tabular-nums; }
+  .bg-h-v.is-good{ color: var(--positive); } .bg-h-v.is-bad{ color: var(--negative); }
+  .bg-h-s{ font-size: var(--fs-3xs); color: var(--ink-faint); }
+  .bg-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: var(--sp-6); }
+  .bg-card{ display:flex; flex-direction:column; gap: var(--sp-5); padding: var(--sp-6);
+    background: var(--sunken); border:1px solid var(--line); border-radius: var(--r-md); }
+  .bg-card.is-near{ border-color: var(--warn); }
+  .bg-card.is-over{ border-color: var(--negative); }
+  .bg-card-top{ display:grid; grid-template-columns: 40px 1fr 84px; gap: var(--sp-5); align-items:center; }
+  .bg-ring{ position:relative; width:40px; height:40px; display:grid; place-items:center; }
+  .bg-ring svg{ width:40px; height:40px; transform: rotate(-90deg); }
+  .bg-ring .br-track{ fill:none; stroke: var(--line); stroke-width:4; }
+  .bg-ring .br-fill{ fill:none; stroke: var(--accent); stroke-width:4; stroke-linecap:round; }
+  .bg-card.is-near .br-fill{ stroke: var(--warn); }
+  .bg-card.is-over .br-fill{ stroke: var(--negative); }
+  .bg-ring-pct{ position:absolute; font-size: 9px; font-weight:700; font-variant-numeric: tabular-nums; }
+  .bg-id{ display:flex; flex-direction:column; min-width:0; }
+  .bg-name{ font-size: var(--fs-2xs); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bg-sub{ font-size: var(--fs-3xs); color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+  .bg-card input[data-budget-input]{ width:100%; height:30px; text-align:right;
+    font-size: var(--fs-2xs); font-variant-numeric: tabular-nums; }
+  .bg-foot{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-4);
+    font-size: var(--fs-3xs); font-variant-numeric: tabular-nums; }
+  .bg-left{ color: var(--ink-soft); } .bg-left.is-bad{ color: var(--negative); font-weight:700; }
+  .bg-pace.is-good{ color: var(--positive); } .bg-pace.is-even{ color: var(--ink-dim); }
+  .bg-pace.is-bad{ color: var(--negative); font-weight:700; }
+
+  /* ---------- the week broken out ------------------------------------------ */
+  .wk-cells{ display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--sp-6); margin-bottom: var(--sp-7); }
+  .wk-cell{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .wk-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.05em; color: var(--ink-dim); }
+  .wk-v{ font-size: var(--fs-lg); font-weight:700; font-variant-numeric: tabular-nums;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .wk-v.is-good{ color: var(--positive); } .wk-v.is-bad{ color: var(--negative); }
+  .wk-s{ font-size: var(--fs-3xs); color: var(--ink-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .wk-chart{ position:relative; display:grid; grid-template-columns: repeat(7, 1fr);
+    gap: var(--sp-5); align-items:end; height: 108px; padding-bottom: 18px; }
+  .wk-day{ position:relative; display:flex; flex-direction:column; justify-content:flex-end;
+    align-items:center; height:100%; }
+  .wk-bar{ width:100%; background: var(--accent); border-radius: 3px 3px 0 0; }
+  .wk-day.is-peak .wk-bar{ background: var(--warn); }
+  .wk-lbl{ position:absolute; bottom:-18px; font-size: var(--fs-3xs); color: var(--ink-faint); }
+  .wk-avg{ position:absolute; left:0; right:0; border-top:1px dashed var(--line-strong);
+    pointer-events:none; }
+  .wk-avg span{ position:absolute; right:0; top:-14px; font-size: var(--fs-3xs); color: var(--ink-dim);
+    font-variant-numeric: tabular-nums; }
+
+  /* ---------- recent activity, weighted ------------------------------------ */
+  .rx{ display:grid; grid-template-columns: 8px 1fr auto; gap: var(--sp-5); align-items:center;
+    padding: var(--sp-5) 0; border-bottom:1px solid var(--line); }
+  .rx:last-child{ border-bottom:0; }
+  .rx-dot{ width:8px; height:8px; border-radius:50%; }
+  .rx-body{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .rx-desc{ font-size: var(--fs-2xs); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rx-meta{ font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .rx-rail{ position:relative; display:block; height:3px; margin-top: var(--sp-3);
+    background: var(--line); border-radius:2px; }
+  .rx-rail i{ position:absolute; inset:0 auto 0 0; border-radius:2px; opacity:.85; }
+  .rx-amt{ font-size: var(--fs-2xs); font-weight:700; font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .rx-amt.income{ color: var(--positive); } .rx-amt.expense{ color: var(--ink); }
+
+  /* ---------- recap as tiles ----------------------------------------------- */
+  .rcp-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: var(--sp-6); }
+  .rcp{ display:flex; flex-direction:column; gap:2px; padding: var(--sp-6);
+    background: var(--sunken); border-radius: var(--r-md); min-width:0; }
+  .rcp-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.05em; color: var(--ink-dim); }
+  .rcp-v{ font-size: var(--fs-lg); font-weight:700; font-variant-numeric: tabular-nums; }
+  .rcp-v.is-good{ color: var(--positive); } .rcp-v.is-bad{ color: var(--negative); }
+  .rcp-s{ font-size: var(--fs-3xs); color: var(--ink-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rcp-note{ margin: var(--sp-6) 0 0; font-size: var(--fs-2xs); line-height:1.6; color: var(--ink-dim); }
+  .rcp-note strong{ color: var(--ink); }
+
 </style>
 </head>
 
@@ -6780,34 +6889,46 @@
   //   delta: { value, invert }  invert=true means "down is good" (spending)
   //   series: array of plain numbers, oldest first
   function statTileHtml(o){
+    // A KPI card: figure, movement, trend and the basis of the comparison. The
+    // basis is the part usually left off, and it is what makes the delta usable.
     let deltaHtml = "";
     if (o.delta && isFinite(o.delta.value) && Math.abs(o.delta.value) > 0.005){
       const up = o.delta.value > 0;
       const good = o.delta.invert ? !up : up;
       const pct = o.delta.pct != null && isFinite(o.delta.pct);
-      deltaHtml = `<span class="stat-delta ${good ? "is-good" : "is-bad"}">`
-        + `${up ? "▲" : "▼"} ${pct ? Math.abs(o.delta.pct).toFixed(0) + "%" : fmtMoney(Math.abs(o.delta.value))}`
-        + `</span>`;
+      deltaHtml = '<span class="kpi-delta ' + (good ? "is-good" : "is-bad") + '">' +
+        '<span class="kpi-arrow">' + (up ? "\u25B2" : "\u25BC") + '</span>' +
+        (pct ? Math.abs(o.delta.pct).toFixed(1) + "%" : fmtMoney(Math.abs(o.delta.value))) +
+        '</span>';
     }
-    let sparkHtml = "";
+    let trendHtml = "";
     if (o.series && o.series.length > 2){
-      const pts = o.series.map(v=>({ v }));
-      sparkHtml = `<div class="stat-spark">`
-        + buildSparkline(pts, { valueKey:"v", width:88, height:26, pad:2, area:true,
-                                strokeWidth:1.5, color: o.sparkColor || "var(--accent)" })
-        + `</div>`;
+      const max = Math.max.apply(null, o.series.concat([1]));
+      const min = Math.min.apply(null, o.series);
+      trendHtml = '<div class="kpi-trend">' +
+        buildSparkline(o.series.map(v => ({ v: v })), { valueKey: "v", width: 164, height: 34, pad: 3,
+          area: true, strokeWidth: 1.8, color: o.sparkColor || "var(--accent)" }) +
+        '<div class="kpi-trend-scale"><span>' + fmtMoney(min) + '</span><span>' + fmtMoney(max) + '</span></div>' +
+      '</div>';
     }
-    return `
-      <div class="stat ${o.primary ? "is-primary" : ""}">
-        <div class="stat-badge ${o.badgeClass}">${badgeIcon(o.icon)}</div>
-        <div class="stat-text">
-          <div class="label">${escapeHtml(o.label)}</div>
-          <div class="value"${o.valueStyle ? ` style="${o.valueStyle}"` : ""}>${o.value}</div>
-          ${o.context ? `<div class="stat-context">${deltaHtml}<span class="stat-context-label">${escapeHtml(o.context)}</span></div>` : deltaHtml}
-        </div>
-        ${sparkHtml}
-      </div>`;
+    let barHtml = "";
+    if (o.gauge && o.gauge.max > 0){
+      const p = Math.max(0, Math.min(100, (o.gauge.value / o.gauge.max) * 100));
+      barHtml = '<div class="kpi-gauge"><span class="kpi-gauge-rail"><i style="width:' + p.toFixed(1) + '%"></i></span>' +
+        '<span class="kpi-gauge-k">' + escapeHtml(o.gauge.label) + '</span></div>';
+    }
+    return '<div class="kpi' + (o.primary ? " is-primary" : "") + '">' +
+      '<div class="kpi-head">' +
+        '<span class="kpi-badge ' + (o.badgeClass || "") + '">' + badgeIcon(o.icon) + '</span>' +
+        '<span class="kpi-label">' + escapeHtml(o.label) + '</span>' +
+        deltaHtml +
+      '</div>' +
+      '<div class="kpi-value"' + (o.valueStyle ? ' style="' + o.valueStyle + '"' : "") + '>' + o.value + '</div>' +
+      (o.context ? '<div class="kpi-basis">' + escapeHtml(o.context) + '</div>' : "") +
+      barHtml + trendHtml +
+    '</div>';
   }
+
 
   // Monthly totals, oldest first, ending with the current month. Pairs with a
   // month-over-month delta so the line and the percentage describe one thing.
@@ -6815,6 +6936,18 @@
     const out = [];
     for (let i = months - 1; i >= 0; i--) out.push(monthTotal(list, i));
     return out;
+  }
+
+  // Totals for the same stretch of a previous month: day 1 up to the same day
+  // of the month as today. Comparing 16 days against 30 says spending fell when
+  // it may be running level.
+  function monthToDate(list, monthsBack, dayOf){
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - monthsBack);
+    const key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    return round2(list.filter(x => x.date.slice(0, 7) === key &&
+      Number(x.date.slice(8, 10)) <= dayOf).reduce((s, x) => s + x.amount, 0));
   }
 
   // Totals for the calendar month n months back from now.
@@ -6928,33 +7061,45 @@
     const wrap = document.getElementById("recap-body");
     if (!wrap) return;
     const now = new Date();
-    const monthKey = todayISO().slice(0,7);
-    const monthName = now.toLocaleDateString(undefined,{ month:"long" });
-    const mExp = expenses.filter(e=>e.date.slice(0,7)===monthKey);
-    const mInc = incomes.filter(i=>i.date.slice(0,7)===monthKey);
+    const monthKey = todayISO().slice(0, 7);
+    const monthName = now.toLocaleDateString(undefined, { month: "long" });
+    const mExp = expenses.filter(e => e.date.slice(0, 7) === monthKey);
+    const mInc = incomes.filter(i => i.date.slice(0, 7) === monthKey);
     if (!mExp.length && !mInc.length){
-      wrap.innerHTML = `<p class="hint">Nothing logged in ${escapeHtml(monthName)} yet.</p>`;
+      wrap.innerHTML = '<p class="hint">Nothing logged in ' + escapeHtml(monthName) + ' yet.</p>';
       return;
     }
-    const spent = round2(mExp.reduce((s,e)=>s+e.amount,0));
-    const earned = round2(mInc.reduce((s,i)=>s+i.amount,0));
+    const spent = round2(mExp.reduce((s, e) => s + e.amount, 0));
     const byCat = {};
-    mExp.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + e.amount; });
-    const top = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
-    const biggest = mExp.slice().sort((a,b)=>b.amount-a.amount)[0];
-    const daysLogged = new Set(mExp.map(e=>e.date)).size;
-    const prevSpent = monthTotal(expenses, 1);
+    mExp.forEach(e => { byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
+    const ranked = Object.keys(byCat).map(k => ({ label: k, amount: byCat[k] })).sort((a, b) => b.amount - a.amount);
+    const biggest = mExp.slice().sort((a, b) => b.amount - a.amount)[0];
+    const daysLogged = new Set(mExp.map(e => e.date)).size;
+    const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const prevSpent = monthToDate(expenses, 1, now.getDate());
     const change = prevSpent > 0 ? ((spent - prevSpent) / prevSpent) * 100 : null;
+    const top3 = round2(ranked.slice(0, 3).reduce((t, r) => t + r.amount, 0));
 
-    wrap.innerHTML = `
-      <div class="recap-head">${escapeHtml(monthName)} highlights</div>
-      <ul class="recap-list">
-        ${top ? `<li><span>Biggest category</span><strong>${escapeHtml(top[0])} · ${fmtMoney(top[1])}</strong></li>` : ""}
-        ${biggest ? `<li><span>Largest single</span><strong>${escapeHtml(biggest.description)} · ${fmtMoney(biggest.amount)}</strong></li>` : ""}
-        <li><span>Days with spending</span><strong>${daysLogged} of ${new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()}</strong></li>
-        <li><span>Average per logged day</span><strong>${fmtMoney(daysLogged ? round2(spent/daysLogged) : 0)}</strong></li>
-      </ul>`;
+    const tiles = [
+      { k: "Spent", v: fmtMoneyRich(spent), s: change == null ? monthName : (change > 0 ? "+" : "\u2212") + Math.abs(change).toFixed(0) + "% on the same point last month",
+        tone: change == null ? "" : change > 0 ? "bad" : "good" },
+      { k: "Days active", v: daysLogged + " / " + daysIn, s: Math.round((daysLogged / daysIn) * 100) + "% of the month" },
+      { k: "Per active day", v: fmtMoneyRich(daysLogged ? round2(spent / daysLogged) : 0), s: "excludes quiet days" },
+      { k: "Largest entry", v: biggest ? fmtMoneyRich(biggest.amount) : "\u2014", s: biggest ? biggest.description : "" }
+    ];
+
+    wrap.innerHTML =
+      '<div class="rcp-grid">' + tiles.map(t =>
+        '<div class="rcp"><span class="rcp-k">' + t.k + '</span>' +
+        '<span class="rcp-v' + (t.tone ? " is-" + t.tone : "") + '">' + t.v + '</span>' +
+        '<span class="rcp-s">' + escapeHtml(t.s || "") + '</span></div>').join("") + '</div>'
+      + (ranked.length
+          ? '<p class="rcp-note">Three categories \u2014 <strong>' + ranked.slice(0, 3).map(r => escapeHtml(r.label)).join(", ") +
+            '</strong> \u2014 account for ' + (spent ? Math.round((top3 / spent) * 100) : 0) + '% of the month, ' +
+            fmtMoney(top3) + ' of ' + fmtMoney(spent) + '.</p>'
+          : '');
   }
+
 
   // Coalesces the expensive downstream re-renders that follow an edit. Without it,
   // changing one amount rebuilt three charts and the entire dashboard synchronously.
@@ -6977,65 +7122,76 @@
   }
 
   function renderMoneyOverview(){
-
-
-
     const row = document.getElementById("money-overview-row");
     if (!row) return;
-    const monthKey = todayISO().slice(0,7);
-    const spentThisMonth = expenses.filter(e=>e.date.slice(0,7) === monthKey).reduce((s,e)=>s+e.amount, 0);
-    const incomeThisMonth = incomes.filter(i=>i.date.slice(0,7) === monthKey).reduce((s,i)=>s+i.amount, 0);
-    const netThisMonth = incomeThisMonth - spentThisMonth;
-    const moneyInfo = computeTotalMoney(); // same figures as the header bar — one source of truth
-    const expectedInterest = savings.reduce((s,a)=> s + netMonthlyInterest(a), 0);
-    // Comparisons: net worth against 30 days ago, spending and net against the
-    // same point in the previous calendar month.
-    const nwCut = toLocalISO(new Date(Date.now() - 30*864e5));
-    const nwPast = netWorthHistory.filter(h=>h.date <= nwCut);
-    const nwThen = nwPast.length ? nwPast[nwPast.length-1].netWorth : null;
+    const now = new Date();
+    const monthKey = todayISO().slice(0, 7);
+    const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const dayOf = now.getDate();
+
+    const mExp = expenses.filter(e => e.date.slice(0, 7) === monthKey);
+    const mInc = incomes.filter(i => i.date.slice(0, 7) === monthKey);
+    const spent = round2(mExp.reduce((s, e) => s + e.amount, 0));
+    const earned = round2(mInc.reduce((s, i) => s + i.amount, 0));
+    const net = round2(earned - spent);
+    const interest = round2(savings.reduce((s, a) => s + netMonthlyInterest(a), 0));
+    const moneyInfo = computeTotalMoney();
     const spentLast = monthTotal(expenses, 1);
     const incomeLast = monthTotal(incomes, 1);
     const netLast = round2(incomeLast - spentLast);
+    // Same point in the previous month, not the whole of it: comparing a part
+    // month against a complete one always says spending is down.
+    const sameDayLast = monthToDate(expenses, 1, dayOf);
+    const incomeLastToDate = monthToDate(incomes, 1, dayOf);
 
-    // Total money is deliberately NOT a tile here — the hero states it in 60px type
-    // immediately above. Showing the same figure twice on one screen is what made
-    // this page read as noise rather than a summary.
     row.innerHTML =
       statTileHtml({
-        primary:true, icon:"spend", badgeClass:"stat-badge-rose",
-        label:"Spent this month", value: fmtMoneyRich(spentThisMonth),
-        // Spending down is good, so the chip colour is inverted.
-        delta: spentLast > 0 ? { value: round2(spentThisMonth - spentLast),
-                                 pct: ((spentThisMonth - spentLast)/spentLast)*100, invert:true } : null,
-        context: spentLast > 0 ? "vs last month" : "",
-        series: monthlySeries(expenses, 6), sparkColor:"var(--negative)"
+        primary: true, icon: "spend", badgeClass: "stat-badge-rose",
+        label: "Spent this month", value: fmtMoneyRich(spent),
+        delta: sameDayLast > 0 ? { value: round2(spent - sameDayLast), pct: ((spent - sameDayLast) / sameDayLast) * 100, invert: true } : null,
+        context: sameDayLast > 0
+          ? "vs " + fmtMoney(sameDayLast) + " by day " + dayOf + " last month"
+          : "day " + dayOf + " of " + daysIn,
+        gauge: spentLast > 0 ? { value: spent, max: spentLast, label: "of last month's total, " + fmtMoney(spentLast) } : null,
+        series: monthlySeries(expenses, 6), sparkColor: "var(--negative)"
       })
     + statTileHtml({
-        icon:"balance", badgeClass:"stat-badge-teal",
-        label:"Net this month", value: fmtMoneyRich(netThisMonth),
-        valueStyle: netThisMonth < 0 ? "color:var(--warn);" : "",
-        delta: (spentLast > 0 || incomeLast > 0) ? { value: round2(netThisMonth - netLast) } : null,
-        context: (spentLast > 0 || incomeLast > 0) ? "vs last month" : "",
-        series: null
+        icon: "income", badgeClass: "stat-badge-green",
+        label: "Received this month", value: fmtMoneyRich(earned),
+        delta: incomeLastToDate > 0 ? { value: round2(earned - incomeLastToDate), pct: ((earned - incomeLastToDate) / incomeLastToDate) * 100 } : null,
+        context: incomeLastToDate > 0
+          ? "vs " + fmtMoney(incomeLastToDate) + " by day " + dayOf + " last month"
+          : mInc.length + " entries",
+        series: monthlySeries(incomes, 6), sparkColor: "var(--positive)"
       })
     + statTileHtml({
-        icon:"trend", badgeClass:"stat-badge-green",
-        label:"Expected interest", value: fmtMoneyRich(expectedInterest),
-        context:"per month, after tax", series:null
+        icon: "balance", badgeClass: "stat-badge-teal",
+        label: "Net this month", value: fmtMoneyRich(net),
+        valueStyle: net < 0 ? "color:var(--warn);" : "",
+        delta: (spentLast > 0 || incomeLast > 0) ? { value: round2(net - netLast) } : null,
+        context: "against " + fmtMoney(netLast) + " last month",
+        gauge: earned > 0 ? { value: Math.min(spent, earned), max: earned, label: Math.round((spent / earned) * 100) + "% of income spent" } : null
+      })
+    + statTileHtml({
+        icon: "trend", badgeClass: "stat-badge-green",
+        label: "Expected interest", value: fmtMoneyRich(interest),
+        context: "per month after tax, across " + savings.length + " account" + (savings.length === 1 ? "" : "s")
       });
+
     const loanNoteEl = document.getElementById("money-overview-loan-note");
     if (loanNoteEl){
       if (moneyInfo.outstandingLent > 0 || moneyInfo.outstandingOwed > 0){
         loanNoteEl.style.display = "";
-        loanNoteEl.innerHTML = `Not counted in Total money above — `
-          + (moneyInfo.outstandingLent > 0 ? `owed to you: <strong style="color:var(--ink);">${fmtMoneyRich(moneyInfo.outstandingLent)}</strong>` : ``)
-          + (moneyInfo.outstandingLent > 0 && moneyInfo.outstandingOwed > 0 ? ` · ` : ``)
-          + (moneyInfo.outstandingOwed > 0 ? `you owe: <strong style="color:var(--warn);">${fmtMoneyRich(moneyInfo.outstandingOwed)}</strong>` : ``);
+        loanNoteEl.innerHTML = 'Outside Total money \u2014 ' +
+          (moneyInfo.outstandingLent > 0 ? 'owed to you <strong style="color:var(--ink);">' + fmtMoneyRich(moneyInfo.outstandingLent) + '</strong>' : '') +
+          (moneyInfo.outstandingLent > 0 && moneyInfo.outstandingOwed > 0 ? ' \u00B7 ' : '') +
+          (moneyInfo.outstandingOwed > 0 ? 'you owe <strong style="color:var(--warn);">' + fmtMoneyRich(moneyInfo.outstandingOwed) + '</strong>' : '');
       } else {
         loanNoteEl.style.display = "none";
       }
     }
   }
+
 
   /* ---------- Dashboard ---------- */
   let currentRange = "daily";
@@ -7266,57 +7422,87 @@
 
   function renderBudgets(){
     const list = document.getElementById("budget-list");
+    if (!list) return;
     const spend = currentMonthSpendByCategory();
+    const now = new Date();
+    const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const elapsed = now.getDate() / daysIn;
 
-    list.innerHTML = categories.map(cat=>{
+    const rows = categories.map(cat => {
       const budget = budgets[cat] || 0;
-      const spent = spend[cat] || 0;
-      const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
-      const over = budget > 0 && spent > budget;
-      const barColor = over ? "var(--warn)" : (pct > 80 ? "#E8A33D" : "var(--accent)");
-      const caption = budget > 0
-        ? (over
-            ? `Over by ${fmtMoneyRich(spent - budget)}`
-            : `${fmtMoneyRich(spent)} of ${fmtMoneyRich(budget)} spent this month`)
-        : (spent > 0 ? `${fmtMoneyRich(spent)} spent this month · no budget set` : "No budget set");
+      const spent = round2(spend[cat] || 0);
+      const pct = budget > 0 ? (spent / budget) * 100 : 0;
+      return { cat: cat, budget: budget, spent: spent, pct: pct,
+               pace: budget > 0 && elapsed > 0 ? (pct / 100) / elapsed : null };
+    });
+    const limited = rows.filter(r => r.budget > 0).sort((a, b) => b.pct - a.pct);
+    const unlimited = rows.filter(r => r.budget <= 0);
+    const totalLimit = round2(limited.reduce((t, r) => t + r.budget, 0));
+    const totalSpent = round2(limited.reduce((t, r) => t + r.spent, 0));
+    const projected = elapsed > 0 ? round2(totalSpent / elapsed) : 0;
 
-      // A ring reads as a proportion at a glance in a way a thin bar does not,
-      // and it puts the percentage where the eye already is.
-      const C = 100.5;                       // 2 * pi * r, r = 16
-      const shown = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
-      return `
-        <div class="budget-row ${over ? "is-over" : (budget > 0 && pct > 80 ? "is-near" : "")}" data-cat="${escapeHtml(cat)}">
-          <div class="budget-ring" aria-hidden="true">
-            <svg viewBox="0 0 40 40">
-              <circle class="br-track" cx="20" cy="20" r="16"/>
-              <circle class="br-fill" cx="20" cy="20" r="16"
-                      style="stroke:${barColor}; stroke-dasharray:${C}; stroke-dashoffset:${(C*(1-shown/100)).toFixed(1)};"/>
-            </svg>
-            <span class="br-pct" style="${budget > 0 ? "" : "opacity:.35;"}">${budget > 0 ? Math.round((spent/budget)*100) + "%" : "—"}</span>
-          </div>
-          <div class="name">${escapeHtml(cat)}</div>
-          <input type="number" min="0" step="1" placeholder="No limit" value="${budget || ""}" data-budget-input>
-          <div class="budget-progress">
-            <div class="budget-caption ${over?"over":""}">${caption}</div>
-          </div>
-        </div>`;
-    }).join("");
+    // The header is the analysis: how much of the envelope is gone against how
+    // much of the month is gone, and where that lands if nothing changes.
+    const header = limited.length
+      ? '<div class="bg-head">' +
+          '<div class="bg-h-cell"><span class="bg-h-k">Budgeted</span><span class="bg-h-v">' + fmtMoney(totalLimit) + '</span>' +
+            '<span class="bg-h-s">' + limited.length + ' of ' + rows.length + ' categories</span></div>' +
+          '<div class="bg-h-cell"><span class="bg-h-k">Spent against it</span><span class="bg-h-v">' + fmtMoney(totalSpent) + '</span>' +
+            '<span class="bg-h-s">' + Math.round((totalSpent / totalLimit) * 100) + '% of the envelope</span></div>' +
+          '<div class="bg-h-cell"><span class="bg-h-k">Month elapsed</span><span class="bg-h-v">' + Math.round(elapsed * 100) + '%</span>' +
+            '<span class="bg-h-s">day ' + now.getDate() + ' of ' + daysIn + '</span></div>' +
+          '<div class="bg-h-cell"><span class="bg-h-k">On track for</span><span class="bg-h-v' +
+            (projected > totalLimit ? " is-bad" : " is-good") + '">' + fmtMoney(projected) + '</span>' +
+            '<span class="bg-h-s">' + (projected > totalLimit
+              ? fmtMoney(round2(projected - totalLimit)) + " over" : fmtMoney(round2(totalLimit - projected)) + " under") + '</span></div>' +
+        '</div>'
+      : '<p class="hint">No limits set yet. Enter an amount beside a category to start tracking against it.</p>';
 
-    list.querySelectorAll("[data-budget-input]").forEach(input=>{
-      input.addEventListener("change", ()=>{
-        const cat = input.closest(".budget-row").dataset.cat;
+    const card = r => {
+      const over = r.budget > 0 && r.spent > r.budget;
+      const near = r.budget > 0 && !over && r.pct > 80;
+      const C = 100.5;                            // 2 * pi * r, r = 16
+      const shown = Math.min(100, r.pct);
+      const paceCls = r.pace == null ? "" : r.pace > 1.1 ? "is-bad" : r.pace < 0.9 ? "is-good" : "is-even";
+      return '<div class="bg-card' + (over ? " is-over" : near ? " is-near" : "") + '" data-cat="' + escapeHtml(r.cat) + '">' +
+        '<div class="bg-card-top">' +
+          '<span class="bg-ring" aria-hidden="true"><svg viewBox="0 0 40 40">' +
+            '<circle class="br-track" cx="20" cy="20" r="16"/>' +
+            '<circle class="br-fill" cx="20" cy="20" r="16" style="stroke-dasharray:' + C +
+              '; stroke-dashoffset:' + (C * (1 - shown / 100)).toFixed(1) + ';"/></svg>' +
+            '<b class="bg-ring-pct">' + (r.budget > 0 ? Math.round(r.pct) + "%" : "\u2014") + '</b></span>' +
+          '<span class="bg-id"><span class="bg-name">' + escapeHtml(r.cat) + '</span>' +
+            '<span class="bg-sub">' + (r.budget > 0
+              ? fmtMoney(r.spent) + " of " + fmtMoney(r.budget)
+              : (r.spent > 0 ? fmtMoney(r.spent) + " spent, no limit" : "nothing spent")) + '</span></span>' +
+          '<input type="number" min="0" step="1" placeholder="Limit" value="' + (r.budget || "") + '" data-budget-input>' +
+        '</div>' +
+        (r.budget > 0
+          ? '<div class="bg-foot">' +
+              '<span class="bg-left' + (over ? " is-bad" : "") + '">' +
+                (over ? fmtMoney(round2(r.spent - r.budget)) + " over" : fmtMoney(round2(r.budget - r.spent)) + " left") + '</span>' +
+              '<span class="bg-pace ' + paceCls + '">' + Math.round(r.pace * 100) + '% of pace</span>' +
+            '</div>'
+          : '') +
+      '</div>';
+    };
+
+    list.innerHTML = header + '<div class="bg-grid">' + limited.map(card).join("") + unlimited.map(card).join("") + '</div>' +
+      '<p class="hint">Pace is the share of the limit spent divided by the share of the month gone. Above 100% means the limit will not last the month at this rate.</p>';
+
+    list.querySelectorAll("[data-budget-input]").forEach(input => {
+      input.addEventListener("change", () => {
+        const cat = input.closest(".bg-card").dataset.cat;
         const v = parseFloat(input.value);
-        if (input.value === "" || isNaN(v) || v <= 0){
-          delete budgets[cat];
-        } else {
-          budgets[cat] = round2(v);
-        }
+        if (input.value === "" || isNaN(v) || v <= 0) delete budgets[cat];
+        else budgets[cat] = round2(v);
         saveBudgets(budgets);
         renderBudgets();
         showToast("Budget saved.");
       });
     });
   }
+
 
   let currentSummaryTab = "activity";
 
@@ -7329,39 +7515,75 @@
   function renderSummaryContent(){
     const container = document.getElementById("summary-content");
     if (!container) return;
-    const { start, end } = get7DayWindow();
-    const exp7 = expenses.filter(e=>{ const d = new Date(e.date+"T00:00:00"); return d >= start && d <= end; });
-    const inc7 = incomes.filter(i=>{ const d = new Date(i.date+"T00:00:00"); return d >= start && d <= end; });
-    const totalSpent7 = exp7.reduce((s,e)=>s+e.amount, 0);
-    const totalIncome7 = inc7.reduce((s,i)=>s+i.amount, 0);
+    const w = get7DayWindow();
+    const exp7 = expenses.filter(e => { const d = new Date(e.date + "T00:00:00"); return d >= w.start && d <= w.end; });
+    const inc7 = incomes.filter(i => { const d = new Date(i.date + "T00:00:00"); return d >= w.start && d <= w.end; });
+    const spent7 = round2(exp7.reduce((s, e) => s + e.amount, 0));
+    const earned7 = round2(inc7.reduce((s, i) => s + i.amount, 0));
 
-    if (currentSummaryTab === "spending"){
-      const catTotals = {};
-      exp7.forEach(e=>{ catTotals[e.category] = (catTotals[e.category]||0) + e.amount; });
-      const topCat = Object.keys(catTotals).sort((a,b)=>catTotals[b]-catTotals[a])[0] || "—";
-      container.innerHTML = `
-        <div class="stat"><div class="stat-badge stat-badge-rose">${badgeIcon("spend")}</div><div class="stat-text"><div class="label">Spent (7 days)</div><div class="value">${fmtMoneyRich(totalSpent7)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-blue">${badgeIcon("tag")}</div><div class="stat-text"><div class="label">Top category</div><div class="value">${escapeHtml(topCat)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-rose">${badgeIcon("chart")}</div><div class="stat-text"><div class="label">Avg per day</div><div class="value">${fmtMoneyRich(totalSpent7/7)}</div></div></div>
-      `;
-    } else if (currentSummaryTab === "income"){
-      const catTotals = {};
-      inc7.forEach(i=>{ catTotals[i.category] = (catTotals[i.category]||0) + i.amount; });
-      const topSrc = Object.keys(catTotals).sort((a,b)=>catTotals[b]-catTotals[a])[0] || "—";
-      container.innerHTML = `
-        <div class="stat"><div class="stat-badge stat-badge-green">${badgeIcon("income")}</div><div class="stat-text"><div class="label">Income (7 days)</div><div class="value">${fmtMoneyRich(totalIncome7)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-blue">${badgeIcon("tag")}</div><div class="stat-text"><div class="label">Top source</div><div class="value">${escapeHtml(topSrc)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-rose">${badgeIcon("chart")}</div><div class="stat-text"><div class="label">Avg per day</div><div class="value">${fmtMoneyRich(totalIncome7/7)}</div></div></div>
-      `;
-    } else { // activity (default)
-      const net = totalIncome7 - totalSpent7;
-      container.innerHTML = `
-        <div class="stat"><div class="stat-badge stat-badge-teal">${badgeIcon("exchange")}</div><div class="stat-text"><div class="label">Total activity</div><div class="value">${fmtMoneyRich(totalSpent7 + totalIncome7)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-teal">${badgeIcon("balance")}</div><div class="stat-text"><div class="label">Net (income − spent)</div><div class="value" style="${net < 0 ? 'color:var(--warn);' : ''}">${fmtMoneyRich(net)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-blue">${badgeIcon("receipt")}</div><div class="stat-text"><div class="label">Transactions</div><div class="value">${exp7.length + inc7.length}</div></div></div>
-      `;
+    const days = [];
+    for (let i = 6; i >= 0; i--){
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const iso = toLocalISO(d);
+      days.push({
+        iso: iso, label: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()],
+        out: round2(expenses.filter(e => e.date === iso).reduce((s, e) => s + e.amount, 0)),
+        in: round2(incomes.filter(x => x.date === iso).reduce((s, x) => s + x.amount, 0))
+      });
     }
+    const key = currentSummaryTab === "income" ? "in" : "out";
+    const peak = Math.max.apply(null, days.map(d => d[key]).concat([1]));
+    const avg = round2(days.reduce((t, d) => t + d[key], 0) / 7);
+
+    const topOf = list => {
+      const t = {};
+      list.forEach(x => { t[x.category] = round2((t[x.category] || 0) + x.amount); });
+      const k = Object.keys(t).sort((a, b) => t[b] - t[a])[0];
+      return k ? { label: k, amount: t[k] } : null;
+    };
+
+    let cells;
+    if (currentSummaryTab === "spending"){
+      const top = topOf(exp7);
+      cells = [
+        { k: "Spent", v: fmtMoneyRich(spent7), s: exp7.length + " entries" },
+        { k: "Per day", v: fmtMoneyRich(round2(spent7 / 7)), s: "over 7 days" },
+        { k: "Top category", v: top ? escapeHtml(top.label) : "\u2014", s: top ? fmtMoney(top.amount) : "" }
+      ];
+    } else if (currentSummaryTab === "income"){
+      const top = topOf(inc7);
+      cells = [
+        { k: "Received", v: fmtMoneyRich(earned7), s: inc7.length + " entries" },
+        { k: "Per day", v: fmtMoneyRich(round2(earned7 / 7)), s: "over 7 days" },
+        { k: "Top source", v: top ? escapeHtml(top.label) : "\u2014", s: top ? fmtMoney(top.amount) : "" }
+      ];
+    } else {
+      const net = round2(earned7 - spent7);
+      cells = [
+        { k: "Activity", v: fmtMoneyRich(round2(spent7 + earned7)), s: (exp7.length + inc7.length) + " transactions" },
+        { k: "Net", v: fmtMoneyRich(net), s: net < 0 ? "spending ahead of income" : "income ahead of spending", tone: net < 0 ? "bad" : "good" },
+        { k: "Busiest day", v: (days.slice().sort((a, b) => (b.out + b.in) - (a.out + a.in))[0] || {}).label || "\u2014",
+          s: fmtMoney(Math.max.apply(null, days.map(d => round2(d.out + d.in)).concat([0]))) }
+      ];
+    }
+
+    // The seven days broken out, with the average drawn across them. A weekly
+    // total hides which day did the damage; the line says what normal looks like.
+    container.innerHTML =
+      '<div class="wk-cells">' + cells.map(c =>
+        '<div class="wk-cell"><span class="wk-k">' + c.k + '</span>' +
+        '<span class="wk-v' + (c.tone ? " is-" + c.tone : "") + '">' + c.v + '</span>' +
+        '<span class="wk-s">' + escapeHtml(c.s || "") + '</span></div>').join("") + '</div>'
+      + '<div class="wk-chart">' +
+        '<div class="wk-avg" style="bottom:' + Math.min(96, (avg / peak) * 100).toFixed(1) + '%">' +
+          '<span>avg ' + fmtMoney(avg) + '</span></div>' +
+        days.map(d => '<div class="wk-day' + (d[key] >= peak && peak > 0 ? " is-peak" : "") + '">' +
+          '<span class="wk-bar" style="height:' + Math.max(2, Math.round((d[key] / peak) * 100)) + '%" ' +
+            'title="' + d.iso + ' \u00B7 ' + fmtMoney(d[key]) + '"></span>' +
+          '<span class="wk-lbl">' + d.label + '</span></div>').join("") +
+      '</div>';
   }
+
 
   document.querySelectorAll("#summary-toggle button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -7381,39 +7603,37 @@
 
     let source, emptyLabel, titleLabel;
     if (currentSummaryTab === "spending"){
-      source = expenses.map(e=>({ description:e.description, category:e.category, amount:e.amount, date:e.date, type:"expense" }));
-      emptyLabel = "No spending in the last 7 days.";
-      titleLabel = "Recent spending";
+      source = expenses.map(e => ({ description: e.description, category: e.category, amount: e.amount, date: e.date, type: "expense" }));
+      emptyLabel = "No spending in the last 7 days."; titleLabel = "Recent spending";
     } else if (currentSummaryTab === "income"){
-      source = incomes.map(i=>({ description:i.description, category:i.category, amount:i.amount, date:i.date, type:"income" }));
-      emptyLabel = "No income in the last 7 days.";
-      titleLabel = "Recent income";
+      source = incomes.map(i => ({ description: i.description, category: i.category, amount: i.amount, date: i.date, type: "income" }));
+      emptyLabel = "No income in the last 7 days."; titleLabel = "Recent income";
     } else {
-      source = [
-        ...expenses.map(e=>({ description:e.description, category:e.category, amount:e.amount, date:e.date, type:"expense" })),
-        ...incomes.map(i=>({ description:i.description, category:i.category, amount:i.amount, date:i.date, type:"income" }))
-      ];
-      emptyLabel = "No transactions yet.";
-      titleLabel = "Recent activity";
+      source = [].concat(
+        expenses.map(e => ({ description: e.description, category: e.category, amount: e.amount, date: e.date, type: "expense" })),
+        incomes.map(i => ({ description: i.description, category: i.category, amount: i.amount, date: i.date, type: "income" })));
+      emptyLabel = "No transactions yet."; titleLabel = "Recent activity";
     }
     if (titleEl) titleEl.textContent = titleLabel;
 
-    const filtered = source.sort((a,b)=> b.date.localeCompare(a.date)).slice(0, 7);
+    const rows = source.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+    if (!rows.length){ container.innerHTML = emptyStateHtml("list", emptyLabel, ""); return; }
 
-    if (!filtered.length){
-      container.innerHTML = emptyStateHtml("list", emptyLabel, "");
-      return;
-    }
-    container.innerHTML = filtered.map(tx=>`
-      <div class="recent-tx-item">
-        <div>
-          <div class="recent-tx-desc">${escapeHtml(tx.description)}</div>
-          <div class="recent-tx-meta">${fmtDate(tx.date)} · ${escapeHtml(tx.category)}</div>
-        </div>
-        <div class="recent-tx-amount ${tx.type}">${tx.type === "income" ? "+" : "−"}${fmtMoneyRich(tx.amount)}</div>
-      </div>
-    `).join("");
+    // Each row carries its size relative to the largest on screen, so the list
+    // is also a shape. Eight rows of identical weight read as eight equal facts.
+    const max = Math.max.apply(null, rows.map(r => r.amount).concat([1]));
+    container.innerHTML = rows.map(tx =>
+      '<div class="rx" data-cat="' + escapeHtml(tx.category) + '">' +
+        '<span class="rx-dot" style="background:' + colorFor(tx.category) + '"></span>' +
+        '<span class="rx-body">' +
+          '<span class="rx-desc">' + escapeHtml(tx.description) + '</span>' +
+          '<span class="rx-meta">' + fmtDate(tx.date) + ' \u00B7 ' + escapeHtml(tx.category) + '</span>' +
+          '<span class="rx-rail"><i style="width:' + Math.round((tx.amount / max) * 100) + '%; background:' + colorFor(tx.category) + '"></i></span>' +
+        '</span>' +
+        '<span class="rx-amt ' + tx.type + '">' + (tx.type === "income" ? "+" : "\u2212") + fmtMoneyRich(tx.amount) + '</span>' +
+      '</div>').join("");
   }
+
 
   function renderDashboardSummary(){
     renderInsights();

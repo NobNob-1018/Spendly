@@ -1000,6 +1000,66 @@
   .tm-trend-words{ font-size: var(--fs-sm); font-style: italic; color: var(--ink-dim); letter-spacing:0; }
   #tm-trend{ background:none; border:0; padding:0; }
 
+
+  /* ---------- the statement's opening -------------------------------------- */
+  .stmt-open{ margin: 0 0 var(--sp-8); font-size: var(--fs-md); line-height:1.8;
+    color: var(--ink-soft); max-width: 62ch; padding-bottom: var(--sp-7);
+    border-bottom:1px solid var(--line); }
+  .stmt-open strong{ color: var(--ink); font-weight:600; font-variant-numeric: tabular-nums; }
+  #money-overview-row{ display:block; }
+  #money-overview-loan-note{ font-size: var(--fs-sm); line-height:1.7; color: var(--ink-dim);
+    max-width: 62ch; }
+
+  /* ---------- statement lines with leaders --------------------------------- */
+  .ln{ padding: var(--sp-6) 0; border-bottom:1px solid var(--line); }
+  .ln:last-of-type{ border-bottom:0; }
+  .ln-row{ display:flex; align-items:baseline; gap: var(--sp-5); }
+  .ln-label{ font-size: var(--fs-md); color: var(--ink-soft); white-space:nowrap; }
+  .ln.is-lead .ln-label{ color: var(--ink); font-weight:600; }
+  .ln-leader{ flex:1; border-bottom:1px dotted var(--line-strong); transform: translateY(-3px); min-width: var(--sp-7); }
+  .ln-value{ font-size: var(--fs-xl); font-weight:600; font-variant-numeric: tabular-nums;
+    white-space:nowrap; color: var(--ink); }
+  .ln.is-lead .ln-value{ font-size: var(--fs-2xl); }
+  .ln-note{ margin: var(--sp-3) 0 0; font-size: var(--fs-sm); color: var(--ink-dim); }
+  .ln-delta{ margin-right: var(--sp-4); }
+  .ln-delta.is-good{ color: var(--positive); } .ln-delta.is-bad{ color: var(--negative); }
+
+  /* ---------- allowances --------------------------------------------------- */
+  .alw{ padding: var(--sp-7) 0; border-bottom:1px solid var(--line); }
+  .alw:last-child{ border-bottom:0; }
+  .alw-head{ display:flex; align-items:center; justify-content:space-between; gap: var(--sp-6); }
+  .alw-name{ font-size: var(--fs-md); font-weight:600; color: var(--ink); }
+  .alw-field{ display:flex; align-items:center; gap: var(--sp-4); }
+  .alw-field-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing: var(--track-caps);
+    color: var(--ink-dim); }
+  .alw-field input{ width: 104px; text-align:right; font-variant-numeric: tabular-nums; }
+  .alw-said{ margin: var(--sp-4) 0 0; font-size: var(--fs-sm); line-height:1.7;
+    color: var(--ink-soft); max-width: 56ch; }
+  .alw-said strong{ color: var(--ink); font-weight:600; font-variant-numeric: tabular-nums; }
+  .alw-said .is-over{ color: var(--negative); }
+  .alw-rule{ display:block; height:2px; margin-top: var(--sp-5); background: var(--line); position:relative; }
+  .alw-rule i{ position:absolute; inset:0 auto 0 0; background: var(--accent-quiet); }
+  .alw.is-over .alw-rule i{ background: var(--negative); }
+  .alw-divider{ margin: var(--sp-9) 0 0; padding-top: var(--sp-6); border-top:1px solid var(--line-strong);
+    font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing: var(--track-caps); color: var(--ink-dim); }
+
+  /* ---------- the week, and the day-book ----------------------------------- */
+  .wk{ margin: 0 0 var(--sp-6); font-size: var(--fs-md); line-height:1.8;
+    color: var(--ink-soft); max-width: 62ch; }
+  .wk:last-child{ margin-bottom:0; }
+  .wk strong{ color: var(--ink); font-weight:600; font-variant-numeric: tabular-nums; }
+  .jr-day{ padding: var(--sp-6) 0; border-bottom:1px solid var(--line); }
+  .jr-day:last-child{ border-bottom:0; }
+  .jr-date{ margin: 0 0 var(--sp-4); font-size: var(--fs-3xs); text-transform:uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim); }
+  .jr-entry{ display:grid; grid-template-columns: auto 1fr auto; grid-template-areas:
+    "desc leader amt" "cat cat cat"; align-items:baseline; gap: 0 var(--sp-5); padding: var(--sp-3) 0; }
+  .jr-desc{ grid-area: desc; font-size: var(--fs-sm); color: var(--ink); }
+  .jr-leader{ grid-area: leader; border-bottom:1px dotted var(--line); transform: translateY(-3px); }
+  .jr-amt{ grid-area: amt; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+  .jr-amt.income{ color: var(--positive); } .jr-amt.expense{ color: var(--ink-soft); }
+  .jr-cat{ grid-area: cat; font-size: var(--fs-3xs); color: var(--ink-dim); }
+
 </style>
 </head>
 
@@ -6735,47 +6795,28 @@
   //   delta: { value, invert }  invert=true means "down is good" (spending)
   //   series: array of plain numbers, oldest first
   function statTileHtml(o){
+    // A statement line: description on the left, figure on the right, leader
+    // dots between them so the eye can cross the gap without losing the row.
     let deltaHtml = "";
     if (o.delta && isFinite(o.delta.value) && Math.abs(o.delta.value) > 0.005){
       const up = o.delta.value > 0;
       const good = o.delta.invert ? !up : up;
       const pct = o.delta.pct != null && isFinite(o.delta.pct);
-      deltaHtml = `<span class="stat-delta ${good ? "is-good" : "is-bad"}">`
-        + `${up ? "▲" : "▼"} ${pct ? Math.abs(o.delta.pct).toFixed(0) + "%" : fmtMoney(Math.abs(o.delta.value))}`
-        + `</span>`;
+      deltaHtml = '<span class="ln-delta ' + (good ? "is-good" : "is-bad") + '">' +
+        (up ? "up " : "down ") + (pct ? Math.abs(o.delta.pct).toFixed(0) + "%" : fmtMoney(Math.abs(o.delta.value))) +
+        '</span>';
     }
-    // L3 VUI-HIE-001: the headline states what it is made of.
-    let breakdownHtml = "";
-    if (o.breakdown && o.breakdown.length){
-      const top = Math.max.apply(null, o.breakdown.map(b=>Math.abs(b.amount) || 0).concat([1]));
-      breakdownHtml = `<div class="stat-breakdown">`
-        + o.breakdown.map(b=>`<div class="stat-breakdown-row">`
-            + `<span class="bd-label">${escapeHtml(b.label)}</span>`
-            + `<span class="bd-bar"><i style="width:${Math.round((Math.abs(b.amount)/top)*100)}%"></i></span>`
-            + `<span class="bd-value">${fmtMoney(b.amount)}</span>`
-          + `</div>`).join("")
-        + `</div>`;
-    }
-    let sparkHtml = "";
-    if (o.series && o.series.length > 2){
-      const pts = o.series.map(v=>({ v }));
-      sparkHtml = `<div class="stat-spark">`
-        + buildSparkline(pts, { valueKey:"v", width:88, height:26, pad:2, area:true,
-                                strokeWidth:1.5, color: o.sparkColor || "var(--accent)" })
-        + `</div>`;
-    }
-    return `
-      <div class="stat ${o.primary ? "is-primary" : ""}">
-        <div class="stat-badge ${o.badgeClass}">${badgeIcon(o.icon)}</div>
-        <div class="stat-text">
-          <div class="label">${escapeHtml(o.label)}</div>
-          <div class="value"${o.valueStyle ? ` style="${o.valueStyle}"` : ""}>${o.value}</div>
-          ${o.context ? `<div class="stat-context">${deltaHtml}<span class="stat-context-label">${escapeHtml(o.context)}</span></div>` : deltaHtml}
-        </div>
-        ${sparkHtml}
-        ${breakdownHtml}
-      </div>`;
+    return '<div class="ln' + (o.primary ? " is-lead" : "") + '">' +
+      '<div class="ln-row">' +
+        '<span class="ln-label">' + escapeHtml(o.label) + '</span>' +
+        '<span class="ln-leader"></span>' +
+        '<span class="ln-value"' + (o.valueStyle ? ' style="' + o.valueStyle + '"' : "") + '>' + o.value + '</span>' +
+      '</div>' +
+      ((o.context || deltaHtml) ? '<p class="ln-note">' + deltaHtml +
+        (o.context ? '<span class="ln-context">' + escapeHtml(o.context) + '</span>' : "") + '</p>' : "") +
+    '</div>';
   }
+
 
   // Monthly totals, oldest first, ending with the current month. Pairs with a
   // month-over-month delta so the line and the percentage describe one thing.
@@ -6783,6 +6824,18 @@
     const out = [];
     for (let i = months - 1; i >= 0; i--) out.push(monthTotal(list, i));
     return out;
+  }
+
+  // Totals for the same stretch of a previous month: day 1 up to the same day
+  // of the month as today. Comparing 16 days against 30 says spending fell when
+  // it may be running level.
+  function monthToDate(list, monthsBack, dayOf){
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - monthsBack);
+    const key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    return round2(list.filter(x => x.date.slice(0, 7) === key &&
+      Number(x.date.slice(8, 10)) <= dayOf).reduce((s, x) => s + x.amount, 0));
   }
 
   // Totals for the calendar month n months back from now.
@@ -6891,33 +6944,41 @@
     const wrap = document.getElementById("recap-body");
     if (!wrap) return;
     const now = new Date();
-    const monthKey = todayISO().slice(0,7);
-    const monthName = now.toLocaleDateString(undefined,{ month:"long" });
-    const mExp = expenses.filter(e=>e.date.slice(0,7)===monthKey);
-    const mInc = incomes.filter(i=>i.date.slice(0,7)===monthKey);
+    const monthKey = todayISO().slice(0, 7);
+    const monthName = now.toLocaleDateString(undefined, { month: "long" });
+    const mExp = expenses.filter(e => e.date.slice(0, 7) === monthKey);
+    const mInc = incomes.filter(i => i.date.slice(0, 7) === monthKey);
     if (!mExp.length && !mInc.length){
-      wrap.innerHTML = `<p class="hint">Nothing logged in ${escapeHtml(monthName)} yet.</p>`;
+      wrap.innerHTML = '<p class="wk">Nothing has been entered for ' + escapeHtml(monthName) + ' yet.</p>';
       return;
     }
-    const spent = round2(mExp.reduce((s,e)=>s+e.amount,0));
-    const earned = round2(mInc.reduce((s,i)=>s+i.amount,0));
+    const spent = round2(mExp.reduce((s, e) => s + e.amount, 0));
     const byCat = {};
-    mExp.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + e.amount; });
-    const top = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
-    const biggest = mExp.slice().sort((a,b)=>b.amount-a.amount)[0];
-    const daysLogged = new Set(mExp.map(e=>e.date)).size;
-    const prevSpent = monthTotal(expenses, 1);
+    mExp.forEach(e => { byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
+    const ranked = Object.keys(byCat).map(k => ({ label: k, amount: byCat[k] })).sort((a, b) => b.amount - a.amount);
+    const biggest = mExp.slice().sort((a, b) => b.amount - a.amount)[0];
+    const daysLogged = new Set(mExp.map(e => e.date)).size;
+    const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const prevSpent = monthToDate(expenses, 1, now.getDate());
     const change = prevSpent > 0 ? ((spent - prevSpent) / prevSpent) * 100 : null;
 
-    wrap.innerHTML = `
-      <div class="recap-head">${escapeHtml(monthName)} highlights</div>
-      <ul class="recap-list">
-        ${top ? `<li><span>Biggest category</span><strong>${escapeHtml(top[0])} · ${fmtMoney(top[1])}</strong></li>` : ""}
-        ${biggest ? `<li><span>Largest single</span><strong>${escapeHtml(biggest.description)} · ${fmtMoney(biggest.amount)}</strong></li>` : ""}
-        <li><span>Days with spending</span><strong>${daysLogged} of ${new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()}</strong></li>
-        <li><span>Average per logged day</span><strong>${fmtMoney(daysLogged ? round2(spent/daysLogged) : 0)}</strong></li>
-      </ul>`;
+    // The month written out. The figures are the same ones the list gave; the
+    // difference is that a sentence can say which of them matters.
+    wrap.innerHTML =
+      '<p class="wk"><strong>' + escapeHtml(monthName) + '</strong> has cost <strong>' + fmtMoney(spent) +
+        '</strong> so far, spread over ' + daysLogged + ' of ' + daysIn + ' days \u2014 about <strong>' +
+        fmtMoney(daysLogged ? round2(spent / daysLogged) : 0) + '</strong> on each day something was entered.' +
+        (change == null ? '' : ' That is ' + (change > 0 ? 'above' : 'below') + ' the same point last month by ' +
+          Math.abs(change).toFixed(0) + '%.') + '</p>'
+      + (ranked.length
+          ? '<p class="wk">The heaviest category is <strong>' + escapeHtml(ranked[0].label) + '</strong> at ' +
+            fmtMoney(ranked[0].amount) + (ranked.length > 1
+              ? ', ahead of ' + escapeHtml(ranked[1].label) + ' at ' + fmtMoney(ranked[1].amount) : '') + '.' +
+            (biggest ? ' The single largest entry is <strong>' + escapeHtml(biggest.description) + '</strong> at ' +
+              fmtMoney(biggest.amount) + ', on ' + fmtDate(biggest.date) + '.' : '') + '</p>'
+          : '');
   }
+
 
   // Coalesces the expensive downstream re-renders that follow an edit. Without it,
   // changing one amount rebuilt three charts and the entire dashboard synchronously.
@@ -6940,72 +7001,77 @@
   }
 
   function renderMoneyOverview(){
-
-
-
     const row = document.getElementById("money-overview-row");
     if (!row) return;
-    const monthKey = todayISO().slice(0,7);
-    const spentThisMonth = expenses.filter(e=>e.date.slice(0,7) === monthKey).reduce((s,e)=>s+e.amount, 0);
-    const incomeThisMonth = incomes.filter(i=>i.date.slice(0,7) === monthKey).reduce((s,i)=>s+i.amount, 0);
-    const netThisMonth = incomeThisMonth - spentThisMonth;
-    const moneyInfo = computeTotalMoney(); // same figures as the header bar — one source of truth
-    const expectedInterest = savings.reduce((s,a)=> s + netMonthlyInterest(a), 0);
-    // Comparisons: net worth against 30 days ago, spending and net against the
-    // same point in the previous calendar month.
-    const nwCut = toLocalISO(new Date(Date.now() - 30*864e5));
-    const nwPast = netWorthHistory.filter(h=>h.date <= nwCut);
-    const nwThen = nwPast.length ? nwPast[nwPast.length-1].netWorth : null;
+    const now = new Date();
+    const monthKey = todayISO().slice(0, 7);
+    const monthName = now.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const dayOf = now.getDate();
+
+    const mExp = expenses.filter(e => e.date.slice(0, 7) === monthKey);
+    const mInc = incomes.filter(i => i.date.slice(0, 7) === monthKey);
+    const spent = round2(mExp.reduce((s, e) => s + e.amount, 0));
+    const earned = round2(mInc.reduce((s, i) => s + i.amount, 0));
+    const net = round2(earned - spent);
+    const interest = round2(savings.reduce((s, a) => s + netMonthlyInterest(a), 0));
+    const moneyInfo = computeTotalMoney();
     const spentLast = monthTotal(expenses, 1);
     const incomeLast = monthTotal(incomes, 1);
     const netLast = round2(incomeLast - spentLast);
+    const spentLastToDate = monthToDate(expenses, 1, dayOf);
+    const incomeLastToDate = monthToDate(incomes, 1, dayOf);
 
-    // Total money is deliberately NOT a tile here — the hero states it in 60px type
-    // immediately above. Showing the same figure twice on one screen is what made
-    // this page read as noise rather than a summary.
-    row.innerHTML =
-      statTileHtml({
-        primary:true, icon:"spend", badgeClass:"stat-badge-rose",
-        label:"Spent this month", value: fmtMoneyRich(spentThisMonth),
-        // Spending down is good, so the chip colour is inverted.
-        delta: spentLast > 0 ? { value: round2(spentThisMonth - spentLast),
-                                 pct: ((spentThisMonth - spentLast)/spentLast)*100, invert:true } : null,
-        context: spentLast > 0 ? "vs last month" : "",
-        series: monthlySeries(expenses, 6), sparkColor:"var(--negative)",
-        breakdown: (()=>{
-          const byCat = {};
-          expenses.filter(e=>e.date.slice(0,7) === monthKey)
-                  .forEach(e=>{ byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
-          return Object.keys(byCat).map(k=>({ label:k, amount:byCat[k] }))
-            .sort((a,b)=>b.amount - a.amount).slice(0, 3);
-        })()
-      })
-    + statTileHtml({
-        icon:"balance", badgeClass:"stat-badge-teal",
-        label:"Net this month", value: fmtMoneyRich(netThisMonth),
-        valueStyle: netThisMonth < 0 ? "color:var(--warn);" : "",
-        delta: (spentLast > 0 || incomeLast > 0) ? { value: round2(netThisMonth - netLast) } : null,
-        context: (spentLast > 0 || incomeLast > 0) ? "vs last month" : "",
-        series: null
-      })
-    + statTileHtml({
-        icon:"trend", badgeClass:"stat-badge-green",
-        label:"Expected interest", value: fmtMoneyRich(expectedInterest),
-        context:"per month, after tax", series:null
-      });
+    // The statement opens by saying what it covers and how it ended, in one
+    // sentence, before any figure is itemised beneath it.
+    const opening = '<p class="stmt-open">Covering <strong>' + escapeHtml(monthName) + '</strong>, to day ' +
+      dayOf + ' of ' + daysIn + '. ' +
+      (mExp.length || mInc.length
+        ? 'So far <strong>' + fmtMoney(earned) + '</strong> has come in against <strong>' + fmtMoney(spent) +
+          '</strong> going out, ' + (net >= 0
+            ? 'leaving <strong>' + fmtMoney(net) + '</strong> to the good.'
+            : 'putting the month <strong>' + fmtMoney(Math.abs(net)) + '</strong> behind.')
+        : 'Nothing has been entered against it yet.') + '</p>';
+
+    row.innerHTML = opening
+      + statTileHtml({
+          primary: true, label: "Paid out this month", value: fmtMoney(spent),
+          delta: spentLastToDate > 0 ? { value: round2(spent - spentLastToDate), pct: ((spent - spentLastToDate) / spentLastToDate) * 100, invert: true } : null,
+          context: spentLastToDate > 0
+            ? "measured against " + fmtMoney(spentLastToDate) + " by the same day last month, which ended at " + fmtMoney(spentLast)
+            : "no earlier month on file"
+        })
+      + statTileHtml({
+          label: "Received this month", value: fmtMoney(earned),
+          delta: incomeLastToDate > 0 ? { value: round2(earned - incomeLastToDate), pct: ((earned - incomeLastToDate) / incomeLastToDate) * 100 } : null,
+          context: (mInc.length === 1 ? "one entry" : mInc.length + " entries") +
+            (incomeLastToDate > 0 ? ", against " + fmtMoney(incomeLastToDate) + " by this day last month" : "")
+        })
+      + statTileHtml({
+          label: "Net for the month", value: fmtMoney(net),
+          valueStyle: net < 0 ? "color:var(--warn);" : "",
+          delta: (spentLast > 0 || incomeLast > 0) ? { value: round2(net - netLast) } : null,
+          context: "against " + fmtMoney(netLast) + " last month"
+        })
+      + statTileHtml({
+          label: "Interest expected", value: fmtMoney(interest),
+          context: "each month, after the tax withheld"
+        });
+
     const loanNoteEl = document.getElementById("money-overview-loan-note");
     if (loanNoteEl){
       if (moneyInfo.outstandingLent > 0 || moneyInfo.outstandingOwed > 0){
         loanNoteEl.style.display = "";
-        loanNoteEl.innerHTML = `Not counted in Total money above — `
-          + (moneyInfo.outstandingLent > 0 ? `owed to you: <strong style="color:var(--ink);">${fmtMoneyRich(moneyInfo.outstandingLent)}</strong>` : ``)
-          + (moneyInfo.outstandingLent > 0 && moneyInfo.outstandingOwed > 0 ? ` · ` : ``)
-          + (moneyInfo.outstandingOwed > 0 ? `you owe: <strong style="color:var(--warn);">${fmtMoneyRich(moneyInfo.outstandingOwed)}</strong>` : ``);
+        loanNoteEl.innerHTML = 'None of the above counts money out on loan. ' +
+          (moneyInfo.outstandingLent > 0 ? 'Others hold <strong>' + fmtMoney(moneyInfo.outstandingLent) + '</strong> of yours' : '') +
+          (moneyInfo.outstandingLent > 0 && moneyInfo.outstandingOwed > 0 ? '; ' : '') +
+          (moneyInfo.outstandingOwed > 0 ? 'you hold <strong style="color:var(--warn);">' + fmtMoney(moneyInfo.outstandingOwed) + '</strong> of theirs' : '') + '.';
       } else {
         loanNoteEl.style.display = "none";
       }
     }
   }
+
 
   /* ---------- Dashboard ---------- */
   let currentRange = "daily";
@@ -7236,57 +7302,77 @@
 
   function renderBudgets(){
     const list = document.getElementById("budget-list");
+    if (!list) return;
     const spend = currentMonthSpendByCategory();
+    const now = new Date();
+    const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const elapsed = now.getDate() / daysIn;
 
-    list.innerHTML = categories.map(cat=>{
+    const withLimit = categories.filter(c => (budgets[c] || 0) > 0)
+      .sort((a, b) => ((spend[b] || 0) / budgets[b]) - ((spend[a] || 0) / budgets[a]));
+    const without = categories.filter(c => !(budgets[c] > 0));
+    const totalLimit = round2(withLimit.reduce((t, c) => t + budgets[c], 0));
+    const totalSpent = round2(withLimit.reduce((t, c) => t + (spend[c] || 0), 0));
+
+    // An allowance is stated, not charted. Each line says what was allowed,
+    // what has gone, and what that leaves — the three numbers a limit is for.
+    const lead = withLimit.length
+      ? '<p class="stmt-open">Limits are set on ' + withLimit.length + ' of ' + categories.length +
+        ' categories, allowing <strong>' + fmtMoney(totalLimit) + '</strong> between them. <strong>' +
+        fmtMoney(totalSpent) + '</strong> of that has gone, with ' +
+        Math.round((1 - elapsed) * 100) + '% of the month still to run.</p>'
+      : '<p class="stmt-open">No limits have been set. Enter an amount beside a category and it will be kept against it from then on.</p>';
+
+    const line = cat => {
       const budget = budgets[cat] || 0;
-      const spent = spend[cat] || 0;
-      const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+      const spent = round2(spend[cat] || 0);
       const over = budget > 0 && spent > budget;
-      const barColor = over ? "var(--warn)" : (pct > 80 ? "#E8A33D" : "var(--accent)");
-      const caption = budget > 0
-        ? (over
-            ? `Over by ${fmtMoneyRich(spent - budget)}`
-            : `${fmtMoneyRich(spent)} of ${fmtMoneyRich(budget)} spent this month`)
-        : (spent > 0 ? `${fmtMoneyRich(spent)} spent this month · no budget set` : "No budget set");
+      const pct = budget > 0 ? (spent / budget) * 100 : 0;
+      const pace = budget > 0 && elapsed > 0 ? (pct / 100) / elapsed : null;
+      let said;
+      if (budget <= 0){
+        said = spent > 0
+          ? '<strong>' + fmtMoney(spent) + '</strong> has gone this month against no limit.'
+          : 'Nothing spent, no limit set.';
+      } else if (over){
+        said = '<strong>' + fmtMoney(spent) + '</strong> against an allowance of ' + fmtMoney(budget) +
+          ' \u2014 over by <strong class="is-over">' + fmtMoney(round2(spent - budget)) + '</strong>.';
+      } else {
+        said = '<strong>' + fmtMoney(spent) + '</strong> of ' + fmtMoney(budget) + ' spent, leaving <strong>' +
+          fmtMoney(round2(budget - spent)) + '</strong>' +
+          (pace != null && pace > 1.1 ? ', though at this rate it will not last the month' :
+           pace != null && pace < 0.7 ? ', comfortably ahead of the month' : '') + '.';
+      }
+      return '<div class="alw' + (over ? " is-over" : "") + '" data-cat="' + escapeHtml(cat) + '">' +
+        '<div class="alw-head">' +
+          '<span class="alw-name">' + escapeHtml(cat) + '</span>' +
+          '<label class="alw-field"><span class="alw-field-k">Allowance</span>' +
+            '<input type="number" min="0" step="1" placeholder="none" value="' + (budget || "") + '" data-budget-input></label>' +
+        '</div>' +
+        '<p class="alw-said">' + said + '</p>' +
+        (budget > 0 ? '<span class="alw-rule"><i style="width:' + Math.min(100, pct).toFixed(0) + '%"></i></span>' : "") +
+      '</div>';
+    };
 
-      // A ring reads as a proportion at a glance in a way a thin bar does not,
-      // and it puts the percentage where the eye already is.
-      const C = 100.5;                       // 2 * pi * r, r = 16
-      const shown = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
-      return `
-        <div class="budget-row ${over ? "is-over" : (budget > 0 && pct > 80 ? "is-near" : "")}" data-cat="${escapeHtml(cat)}">
-          <div class="budget-ring" aria-hidden="true">
-            <svg viewBox="0 0 40 40">
-              <circle class="br-track" cx="20" cy="20" r="16"/>
-              <circle class="br-fill" cx="20" cy="20" r="16"
-                      style="stroke:${barColor}; stroke-dasharray:${C}; stroke-dashoffset:${(C*(1-shown/100)).toFixed(1)};"/>
-            </svg>
-            <span class="br-pct" style="${budget > 0 ? "" : "opacity:.35;"}">${budget > 0 ? Math.round((spent/budget)*100) + "%" : "—"}</span>
-          </div>
-          <div class="name">${escapeHtml(cat)}</div>
-          <input type="number" min="0" step="1" placeholder="No limit" value="${budget || ""}" data-budget-input>
-          <div class="budget-progress">
-            <div class="budget-caption ${over?"over":""}">${caption}</div>
-          </div>
-        </div>`;
-    }).join("");
+    list.innerHTML = lead
+      + withLimit.map(line).join("")
+      + (without.length
+          ? '<p class="alw-divider">Without a limit</p>' + without.map(line).join("")
+          : "");
 
-    list.querySelectorAll("[data-budget-input]").forEach(input=>{
-      input.addEventListener("change", ()=>{
-        const cat = input.closest(".budget-row").dataset.cat;
+    list.querySelectorAll("[data-budget-input]").forEach(input => {
+      input.addEventListener("change", () => {
+        const cat = input.closest(".alw").dataset.cat;
         const v = parseFloat(input.value);
-        if (input.value === "" || isNaN(v) || v <= 0){
-          delete budgets[cat];
-        } else {
-          budgets[cat] = round2(v);
-        }
+        if (input.value === "" || isNaN(v) || v <= 0) delete budgets[cat];
+        else budgets[cat] = round2(v);
         saveBudgets(budgets);
         renderBudgets();
         showToast("Budget saved.");
       });
     });
   }
+
 
   let currentSummaryTab = "activity";
 
@@ -7299,39 +7385,52 @@
   function renderSummaryContent(){
     const container = document.getElementById("summary-content");
     if (!container) return;
-    const { start, end } = get7DayWindow();
-    const exp7 = expenses.filter(e=>{ const d = new Date(e.date+"T00:00:00"); return d >= start && d <= end; });
-    const inc7 = incomes.filter(i=>{ const d = new Date(i.date+"T00:00:00"); return d >= start && d <= end; });
-    const totalSpent7 = exp7.reduce((s,e)=>s+e.amount, 0);
-    const totalIncome7 = inc7.reduce((s,i)=>s+i.amount, 0);
+    const w = get7DayWindow();
+    const exp7 = expenses.filter(e => { const d = new Date(e.date + "T00:00:00"); return d >= w.start && d <= w.end; });
+    const inc7 = incomes.filter(i => { const d = new Date(i.date + "T00:00:00"); return d >= w.start && d <= w.end; });
+    const spent7 = round2(exp7.reduce((s, e) => s + e.amount, 0));
+    const earned7 = round2(inc7.reduce((s, i) => s + i.amount, 0));
+    const activeDays = new Set(exp7.map(e => e.date).concat(inc7.map(i => i.date))).size;
 
+    const topOf = list => {
+      const t = {};
+      list.forEach(x => { t[x.category] = round2((t[x.category] || 0) + x.amount); });
+      const k = Object.keys(t).sort((a, b) => t[b] - t[a])[0];
+      return k ? { label: k, amount: t[k] } : null;
+    };
+
+    // The week as a short paragraph. Three averages in three boxes is the same
+    // information with the sentence taken out of it.
+    let body;
     if (currentSummaryTab === "spending"){
-      const catTotals = {};
-      exp7.forEach(e=>{ catTotals[e.category] = (catTotals[e.category]||0) + e.amount; });
-      const topCat = Object.keys(catTotals).sort((a,b)=>catTotals[b]-catTotals[a])[0] || "—";
-      container.innerHTML = `
-        <div class="stat"><div class="stat-badge stat-badge-rose">${badgeIcon("spend")}</div><div class="stat-text"><div class="label">Spent (7 days)</div><div class="value">${fmtMoneyRich(totalSpent7)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-blue">${badgeIcon("tag")}</div><div class="stat-text"><div class="label">Top category</div><div class="value">${escapeHtml(topCat)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-rose">${badgeIcon("chart")}</div><div class="stat-text"><div class="label">Avg per day</div><div class="value">${fmtMoneyRich(totalSpent7/7)}</div></div></div>
-      `;
+      const top = topOf(exp7);
+      body = !exp7.length
+        ? '<p class="wk">Nothing has been paid out in the last seven days.</p>'
+        : '<p class="wk"><strong>' + fmtMoney(spent7) + '</strong> left the account over the last seven days, ' +
+          'across ' + exp7.length + ' entr' + (exp7.length === 1 ? "y" : "ies") + ' on ' + activeDays +
+          ' of those days \u2014 an average of <strong>' + fmtMoney(round2(spent7 / 7)) + '</strong> a day. ' +
+          (top ? 'Most of it, ' + fmtMoney(top.amount) + ', went on <strong>' + escapeHtml(top.label) + '</strong>.' : '') + '</p>';
     } else if (currentSummaryTab === "income"){
-      const catTotals = {};
-      inc7.forEach(i=>{ catTotals[i.category] = (catTotals[i.category]||0) + i.amount; });
-      const topSrc = Object.keys(catTotals).sort((a,b)=>catTotals[b]-catTotals[a])[0] || "—";
-      container.innerHTML = `
-        <div class="stat"><div class="stat-badge stat-badge-green">${badgeIcon("income")}</div><div class="stat-text"><div class="label">Income (7 days)</div><div class="value">${fmtMoneyRich(totalIncome7)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-blue">${badgeIcon("tag")}</div><div class="stat-text"><div class="label">Top source</div><div class="value">${escapeHtml(topSrc)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-rose">${badgeIcon("chart")}</div><div class="stat-text"><div class="label">Avg per day</div><div class="value">${fmtMoneyRich(totalIncome7/7)}</div></div></div>
-      `;
-    } else { // activity (default)
-      const net = totalIncome7 - totalSpent7;
-      container.innerHTML = `
-        <div class="stat"><div class="stat-badge stat-badge-teal">${badgeIcon("exchange")}</div><div class="stat-text"><div class="label">Total activity</div><div class="value">${fmtMoneyRich(totalSpent7 + totalIncome7)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-teal">${badgeIcon("balance")}</div><div class="stat-text"><div class="label">Net (income − spent)</div><div class="value" style="${net < 0 ? 'color:var(--warn);' : ''}">${fmtMoneyRich(net)}</div></div></div>
-        <div class="stat"><div class="stat-badge stat-badge-blue">${badgeIcon("receipt")}</div><div class="stat-text"><div class="label">Transactions</div><div class="value">${exp7.length + inc7.length}</div></div></div>
-      `;
+      const top = topOf(inc7);
+      body = !inc7.length
+        ? '<p class="wk">Nothing has been received in the last seven days.</p>'
+        : '<p class="wk"><strong>' + fmtMoney(earned7) + '</strong> came in over the last seven days, ' +
+          'across ' + inc7.length + ' entr' + (inc7.length === 1 ? "y" : "ies") + '. ' +
+          (top ? 'The largest source was <strong>' + escapeHtml(top.label) + '</strong> at ' + fmtMoney(top.amount) + '.' : '') + '</p>';
+    } else {
+      const net = round2(earned7 - spent7);
+      body = (!exp7.length && !inc7.length)
+        ? '<p class="wk">The last seven days are empty.</p>'
+        : '<p class="wk">' + (exp7.length + inc7.length) + ' entries were made over the last seven days: <strong>' +
+          fmtMoney(earned7) + '</strong> in and <strong>' + fmtMoney(spent7) + '</strong> out, ' +
+          (net >= 0 ? 'a week ahead by <strong>' + fmtMoney(net) + '</strong>.'
+                    : 'a week behind by <strong>' + fmtMoney(Math.abs(net)) + '</strong>.') +
+          ' ' + (activeDays === 7 ? 'Something was recorded every day.'
+                 : activeDays + ' of the seven days carried an entry.') + '</p>';
     }
+    container.innerHTML = body;
   }
+
 
   document.querySelectorAll("#summary-toggle button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -7351,39 +7450,43 @@
 
     let source, emptyLabel, titleLabel;
     if (currentSummaryTab === "spending"){
-      source = expenses.map(e=>({ description:e.description, category:e.category, amount:e.amount, date:e.date, type:"expense" }));
-      emptyLabel = "No spending in the last 7 days.";
-      titleLabel = "Recent spending";
+      source = expenses.map(e => ({ description: e.description, category: e.category, amount: e.amount, date: e.date, type: "expense" }));
+      emptyLabel = "No spending in the last 7 days."; titleLabel = "Lately paid out";
     } else if (currentSummaryTab === "income"){
-      source = incomes.map(i=>({ description:i.description, category:i.category, amount:i.amount, date:i.date, type:"income" }));
-      emptyLabel = "No income in the last 7 days.";
-      titleLabel = "Recent income";
+      source = incomes.map(i => ({ description: i.description, category: i.category, amount: i.amount, date: i.date, type: "income" }));
+      emptyLabel = "No income in the last 7 days."; titleLabel = "Lately received";
     } else {
-      source = [
-        ...expenses.map(e=>({ description:e.description, category:e.category, amount:e.amount, date:e.date, type:"expense" })),
-        ...incomes.map(i=>({ description:i.description, category:i.category, amount:i.amount, date:i.date, type:"income" }))
-      ];
-      emptyLabel = "No transactions yet.";
-      titleLabel = "Recent activity";
+      source = [].concat(
+        expenses.map(e => ({ description: e.description, category: e.category, amount: e.amount, date: e.date, type: "expense" })),
+        incomes.map(i => ({ description: i.description, category: i.category, amount: i.amount, date: i.date, type: "income" })));
+      emptyLabel = "No transactions yet."; titleLabel = "Lately entered";
     }
     if (titleEl) titleEl.textContent = titleLabel;
 
-    const filtered = source.sort((a,b)=> b.date.localeCompare(a.date)).slice(0, 7);
+    const rows = source.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+    if (!rows.length){ container.innerHTML = emptyStateHtml("list", emptyLabel, ""); return; }
 
-    if (!filtered.length){
-      container.innerHTML = emptyStateHtml("list", emptyLabel, "");
-      return;
-    }
-    container.innerHTML = filtered.map(tx=>`
-      <div class="recent-tx-item">
-        <div>
-          <div class="recent-tx-desc">${escapeHtml(tx.description)}</div>
-          <div class="recent-tx-meta">${fmtDate(tx.date)} · ${escapeHtml(tx.category)}</div>
-        </div>
-        <div class="recent-tx-amount ${tx.type}">${tx.type === "income" ? "+" : "−"}${fmtMoneyRich(tx.amount)}</div>
-      </div>
-    `).join("");
+    // Grouped under the day, the way a day-book is kept: the date is written
+    // once and the entries sit under it.
+    const byDay = [];
+    rows.forEach(tx => {
+      const last = byDay[byDay.length - 1];
+      if (last && last.date === tx.date) last.rows.push(tx);
+      else byDay.push({ date: tx.date, rows: [tx] });
+    });
+    container.innerHTML = byDay.map(g =>
+      '<div class="jr-day">' +
+        '<p class="jr-date">' + fmtDate(g.date) + '</p>' +
+        g.rows.map(tx =>
+          '<div class="jr-entry">' +
+            '<span class="jr-desc">' + escapeHtml(tx.description) + '</span>' +
+            '<span class="jr-leader"></span>' +
+            '<span class="jr-amt ' + tx.type + '">' + (tx.type === "income" ? "" : "\u2212") + fmtMoney(tx.amount) + '</span>' +
+            '<span class="jr-cat">' + escapeHtml(tx.category) + '</span>' +
+          '</div>').join("") +
+      '</div>').join("");
   }
+
 
   function renderDashboardSummary(){
     renderInsights();
