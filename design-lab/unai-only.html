@@ -1511,6 +1511,40 @@
   .hint.is-note{ font-size: var(--fs-3xs); color: var(--ink-faint); }
   .card.is-panel{ border-radius: var(--r-sm); }
 
+
+  /* ---------- reconciliation -------------------------------------------------- */
+  .rec-head{ display:flex; flex-direction:column; gap:2px; padding: var(--sp-5) var(--sp-6);
+    margin-bottom: var(--sp-6); border:1px solid var(--line); border-left-width:2px; }
+  .rec-head.is-clean{ border-left-color: var(--positive); }
+  .rec-head.has-findings{ border-left-color: var(--warn); }
+  .rec-head-k{ font-size: var(--fs-2xs); font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+  .rec-head.is-clean .rec-head-k{ color: var(--positive); }
+  .rec-head.has-findings .rec-head-k{ color: var(--warn); }
+  .rec-head-s{ font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .rec-block{ margin-bottom: var(--sp-8); }
+  .rec-title{ margin: 0 0 var(--sp-4); font-size: var(--fs-3xs); text-transform:uppercase;
+    letter-spacing:.07em; color: var(--ink-dim); }
+  .rec-title b{ color: var(--warn); font-variant-numeric: tabular-nums; }
+  .rec-table{ width:100%; border-collapse:collapse; font-size: var(--fs-2xs); }
+  .rec-table th{ text-align:left; font-size: var(--fs-3xs); text-transform:uppercase;
+    letter-spacing:.06em; color: var(--ink-faint); font-weight:600;
+    padding-bottom: var(--sp-3); border-bottom:1px solid var(--line); }
+  .rec-table th.num, .rec-table td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+  .rec-table tbody tr{ height: var(--row-h); border-bottom:1px solid var(--line); }
+  .rec-table tbody tr:last-child{ border-bottom:0; }
+  .rec-table tbody tr.is-bad{ color: var(--negative); }
+  .rec-table td{ padding: 0 var(--sp-5); }
+  .rec-rows{ border-top:1px solid var(--line); }
+  .rec-row{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-5);
+    height: var(--row-h); border-bottom:1px solid var(--line); font-size: var(--fs-2xs); }
+  .rec-row .num{ font-variant-numeric: tabular-nums; }
+  .rec-row.is-total{ font-weight:700; }
+  .rec-row.is-aside{ color: var(--ink-dim); }
+  .rec-row.is-bad{ color: var(--negative); }
+  .rec-note{ margin: var(--sp-4) 0 0; font-size: var(--fs-3xs); line-height:1.6;
+    color: var(--ink-faint); max-width: 74ch; }
+  .rec-actions{ display:flex; gap: var(--sp-5); padding-top: var(--sp-5); border-top:1px solid var(--line); }
+
 </style>
 </head>
 
@@ -10697,6 +10731,247 @@
       mount();
       document.addEventListener("click", () => setTimeout(mount, 150), true);
     })();
+
+    /* ======================================================================
+       RECONCILIATION — /unai console, round three
+
+       An operator surface should be able to prove its own figures. This panel
+       re-derives every balance from its opening figure and its movements,
+       compares that against what the app is carrying, and then looks for the
+       four kinds of mess that actually occur in this data: a reference to an
+       account that no longer exists, a category that has been renamed out from
+       under its entries, rows that look like the same thing entered twice, and
+       a Total money figure whose parts do not add up.
+
+       It reads. It writes nothing, moves nothing, and repairs nothing — a tool
+       that silently "fixes" money is worse than the discrepancy it found.
+       ====================================================================== */
+    (function consoleReconcile(){
+      "use strict";
+
+      const money = n => fmtMoney(round2(n));
+
+      /* ---- 1. balances re-derived from first principles -------------------- */
+      function checkBalances(){
+        const moved = movementsByAccount();
+        return savings.map(a => {
+          const opening = Number(a.opening) || 0;
+          const delta = moved[a.id] || 0;
+          const derived = round2(opening + delta);
+          const carried = round2(Number(a.amount) || 0);
+          return { provider: a.provider, opening: opening, delta: delta,
+                   derived: derived, carried: carried, off: round2(carried - derived) };
+        });
+      }
+
+      /* ---- 2. references to accounts that are not there -------------------- */
+      function checkOrphans(){
+        const names = savings.map(a => a.provider);
+        const out = [];
+        const scan = (list, label, field) => list.forEach(x => {
+          const bank = x[field];
+          if (bank && names.indexOf(bank) === -1)
+            out.push({ what: label, who: x.person || x.name || x.description || "(unnamed)",
+                       bank: bank, amount: x.amount });
+        });
+        scan(loansGiven, "loan given", "bank");
+        scan(loansTaken, "loan taken", "bank");
+        scan(investments, "investment", "bank");
+        balanceOps.forEach(op => {
+          if (op && op.account && names.indexOf(op.account) === -1)
+            out.push({ what: "movement", who: op.note || "(no note)", bank: op.account, amount: op.delta });
+        });
+        return out;
+      }
+
+      /* ---- 3. categories that no longer exist ------------------------------ */
+      function checkCategories(){
+        const known = categories.concat(INCOME_CATEGORIES || []);
+        const counts = {};
+        const note = (cat, kind) => {
+          if (!cat || known.indexOf(cat) !== -1) return;
+          const k = kind + "␟" + cat;
+          counts[k] = (counts[k] || 0) + 1;
+        };
+        expenses.forEach(e => note(e.category, "expense"));
+        incomes.forEach(i => note(i.category, "income"));
+        recurring.forEach(r => note(r.category, "recurring"));
+        return Object.keys(counts).map(k => {
+          const p = k.split("␟");
+          return { kind: p[0], cat: p[1], n: counts[k] };
+        }).sort((a, b) => b.n - a.n);
+      }
+
+      /* ---- 4. rows that look entered twice --------------------------------- */
+      // Same day, same amount, same description. Not necessarily a mistake —
+      // two identical fares on one day is ordinary — so this reports, it does
+      // not accuse, and it says how to tell the difference.
+      function checkDoubles(){
+        const out = [];
+        const scan = (list, kind) => {
+          const seen = {};
+          list.forEach(x => {
+            const key = [x.date, round2(x.amount), String(x.description || "").trim().toLowerCase()].join("|");
+            (seen[key] = seen[key] || []).push(x);
+          });
+          Object.keys(seen).forEach(k => {
+            if (seen[k].length > 1)
+              out.push({ kind: kind, n: seen[k].length, date: seen[k][0].date,
+                         amount: seen[k][0].amount, desc: seen[k][0].description });
+          });
+        };
+        scan(expenses, "expense");
+        scan(incomes, "income");
+        return out.sort((a, b) => b.n - a.n);
+      }
+
+      /* ---- 5. the headline figure, taken apart ----------------------------- */
+      function checkTotal(){
+        const info = computeTotalMoney();
+        const fromAccounts = round2(savings.reduce((t, a) => t + (Number(a.amount) || 0), 0));
+        return { info: info, fromAccounts: fromAccounts };
+      }
+
+      function rows(list){ return '<div class="rec-rows">' + list + '</div>'; }
+
+      function build(){
+        const bal = checkBalances();
+        const off = bal.filter(b => Math.abs(b.off) >= 0.01);
+        const orph = checkOrphans();
+        const cats = checkCategories();
+        const dbl = checkDoubles();
+        const tot = checkTotal();
+
+        const findings = off.length + orph.length + cats.length;
+        const head =
+          '<div class="rec-head' + (findings ? " has-findings" : " is-clean") + '">' +
+            '<span class="rec-head-k">' + (findings ? findings + " finding" + (findings === 1 ? "" : "s")
+                                                    : "no discrepancies") + '</span>' +
+            '<span class="rec-head-s">' + savings.length + ' accounts · ' + balanceOps.length +
+              ' movements · ' + (expenses.length + incomes.length) + ' entries checked</span>' +
+          '</div>';
+
+        const balBlock =
+          '<div class="rec-block"><p class="rec-title">Balances, re-derived</p>' +
+          '<table class="rec-table"><thead><tr><th>Account</th><th class="num">Opening</th>' +
+          '<th class="num">Movements</th><th class="num">Derived</th><th class="num">Carried</th>' +
+          '<th class="num">Off by</th></tr></thead><tbody>' +
+          bal.map(b => '<tr class="' + (Math.abs(b.off) >= 0.01 ? "is-bad" : "") + '">' +
+            '<td>' + escapeHtml(b.provider) + '</td>' +
+            '<td class="num">' + money(b.opening) + '</td>' +
+            '<td class="num">' + (b.delta >= 0 ? "+" : "−") + money(Math.abs(b.delta)) + '</td>' +
+            '<td class="num">' + money(b.derived) + '</td>' +
+            '<td class="num">' + money(b.carried) + '</td>' +
+            '<td class="num">' + (Math.abs(b.off) < 0.01 ? "—" : money(b.off)) + '</td></tr>').join("") +
+          '</tbody></table>' +
+          '<p class="rec-note">Derived = opening + every movement recorded against the account. ' +
+          'Carried is what the app is showing. These must match to the centavo; a gap means a ' +
+          'movement was written without a matching balance change, or the reverse.</p></div>';
+
+        const totBlock =
+          '<div class="rec-block"><p class="rec-title">Total money, taken apart</p>' +
+          rows(
+            '<div class="rec-row"><span>Accounts</span><span class="num">' + money(tot.fromAccounts) + '</span></div>' +
+            '<div class="rec-row"><span>Investments' + (tot.info.investedCounts ? '' : ' (not counted)') + '</span><span class="num">' +
+              money(tot.info.investedCounts ? tot.info.unsoldInvestments : 0) + '</span></div>' +
+            '<div class="rec-row is-total"><span>Total money</span><span class="num">' +
+              money(tot.info.total) + '</span></div>' +
+            '<div class="rec-row is-aside"><span>Owed to you (not counted)</span><span class="num">' +
+              money(tot.info.outstandingLent || 0) + '</span></div>' +
+            '<div class="rec-row is-aside"><span>You owe (not counted)</span><span class="num">' +
+              money(tot.info.outstandingOwed || 0) + '</span></div>') +
+          '<p class="rec-note">Loans sit outside the headline in both directions. Money out on loan is ' +
+          'not money you can spend, and money you owe is still in the account until you pay it.</p></div>';
+
+        const orphBlock = !orph.length ? "" :
+          '<div class="rec-block"><p class="rec-title">References to accounts that are gone <b>' + orph.length + '</b></p>' +
+          rows(orph.map(o => '<div class="rec-row is-bad"><span>' + escapeHtml(o.what) + ' · ' +
+            escapeHtml(String(o.who)) + '</span><span class="num">' + escapeHtml(o.bank) + '</span></div>').join("")) +
+          '<p class="rec-note">These name an account this device does not have. Nothing is being ' +
+          'double counted — a movement naming an unknown account is left where it is rather than ' +
+          'attributed to the wrong one — but settling one of these will not move any money.</p></div>';
+
+        const catBlock = !cats.length ? "" :
+          '<div class="rec-block"><p class="rec-title">Categories no longer on the list <b>' + cats.length + '</b></p>' +
+          rows(cats.map(c => '<div class="rec-row"><span>' + escapeHtml(c.cat) + ' · ' + c.kind +
+            '</span><span class="num">' + c.n + ' row' + (c.n === 1 ? "" : "s") + '</span></div>').join("")) +
+          '<p class="rec-note">The rows keep the name they were filed under. An absent category stays ' +
+          'absent rather than silently becoming Other, so these will not appear under any filter.</p></div>';
+
+        const dblBlock = !dbl.length ? "" :
+          '<div class="rec-block"><p class="rec-title">Possible duplicates <b>' + dbl.length + '</b></p>' +
+          rows(dbl.slice(0, 12).map(d => '<div class="rec-row"><span>' + escapeHtml(d.desc || "(no description)") +
+            ' · ' + d.date + '</span><span class="num">' + d.n + ' × ' + money(d.amount) + '</span></div>').join("")) +
+          '<p class="rec-note">Same day, same amount, same description. Two identical fares in one day is ' +
+          'ordinary, so this reports rather than accuses — check the times you made them, not the rows.</p></div>';
+
+        return head + balBlock + totBlock + orphBlock + catBlock + dblBlock +
+          '<div class="rec-actions"><button class="btn btn-ghost btn-sm" id="btn-rec-copy">Copy this report</button>' +
+          '<button class="btn btn-ghost btn-sm" id="btn-rec-refresh">Re-run</button></div>';
+      }
+
+      function plainReport(){
+        const bal = checkBalances();
+        const lines = ["SPENDLY RECONCILIATION  " + new Date().toISOString(), ""];
+        lines.push("BALANCES");
+        bal.forEach(b => lines.push("  " + b.provider.padEnd(24) +
+          ("opening " + money(b.opening)).padEnd(22) +
+          ("moved " + (b.delta >= 0 ? "+" : "−") + money(Math.abs(b.delta))).padEnd(22) +
+          ("derived " + money(b.derived)).padEnd(22) +
+          (Math.abs(b.off) < 0.01 ? "ok" : "OFF BY " + money(b.off))));
+        const orph = checkOrphans();
+        lines.push("", "ORPHANED ACCOUNT REFERENCES: " + orph.length);
+        orph.forEach(o => lines.push("  " + o.what + " " + o.who + " → " + o.bank));
+        const cats = checkCategories();
+        lines.push("", "UNKNOWN CATEGORIES: " + cats.length);
+        cats.forEach(c => lines.push("  " + c.cat + " (" + c.kind + ") × " + c.n));
+        const dbl = checkDoubles();
+        lines.push("", "POSSIBLE DUPLICATES: " + dbl.length);
+        dbl.forEach(d => lines.push("  " + d.date + "  " + money(d.amount) + "  " + (d.desc || "") + "  ×" + d.n));
+        return lines.join("\n");
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-settings");
+        if (!panel || panel.querySelector("#rec-card")) return;
+        const card = document.createElement("div");
+        card.className = "card is-panel";
+        card.id = "rec-card";
+        card.setAttribute("data-settings-group", "sync");
+        card.innerHTML =
+          '<header class="panel-head is-toolbar">' +
+            '<h2><span class="h-rule" aria-hidden="true"></span>Reconciliation</h2>' +
+            '<p class="sub">Re-derives every balance and reports what does not add up. Reads only.</p>' +
+          '</header><div id="rec-body"></div>';
+        panel.appendChild(card);
+        paint();
+      }
+
+      function paint(){
+        const body = document.getElementById("rec-body");
+        if (!body) return;
+        body.innerHTML = build();
+        const copy = document.getElementById("btn-rec-copy");
+        if (copy) copy.addEventListener("click", () => {
+          const text = plainReport();
+          if (navigator.clipboard && navigator.clipboard.writeText){
+            navigator.clipboard.writeText(text).then(
+              () => showToast("Report copied."),
+              () => showToast("Couldn't reach the clipboard."));
+          } else {
+            showToast("Clipboard unavailable on this device.");
+          }
+        });
+        const again = document.getElementById("btn-rec-refresh");
+        if (again) again.addEventListener("click", () => { paint(); showToast("Re-run."); });
+      }
+
+      mount();
+      // Settings is built by the app after this runs on some paths, so re-check
+      // on interaction rather than assuming one mount is enough.
+      document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
 
 })();
 

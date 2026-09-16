@@ -1183,6 +1183,49 @@
   .hint.is-aside{ font-size: var(--fs-sm); line-height:1.75; color: var(--ink-dim); max-width: 58ch; }
   .card.is-sheet{ border-radius: var(--r-lg); }
 
+
+  /* ---------- statement of account --------------------------------------------- */
+  .st-pick{ display:flex; align-items:flex-end; gap: var(--sp-6); flex-wrap:wrap;
+    padding-bottom: var(--sp-7); margin-bottom: var(--sp-7); border-bottom:1px solid var(--line); }
+  .st-pick select{ min-width: 190px; }
+  .st-block{ padding: var(--sp-7) 0; border-bottom:1px solid var(--line); }
+  .st-block:last-of-type{ border-bottom:0; }
+  .st-block.is-close{ border-top:2px solid var(--line-strong); }
+  .st-head{ margin: 0 0 var(--sp-5); font-size: var(--fs-3xs); text-transform:uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim); }
+  .st-group{ margin-bottom: var(--sp-6); }
+  .st-group:last-child{ margin-bottom:0; }
+  .st-group-name{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-5);
+    margin: 0 0 var(--sp-3); font-size: var(--fs-sm); font-weight:600; color: var(--ink); }
+  .st-group-share{ font-size: var(--fs-3xs); font-weight:400; color: var(--ink-dim);
+    font-variant-numeric: tabular-nums; }
+  .st-line{ display:grid; grid-template-columns: auto 1fr auto; grid-template-areas:
+    "label leader amount" "aside aside aside"; align-items:baseline; gap: 0 var(--sp-5);
+    padding: var(--sp-3) 0; }
+  .st-label{ grid-area: label; font-size: var(--fs-sm); color: var(--ink-soft); }
+  .st-leader{ grid-area: leader; border-bottom:1px dotted var(--line); transform: translateY(-3px); }
+  .st-amount{ grid-area: amount; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+  .st-aside{ grid-area: aside; font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .st-line.is-sub{ border-top:1px solid var(--line); margin-top: var(--sp-3); padding-top: var(--sp-4); }
+  .st-line.is-sub .st-label, .st-line.is-sub .st-amount{ color: var(--ink); font-weight:600; }
+  .st-line.is-total{ border-top:1px solid var(--line-strong); margin-top: var(--sp-5); padding-top: var(--sp-5); }
+  .st-line.is-total .st-label, .st-line.is-total .st-amount{ color: var(--ink); font-weight:700;
+    font-size: var(--fs-md); }
+  .st-line.is-final .st-amount{ font-size: var(--fs-xl); }
+  .st-note{ margin-top: var(--sp-7); }
+
+  /* Printing the whole app would put a nav bar and a chart legend on a page
+     meant to be filed. Only the statement goes to paper. */
+  @media print{
+    body.is-printing-statement > *{ display:none !important; }
+    body.is-printing-statement #st-card{ display:block !important; position:static;
+      background:#fff; color:#000; border:0; box-shadow:none; padding:0; }
+    body.is-printing-statement #st-card *{ color:#000 !important; background:transparent !important; }
+    body.is-printing-statement .st-pick{ display:none !important; }
+    body.is-printing-statement .st-leader{ border-bottom-color:#999 !important; }
+  }
+  body.is-printing-statement{ background:#fff; }
+
 </style>
 </head>
 
@@ -9637,6 +9680,200 @@
       mountAll();
       document.addEventListener("click", () => setTimeout(mountAll, 170), true);
     })();
+
+    /* ======================================================================
+       STATEMENT OF ACCOUNT — /unai-team ledger, round three
+
+       The one thing a ledger is actually for and the app could not do: produce
+       a statement for a period. Opening position, receipts, payments itemised
+       under their headings with subtotals, and a closing position that is the
+       opening plus the one minus the other — arithmetic the reader can follow
+       down the page rather than a figure they have to trust.
+
+       Reads only. The opening position is derived backwards from today's
+       balances and the movements since, so it agrees with the rest of the app
+       by construction rather than by a second calculation that could drift.
+       ====================================================================== */
+    (function ledgerStatement(){
+      "use strict";
+
+      const MON = ["January","February","March","April","May","June",
+                   "July","August","September","October","November","December"];
+      const money = n => fmtMoney(round2(n));
+      const monthKeyOf = d => String(d).slice(0, 7);
+      const longMonth = key => {
+        const p = String(key).split("-");
+        return MON[Number(p[1]) - 1] + " " + p[0];
+      };
+
+      /* Which months the book actually covers, newest first. A month picker
+         offering twelve empty months is a picker for a book nobody has kept. */
+      function monthsOnFile(){
+        const keys = {};
+        expenses.forEach(e => keys[monthKeyOf(e.date)] = true);
+        incomes.forEach(i => keys[monthKeyOf(i.date)] = true);
+        return Object.keys(keys).sort().reverse();
+      }
+
+      /* The closing position of a month, worked backwards from what is held now
+         less everything that has moved since. Using today's balances as the
+         anchor is what keeps this honest: it cannot disagree with the headline. */
+      function positionAtEndOf(key){
+        const held = round2(savings.reduce((t, a) => t + (Number(a.amount) || 0), 0));
+        const after = [].concat(
+          expenses.filter(e => monthKeyOf(e.date) > key).map(e => -e.amount),
+          incomes.filter(i => monthKeyOf(i.date) > key).map(i => i.amount)
+        ).reduce((t, v) => t + v, 0);
+        return round2(held - after);
+      }
+
+      function gather(key){
+        const exp = expenses.filter(e => monthKeyOf(e.date) === key);
+        const inc = incomes.filter(i => monthKeyOf(i.date) === key);
+        const paid = round2(exp.reduce((t, e) => t + e.amount, 0));
+        const recv = round2(inc.reduce((t, i) => t + i.amount, 0));
+        const closing = positionAtEndOf(key);
+        const opening = round2(closing - recv + paid);
+
+        const byCat = {};
+        exp.forEach(e => { (byCat[e.category] = byCat[e.category] || []).push(e); });
+        const heads = Object.keys(byCat)
+          .map(c => ({ name: c, rows: byCat[c].slice().sort((a, b) => a.date.localeCompare(b.date)),
+                       total: round2(byCat[c].reduce((t, e) => t + e.amount, 0)) }))
+          .sort((a, b) => b.total - a.total);
+
+        const bySource = {};
+        inc.forEach(i => { (bySource[i.category] = bySource[i.category] || []).push(i); });
+        const sources = Object.keys(bySource)
+          .map(c => ({ name: c, rows: bySource[c].slice().sort((a, b) => a.date.localeCompare(b.date)),
+                       total: round2(bySource[c].reduce((t, i) => t + i.amount, 0)) }))
+          .sort((a, b) => b.total - a.total);
+
+        return { key: key, exp: exp, inc: inc, paid: paid, recv: recv,
+                 opening: opening, closing: closing, heads: heads, sources: sources };
+      }
+
+      function line(label, aside, amount, cls){
+        return '<div class="st-line ' + (cls || "") + '">' +
+          '<span class="st-label">' + escapeHtml(label) + '</span>' +
+          '<span class="st-leader"></span>' +
+          '<span class="st-amount">' + amount + '</span>' +
+          (aside ? '<span class="st-aside">' + escapeHtml(aside) + '</span>' : "") +
+        '</div>';
+      }
+
+      function build(key){
+        const s = gather(key);
+        if (!s.exp.length && !s.inc.length){
+          return '<p class="wk">Nothing was entered in ' + escapeHtml(longMonth(key)) + '.</p>';
+        }
+        const net = round2(s.recv - s.paid);
+        const days = new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)), 0).getDate();
+
+        const openingBlock =
+          '<div class="st-block">' +
+            '<p class="st-head">Position brought forward</p>' +
+            line("At the start of " + longMonth(key), "", money(s.opening), "is-total") +
+          '</div>';
+
+        const receiptsBlock = !s.sources.length ? "" :
+          '<div class="st-block">' +
+            '<p class="st-head">Received</p>' +
+            s.sources.map(g =>
+              '<div class="st-group">' +
+                (s.sources.length > 1 ? '<p class="st-group-name">' + escapeHtml(g.name) + '</p>' : "") +
+                g.rows.map(r => line(r.description || "(no description)", fmtDate(r.date), money(r.amount))).join("") +
+                (g.rows.length > 1 ? line("Under " + g.name, "", money(g.total), "is-sub") : "") +
+              '</div>').join("") +
+            line("Total received", s.inc.length + (s.inc.length === 1 ? " entry" : " entries"), money(s.recv), "is-total") +
+          '</div>';
+
+        const paymentsBlock = !s.heads.length ? "" :
+          '<div class="st-block">' +
+            '<p class="st-head">Paid out</p>' +
+            s.heads.map(g =>
+              '<div class="st-group">' +
+                '<p class="st-group-name">' + escapeHtml(g.name) +
+                  '<span class="st-group-share">' + Math.round((g.total / (s.paid || 1)) * 100) + '% of the month</span></p>' +
+                g.rows.map(r => line(r.description || "(no description)", fmtDate(r.date), money(r.amount))).join("") +
+                line("Under " + g.name, g.rows.length + (g.rows.length === 1 ? " entry" : " entries"), money(g.total), "is-sub") +
+              '</div>').join("") +
+            line("Total paid out", s.exp.length + (s.exp.length === 1 ? " entry" : " entries"), money(s.paid), "is-total") +
+          '</div>';
+
+        const closingBlock =
+          '<div class="st-block is-close">' +
+            '<p class="st-head">Position carried forward</p>' +
+            line("Brought forward", "", money(s.opening)) +
+            line("Received", "", "+ " + money(s.recv)) +
+            line("Paid out", "", "− " + money(s.paid)) +
+            line("At the end of " + longMonth(key), "", money(s.closing), "is-total is-final") +
+          '</div>';
+
+        const quietDays = days - new Set(s.exp.map(e => e.date)).size;
+        const closingNote =
+          '<p class="wk st-note">' +
+            (net >= 0
+              ? 'The month closed <strong>' + money(net) + '</strong> ahead. '
+              : 'The month closed <strong>' + money(Math.abs(net)) + '</strong> behind. ') +
+            (s.heads.length
+              ? 'The heaviest heading was <strong>' + escapeHtml(s.heads[0].name) + '</strong> at ' +
+                money(s.heads[0].total) + ', ' +
+                (s.heads.length > 1 ? 'ahead of ' + escapeHtml(s.heads[1].name) + ' at ' + money(s.heads[1].total) + '. ' : '. ')
+              : '') +
+            'Nothing was paid out on ' + quietDays + ' of the ' + days + ' days.' +
+          '</p>';
+
+        return openingBlock + receiptsBlock + paymentsBlock + closingBlock + closingNote;
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-dashboard");
+        if (!panel || panel.querySelector("#st-card")) return;
+        const months = monthsOnFile();
+        if (!months.length) return;
+
+        const card = document.createElement("div");
+        card.className = "card is-sheet";
+        card.id = "st-card";
+        card.innerHTML =
+          '<header class="panel-head is-chapter">' +
+            '<h2>Statement of account</h2>' +
+            '<p class="sub">A month set out in full: what was brought forward, what came in, what went out under each heading, and what that leaves.</p>' +
+          '</header>' +
+          '<div class="st-pick"><label class="fld-k" for="st-month">Month</label>' +
+            '<select id="st-month">' + months.map(m =>
+              '<option value="' + m + '">' + escapeHtml(longMonth(m)) + '</option>').join("") + '</select>' +
+            '<button class="btn btn-ghost btn-sm" id="btn-st-print">Print this statement</button></div>' +
+          '<div id="st-body"></div>';
+        panel.appendChild(card);
+
+        const sel = document.getElementById("st-month");
+        const body = document.getElementById("st-body");
+        const draw = () => { body.innerHTML = build(sel.value); };
+        sel.addEventListener("change", draw);
+        draw();
+
+        const printBtn = document.getElementById("btn-st-print");
+        if (printBtn) printBtn.addEventListener("click", () => {
+          // Print the statement alone. Printing the whole app would put a nav
+          // bar and a chart legend on a page meant to be filed.
+          document.body.classList.add("is-printing-statement");
+          const done = () => {
+            document.body.classList.remove("is-printing-statement");
+            window.removeEventListener("afterprint", done);
+          };
+          window.addEventListener("afterprint", done);
+          setTimeout(() => { try{ window.print(); }catch(e){ done(); } }, 30);
+          // afterprint does not fire everywhere; this is the way back regardless.
+          setTimeout(done, 8000);
+        });
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
 
 })();
 

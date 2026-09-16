@@ -1287,6 +1287,27 @@
   .hint.is-help{ font-size: var(--fs-3xs); line-height:1.6; color: var(--ink-dim); }
   .card.is-board{ border-radius: var(--r-lg); }
 
+
+  /* ---------- budget planner --------------------------------------------------- */
+  .pl-table{ width:100%; border-collapse:collapse; font-size: var(--fs-2xs); margin-bottom: var(--sp-6); }
+  .pl-table th{ text-align:left; font-size: var(--fs-3xs); text-transform:uppercase;
+    letter-spacing:.05em; color: var(--ink-dim); font-weight:600;
+    padding-bottom: var(--sp-4); border-bottom:1px solid var(--line); }
+  .pl-table th.num, .pl-table td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+  .pl-table tbody tr{ border-bottom:1px solid var(--line); }
+  .pl-table tbody tr:last-child{ border-bottom:0; }
+  .pl-table td{ padding: var(--sp-5) var(--sp-4); vertical-align: middle; }
+  .pl-name{ display:flex; flex-direction:column; gap:1px; font-weight:600; }
+  .pl-sub{ font-size: var(--fs-3xs); font-weight:400; color: var(--ink-faint); }
+  .pl-spark{ display:flex; align-items:flex-end; gap:2px; height:22px; min-width:90px; }
+  .pl-spark i{ width:6px; background: var(--line-strong); border-radius:1px; }
+  .pl-spark i:last-of-type{ background: var(--accent); }
+  .pl-spread{ margin-left: var(--sp-4); align-self:center; font-size: var(--fs-3xs);
+    color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .pl-prop{ font-weight:700; }
+  .pl-up{ color: var(--warn); } .pl-down{ color: var(--positive); }
+  #pl-card .fig-row{ margin-bottom: var(--sp-6); }
+
 </style>
 </head>
 
@@ -10110,6 +10131,190 @@
       mount();
       document.addEventListener("click", () => setTimeout(mount, 190), true);
     })();
+
+    /* ======================================================================
+       BUDGET PLANNER — /ui workspace, round three
+
+       Budgets in this app have always been a number you type from memory. This
+       proposes one per category from what you have actually spent — the median
+       of the complete months on file, rounded to something a person would say —
+       shows what each proposal changes, totals the difference, and applies
+       nothing until you press the button.
+
+       Median rather than mean, and complete months only, for the same reason
+       the outlier finder uses them: one heavy month should not set next month's
+       allowance, and a half-finished month should not drag it down.
+       ====================================================================== */
+    (function workspacePlanner(){
+      "use strict";
+
+      const money = n => fmtMoney(round2(n));
+      const monthKeyOf = d => String(d).slice(0, 7);
+
+      function completeMonthKeys(n){
+        const now = new Date();
+        const out = [];
+        for (let i = 1; i <= n; i++){
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          out.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"));
+        }
+        return out;
+      }
+
+      function median(nums){
+        if (!nums.length) return 0;
+        const s = nums.slice().sort((a, b) => a - b);
+        const m = Math.floor(s.length / 2);
+        return s.length % 2 ? s[m] : round2((s[m - 1] + s[m]) / 2);
+      }
+
+      // Rounded to a figure a person would actually name. A limit of ₱4,187.50
+      // is a calculation showing its working, not a decision.
+      function toRoundNumber(v){
+        if (v <= 0) return 0;
+        if (v < 500) return Math.ceil(v / 50) * 50;
+        if (v < 5000) return Math.ceil(v / 100) * 100;
+        if (v < 20000) return Math.ceil(v / 500) * 500;
+        return Math.ceil(v / 1000) * 1000;
+      }
+
+      function proposals(){
+        const keys = completeMonthKeys(6);
+        return categories.map(cat => {
+          const perMonth = keys.map(k => round2(expenses
+            .filter(e => e.category === cat && monthKeyOf(e.date) === k)
+            .reduce((t, e) => t + e.amount, 0)));
+          const used = perMonth.filter(v => v > 0);
+          const med = median(used);
+          // A little headroom, because a limit set exactly at the median is one
+          // you breach half the time by definition.
+          const suggested = toRoundNumber(med * 1.1);
+          return {
+            cat: cat, months: used.length, perMonth: perMonth,
+            median: med, suggested: suggested,
+            current: budgets[cat] || 0,
+            spread: used.length > 1 ? round2(Math.max.apply(null, used) - Math.min.apply(null, used)) : 0
+          };
+        }).filter(p => p.months > 0 || p.current > 0)
+          .sort((a, b) => b.median - a.median);
+      }
+
+      function build(){
+        const rows = proposals();
+        if (!rows.length){
+          return '<p class="hint">Not enough history yet. A month or two of entries and this can propose limits from what you actually spend.</p>';
+        }
+        const totalNow = round2(rows.reduce((t, r) => t + r.current, 0));
+        const totalProposed = round2(rows.reduce((t, r) => t + (r.suggested || r.current), 0));
+        const changing = rows.filter(r => r.suggested > 0 && Math.abs(r.suggested - r.current) >= 1).length;
+
+        const head =
+          '<div class="fig-row">' +
+            '<div class="fig-cell"><span class="fig-k">Budgeted now</span><span class="fig-v">' + money(totalNow) +
+              '</span><span class="fig-sub">' + rows.filter(r => r.current > 0).length + ' of ' + rows.length + ' categories</span></div>' +
+            '<div class="fig-cell"><span class="fig-k">Proposed</span><span class="fig-v">' + money(totalProposed) +
+              '</span><span class="fig-sub">' + changing + ' would change</span></div>' +
+            '<div class="fig-cell"><span class="fig-k">Difference</span><span class="fig-v' +
+              (totalProposed > totalNow ? " is-warn" : " is-pos") + '">' +
+              (totalProposed >= totalNow ? "+" : "−") + money(Math.abs(round2(totalProposed - totalNow))) +
+              '</span><span class="fig-sub">across the whole month</span></div>' +
+          '</div>';
+
+        const table =
+          '<table class="pl-table"><thead><tr>' +
+            '<th>Category</th><th class="num">Typical month</th><th>Spread</th>' +
+            '<th class="num">Current limit</th><th class="num">Proposed</th><th class="num">Change</th>' +
+          '</tr></thead><tbody>' +
+          rows.map(r => {
+            const diff = round2((r.suggested || r.current) - r.current);
+            const bars = r.perMonth.slice().reverse();
+            const peak = Math.max.apply(null, bars.concat([1]));
+            return '<tr data-cat="' + escapeHtml(r.cat) + '">' +
+              '<td class="pl-name">' + escapeHtml(r.cat) +
+                '<span class="pl-sub">' + (r.months ? r.months + " month" + (r.months === 1 ? "" : "s") + " on file" : "no history") + '</span></td>' +
+              '<td class="num">' + (r.median ? money(r.median) : "—") + '</td>' +
+              '<td class="pl-spark">' + bars.map(v =>
+                  '<i style="height:' + Math.max(8, Math.round((v / peak) * 100)) + '%"></i>').join("") +
+                (r.spread ? '<span class="pl-spread">± ' + money(r.spread / 2) + '</span>' : "") + '</td>' +
+              '<td class="num">' + (r.current ? money(r.current) : "—") + '</td>' +
+              '<td class="num pl-prop">' + (r.suggested ? money(r.suggested) : "—") + '</td>' +
+              '<td class="num">' + (!r.suggested || Math.abs(diff) < 1 ? "—" :
+                '<span class="' + (diff > 0 ? "pl-up" : "pl-down") + '">' +
+                (diff > 0 ? "+" : "−") + money(Math.abs(diff)) + '</span>') + '</td>' +
+            '</tr>';
+          }).join("") +
+          '</tbody></table>';
+
+        const note =
+          '<p class="hint">Proposed = the median of the complete months where you spent anything in that ' +
+          'category, plus a tenth for headroom, rounded to a figure worth saying. Median rather than ' +
+          'average, so one heavy month does not set next month’s allowance. The current month is ' +
+          'excluded because it is not finished.</p>';
+
+        const actions =
+          '<div class="form-actions is-end">' +
+            '<button class="btn btn-ghost btn-sm" id="btn-pl-refresh">Recalculate</button>' +
+            '<button class="btn btn-primary btn-sm" id="btn-pl-apply"' + (changing ? "" : " disabled") + '>' +
+              (changing ? "Apply " + changing + " proposed limit" + (changing === 1 ? "" : "s") : "Nothing to apply") +
+            '</button>' +
+          '</div>';
+
+        return head + table + note + actions;
+      }
+
+      function apply(){
+        const rows = proposals().filter(r => r.suggested > 0 && Math.abs(r.suggested - r.current) >= 1);
+        if (!rows.length) return;
+        // Every previous limit is kept so the whole application is one undo, not
+        // one per category. Changing eleven budgets with no way back is not a
+        // suggestion, it is a decision taken on someone's behalf.
+        const before = {};
+        rows.forEach(r => { before[r.cat] = budgets[r.cat]; });
+        rows.forEach(r => { budgets[r.cat] = r.suggested; });
+        saveBudgets(budgets);
+        renderBudgets();
+        paint();
+        showUndoToast(rows.length + " limit" + (rows.length === 1 ? "" : "s") + " applied.", () => {
+          Object.keys(before).forEach(c => {
+            if (before[c] === undefined) delete budgets[c];
+            else budgets[c] = before[c];
+          });
+          saveBudgets(budgets);
+          renderBudgets();
+          paint();
+        });
+      }
+
+      function paint(){
+        const body = document.getElementById("pl-body");
+        if (!body) return;
+        body.innerHTML = build();
+        const a = document.getElementById("btn-pl-apply");
+        if (a) a.addEventListener("click", apply);
+        const r = document.getElementById("btn-pl-refresh");
+        if (r) r.addEventListener("click", () => { paint(); showToast("Recalculated from the months on file."); });
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-settings");
+        if (!panel || panel.querySelector("#pl-card")) return;
+        const card = document.createElement("div");
+        card.className = "card is-board";
+        card.id = "pl-card";
+        card.setAttribute("data-settings-group", "budgeting");
+        card.innerHTML =
+          '<header class="panel-head is-toolbar">' +
+            '<h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg></span><span class="h-text">Suggested limits</span></h2>' +
+            '<p class="sub">Proposed from what you have actually spent, not from memory. Nothing is applied until you press the button.</p>' +
+          '</header><div id="pl-body"></div>';
+        panel.appendChild(card);
+        paint();
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
 
 })();
 
