@@ -11435,6 +11435,9 @@
             .map(l => ({ who: "You owe " + l.person, amt: -l.amount, on: l.deadline, dir: "out" }))
         ).filter(x => x.on <= iso(soon)).sort((a, b) => a.on.localeCompare(b.on));
 
+        // Rendered whole. Which of these the narrow layout shows is the
+        // stylesheet's business, because it is the stylesheet that knows how
+        // wide the window is at the moment anyone looks.
         host.innerHTML =
           '<p class="act-head">Needs a decision</p>' +
           (items.length
@@ -11450,7 +11453,18 @@
                     escapeHtml(dlabel(x.on)) + '</span>' +
                 '</div>';
               }).join("")
-            : '<p class="hint">Nothing owed either way in the next thirty days.</p>');
+            : '<p class="hint">Nothing owed either way in the next thirty days.</p>') +
+          (items.length > 2
+            ? '<button class="act-more" id="act-more">See all ' + items.length +
+              ' on the rail</button>'
+            : "");
+
+        const more = $("act-more");
+        if (more) more.addEventListener("click", () => {
+          const late = document.querySelector("#spine .sp-row.is-future");
+          if (late) late.scrollIntoView({ block: "center", behavior: prefersStill() ? "auto" : "smooth" });
+          else openRef("loans");
+        });
       }
 
       /* ---- quick entry: built once, never rebuilt under the reader ----------- */
@@ -11702,7 +11716,7 @@
       /* ---- the drawer: the rest of the book ---------------------------------- */
       const NAMES = { dashboard: "Overview", charts: "Charts", history: "Every record",
                       savings: "Accounts", loans: "Loans & investments", settings: "Settings",
-                      add: "Add an entry", recurring: "Standing orders" };
+                      add: "The full entry form", recurring: "Standing orders" };
       let lastFocus = null;
       function openRef(tab, deep){
         const drawer = $("ref-drawer"), scrim = $("drawer-scrim");
@@ -11897,6 +11911,19 @@
           else if (go.dataset.go === "recurring") openRef("savings");
           else openRef("loans");
         });
+
+        // The quick form is the add affordance while the act column is on
+        // screen. When it is not — anything under 1180px — this is, and it was
+        // display:none with a comment explaining that it did not need to exist.
+        const fab = $("btn-fab-add");
+        if (fab){
+          fab.setAttribute("aria-label", "Add an entry with the full form");
+          fab.addEventListener("click", ev => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            openRef("add");
+          }, true);
+        }
 
         buildQuick();
         wireKeys();
@@ -12408,6 +12435,150 @@
     .sp-today{ grid-template-columns: 64px 16px minmax(0, 1fr) auto; }
     .sp-today-label{ grid-column: 3; }
     .sp-today-bal{ grid-column: 4; }
+  }
+
+  /* ---------- narrow: three columns become three bands --------------------- */
+  /* Between 1180 and 860 the places rail keeps its column and the act panel
+     drops underneath, full width, as two blocks side by side. */
+  @media (max-width: 1180px){
+    .frame{ grid-template-columns: var(--rail-w) minmax(0, 1fr); align-items: stretch; }
+    .act{
+      display: grid; grid-column: 1 / -1; grid-row: 2;
+      grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+      gap: var(--sp-9);
+      position: static; max-height: none; overflow: visible;
+      border-left: 0; border-top: 1px solid var(--rule-2);
+      padding: var(--sp-8);
+    }
+    #act-quick{ margin-bottom: 0; }
+    .quick{ display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
+  }
+
+  @media (max-width: 860px){
+    .frame{ grid-template-columns: minmax(0, 1fr); }
+    /* What needs doing, then where the money is, then the rail. A reader on a
+       phone opens this to answer a question, not to browse. */
+    .act{ display: grid; order: 1; grid-column: 1; grid-row: auto;
+          grid-template-columns: minmax(0, 1fr); gap: var(--sp-8);
+          border-top: 0; border-bottom: 1px solid var(--rule-2); }
+    .places{
+      display: block; order: 2; position: static;
+      max-height: none; overflow: visible;
+      border-right: 0; border-bottom: 1px solid var(--rule-2);
+      padding: var(--sp-6) 0 var(--sp-6) var(--sp-7);
+      background: var(--paper-2);
+    }
+    .spine-wrap{ order: 3; padding: var(--sp-7) var(--sp-7) var(--sp-13); }
+
+    .places-head{ padding-right: var(--sp-7); }
+    /* Sideways, not wrapped into a wall: four rows of chips would push the
+       first line of the rail below the fold, and the rail is the content. */
+    #places-body{
+      display: flex; gap: var(--sp-4); overflow-x: auto; overflow-y: hidden;
+      padding-bottom: var(--sp-4); scroll-snap-type: x proximity;
+      overscroll-behavior-x: contain;
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 42px), transparent);
+              mask-image: linear-gradient(to right, #000 calc(100% - 42px), transparent);
+    }
+    #places-body .place{
+      flex: 0 0 auto; width: auto; scroll-snap-align: start;
+      grid-template-columns: 3px auto auto; row-gap: 0;
+      background: var(--card); border: 1px solid var(--rule);
+      border-radius: var(--r-pill); padding: var(--sp-3) var(--sp-6) var(--sp-3) var(--sp-4);
+    }
+    #places-body .place.is-on{ border-color: var(--accent); background: var(--accent-l); }
+    #places-body .place-n{ display: none; }        /* the count is desktop detail */
+    .places-total{ margin-right: var(--sp-7); }
+    .places-note{ display: none; }
+
+    .ref-list{
+      display: flex; flex-direction: row; gap: var(--sp-3);
+      margin-top: var(--sp-6); padding: var(--sp-5) var(--sp-7) 0 0;
+      border-top: 1px solid var(--rule);
+      overflow-x: auto; overscroll-behavior-x: contain;
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+              mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+    }
+    .ref-head{ display: none; }
+    .ref-link{ flex: 0 0 auto; width: auto; gap: var(--sp-3);
+      border: 1px solid var(--rule); border-radius: var(--r-pill); }
+    .ref-link kbd{ display: none; }                /* no keyboard to shortcut */
+
+    /* The drawer is the whole screen here, not a panel beside the rail. */
+    .drawer{ width: 100%; inset: var(--bar-h) 0 0 0; }
+    .drawer-body{ padding: var(--sp-6) var(--sp-7) var(--sp-13); }
+    .keycap-strip{ display: none; }
+  }
+
+  /* The act column is the add affordance only while it is on screen. */
+  @media (max-width: 1180px){
+    #btn-fab-add{ display: flex; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
+  }
+
+  @media (max-width: 860px){
+    /* The full form is a button away and is the better form on a phone: it has
+       the date, the tags and the currency this one drops. */
+    #act-quick{ display: none; }
+    .act{ padding: var(--sp-6) var(--sp-7); }
+    .act-item{ padding: var(--sp-4) 0; }
+  }
+  .act-more{
+    margin-top: var(--sp-5); padding: 0; background: none; border: 0;
+    font-size: var(--fs-xs); font-weight: 600; color: var(--accent);
+    text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+  }
+
+  /* ---------- narrow, corrected -------------------------------------------- */
+  @media (max-width: 860px){
+    /* Filter, then the rail, then the duplicate. The act band repeats what the
+       rail already shows in date order, so on the one screen where space is
+       scarce it goes last rather than first. */
+    .places{ order: 1; }
+    .spine-wrap{ order: 2; }
+    .act{ order: 3; border-bottom: 0; border-top: 1px solid var(--rule-2); }
+
+    /* Two, and a way to the rest. The third onward is every .act-item with two
+       .act-item siblings ahead of it. */
+    .act-item + .act-item + .act-item{ display: none; }
+
+    /* The total is written inside the body, so in a horizontal strip it is a
+       member of the row. It leads it, and looks like a total rather than like
+       an account with no name. */
+    #places-body .places-total{
+      order: -1; flex: 0 0 auto; display: flex; flex-direction: column;
+      gap: 0; margin: 0 var(--sp-4) 0 0; padding: var(--sp-3) var(--sp-6);
+      border-top: 0; border-right: 1px solid var(--rule-2);
+      align-items: flex-start; justify-content: center;
+    }
+    #places-body .places-total-v{ font-size: var(--fs-md); }
+  }
+  /* Above the breakpoint the whole list shows, so the offer to see the rest is
+     an offer to see what is already there. */
+  @media (min-width: 861px){ .act-more{ display: none; } }
+
+  /* A phone's first screen belongs to the rail. The explanation of what the
+     rail is can be read once, on something with room for it. */
+  @media (max-width: 620px){
+    .spine-sub{ display: none; }
+    .spine-head-top{ gap: var(--sp-5); }
+    .pager{ width: 100%; }
+    .pager-btn{ flex: 1 1 0; min-width: 0; justify-content: center; }
+    .fold{ grid-template-columns: repeat(2, minmax(0, 1fr)); margin: var(--sp-5) 0; }
+    .fold-cell{ padding: var(--sp-4) var(--sp-5); }
+    .fold-v{ font-size: var(--fs-md); }
+    .rail-controls{ gap: var(--sp-4); }
+    .rail-find{ flex: 1 1 100%; }
+  }
+
+  @media (max-width: 620px){
+    .fold{
+      display: flex; gap: 1px; overflow-x: auto; overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+              mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+    }
+    .fold-cell{ flex: 0 0 auto; min-width: 118px; scroll-snap-align: start; }
+    .fold-cell:last-child:nth-child(odd){ grid-column: auto; }
   }
 </style>
 </body>
