@@ -1,3 +1,38 @@
+/* A layout auditor for the three lab variants.
+ *
+ * WHY IT EXISTS. Two rounds of visible defects were found by the user looking at
+ * the screen, not by me checking. Both times the checking read innerText and ids
+ * — which proves an element EXISTS — and never geometry, which proves it is LAID
+ * OUT. A seven-column chart collapsed to 60px still reports the right seven day
+ * names. This measures boxes instead.
+ *
+ * WHAT IT REPORTS, for the visible surface of whatever tab is open:
+ *   overlaps   two text-bearing boxes that intersect (excluding ancestor pairs
+ *              and anything fixed, which is allowed to sit over things)
+ *   collapsed  a grid whose every track computed to ~0
+ *   overflow   an element outside the parent that should contain it
+ *   sticky     a sticky element whose offset is measured against a scroll
+ *              container it did not mean to be inside
+ *   clipped    text cut off with no ellipsis
+ *
+ * Every rect is clipped to its nearest scrolling ancestor first — without that,
+ * a bounded table reports every scrolled-out row as overlapping whatever sits
+ * below the container.
+ *
+ * HOW TO RUN IT. It is an expression, not a module: fetch it and eval it inside
+ * the page you want to audit. From a driver page on the same origin:
+ *
+ *   const SRC = await fetch("/design-lab/audit-layout.js").then(r => r.text());
+ *   // ...load a variant in an iframe, click a tab, wait for it to settle...
+ *   const report = iframe.contentWindow.eval(SRC);
+ *
+ * Sweep every variant x every tab x {420, 900, 1400, 1900} before calling a
+ * design pass done. It found eleven real defects on its first run.
+ *
+ * KNOWN FALSE POSITIVE. A full-bleed toolbar row (negative margin, matching
+ * padding, so its border reaches the card edge) reports as overflowing its
+ * parent by the margin. Its CONTENT lines up; only its box hangs out.
+ */
 (function(){
   const out = { overlaps: [], collapsed: [], overflow: [], sticky: [], clipped: [] };
   const name = el => el.tagName.toLowerCase() +

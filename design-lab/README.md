@@ -43,3 +43,27 @@ directly with `file://` works too; only the lazy-loaded Chart.js needs network.
 **It overwrites the three HTML files.** That is what you want before any design
 work has started, and never after — re-running it discards a redesign. Edit
 `seed.js` and re-run it first if the seed data needs to change.
+
+## Checking a variant before calling it done
+
+`audit-layout.js` measures geometry rather than reading text, because reading
+text is how three rounds of visible defects got past review: a seven-column
+chart collapsed to 60px still reports the right seven day names.
+
+It reports overlapping text, grids whose tracks computed to zero, elements
+outside their container, sticky offsets measured against the wrong scroll
+container, and text clipped with no ellipsis. It is an expression — fetch it and
+`eval` it inside the page you are auditing; the file's own header has the
+snippet. Sweep **every variant x every tab x {420, 900, 1400, 1900}px**.
+
+Two traps worth knowing before you trust a result:
+
+- **The browser pane runs hidden** (`document.hidden === true`), so
+  `requestAnimationFrame` never fires. Charts do not paint, CSS transitions do
+  not advance, scroll restores do nothing, and a counted-up figure keeps its old
+  value. None of it is a defect and all of it looks like one. Force the work
+  (`chart.draw()`, remove the transition) and read state rather than screenshots.
+- **The three copies should agree.** They read the same seed through the same
+  money code, so any figure that differs between them is a defect in one of
+  them. That comparison is what caught the seed carrying expenses against three
+  accounts it did not have.
