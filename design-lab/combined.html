@@ -226,7 +226,11 @@
   .bento-span-5{ grid-column: span 5; } .bento-span-7{ grid-column: span 7; } .bento-span-12{ grid-column: 1 / -1; }
   @media (max-width: 1100px){ .bento-span-5, .bento-span-7{ grid-column: 1 / -1; } }
   /* L2: charts lead. Two up on a workspace, and they get real height. */
-  .charts-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-7); }
+  /* minmax(0, 1fr), not 1fr: a bare 1fr keeps a floor of its content's
+     min-content width, which is how both of these came to paint 24px past
+     their own column the moment the rail took that much from the page. */
+  .charts-grid{ display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-7); }
+  .charts-grid > *{ min-width: 0; }
   @media (max-width: 1100px){ .charts-grid{ grid-template-columns: 1fr; } }
 
   /* ---------- KPI row ------------------------------------------------------- */
@@ -1813,6 +1817,84 @@
      offer to. Learned the first time it is opened — a panel's headings cannot
      be read until it has rendered. */
   button[data-tab].has-no-list .nav-caret{ display: none; }
+
+  /* ---------- the panel beside the page ------------------------------------ */
+  .rail-drawer{
+    position: fixed; inset: var(--bar-h) 0 0 auto; width: min(880px, 72vw);
+    z-index: 55; background: var(--surface);
+    border-left: 1px solid var(--line-strong); box-shadow: var(--elev-4);
+    display: flex; flex-direction: column;
+    transform: translateX(100%); visibility: hidden;
+    transition: transform var(--dur-slow) var(--ease-out), visibility var(--dur-slow);
+  }
+  .rail-drawer.is-open{ transform: none; visibility: visible; }
+  .rd-bar{
+    flex: 0 0 auto; display: grid;
+    grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-3) var(--sp-6);
+    padding: var(--sp-7) var(--sp-8) 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .rd-kicker{
+    grid-column: 1; margin: 0; font-size: var(--fs-3xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--ink-dim);
+  }
+  .rd-title{ grid-column: 1; margin: 0; font-size: var(--fs-2xl); font-weight: 700; color: var(--ink); }
+  .rd-close{
+    grid-column: 2; grid-row: 1 / span 2; align-self: start;
+    display: inline-flex; align-items: center; gap: var(--sp-4);
+    padding: var(--sp-4) var(--sp-6);
+    background: var(--raised); border: 1px solid var(--line-strong);
+    border-radius: var(--r-md); color: var(--ink-soft);
+    font-size: var(--fs-xs); font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  @media (hover: hover){ .rd-close:hover{ border-color: var(--accent); color: var(--ink); } }
+  .rd-close kbd{
+    padding: 0 4px; border: 1px solid var(--line-strong); border-radius: 3px;
+    font: 600 10px/16px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--ink-dim);
+  }
+  /* The peers, across the top, so moving between them is not close-and-start-again. */
+  .rd-tabs{
+    grid-column: 1 / -1; display: flex; gap: var(--sp-3); flex-wrap: wrap;
+    margin-top: var(--sp-6);
+  }
+  .rd-tab{
+    padding: var(--sp-4) var(--sp-6);
+    background: none; border: 0; border-radius: var(--r-pill);
+    font-size: var(--fs-xs); font-weight: 600; color: var(--ink-dim); cursor: pointer;
+    white-space: nowrap;
+  }
+  @media (hover: hover){ .rd-tab:hover{ background: var(--hover); color: var(--ink); } }
+  .rd-tab.is-on{ background: var(--accent); color: var(--bg); }
+  .rd-body{
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    padding: var(--sp-8);
+  }
+  /* A card written for a twelve-column bento is the only thing in here now. */
+  .rd-body > *{ grid-column: auto !important; width: auto !important; margin: 0 !important; }
+
+  .rail-scrim{
+    position: fixed; inset: var(--bar-h) 0 0 0; z-index: 54;
+    background: rgb(0 0 0 / .5); opacity: 0; pointer-events: none;
+    transition: opacity var(--dur-slow) var(--ease-out);
+  }
+  .rail-scrim.is-open{ opacity: 1; pointer-events: auto; }
+  body.beside-open{ overflow: hidden; }
+
+  @media (max-width: 1000px){
+    .rail-drawer{ width: 100%; inset: var(--bar-h) 0 0 0; }
+  }
+
+  /* ---------- the list is a list of places, not a set of switches ---------- */
+  .nav-contents-n{
+    flex: 0 0 auto; font-size: var(--fs-3xs); font-weight: 700;
+    color: var(--ink-dim); font-variant-numeric: tabular-nums;
+  }
+  /* One dot filled: the section already in front of you. The rest open beside. */
+  .nav-content.is-on .nav-content-dot{ background: var(--accent); border-color: var(--accent); }
+
+  /* The slogan is gone, so the mark and the name set themselves. */
+  .brand h1{ font-size: var(--fs-lg); }
 </style>
 </head>
 
@@ -1824,7 +1906,6 @@
       <div class="mark" aria-hidden="true">₱</div>
       <div>
         <h1>Spendly</h1>
-        <p>Your money, tracked simply</p>
       </div>
     </div>
     <!-- Toolbar figure: the workspace keeps the running total beside its global
@@ -10304,7 +10385,9 @@
 
       function mountCompare(){
         const panel = document.getElementById("tab-dashboard");
-        if (!panel || panel.querySelector("#cmp-card")) return;
+        // getElementById, not panel.querySelector: a card open beside the page is in
+        // the drawer, still in the document, and must not be built a second time.
+        if (!panel || document.getElementById("cmp-card")) return;
         const card = document.createElement("div");
         card.className = "card bento-span-12";
         card.id = "cmp-card";
@@ -10618,7 +10701,7 @@
         if (!panel) return;
         const bento = panel.querySelector(".bento") || panel;
 
-        if (!panel.querySelector("#fc-card")){
+        if (!document.getElementById("fc-card")){
           const card = document.createElement("div");
           card.className = "card bento-span-5";
           card.id = "fc-card";
@@ -10632,7 +10715,7 @@
           card.querySelector("#fc-body").innerHTML = buildForecast();
         }
 
-        if (!panel.querySelector("#out-card")){
+        if (!document.getElementById("out-card")){
           const card = document.createElement("div");
           card.className = "card bento-span-7";
           card.id = "out-card";
@@ -10816,7 +10899,7 @@
 
       function mount(){
         const panel = document.getElementById("tab-settings");
-        if (!panel || panel.querySelector("#pl-card")) return;
+        if (!panel || document.getElementById("pl-card")) return;
         const card = document.createElement("div");
         card.className = "card is-board";
         card.id = "pl-card";
@@ -10969,7 +11052,7 @@
 
       function mount(){
         const panel = document.getElementById("tab-dashboard");
-        if (!panel || panel.querySelector("#wc-card")) return;
+        if (!panel || document.getElementById("wc-card")) return;
         const bento = panel.querySelector(".bento") || panel;
         const card = document.createElement("div");
         card.className = "card is-board bento-span-12";
@@ -11160,7 +11243,7 @@
 
       function mount(){
         const panel = document.getElementById("tab-charts");
-        if (!panel || panel.querySelector("#cp-card")) return;
+        if (!panel || document.getElementById("cp-card")) return;
         const card = document.createElement("div");
         card.className = "card is-board";
         card.id = "cp-card";
@@ -11259,7 +11342,7 @@
 
       function mount(){
         const panel = document.getElementById("tab-history");
-        if (!panel || panel.querySelector("#tg-card")) return;
+        if (!panel || document.getElementById("tg-card")) return;
         const card = document.createElement("div");
         card.className = "card is-board";
         card.id = "tg-card";
@@ -11477,11 +11560,15 @@
         else { el.setAttribute("hidden", ""); el.style.display = "none"; }
       }
       function showAllBlocks(panel){
-        panel.querySelectorAll("[data-rail-block]").forEach(b => setBlock(b, true));
+        panel.querySelectorAll("[data-rail-block]").forEach(b => {
+          if (!homeOf.has(b)) setBlock(b, true);
+        });
       }
-      function defaultOpen(tab, secs){
-        if (tab === "dashboard") return secs.slice(0, 1).map(s => s.id);
-        return secs.map(s => s.id);
+      // What stays in the page: the first headed section, plus every block that
+      // has no heading of its own — the insight strip, the week, the recap. The
+      // rest is reachable, not resident.
+      function glanceOf(secs){
+        return secs.length ? [secs[0].id] : [];
       }
       function currentTab(){
         const b = buttons.find(x => x.classList.contains("active"));
@@ -11500,8 +11587,10 @@
         const secs = sectionsOf(panel);
         secs.forEach(s => s.block.setAttribute("data-rail-block", s.id));
 
-        const chosen = new Set(open[tab] || defaultOpen(tab, secs));
-        secs.forEach(s => setBlock(s.block, chosen.has(s.id)));
+        const chosen = new Set(glanceOf(secs));
+        // A section that is currently open beside the page is not in the page,
+        // and must not be dragged back into it by a re-render.
+        secs.forEach(s => { if (!homeOf.has(s.block)) setBlock(s.block, chosen.has(s.id)); });
 
         const sig = tab + "|" + secs.map(s => s.id + ":" + s.inside.length).join("␟") +
           "||" + [...chosen].sort().join(",");
@@ -11535,9 +11624,7 @@
         head.className = "nav-contents-k";
         head.innerHTML =
           '<span class="nav-contents-label">On this page</span>' +
-          '<button type="button" class="nav-all" data-all="' +
-            (chosen.size === secs.length ? "none" : "all") + '">' +
-            (chosen.size === secs.length ? "Hide all" : "Show all") + '</button>';
+          '<span class="nav-contents-n">' + secs.length + '</span>';
         box.appendChild(head);
 
         secs.forEach(s => {
@@ -11587,15 +11674,6 @@
         paintCarets();
 
         box.addEventListener("click", ev => {
-          const all = ev.target.closest("[data-all]");
-          if (all){
-            open[tab] = all.dataset.all === "all" ? secs.map(s => s.id) : [];
-            save(); signature = ""; buildContents(false);
-            showToast(all.dataset.all === "all"
-              ? "Everything on this page is showing."
-              : "Cleared the page. Switch a section back on from the rail.");
-            return;
-          }
           const jump = ev.target.closest("[data-jump]");
           if (jump){
             const t = document.getElementById(jump.dataset.jump);
@@ -11604,33 +11682,15 @@
           }
           const hit = ev.target.closest("[data-sec]");
           if (!hit) return;
-          const id = hit.dataset.sec;
-          const now = new Set(open[tab] || defaultOpen(tab, secs));
-          const turningOn = !now.has(id);
-          turningOn ? now.add(id) : now.delete(id);
-          open[tab] = [...now];
-          save();
-
-          // The card itself, and this row's own sub-list, move now. The list is
-          // not rebuilt, so nothing flickers and the fold can be seen to fold.
-          const s = secs.find(x => x.id === id);
-          if (s){
-            setBlock(s.block, turningOn);
-            hit.classList.toggle("is-on", turningOn);
-            hit.setAttribute("aria-pressed", turningOn ? "true" : "false");
-            const subs = hit.parentElement.querySelector(".nav-subs");
-            if (subs) subs.classList.toggle("is-open", turningOn);
-            if (turningOn && s.head)
-              s.head.scrollIntoView({ block: "start", behavior: still() ? "auto" : "smooth" });
+          const s = secs.find(x => x.id === hit.dataset.sec);
+          if (!s) return;
+          // The one already in front of you is a place on this page; the rest
+          // open beside it.
+          if (chosen.has(s.id)){
+            if (s.head) s.head.scrollIntoView({ block: "start", behavior: still() ? "auto" : "smooth" });
+            return;
           }
-          signature = "";
-          const allBtn = box.querySelector("[data-all]");
-          const n = (open[tab] || []).length;
-          if (allBtn){
-            allBtn.dataset.all = n === secs.length ? "none" : "all";
-            allBtn.textContent = n === secs.length ? "Hide all" : "Show all";
-          }
-          spy();
+          openBeside(s, secs.filter(x => !chosen.has(x.id)));
         });
         spy();
       }
@@ -11726,6 +11786,103 @@
           }));
       }
 
+      /* ---- the panel beside the page ------------------------------------------
+         A section is moved into it and moved back afterwards, rather than being
+         copied: the app renders into these blocks by id, and a copy would go
+         stale the moment anything was added. Where each one came from is
+         remembered so it goes back exactly, not merely somewhere plausible. */
+      const homeOf = new Map();
+      let besideNow = null;
+
+      const drawer = document.createElement("aside");
+      drawer.className = "rail-drawer";
+      drawer.id = "rail-drawer";
+      drawer.setAttribute("role", "dialog");
+      drawer.setAttribute("aria-modal", "true");
+      drawer.setAttribute("aria-labelledby", "rd-title");
+      drawer.innerHTML =
+        '<div class="rd-bar">' +
+          '<p class="rd-kicker">The rest of this page</p>' +
+          '<h2 class="rd-title" id="rd-title"></h2>' +
+          '<button type="button" class="rd-close" id="rd-close">' +
+            'Back to the page <kbd>esc</kbd></button>' +
+          '<nav class="rd-tabs" id="rd-tabs" aria-label="The other sections"></nav>' +
+        '</div>' +
+        '<div class="rd-body" id="rd-body"></div>';
+      const scrim = document.createElement("div");
+      scrim.className = "rail-scrim";
+      scrim.id = "rail-scrim";
+      document.body.appendChild(scrim);
+      document.body.appendChild(drawer);
+
+      let lastFocus = null;
+      function openBeside(sec, peers){
+        const body = document.getElementById("rd-body");
+        if (besideNow && besideNow.block !== sec.block) putBack();
+        if (!homeOf.has(sec.block))
+          homeOf.set(sec.block, { parent: sec.block.parentElement, next: sec.block.nextElementSibling });
+        if (!besideNow) lastFocus = document.activeElement;
+
+        setBlock(sec.block, true);
+        body.appendChild(sec.block);
+        besideNow = sec;
+
+        document.getElementById("rd-title").textContent = sec.head.textContent.trim();
+        const tabs = document.getElementById("rd-tabs");
+        tabs.innerHTML = peers.map(p =>
+          '<button type="button" class="rd-tab' + (p.id === sec.id ? " is-on" : "") +
+          '" data-beside="' + escapeHtml(p.id) + '">' +
+          escapeHtml(p.head.textContent.trim()) + '</button>').join("");
+        tabs.onclick = ev => {
+          const b = ev.target.closest("[data-beside]");
+          if (!b) return;
+          const next = peers.find(p => p.id === b.dataset.beside);
+          if (next) openBeside(next, peers);
+        };
+
+        drawer.classList.add("is-open");
+        scrim.classList.add("is-open");
+        document.body.classList.add("beside-open");
+        body.scrollTop = 0;
+        document.getElementById("rd-close").focus();
+      }
+      function putBack(){
+        if (!besideNow) return;
+        const home = homeOf.get(besideNow.block);
+        if (home && home.parent){
+          if (home.next && home.next.parentElement === home.parent)
+            home.parent.insertBefore(besideNow.block, home.next);
+          else home.parent.appendChild(besideNow.block);
+        }
+        setBlock(besideNow.block, false);
+        homeOf.delete(besideNow.block);
+        besideNow = null;
+      }
+      function closeBeside(){
+        if (!besideNow) return;
+        putBack();
+        drawer.classList.remove("is-open");
+        scrim.classList.remove("is-open");
+        document.body.classList.remove("beside-open");
+        if (lastFocus && document.contains(lastFocus)) lastFocus.focus({ preventScroll: true });
+      }
+      document.getElementById("rd-close").addEventListener("click", closeBeside);
+      scrim.addEventListener("click", closeBeside);
+      document.addEventListener("keydown", e => {
+        if (e.key === "Escape" && document.body.classList.contains("beside-open")){
+          e.preventDefault(); e.stopPropagation(); closeBeside();
+        }
+      }, true);
+      drawer.addEventListener("keydown", e => {
+        if (e.key !== "Tab") return;
+        const f = [...drawer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+          .filter(el => el.offsetParent !== null && !el.disabled);
+        if (!f.length) return;
+        const first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first){ last.focus(); e.preventDefault(); }
+        else if (!e.shiftKey && document.activeElement === last){ first.focus(); e.preventDefault(); }
+      });
+
       /* ---- the way back -------------------------------------------------------
          Shown when there is somewhere to go. A permanently disabled control
          saying "nothing yet" is a row of a narrow column spent on nothing. */
@@ -11771,6 +11928,7 @@
         if (ignoreNext) ignoreNext = false;
         else { trail.push(last); if (trail.length > 24) trail.shift(); }
         last = active.dataset.tab;
+        closeBeside();       // a section of the page you just left is not this page
         paintBack();
         signature = "";
         // Folds open only if this destination's list was left open, or was just
