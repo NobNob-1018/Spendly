@@ -1252,6 +1252,26 @@
   .rate-age{ font-size: var(--fs-3xs); color: var(--ink-faint); }
   .rate-age.is-stale{ color: var(--warn); }
 
+
+  .sync-state{ display:grid; grid-template-columns: 10px auto 1fr; align-items:center;
+    gap: var(--sp-5); padding: var(--sp-5) var(--sp-6); margin-bottom: var(--sp-6);
+    border:1px solid var(--line); border-radius: var(--r-md); background: var(--sunken); }
+  .sync-dot{ width:8px; height:8px; border-radius:50%; background: var(--ink-faint); }
+  .sync-state.is-on .sync-dot{ background: var(--positive); }
+  .sync-state.is-off .sync-dot{ background: var(--warn); }
+  .sync-state-k{ font-size: var(--fs-2xs); font-weight:700; }
+  .sync-state-s{ font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .ct-chev{ margin-right: var(--sp-3); }
+  .ct-count{ margin-left: var(--sp-4); padding: 0 var(--sp-4); border-radius: var(--r-pill);
+    background: var(--sunken); font-size: var(--fs-3xs); color: var(--ink-dim);
+    font-variant-numeric: tabular-nums; }
+  .onboard-step.is-next{ background: var(--sunken); border-radius: var(--r-md); }
+  .onboard-next{ margin-left: var(--sp-4); padding: 0 var(--sp-4); border-radius: var(--r-pill);
+    background: var(--accent); color: var(--on-accent); font-size: 9px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.06em; vertical-align: 1px; }
+  #tab-add[data-mode="income"] .amount-wrap span{ color: var(--positive); }
+  #tab-add[data-mode="expense"] .amount-wrap span{ color: var(--negative); }
+
 </style>
 </head>
 
@@ -3287,42 +3307,33 @@
     return !btn || getComputedStyle(btn).display !== "none";
   }
 
+  const _tabScroll = {};
   function activateTab(tabName){
     if (!tabIsAvailable(tabName)) tabName = "dashboard";
-    tabButtons.forEach(b=>{
+    // Remember where the outgoing tab was left before anything moves.
+    const leaving = currentTabName();
+    if (leaving && leaving !== tabName) _tabScroll[leaving] = window.scrollY;
+
+    tabButtons.forEach(b => {
       const on = b.dataset.tab === tabName;
       b.classList.toggle("active", on);
-      // The class is a paint instruction; aria-current is what actually reports which
-      // destination you are on.
       if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     });
-    // Add is reached from the floating button rather than the tab bar, so that button
-    // carries the current-location state for it. Without this, arriving at Add leaves
-    // every nav item unselected and aria-current on nothing at all.
     const fab = document.getElementById("btn-fab-add");
     if (fab){
       const onAdd = tabName === "add";
       fab.classList.toggle("is-current", onAdd);
       if (onAdd) fab.setAttribute("aria-current", "page"); else fab.removeAttribute("aria-current");
     }
-    // The hero and the backup reminder live outside the tab panels, so they were
-    // restating themselves at full size on all six tabs. Both now scale to how much
-     // of your attention this tab actually wants.
-    const onDashboard = tabName === "dashboard";
     const hero = document.getElementById("total-money-bar");
-    if (hero) hero.classList.toggle("is-compact", !onDashboard);
+    if (hero) hero.classList.toggle("is-compact", tabName !== "dashboard");
 
-    document.querySelectorAll(".tab-panel").forEach(p=>{ p.style.display="none"; p.classList.remove("is-active"); });
+    document.querySelectorAll(".tab-panel").forEach(p => { p.style.display = "none"; p.classList.remove("is-active"); });
     const panel = document.getElementById("tab-" + tabName);
     panel.style.display = "";
-    // The entrance stagger deliberately does NOT replay here. Tab switching is one of
-    // the highest-frequency actions in the app, and re-running a 40/90/140ms cascade
-    // on every switch put ~140ms of dead time in front of content the user already
-    // asked for. The class is set once on first paint and stays.
     panel.classList.add("is-active");
+
     const sidePanel = document.getElementById("side-panel");
-    // The panel used to hide on four of six tabs, leaving a dead column on wide
-    // screens. It now always has something to say about the tab you are on.
     if (sidePanel) sidePanel.classList.remove("side-panel-hidden");
     renderSideContext(tabName);
     if (tabName === "history"){ renderHistory(); renderIncomeHistory(); }
@@ -3335,7 +3346,26 @@
       const amt = document.getElementById("in-amount");
       if (amt) amt.focus();
     }
+
+    // Put the arriving tab back where it was left. Every tab was snapping to the
+    // top, so returning to a list you had scrolled through cost you the scroll.
+    const back = _tabScroll[tabName];
+    const place = () => {
+      if (back != null && back > 0 && document.documentElement.scrollHeight > back + window.innerHeight * 0.5){
+        window.scrollTo({ top: back, behavior: "auto" });
+      } else if (leaving && leaving !== tabName){
+        window.scrollTo({ top: 0, behavior: "auto" });
+      }
+    };
+    void panel.offsetHeight;   // force layout so the new panel's height is known
+    place();
+    requestAnimationFrame(() => {
+      place();
+      const crumb = document.getElementById("ws-crumb");
+      if (crumb) crumb.textContent = tabName.charAt(0).toUpperCase() + tabName.slice(1);
+    });
   }
+
   tabButtons.forEach(btn=>{
     btn.addEventListener("click", ()=>{
       if (!btn.dataset.tab) return; // e.g. the backup/restore icon, which opens an overlay instead
@@ -3670,37 +3700,40 @@
   // Actions the search box can perform, not just records it can find. Keywords
   // exist so "backup" reaches Export and "graph" reaches Charts.
   function paletteCommands(){
+    const go = t => () => { closeSearchOverlay(); activateTab(t); };
+    const press = id => () => { closeSearchOverlay(); const b = document.getElementById(id); if (b) b.click(); };
+    // The views and comparisons this surface added are commands too; leaving them
+    // out would mean the command list knows less about the app than the app does.
     return [
-      { label:"Add an expense", keys:"add expense spend new entry log",
-        run:()=>{ closeSearchOverlay(); const b=document.getElementById("btn-fab-add"); if(b) b.click();
-                  const m=document.querySelector('#entry-mode-toggle button[data-mode="expense"]'); if(m) m.click(); } },
-      { label:"Add income or a payslip", keys:"add income salary payslip earn new",
-        run:()=>{ closeSearchOverlay(); const b=document.getElementById("btn-fab-add"); if(b) b.click();
-                  const m=document.querySelector('#entry-mode-toggle button[data-mode="income"]'); if(m) m.click(); } },
-      { label:"Go to Dashboard", keys:"dashboard home overview total money",
-        run:()=>{ closeSearchOverlay(); activateTab("dashboard"); } },
-      { label:"Go to Charts", keys:"charts graph trends spending chart",
-        run:()=>{ closeSearchOverlay(); activateTab("charts"); } },
-      { label:"Go to History", keys:"history entries list expenses income edit",
-        run:()=>{ closeSearchOverlay(); activateTab("history"); } },
-      { label:"Go to Savings", keys:"savings accounts bank interest balance",
-        run:()=>{ closeSearchOverlay(); activateTab("savings"); } },
-      { label:"Go to Loans & Investments", keys:"loans lent borrowed investments invest",
-        run:()=>{ closeSearchOverlay(); activateTab("loans"); } },
-      { label:"Go to Settings", keys:"settings preferences budget category density",
-        run:()=>{ closeSearchOverlay(); activateTab("settings"); } },
-      { label:"Set a budget", keys:"budget limit cap monthly category",
-        run:()=>{ closeSearchOverlay(); activateTab("settings");
-                  const b=document.querySelector('#settings-nav [data-settings="budgeting"]'); if(b) b.click(); } },
-      { label:"Back up my data (JSON)", keys:"backup export save json download data",
-        run:()=>{ closeSearchOverlay(); const b=document.getElementById("btn-export-json"); if(b) b.click(); } },
-      { label:"Export a spreadsheet (CSV)", keys:"csv spreadsheet excel export sheet",
-        run:()=>{ closeSearchOverlay(); const b=document.getElementById("btn-export-csv"); if(b) b.click(); } },
-      { label:"Switch table density", keys:"density compact comfortable spacing rows",
-        run:()=>{ closeSearchOverlay(); activateTab("settings");
-                  const b=document.querySelector('#settings-nav [data-settings="appearance"]'); if(b) b.click(); } }
+      { label: "Add an expense", keys: "add expense spend new entry log",
+        run: () => { closeSearchOverlay(); const b = document.getElementById("btn-fab-add"); if (b) b.click();
+                     const m = document.querySelector('#entry-mode-toggle button[data-mode="expense"]'); if (m) m.click(); } },
+      { label: "Add income or a payslip", keys: "add income salary payslip earn new",
+        run: () => { closeSearchOverlay(); const b = document.getElementById("btn-fab-add"); if (b) b.click();
+                     const m = document.querySelector('#entry-mode-toggle button[data-mode="income"]'); if (m) m.click(); } },
+      { label: "Go to Dashboard", keys: "dashboard home overview total money", run: go("dashboard") },
+      { label: "Go to Charts", keys: "charts graph trends spending chart", run: go("charts") },
+      { label: "Go to History", keys: "history entries list expenses income edit", run: go("history") },
+      { label: "Go to Savings", keys: "savings accounts bank interest balance", run: go("savings") },
+      { label: "Go to Loans & Investments", keys: "loans lent borrowed investments invest", run: go("loans") },
+      { label: "Go to Settings", keys: "settings preferences budget category density", run: go("settings") },
+      { label: "Compare two periods", keys: "compare period versus vs against month",
+        run: () => { closeSearchOverlay(); activateTab("charts");
+                     const b = document.getElementById("btn-compare"); if (b) b.click(); } },
+      { label: "Save this view", keys: "view save preset filters saved",
+        run: () => { closeSearchOverlay(); activateTab("history");
+                     const b = document.getElementById("btn-save-view"); if (b) b.click(); } },
+      { label: "Set a budget", keys: "budget limit cap monthly category",
+        run: () => { closeSearchOverlay(); activateTab("settings");
+                     const b = document.querySelector('#settings-nav [data-settings="budgeting"]'); if (b) b.click(); } },
+      { label: "Back up my data (JSON)", keys: "backup export save json download data", run: press("btn-export-json") },
+      { label: "Export a spreadsheet (CSV)", keys: "csv spreadsheet excel export sheet", run: press("btn-export-csv") },
+      { label: "Switch table density", keys: "density compact comfortable spacing rows",
+        run: () => { closeSearchOverlay(); activateTab("settings");
+                     const b = document.querySelector('#settings-nav [data-settings="appearance"]'); if (b) b.click(); } }
     ];
   }
+
 
   // A missing field is a non-match, not a crash. Guarding the read is the right fix
   // rather than backfilling a value on load: an absent category should stay absent,
@@ -3865,15 +3898,13 @@
     document.getElementById("in-desc-label").textContent = copy.descLabel;
     document.getElementById("in-desc").placeholder = copy.descPlaceholder;
     document.getElementById("in-recurring-label").textContent = copy.recurringLabel;
-    document.getElementById("btn-add").textContent = copy.buttonLabel;
-    document.getElementById("manage-categories-card").style.display = mode === "income" ? "none" : "";
-    document.getElementById("in-bank-label").textContent = mode === "income" ? "Deposit into which account?" : "Pay from which account?";
-    document.getElementById("in-bank-hint").textContent = mode === "income"
-      ? "Required — this amount is deposited into the account you pick, and your Total Money updates right away."
-      : "Required — this amount is withdrawn from the account you pick, and your Total Money updates right away.";
-    document.getElementById("add-hint").textContent = "";
+    document.getElementById("btn-add-entry").textContent = copy.buttonLabel;
+    const panel = document.getElementById("tab-add");
+    if (panel) panel.dataset.mode = mode;
     renderCategoryOptions();
+    scheduleDraftSave();
   }
+
 
   document.querySelectorAll("#entry-mode-toggle button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -4483,49 +4514,48 @@
     const el = document.getElementById("welcome-card");
     if (!el) return;
     const dismissed = localStorage.getItem(WELCOME_DISMISSED_KEY);
-    // Each step is derived from the data itself, so it can never disagree with
-    // what the user has actually done — including on a restored backup.
     const steps = [
-      { done: savings.length > 0,
-        title: "Add where you keep money",
-        sub: "A bank, an e-wallet, or cash. Balances come from here.",
-        cta: "Add an account", go: ()=> activateTab("savings") },
-      { done: Object.keys(budgets).length > 0,
-        title: "Set a monthly budget",
-        sub: "Pick one category to start. You can add more later.",
-        cta: "Set a budget", go: ()=> activateTab("settings") },
-      { done: expenses.length > 0 || incomes.length > 0,
-        title: "Log your first entry",
-        sub: "An expense or a payslip — the charts start from here.",
-        cta: "Add an entry", go: ()=> { const b=document.getElementById("btn-fab-add"); if (b) b.click(); } }
+      { done: savings.length > 0, title: "Add where you keep money",
+        sub: "A bank, an e-wallet, or cash. Every balance in the app is derived from these.",
+        cta: "Add an account", go: () => activateTab("savings") },
+      { done: Object.keys(budgets).length > 0, title: "Set a monthly budget",
+        sub: "One category is enough to start. Pace and projections need a limit to measure against.",
+        cta: "Set a budget", go: () => activateTab("settings") },
+      { done: expenses.length > 0 || incomes.length > 0, title: "Log your first entry",
+        sub: "An expense or a payslip. Trends, outliers and the forecast all start from here.",
+        cta: "Add an entry", go: () => { const b = document.getElementById("btn-fab-add"); if (b) b.click(); } }
     ];
-    const doneCount = steps.filter(s=>s.done).length;
-    // Keep guiding until setup is finished, not only while the app is empty.
+    const doneCount = steps.filter(s => s.done).length;
     el.style.display = (doneCount < steps.length && !dismissed) ? "" : "none";
     if (el.style.display === "none") return;
 
     const countEl = document.getElementById("onboard-count");
-    if (countEl) countEl.textContent = `${doneCount}/${steps.length}`;
+    if (countEl) countEl.textContent = doneCount + "/" + steps.length;
     const ring = document.getElementById("onboard-ring");
-    if (ring){
-      const circumference = 119.4;
-      ring.style.strokeDashoffset = String(circumference * (1 - doneCount / steps.length));
-    }
+    if (ring) ring.style.strokeDashoffset = String(119.4 * (1 - doneCount / steps.length));
+
     const list = document.getElementById("onboard-steps");
     if (!list) return;
-    list.innerHTML = steps.map((st,i)=>`
-      <li class="onboard-step ${st.done ? "is-done" : ""}">
-        <span class="onboard-tick">${st.done ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="13" height="13"><path d="M20 6 9 17l-5-5"/></svg>` : (i+1)}</span>
-        <span class="onboard-step-body">
-          <span class="onboard-step-title">${escapeHtml(st.title)}</span>
-          <span class="onboard-step-sub">${escapeHtml(st.sub)}</span>
-        </span>
-        ${st.done ? "" : `<button class="btn btn-ghost btn-sm" data-onboard="${i}">${escapeHtml(st.cta)}</button>`}
-      </li>`).join("");
-    list.querySelectorAll("[data-onboard]").forEach(btn=>{
-      btn.addEventListener("click", ()=> steps[parseInt(btn.dataset.onboard,10)].go());
+    // Numbered, with the next step marked rather than merely not-done: three
+    // identical outstanding rows leaves the reader to pick where to start.
+    const nextIdx = steps.findIndex(s => !s.done);
+    list.innerHTML = steps.map((st, i) =>
+      '<li class="onboard-step' + (st.done ? " is-done" : "") + (i === nextIdx ? " is-next" : "") + '">' +
+        '<span class="onboard-tick">' + (st.done
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="13" height="13"><path d="M20 6 9 17l-5-5"/></svg>'
+          : (i + 1)) + '</span>' +
+        '<span class="onboard-step-body">' +
+          '<span class="onboard-step-title">' + escapeHtml(st.title) +
+            (i === nextIdx ? '<span class="onboard-next">next</span>' : "") + '</span>' +
+          '<span class="onboard-step-sub">' + escapeHtml(st.sub) + '</span>' +
+        '</span>' +
+        (st.done ? "" : '<button class="btn btn-ghost btn-sm" data-onboard="' + i + '">' + escapeHtml(st.cta) + '</button>') +
+      '</li>').join("");
+    list.querySelectorAll("[data-onboard]").forEach(btn => {
+      btn.addEventListener("click", () => steps[parseInt(btn.dataset.onboard, 10)].go());
     });
   }
+
   document.getElementById("btn-dismiss-welcome").addEventListener("click", ()=>{
     localStorage.setItem(WELCOME_DISMISSED_KEY, "1");
     updateWelcomeCard();
@@ -6829,21 +6859,27 @@
     body.classList.add("collapsible-body");
     const prefKey = "collapsed:" + bodyId;
     let collapsed = uiPrefs[prefKey] !== undefined ? uiPrefs[prefKey] : defaultCollapsed;
+    const countInside = () => body.querySelectorAll("tbody tr[data-id], [data-id].savings-account, .bg-card, .recurring-item").length;
+    const paint = () => {
+      const n = countInside();
+      btn.innerHTML = '<span class="ct-chev" aria-hidden="true">' + (collapsed ? "\u25B8" : "\u25BE") + '</span>' +
+        (collapsed ? "Expand" : "Collapse") +
+        (n ? '<span class="ct-count">' + n + '</span>' : "");
+      btn.setAttribute("aria-expanded", String(!collapsed));
+    };
     body.classList.toggle("is-collapsed", collapsed);
-    btn.textContent = collapsed ? "▸ Expand" : "▾ Collapse";
-    // The arrow glyph is decoration; aria-expanded is what actually reports the state,
-    // and aria-controls names the region the button governs.
     if (!body.id) body.id = bodyId;
     btn.setAttribute("aria-controls", bodyId);
-    btn.setAttribute("aria-expanded", String(!collapsed));
-    btn.addEventListener("click", ()=>{
+    paint();
+    btn.addEventListener("click", () => {
       collapsed = !collapsed;
       body.classList.toggle("is-collapsed", collapsed);
-      btn.textContent = collapsed ? "▸ Expand" : "▾ Collapse";
-      btn.setAttribute("aria-expanded", String(!collapsed));
+      paint();
       setUiPref(prefKey, collapsed);
     });
+    setTimeout(paint, 0);
   }
+
   // Defaults below apply only on first visit — all of these now start collapsed
   // so the app opens compact, and stay however the user last left them.
   /* Collapsed only when there is nothing inside. A section holding two outstanding
@@ -8689,38 +8725,43 @@
     const wrap = document.getElementById("sync-body");
     if (!wrap) return;
     const tok = ghTok();
-    const at = (()=>{ try{ return localStorage.getItem(GH_SYNCED_AT) || ""; }catch(e){ return ""; } })();
+    const at = (() => { try{ return localStorage.getItem(GH_SYNCED_AT) || ""; }catch(e){ return ""; } })();
     if (!tok){
-      wrap.innerHTML = `
-        <p class="hint">Your records go to <strong>one private gist on your own GitHub account</strong> —
-        no server of mine, nothing public. The token stays on this device and is deliberately
-        left out of every backup, so a file you hand to someone carries no credential.</p>
-        <p class="hint">Make a token at <strong>github.com/settings/tokens</strong> with
-        <strong>gist</strong> access and nothing else, then paste it here.</p>
-        <input class="sync-tok" id="gh-token-input" type="password" autocomplete="off" aria-label="GitHub personal access token"
-               placeholder="ghp_… or github_pat_…">
-        <div class="form-actions"><button class="btn btn-primary btn-sm" id="btn-gh-save">Save token</button></div>
-        <p class="hint" id="gh-msg" role="status" aria-live="polite"></p>`;
+      wrap.innerHTML =
+        '<div class="sync-state is-off"><span class="sync-dot"></span>' +
+          '<span class="sync-state-k">Not set up</span>' +
+          '<span class="sync-state-s">This device keeps its own copy only</span></div>' +
+        '<p class="hint">Your records go to <strong>one private gist on your own GitHub account</strong> \u2014 no server of mine, nothing public. The token stays on this device and is deliberately left out of every backup, so a file you hand to someone carries no credential.</p>' +
+        '<p class="hint">Make a token at <strong>github.com/settings/tokens</strong> with <strong>gist</strong> access and nothing else, then paste it here.</p>' +
+        '<input class="sync-tok" id="gh-token-input" type="password" autocomplete="off" aria-label="GitHub personal access token" placeholder="ghp_\u2026 or github_pat_\u2026">' +
+        '<div class="form-actions"><button class="btn btn-primary btn-sm" id="btn-gh-save">Save token</button></div>' +
+        '<p class="hint" id="gh-msg" role="status" aria-live="polite"></p>';
     } else {
-      wrap.innerHTML = `
-        <p class="hint">Set up. Sync reads what your other device left, merges it with this one,
-        and writes the result back. <strong>An entry edited in two places keeps the later edit;
-        one deleted anywhere stays deleted.</strong> Safe to press on either device, in any order.</p>
-        <div class="form-actions">
-          <button class="btn btn-primary btn-sm" id="btn-gh-sync">Sync now</button>
-          <button class="btn btn-ghost btn-sm" id="btn-gh-find">Find it again</button>
-          <button class="btn-danger-text" id="btn-gh-forget">Forget this token</button>
-        </div>
-        <p class="hint" id="gh-msg" role="status" aria-live="polite">Token …${escapeHtml(tok.slice(-4))}${
-          gistId() ? " · gist " + escapeHtml(gistId().slice(0,8)) : " · not linked yet"}${
-          at ? " · last synced " + escapeHtml(daysAgoLabel(at.slice(0,10), false)) : ""}</p>`;
+      wrap.innerHTML =
+        '<div class="sync-state is-on"><span class="sync-dot"></span>' +
+          '<span class="sync-state-k">Set up</span>' +
+          '<span class="sync-state-s">' + (at ? "last synced " + escapeHtml(daysAgoLabel(at.slice(0, 10), false)) : "not synced yet") + '</span></div>' +
+        '<div class="fig-row">' +
+          '<div class="fig-cell"><span class="fig-k">Token</span><span class="fig-v">\u2026' + escapeHtml(tok.slice(-4)) + '</span><span class="fig-sub">on this device only</span></div>' +
+          '<div class="fig-cell"><span class="fig-k">Gist</span><span class="fig-v">' +
+            (gistId() ? escapeHtml(gistId().slice(0, 8)) : "\u2014") + '</span><span class="fig-sub">' +
+            (gistId() ? "private, your account" : "not linked yet") + '</span></div>' +
+          '<div class="fig-cell"><span class="fig-k">In backups</span><span class="fig-v">Never</span><span class="fig-sub">by design</span></div>' +
+        '</div>' +
+        '<p class="hint">Sync reads what your other device left, merges it with this one, and writes the result back. <strong>An entry edited in two places keeps the later edit; one deleted anywhere stays deleted.</strong> Safe to press on either device, in any order.</p>' +
+        '<div class="form-actions">' +
+          '<button class="btn btn-primary btn-sm" id="btn-gh-sync">Sync now</button>' +
+          '<button class="btn btn-ghost btn-sm" id="btn-gh-find">Find it again</button>' +
+          '<button class="btn-danger-text" id="btn-gh-forget">Forget this token</button>' +
+        '</div>' +
+        '<p class="hint" id="gh-msg" role="status" aria-live="polite"></p>';
     }
 
     const msg = document.getElementById("gh-msg");
     const say = t => { if (msg) msg.textContent = t; };
 
     const saveBtn = document.getElementById("btn-gh-save");
-    if (saveBtn) saveBtn.addEventListener("click", ()=>{
+    if (saveBtn) saveBtn.addEventListener("click", () => {
       const box = document.getElementById("gh-token-input");
       const v = (box.value || "").trim();
       if (!v){ say("Paste the token first."); return; }
@@ -8731,36 +8772,37 @@
     });
 
     const syncBtn = document.getElementById("btn-gh-sync");
-    if (syncBtn) syncBtn.addEventListener("click", async ()=>{
+    if (syncBtn) syncBtn.addEventListener("click", async () => {
       syncBtn.disabled = true;
       try{
         const res = await syncNow(say);
         renderSyncPanel();
-        showToast(res.pulled ? `Synced — ${res.pulled} new record(s) came in.` : "Synced. Both devices match.");
+        showToast(res.pulled ? "Synced \u2014 " + res.pulled + " new record(s) came in." : "Synced. Both devices match.");
       }catch(err){
         say(err.message);
-        showToast("Sync failed — see Settings for why.");
+        showToast("Sync failed \u2014 see Settings for why.");
       }finally{ syncBtn.disabled = false; }
     });
 
     const findBtn = document.getElementById("btn-gh-find");
-    if (findBtn) findBtn.addEventListener("click", async ()=>{
+    if (findBtn) findBtn.addEventListener("click", async () => {
       try{
         localStorage.removeItem(GH_GIST_KEY);
-        say("Looking…");
+        say("Looking\u2026");
         const id = await findGist();
         if (id){ localStorage.setItem(GH_GIST_KEY, id); renderSyncPanel(); showToast("Found it. Press Sync now."); }
-        else { say("Nothing found on that account yet — press Sync now to start one."); }
+        else { say("Nothing found on that account yet \u2014 press Sync now to start one."); }
       }catch(err){ say(err.message); }
     });
 
     const forgetBtn = document.getElementById("btn-gh-forget");
-    if (forgetBtn) forgetBtn.addEventListener("click", ()=>{
-      showUndoToast("Token forgotten on this device.", ()=>{});
+    if (forgetBtn) forgetBtn.addEventListener("click", () => {
+      showUndoToast("Token forgotten on this device.", () => {});
       try{ localStorage.removeItem(GH_TOKEN_KEY); localStorage.removeItem(GH_GIST_KEY); }catch(e){}
       renderSyncPanel();
     });
   }
+
 
   /* ---------- Export / Import ---------- */
 

@@ -1160,6 +1160,11 @@
     font-size: var(--fs-sm); font-variant-numeric: tabular-nums; vertical-align: baseline; }
   .rate-warn{ color: var(--warn); }
 
+
+  #sync-body .note-line strong{ font-variant-numeric: tabular-nums; }
+  #tab-add[data-mode="income"] .amount-wrap span{ color: var(--positive); }
+  #tab-add[data-mode="expense"] .amount-wrap span{ color: var(--negative); }
+
 </style>
 </head>
 
@@ -3182,42 +3187,33 @@
     return !btn || getComputedStyle(btn).display !== "none";
   }
 
+  const _tabScroll = {};
   function activateTab(tabName){
     if (!tabIsAvailable(tabName)) tabName = "dashboard";
-    tabButtons.forEach(b=>{
+    // Remember where the outgoing tab was left before anything moves.
+    const leaving = currentTabName();
+    if (leaving && leaving !== tabName) _tabScroll[leaving] = window.scrollY;
+
+    tabButtons.forEach(b => {
       const on = b.dataset.tab === tabName;
       b.classList.toggle("active", on);
-      // The class is a paint instruction; aria-current is what actually reports which
-      // destination you are on.
       if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     });
-    // Add is reached from the floating button rather than the tab bar, so that button
-    // carries the current-location state for it. Without this, arriving at Add leaves
-    // every nav item unselected and aria-current on nothing at all.
     const fab = document.getElementById("btn-fab-add");
     if (fab){
       const onAdd = tabName === "add";
       fab.classList.toggle("is-current", onAdd);
       if (onAdd) fab.setAttribute("aria-current", "page"); else fab.removeAttribute("aria-current");
     }
-    // The hero and the backup reminder live outside the tab panels, so they were
-    // restating themselves at full size on all six tabs. Both now scale to how much
-     // of your attention this tab actually wants.
-    const onDashboard = tabName === "dashboard";
     const hero = document.getElementById("total-money-bar");
-    if (hero) hero.classList.toggle("is-compact", !onDashboard);
+    if (hero) hero.classList.toggle("is-compact", tabName !== "dashboard");
 
-    document.querySelectorAll(".tab-panel").forEach(p=>{ p.style.display="none"; p.classList.remove("is-active"); });
+    document.querySelectorAll(".tab-panel").forEach(p => { p.style.display = "none"; p.classList.remove("is-active"); });
     const panel = document.getElementById("tab-" + tabName);
     panel.style.display = "";
-    // The entrance stagger deliberately does NOT replay here. Tab switching is one of
-    // the highest-frequency actions in the app, and re-running a 40/90/140ms cascade
-    // on every switch put ~140ms of dead time in front of content the user already
-    // asked for. The class is set once on first paint and stays.
     panel.classList.add("is-active");
+
     const sidePanel = document.getElementById("side-panel");
-    // The panel used to hide on four of six tabs, leaving a dead column on wide
-    // screens. It now always has something to say about the tab you are on.
     if (sidePanel) sidePanel.classList.remove("side-panel-hidden");
     renderSideContext(tabName);
     if (tabName === "history"){ renderHistory(); renderIncomeHistory(); }
@@ -3230,7 +3226,26 @@
       const amt = document.getElementById("in-amount");
       if (amt) amt.focus();
     }
+
+    // Put the arriving tab back where it was left. Every tab was snapping to the
+    // top, so returning to a list you had scrolled through cost you the scroll.
+    const back = _tabScroll[tabName];
+    const place = () => {
+      if (back != null && back > 0 && document.documentElement.scrollHeight > back + window.innerHeight * 0.5){
+        window.scrollTo({ top: back, behavior: "auto" });
+      } else if (leaving && leaving !== tabName){
+        window.scrollTo({ top: 0, behavior: "auto" });
+      }
+    };
+    void panel.offsetHeight;   // force layout so the new panel's height is known
+    place();
+    requestAnimationFrame(() => {
+      place();
+      // Nothing announced: a reading surface that narrates its own navigation is
+      // talking over the page.
+    });
   }
+
   tabButtons.forEach(btn=>{
     btn.addEventListener("click", ()=>{
       if (!btn.dataset.tab) return; // e.g. the backup/restore icon, which opens an overlay instead
@@ -3565,37 +3580,34 @@
   // Actions the search box can perform, not just records it can find. Keywords
   // exist so "backup" reaches Export and "graph" reaches Charts.
   function paletteCommands(){
+    const go = t => () => { closeSearchOverlay(); activateTab(t); };
+    const press = id => () => { closeSearchOverlay(); const b = document.getElementById(id); if (b) b.click(); };
+    // Written as things you would ask for, not as destinations. The reading
+    // controls this surface added belong here too.
     return [
-      { label:"Add an expense", keys:"add expense spend new entry log",
-        run:()=>{ closeSearchOverlay(); const b=document.getElementById("btn-fab-add"); if(b) b.click();
-                  const m=document.querySelector('#entry-mode-toggle button[data-mode="expense"]'); if(m) m.click(); } },
-      { label:"Add income or a payslip", keys:"add income salary payslip earn new",
-        run:()=>{ closeSearchOverlay(); const b=document.getElementById("btn-fab-add"); if(b) b.click();
-                  const m=document.querySelector('#entry-mode-toggle button[data-mode="income"]'); if(m) m.click(); } },
-      { label:"Go to Dashboard", keys:"dashboard home overview total money",
-        run:()=>{ closeSearchOverlay(); activateTab("dashboard"); } },
-      { label:"Go to Charts", keys:"charts graph trends spending chart",
-        run:()=>{ closeSearchOverlay(); activateTab("charts"); } },
-      { label:"Go to History", keys:"history entries list expenses income edit",
-        run:()=>{ closeSearchOverlay(); activateTab("history"); } },
-      { label:"Go to Savings", keys:"savings accounts bank interest balance",
-        run:()=>{ closeSearchOverlay(); activateTab("savings"); } },
-      { label:"Go to Loans & Investments", keys:"loans lent borrowed investments invest",
-        run:()=>{ closeSearchOverlay(); activateTab("loans"); } },
-      { label:"Go to Settings", keys:"settings preferences budget category density",
-        run:()=>{ closeSearchOverlay(); activateTab("settings"); } },
-      { label:"Set a budget", keys:"budget limit cap monthly category",
-        run:()=>{ closeSearchOverlay(); activateTab("settings");
-                  const b=document.querySelector('#settings-nav [data-settings="budgeting"]'); if(b) b.click(); } },
-      { label:"Back up my data (JSON)", keys:"backup export save json download data",
-        run:()=>{ closeSearchOverlay(); const b=document.getElementById("btn-export-json"); if(b) b.click(); } },
-      { label:"Export a spreadsheet (CSV)", keys:"csv spreadsheet excel export sheet",
-        run:()=>{ closeSearchOverlay(); const b=document.getElementById("btn-export-csv"); if(b) b.click(); } },
-      { label:"Switch table density", keys:"density compact comfortable spacing rows",
-        run:()=>{ closeSearchOverlay(); activateTab("settings");
-                  const b=document.querySelector('#settings-nav [data-settings="appearance"]'); if(b) b.click(); } }
+      { label: "Write down an expense", keys: "add expense spend new entry log write",
+        run: () => { closeSearchOverlay(); const b = document.getElementById("btn-fab-add"); if (b) b.click();
+                     const m = document.querySelector('#entry-mode-toggle button[data-mode="expense"]'); if (m) m.click(); } },
+      { label: "Write down income or a payslip", keys: "add income salary payslip earn new write",
+        run: () => { closeSearchOverlay(); const b = document.getElementById("btn-fab-add"); if (b) b.click();
+                     const m = document.querySelector('#entry-mode-toggle button[data-mode="income"]'); if (m) m.click(); } },
+      { label: "Open the front page", keys: "dashboard home overview total money front", run: go("dashboard") },
+      { label: "Read this month's statement", keys: "statement month recap summary read", run: go("dashboard") },
+      { label: "Look at the figures", keys: "charts graph trends spending chart figures", run: go("charts") },
+      { label: "Go through the book", keys: "history entries list expenses income edit book", run: go("history") },
+      { label: "See how money is held", keys: "savings accounts bank interest balance held", run: go("savings") },
+      { label: "See what is lent and borrowed", keys: "loans lent borrowed investments invest", run: go("loans") },
+      { label: "Change how this is kept", keys: "settings preferences budget category density", run: go("settings") },
+      { label: "Turn reading mode on or off", keys: "reading mode wide narrow measure type",
+        run: () => { closeSearchOverlay(); const b = document.getElementById("btn-reading"); if (b) b.click(); } },
+      { label: "Set an allowance", keys: "budget limit cap monthly category allowance",
+        run: () => { closeSearchOverlay(); activateTab("settings");
+                     const b = document.querySelector('#settings-nav [data-settings="budgeting"]'); if (b) b.click(); } },
+      { label: "Keep a copy of everything (JSON)", keys: "backup export save json download data copy", run: press("btn-export-json") },
+      { label: "Export a spreadsheet (CSV)", keys: "csv spreadsheet excel export sheet", run: press("btn-export-csv") }
     ];
   }
+
 
   // A missing field is a non-match, not a crash. Guarding the read is the right fix
   // rather than backfilling a value on load: an absent category should stay absent,
@@ -3740,15 +3752,13 @@
     document.getElementById("in-desc-label").textContent = copy.descLabel;
     document.getElementById("in-desc").placeholder = copy.descPlaceholder;
     document.getElementById("in-recurring-label").textContent = copy.recurringLabel;
-    document.getElementById("btn-add").textContent = copy.buttonLabel;
-    document.getElementById("manage-categories-card").style.display = mode === "income" ? "none" : "";
-    document.getElementById("in-bank-label").textContent = mode === "income" ? "Deposit into which account?" : "Pay from which account?";
-    document.getElementById("in-bank-hint").textContent = mode === "income"
-      ? "Required — this amount is deposited into the account you pick, and your Total Money updates right away."
-      : "Required — this amount is withdrawn from the account you pick, and your Total Money updates right away.";
-    document.getElementById("add-hint").textContent = "";
+    document.getElementById("btn-add-entry").textContent = copy.buttonLabel;
+    const panel = document.getElementById("tab-add");
+    if (panel) panel.dataset.mode = mode;
     renderCategoryOptions();
+    scheduleDraftSave();
   }
+
 
   document.querySelectorAll("#entry-mode-toggle button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -6597,21 +6607,29 @@
     body.classList.add("collapsible-body");
     const prefKey = "collapsed:" + bodyId;
     let collapsed = uiPrefs[prefKey] !== undefined ? uiPrefs[prefKey] : defaultCollapsed;
+    // The label says what is inside and what pressing it will do, so a closed
+    // section is not a chevron with a secret behind it.
+    const countInside = () => body.querySelectorAll("tbody tr[data-id], [data-id].savings-account, .alw, .recurring-item").length;
+    const paint = () => {
+      const n = countInside();
+      btn.textContent = collapsed
+        ? (n ? "Show the " + n + " below" : "Show this")
+        : "Hide this";
+      btn.setAttribute("aria-expanded", String(!collapsed));
+    };
     body.classList.toggle("is-collapsed", collapsed);
-    btn.textContent = collapsed ? "▸ Expand" : "▾ Collapse";
-    // The arrow glyph is decoration; aria-expanded is what actually reports the state,
-    // and aria-controls names the region the button governs.
     if (!body.id) body.id = bodyId;
     btn.setAttribute("aria-controls", bodyId);
-    btn.setAttribute("aria-expanded", String(!collapsed));
-    btn.addEventListener("click", ()=>{
+    paint();
+    btn.addEventListener("click", () => {
       collapsed = !collapsed;
       body.classList.toggle("is-collapsed", collapsed);
-      btn.textContent = collapsed ? "▸ Expand" : "▾ Collapse";
-      btn.setAttribute("aria-expanded", String(!collapsed));
+      paint();
       setUiPref(prefKey, collapsed);
     });
+    setTimeout(paint, 0);
   }
+
   // Defaults below apply only on first visit — all of these now start collapsed
   // so the app opens compact, and stay however the user last left them.
   /* Collapsed only when there is nothing inside. A section holding two outstanding
@@ -8334,38 +8352,34 @@
     const wrap = document.getElementById("sync-body");
     if (!wrap) return;
     const tok = ghTok();
-    const at = (()=>{ try{ return localStorage.getItem(GH_SYNCED_AT) || ""; }catch(e){ return ""; } })();
+    const at = (() => { try{ return localStorage.getItem(GH_SYNCED_AT) || ""; }catch(e){ return ""; } })();
     if (!tok){
-      wrap.innerHTML = `
-        <p class="hint">Your records go to <strong>one private gist on your own GitHub account</strong> —
-        no server of mine, nothing public. The token stays on this device and is deliberately
-        left out of every backup, so a file you hand to someone carries no credential.</p>
-        <p class="hint">Make a token at <strong>github.com/settings/tokens</strong> with
-        <strong>gist</strong> access and nothing else, then paste it here.</p>
-        <input class="sync-tok" id="gh-token-input" type="password" autocomplete="off" aria-label="GitHub personal access token"
-               placeholder="ghp_… or github_pat_…">
-        <div class="form-actions"><button class="btn btn-primary btn-sm" id="btn-gh-save">Save token</button></div>
-        <p class="hint" id="gh-msg" role="status" aria-live="polite"></p>`;
+      wrap.innerHTML =
+        '<p class="note-line">Your records go to <strong>one private gist on your own GitHub account</strong> \u2014 no server of mine, nothing public. The token stays on this device and is deliberately left out of every backup, so a file you hand to someone carries no credential.</p>' +
+        '<p class="note-line">Make a token at <strong>github.com/settings/tokens</strong> with <strong>gist</strong> access and nothing else, then paste it here.</p>' +
+        '<input class="sync-tok" id="gh-token-input" type="password" autocomplete="off" aria-label="GitHub personal access token" placeholder="ghp_\u2026 or github_pat_\u2026">' +
+        '<div class="form-actions"><button class="btn btn-primary btn-sm" id="btn-gh-save">Save token</button></div>' +
+        '<p class="hint" id="gh-msg" role="status" aria-live="polite"></p>';
     } else {
-      wrap.innerHTML = `
-        <p class="hint">Set up. Sync reads what your other device left, merges it with this one,
-        and writes the result back. <strong>An entry edited in two places keeps the later edit;
-        one deleted anywhere stays deleted.</strong> Safe to press on either device, in any order.</p>
-        <div class="form-actions">
-          <button class="btn btn-primary btn-sm" id="btn-gh-sync">Sync now</button>
-          <button class="btn btn-ghost btn-sm" id="btn-gh-find">Find it again</button>
-          <button class="btn-danger-text" id="btn-gh-forget">Forget this token</button>
-        </div>
-        <p class="hint" id="gh-msg" role="status" aria-live="polite">Token …${escapeHtml(tok.slice(-4))}${
-          gistId() ? " · gist " + escapeHtml(gistId().slice(0,8)) : " · not linked yet"}${
-          at ? " · last synced " + escapeHtml(daysAgoLabel(at.slice(0,10), false)) : ""}</p>`;
+      wrap.innerHTML =
+        '<p class="note-line">Set up on this device' +
+          (gistId() ? ', writing to gist <strong>' + escapeHtml(gistId().slice(0, 8)) + '</strong>' : ', not yet linked to a gist') +
+          ', under a token ending <strong>' + escapeHtml(tok.slice(-4)) + '</strong>' +
+          (at ? ', last synced ' + escapeHtml(daysAgoLabel(at.slice(0, 10), false)) : ', never synced') + '.</p>' +
+        '<p class="note-line">Sync reads what your other device left, merges it with this one, and writes the result back. <strong>An entry edited in two places keeps the later edit; one deleted anywhere stays deleted.</strong> Safe to press on either device, in any order.</p>' +
+        '<div class="form-actions">' +
+          '<button class="btn btn-primary btn-sm" id="btn-gh-sync">Sync now</button>' +
+          '<button class="btn btn-ghost btn-sm" id="btn-gh-find">Find it again</button>' +
+          '<button class="btn-danger-text" id="btn-gh-forget">Forget this token</button>' +
+        '</div>' +
+        '<p class="hint" id="gh-msg" role="status" aria-live="polite"></p>';
     }
 
     const msg = document.getElementById("gh-msg");
     const say = t => { if (msg) msg.textContent = t; };
 
     const saveBtn = document.getElementById("btn-gh-save");
-    if (saveBtn) saveBtn.addEventListener("click", ()=>{
+    if (saveBtn) saveBtn.addEventListener("click", () => {
       const box = document.getElementById("gh-token-input");
       const v = (box.value || "").trim();
       if (!v){ say("Paste the token first."); return; }
@@ -8376,36 +8390,37 @@
     });
 
     const syncBtn = document.getElementById("btn-gh-sync");
-    if (syncBtn) syncBtn.addEventListener("click", async ()=>{
+    if (syncBtn) syncBtn.addEventListener("click", async () => {
       syncBtn.disabled = true;
       try{
         const res = await syncNow(say);
         renderSyncPanel();
-        showToast(res.pulled ? `Synced — ${res.pulled} new record(s) came in.` : "Synced. Both devices match.");
+        showToast(res.pulled ? "Synced \u2014 " + res.pulled + " new record(s) came in." : "Synced. Both devices match.");
       }catch(err){
         say(err.message);
-        showToast("Sync failed — see Settings for why.");
+        showToast("Sync failed \u2014 see Settings for why.");
       }finally{ syncBtn.disabled = false; }
     });
 
     const findBtn = document.getElementById("btn-gh-find");
-    if (findBtn) findBtn.addEventListener("click", async ()=>{
+    if (findBtn) findBtn.addEventListener("click", async () => {
       try{
         localStorage.removeItem(GH_GIST_KEY);
-        say("Looking…");
+        say("Looking\u2026");
         const id = await findGist();
         if (id){ localStorage.setItem(GH_GIST_KEY, id); renderSyncPanel(); showToast("Found it. Press Sync now."); }
-        else { say("Nothing found on that account yet — press Sync now to start one."); }
+        else { say("Nothing found on that account yet \u2014 press Sync now to start one."); }
       }catch(err){ say(err.message); }
     });
 
     const forgetBtn = document.getElementById("btn-gh-forget");
-    if (forgetBtn) forgetBtn.addEventListener("click", ()=>{
-      showUndoToast("Token forgotten on this device.", ()=>{});
+    if (forgetBtn) forgetBtn.addEventListener("click", () => {
+      showUndoToast("Token forgotten on this device.", () => {});
       try{ localStorage.removeItem(GH_TOKEN_KEY); localStorage.removeItem(GH_GIST_KEY); }catch(e){}
       renderSyncPanel();
     });
   }
+
 
   /* ---------- Export / Import ---------- */
 
