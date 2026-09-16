@@ -138,8 +138,50 @@ const SW_BLOCK = `if ("serviceWorker" in navigator &&
   });
 }`;
 
+/* ---- what to build, and what not to flatten -------------------------------
+   Every file this has ever produced was redesigned by hand afterwards, so an
+   existing file is not a stale build to refresh — it is the work. Named target
+   or nothing; refuse what is already there; --force has to be asked for and
+   says what it will take. */
+const args = process.argv.slice(2);
+const force = args.includes("--force");
+const wanted = args.filter(a => a !== "--force");
+
+let targets = VARIANTS;
+if (wanted.length){
+  targets = wanted.map(name => {
+    const file = name.endsWith(".html") ? name : name + ".html";
+    const v = VARIANTS.find(x => x.file === file);
+    if (!v) throw new Error("no variant named " + file + " — known: " +
+      VARIANTS.map(x => x.file).join(", "));
+    return v;
+  });
+}
+
+const existing = targets.filter(v => fs.existsSync(path.join(LAB, v.file)));
+if (existing.length && !force){
+  console.error("\nREFUSING to overwrite " + existing.length + " file" +
+    (existing.length === 1 ? "" : "s") + " that already exist:\n");
+  existing.forEach(v => {
+    const p = path.join(LAB, v.file);
+    const lines = fs.readFileSync(p, "utf8").split("\n").length;
+    console.error("  " + v.file.padEnd(18) + lines + " lines  — a baseline copy is ~" +
+      src.split("\n").length + ", so this one has been designed on");
+  });
+  console.error("\nA generated file here is not a stale build to refresh, it is the work.");
+  console.error("Build a NEW variant by adding it to VARIANTS and naming it:");
+  console.error("    node design-lab/build.js my-variant.html");
+  console.error("Or, if you genuinely mean to discard a redesign:");
+  console.error("    node design-lab/build.js " + existing[0].file + " --force\n");
+  process.exit(1);
+}
+if (existing.length && force){
+  console.warn("\n--force: discarding the redesign in " +
+    existing.map(v => v.file).join(", ") + "\n");
+}
+
 fs.mkdirSync(LAB, { recursive: true });
-for (const v of VARIANTS){
+for (const v of targets){
   let out = src;
 
   const at = out.indexOf("<script>");
@@ -156,4 +198,5 @@ for (const v of VARIANTS){
   fs.writeFileSync(path.join(LAB, v.file), out);
   console.log("  built  design-lab/" + v.file.padEnd(16) + " ns=" + v.ns);
 }
-console.log("\n" + VARIANTS.length + " copies rebuilt from index.html");
+console.log("\n" + targets.length + " cop" + (targets.length === 1 ? "y" : "ies") +
+  " built from index.html");

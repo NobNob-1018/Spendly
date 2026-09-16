@@ -36,13 +36,19 @@ directly with `file://` works too; only the lazy-loaded Chart.js needs network.
 
 ## Rebuilding
 
-`build.js` regenerates all three from the current `index.html`:
+`build.js` generates a lab copy from the current `index.html`:
 
-    node design-lab/build.js
+    node design-lab/build.js my-variant.html
 
-**It overwrites the three HTML files.** That is what you want before any design
-work has started, and never after — re-running it discards a redesign. Edit
-`seed.js` and re-run it first if the seed data needs to change.
+**It refuses to overwrite a file that already exists**, because every file it
+has ever produced was redesigned by hand afterwards — an existing copy is not a
+stale build to refresh, it is the work. It names what it would have destroyed
+and how many lines past baseline each one is. `--force` is the only way past
+and has to be asked for by name.
+
+To add a fourth variant, add a row to `VARIANTS` (file, storage namespace,
+badge label and note) and build that one by name. Edit `seed.js` first if the
+seed data needs to change.
 
 ## Checking a variant before calling it done
 
