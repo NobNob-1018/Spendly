@@ -1060,6 +1060,17 @@
   .jr-amt.income{ color: var(--positive); } .jr-amt.expense{ color: var(--ink-soft); }
   .jr-cat{ grid-area: cat; font-size: var(--fs-3xs); color: var(--ink-dim); }
 
+
+  #charts-summary{ font-size: var(--fs-md); line-height:1.8; color: var(--ink-soft); max-width: 66ch; }
+  #charts-summary .summary-figure{ color: var(--ink); font-weight:600; font-variant-numeric: tabular-nums; }
+  #stat-row{ display:block; }
+
+
+  /* Restores the hidden state the replaced stylesheet dropped: the overlay was
+     staying on top of every finished chart. */
+  .chart-loading{ transition: opacity var(--dur-base) var(--ease-out), visibility var(--dur-base); }
+  .chart-loading.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+
 </style>
 </head>
 
@@ -2797,12 +2808,15 @@
   // Compact form for chart axes — "₱5,000" and especially "₱1200000" become
   // unreadable on a cramped axis, so large values collapse to k/M.
   function fmtAxis(v){
+    // Spoken abbreviations, spaced from the symbol the way the body text sets
+    // its figures.
     const n = Number(v);
     const abs = Math.abs(n);
-    if (abs >= 1000000) return "₱" + (n/1000000).toFixed(abs >= 10000000 ? 0 : 1).replace(/\.0$/,"") + "M";
-    if (abs >= 1000) return "₱" + (n/1000).toFixed(abs >= 10000 ? 0 : 1).replace(/\.0$/,"") + "k";
-    return "₱" + n.toLocaleString();
+    if (abs >= 1000000) return "\u20B1" + (n / 1000000).toFixed(abs >= 10000000 ? 0 : 1).replace(/\.0$/, "") + " million";
+    if (abs >= 1000) return "\u20B1" + (n / 1000).toFixed(abs >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k";
+    return "\u20B1" + n.toLocaleString();
   }
+
 
   // Sorting for history entries (expenses/income). Amount is numeric; date and
   // description compare as strings — ISO dates sort correctly that way.
@@ -7093,15 +7107,12 @@
     const css = getComputedStyle(document.documentElement);
     const v = n => css.getPropertyValue(n).trim();
     Chart.defaults.font.family = '"Inter", -apple-system, "Segoe UI", Roboto, sans-serif';
-    Chart.defaults.font.size = 11.5;
-    Chart.defaults.font.weight = 600;
-    Chart.defaults.color = v("--ink-soft");
-    // Draw-in, easing matched to --ease-out so charts move like the rest of the UI.
+    Chart.defaults.font.size = 11;
+    Chart.defaults.font.weight = 400;      // the page is set in book weights
+    Chart.defaults.color = v("--ink-dim");
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    Chart.defaults.animation = reduce ? false : { duration: 320, easing: "easeOutQuart" };
-    // Read the nearest column from anywhere in it, rather than demanding a direct
-    // hit on a bar or point — the difference between a chart that feels responsive
-    // and one that feels fussy.
+    // Slow and single-phase: a figure on a page settles, it does not spring.
+    Chart.defaults.animation = reduce ? false : { duration: 420, easing: "easeOutSine" };
     Chart.defaults.interaction = { mode: "index", intersect: false };
     Chart.defaults.hover = { mode: "index", intersect: false };
     Chart.defaults.plugins.tooltip = Object.assign(Chart.defaults.plugins.tooltip, {
@@ -7110,47 +7121,57 @@
       bodyColor: v("--ink-soft"),
       borderColor: v("--line"),
       borderWidth: 1,
-      cornerRadius: 10,
-      padding: 10,
-      displayColors: true,
-      boxPadding: 4,
-      titleFont: { weight: 700, size: 12.5 },
-      bodyFont: { weight: 600, size: 12 },
+      cornerRadius: 6,
+      padding: 12,
+      displayColors: false,
+      titleFont: { weight: 600, size: 12 },
+      bodyFont: { weight: 400, size: 12.5 },
       callbacks: {
-        label: (c) => {
+        // Written out, the way the rest of the surface states a figure.
+        title: items => items.length ? items[0].label : "",
+        label: c => {
           const raw = c.parsed.y != null ? c.parsed.y : c.parsed;
-          return ` ${c.dataset.label || ""} ${fmtMoney(raw)}`.replace(/\s+/g, " ");
+          return fmtMoney(raw) + (c.dataset.label === "Previously" ? " a period earlier" : "");
         }
       }
     });
   }
 
+
   // Vertical gradient for a bar/area fill. Flat fills read as a default; a fill that
   // fades toward the baseline reads as drawn on purpose.
   function chartGradient(ctx, hex, topAlpha, bottomAlpha){
+    // A wash, not a gradient — a tenth of the ink the dashboard used, because on
+    // a reading surface a filled shape competes with the paragraph beside it.
     const h = (ctx.canvas && ctx.canvas.clientHeight) || 260;
     const g = ctx.createLinearGradient(0, 0, 0, h);
-    const rgb = (c) => {
-      c = c.trim();
-      if (c.startsWith("#")){
+    const rgb = c => {
+      c = String(c).trim();
+      if (c.charAt(0) === "#"){
         const n = c.length === 4
-          ? c.slice(1).split("").map(x=>parseInt(x+x,16))
-          : [1,3,5].map(i=>parseInt(c.slice(i,i+2),16));
+          ? c.slice(1).split("").map(x => parseInt(x + x, 16))
+          : [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
         return n.join(",");
       }
-      const m = c.match(/\d+/g); return m ? m.slice(0,3).join(",") : "34,211,197";
+      const m = c.match(/\d+/g);
+      return m ? m.slice(0, 3).join(",") : "47,211,196";
     };
     const c = rgb(hex);
-    g.addColorStop(0, `rgba(${c},${topAlpha})`);
-    g.addColorStop(1, `rgba(${c},${bottomAlpha})`);
+    g.addColorStop(0, "rgba(" + c + "," + (topAlpha * 0.34).toFixed(3) + ")");
+    g.addColorStop(1, "rgba(" + c + "," + (bottomAlpha * 0.02).toFixed(3) + ")");
     return g;
   }
+
 
   // Hairline grid: present enough to read a value against, quiet enough to stay
   // behind the data.
   function chartGrid(lineColor){
-    return { color: lineColor, lineWidth: 1, drawTicks: false, drawBorder: false };
+    // A single rule at the baseline and nothing else. Ruled paper behind a
+    // figure is a spreadsheet's idea, not a book's.
+    return { color: lineColor, lineWidth: 1, drawTicks: false, drawBorder: false,
+             drawOnChartArea: false };
   }
+
 
   function ensureChartJs(){
     if (window.Chart){ applyChartTheme(); return Promise.resolve(); }
@@ -7497,219 +7518,184 @@
   }
 
   function renderCharts(){
-    // Re-show the loading indicators — switching range redraws the charts, and
-    // without this the user gets no feedback that anything is happening.
-    ["chart-bar","chart-pie","chart-networth"].forEach(id=>{
+    ["chart-bar", "chart-pie", "chart-networth"].forEach(id => {
       const el = document.getElementById(id + "-loading");
       if (el) el.classList.remove("hide");
     });
-    const { keys, labels, bucket } = buildBuckets(currentRange);
-    const { start, end } = getRangeBounds(currentRange);
-
-    const endBound = new Date(end); endBound.setHours(23,59,59,999);
-    const inRange = expenses.filter(e=>{
+    const bb = buildBuckets(currentRange);
+    const keys = bb.keys, labels = bb.labels, bucket = bb.bucket;
+    const rb = getRangeBounds(currentRange);
+    const endBound = new Date(rb.end); endBound.setHours(23, 59, 59, 999);
+    const inRange = expenses.filter(e => {
       const d = new Date(e.date + "T00:00:00");
-      return d >= start && d <= endBound;
+      return d >= rb.start && d <= endBound;
     });
 
-    // sums per bucket
     const sums = {};
     keys.forEach(k => sums[k] = 0);
-    inRange.forEach(e=>{
-      const k = bucketKeyForDate(e.date, bucket);
-      if (k in sums) sums[k] += e.amount;
-    });
+    inRange.forEach(e => { const k = bucketKeyForDate(e.date, bucket); if (k in sums) sums[k] += e.amount; });
     const data = keys.map(k => round2(sums[k]));
 
-    // The same window, one period earlier. A chart that only shows now answers
-    // "how much"; one that shows then too answers "is that a lot".
     const prev = buildBuckets(currentRange, 1);
     const prevSums = {};
     prev.keys.forEach(k => prevSums[k] = 0);
-    expenses.forEach(e=>{
-      const k = bucketKeyForDate(e.date, prev.bucket);
-      if (k in prevSums) prevSums[k] += e.amount;
-    });
+    expenses.forEach(e => { const k = bucketKeyForDate(e.date, prev.bucket); if (k in prevSums) prevSums[k] += e.amount; });
     const prevData = prev.keys.map(k => round2(prevSums[k]));
     const hasPrev = prevData.some(v => v > 0);
 
-    // category totals within range
     const catTotals = {};
-    inRange.forEach(e=>{
-      catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
-    });
-    const catLabels = Object.keys(catTotals).sort((a,b)=>catTotals[b]-catTotals[a]);
-    const catData = catLabels.map(c=>round2(catTotals[c]));
+    inRange.forEach(e => { catTotals[e.category] = round2((catTotals[e.category] || 0) + e.amount); });
+    const catLabels = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
+    const catData = catLabels.map(c => catTotals[c]);
     const catColors = catLabels.map(colorFor);
 
-    // stats
-    const total = inRange.reduce((s,e)=>s+e.amount, 0);
-    const topCat = catLabels[0] || "—";
-    const avg = keys.length ? total / keys.length : 0;
+    const total = round2(inRange.reduce((s, e) => s + e.amount, 0));
+    const prevTotal = round2(prevData.reduce((s, v) => s + v, 0));
+    const avg = keys.length ? round2(total / keys.length) : 0;
+    const nonZero = data.filter(v => v > 0);
+    const peak = nonZero.length ? Math.max.apply(null, nonZero) : 0;
+    const peakAt = labels[data.indexOf(peak)] || "";
 
-    // One-line takeaway for the selected range, matching the summary lines the
-    // other tables show.
+    const rangeLabel = currentRange === "custom" ? "the range you chose"
+      : currentRange === "daily" ? "the last fourteen days"
+      : currentRange === "weekly" ? "the last eight weeks"
+      : currentRange === "monthly" ? "the last six months"
+      : currentRange === "yearly" ? "the last five years" : currentRange;
+
+    // The figures are introduced before they are drawn. A chart nobody has been
+    // told the point of is decoration.
     const summaryEl = document.getElementById("charts-summary");
     if (summaryEl){
-      const rangeLabel = currentRange === "custom" ? "selected range"
-        : currentRange === "daily" ? "last 14 days"
-        : currentRange === "weekly" ? "last 8 weeks"
-        : currentRange === "monthly" ? "last 6 months"
-        : currentRange === "yearly" ? "last 5 years" : currentRange;
       summaryEl.innerHTML = inRange.length
-        ? `Spent <strong class="summary-figure">${fmtMoneyRich(total)}</strong> across ${inRange.length} expense(s) in the ${rangeLabel}`
-        : `No spending recorded in the ${rangeLabel}`;
+        ? 'Over ' + rangeLabel + ', <strong class="summary-figure">' + fmtMoney(total) + '</strong> was spent across ' +
+          inRange.length + ' entr' + (inRange.length === 1 ? "y" : "ies") +
+          (prevTotal > 0
+            ? ', against ' + fmtMoney(prevTotal) + ' in the period before it \u2014 ' +
+              (total >= prevTotal ? 'up ' : 'down ') + Math.abs(((total - prevTotal) / prevTotal) * 100).toFixed(0) + '%.'
+            : '.') +
+          (peak > 0 ? ' The heaviest ' + bucket + ' was ' + escapeHtml(peakAt) + ' at ' + fmtMoney(peak) + '.' : '')
+        : 'Nothing was spent over ' + rangeLabel + '.';
     }
 
-    document.getElementById("stat-row").innerHTML = `
-      <div class="stat">
-        <div class="stat-badge stat-badge-rose">${badgeIcon("spend")}</div>
-        <div class="stat-text"><div class="label">Total spent</div><div class="value">${fmtMoneyRich(total)}</div></div>
-      </div>
-      <div class="stat">
-        <div class="stat-badge stat-badge-blue">${badgeIcon("tag")}</div>
-        <div class="stat-text"><div class="label">Top category</div><div class="value">${escapeHtml(topCat)}</div></div>
-      </div>
-      <div class="stat">
-        <div class="stat-badge stat-badge-rose">${badgeIcon("chart")}</div>
-        <div class="stat-text"><div class="label">Avg per ${bucket}</div><div class="value">${fmtMoneyRich(avg)}</div></div>
-      </div>
-    `;
+    // Statement lines instead of stat tiles: same four facts, set as text.
+    document.getElementById("stat-row").innerHTML =
+      statTileHtml({ primary: true, label: "Spent in this period", value: fmtMoney(total),
+        delta: prevTotal > 0 ? { value: round2(total - prevTotal), pct: ((total - prevTotal) / prevTotal) * 100, invert: true } : null,
+        context: "measured over " + rangeLabel })
+    + statTileHtml({ label: "Per " + bucket, value: fmtMoney(avg),
+        context: "across " + keys.length + " " + bucket + "s, including the quiet ones" })
+    + statTileHtml({ label: "Largest category", value: escapeHtml(catLabels[0] || "\u2014"),
+        context: catLabels.length ? fmtMoney(catTotals[catLabels[0]]) + " of " + fmtMoney(total) : "" });
 
-    // Charts are the only part that need Chart.js — the stats above are already visible before this resolves.
-    ensureChartJs().then(()=>{
-      // Chart theming lives in applyChartTheme(), called the moment Chart.js
-      // resolves. There used to be a second defaults block here that ran later
-      // and quietly overrode it.
-      // Bar chart
+    ensureChartJs().then(() => {
+      const inkDim = getCSSVar("--ink-dim");
+      const lineColor = getCSSVar("--line");
+      const accent = getCSSVar("--accent-quiet");
+
+      // ---- the period as one line, not a bank of bars ----
       const barCtx = document.getElementById("chart-bar").getContext("2d");
       if (barChart) barChart.destroy();
-      const inkSoft = getCSSVar("--ink-soft");
-      const lineColor = getCSSVar("--line");
       barChart = new Chart(barCtx, {
-        type: "bar",
+        type: "line",
         data: {
-          labels,
+          labels: labels,
           datasets: [{
-            label: "Spend",
-            data,
-            backgroundColor: chartGradient(barCtx, getCSSVar("--accent"), 1, 0.62),
-            hoverBackgroundColor: getCSSVar("--accent"),
-            borderRadius: 6,
-            borderSkipped: false,
-            maxBarThickness: 34,
-            order: 2
+            label: "Spent", data: data,
+            borderColor: accent, borderWidth: 1.5, tension: 0.32,
+            backgroundColor: chartGradient(barCtx, accent, 1, 0), fill: true,
+            pointRadius: 0, pointHoverRadius: 4,
+            pointBackgroundColor: accent, pointBorderColor: getCSSVar("--surface"), pointBorderWidth: 2
           }].concat(hasPrev ? [{
-            label: "Previous period",
-            data: prevData,
-            type: "line",
-            borderColor: getCSSVar("--ink-dim"),
-            borderWidth: 1.5,
-            borderDash: [4,4],
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            fill: false,
-            tension: 0.3,
-            order: 1
+            label: "Previously", data: prevData,
+            borderColor: lineColor, borderWidth: 1, borderDash: [2, 3],
+            tension: 0.32, fill: false, pointRadius: 0, pointHoverRadius: 0
           }] : [])
         },
         options: {
-          responsive:true, maintainAspectRatio:false,
-          plugins:{ legend:{ display: hasPrev, position:"bottom",
-            labels:{ boxWidth:8, boxHeight:8, usePointStyle:true, pointStyle:"circle",
-                     padding:12, font:{ size:11.5, weight:600 }, color: getCSSVar("--ink-soft") } } },
-          scales:{
-            y:{ beginAtZero:true, border:{ display:false },
-                ticks:{ color:inkSoft, padding:8, maxTicksLimit:5, callback:(v)=> fmtAxis(v) },
-                grid: chartGrid(lineColor) },
-            x:{ border:{ display:false },
-                ticks:{ color:inkSoft, padding:6, maxRotation:0, autoSkip:true, maxTicksLimit:8 },
-                grid:{ display:false } }
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },   // the caption above names both
+          scales: {
+            y: { beginAtZero: true, border: { display: false },
+                 ticks: { color: inkDim, padding: 10, maxTicksLimit: 3, callback: v => fmtAxis(v) },
+                 grid: chartGrid(lineColor) },
+            x: { border: { display: false },
+                 ticks: { color: inkDim, padding: 8, maxRotation: 0, autoSkip: true, maxTicksLimit: 5 },
+                 grid: { display: false } }
           }
         }
       });
       hideChartLoading("chart-bar");
 
-      // Pie chart
+      // ---- the split, as a thin ring ----
+      // Thin, because the ring is the frame; the names and the figures beside it
+      // are the content. A fat doughnut asks to be measured by eye.
       const pieCtx = document.getElementById("chart-pie").getContext("2d");
       if (pieChart) pieChart.destroy();
-      if (catLabels.length === 0){
+      if (!catLabels.length){
         pieChart = null;
-        pieCtx.clearRect(0,0,pieCtx.canvas.width,pieCtx.canvas.height);
+        pieCtx.clearRect(0, 0, pieCtx.canvas.width, pieCtx.canvas.height);
       } else {
         pieChart = new Chart(pieCtx, {
           type: "doughnut",
-          data: {
-            labels: catLabels,
-            datasets: [{ data: catData, backgroundColor: catColors,
-                         borderWidth: 3, borderColor: getCSSVar("--card"),
-                         hoverOffset: 6, hoverBorderColor: getCSSVar("--card") }]
-          },
+          data: { labels: catLabels, datasets: [{
+            data: catData, backgroundColor: catColors,
+            borderWidth: 0, hoverOffset: 3
+          }] },
           options: {
-            responsive:true, maintainAspectRatio:false,
-            cutout: "68%",
-            plugins:{ legend:{ position:"bottom",
-              labels:{ boxWidth:8, boxHeight:8, usePointStyle:true, pointStyle:"circle",
-                       padding:14, font:{ size:11.5, weight:600 }, color: getCSSVar("--ink-soft") } } }
+            responsive: true, maintainAspectRatio: false,
+            cutout: "84%",
+            plugins: { legend: { position: "right", align: "center",
+              labels: { boxWidth: 6, boxHeight: 6, usePointStyle: true, pointStyle: "circle",
+                        padding: 12, font: { size: 12, weight: 400 }, color: getCSSVar("--ink-soft") } } }
           }
         });
       }
       hideChartLoading("chart-pie");
 
-      // Net worth over time
+      // ---- what has been held, over time ----
       const nwCtx = document.getElementById("chart-networth").getContext("2d");
       if (netWorthChart) netWorthChart.destroy();
-      const nwSorted = netWorthHistory.slice().sort((a,b)=>a.date.localeCompare(b.date));
+      const nwSorted = netWorthHistory.slice().sort((a, b) => a.date.localeCompare(b.date));
       const nwEmptyNote = document.getElementById("networth-empty-note");
       if (nwSorted.length < 2){
         netWorthChart = null;
-        nwCtx.clearRect(0,0,nwCtx.canvas.width,nwCtx.canvas.height);
+        nwCtx.clearRect(0, 0, nwCtx.canvas.width, nwCtx.canvas.height);
         if (nwEmptyNote) nwEmptyNote.style.display = "";
       } else {
         if (nwEmptyNote) nwEmptyNote.style.display = "none";
-        const nwGradient = nwCtx.createLinearGradient(0, 0, 0, 260);
-        nwGradient.addColorStop(0, "rgba(34,211,197,0.32)");
-        nwGradient.addColorStop(1, "rgba(34,211,197,0)");
         netWorthChart = new Chart(nwCtx, {
           type: "line",
           data: {
-            labels: nwSorted.map(h=>fmtDate(h.date)),
+            labels: nwSorted.map(h => fmtDate(h.date)),
             datasets: [{
-              label: "Net worth",
-              data: nwSorted.map(h=>h.netWorth),
-              borderColor: getCSSVar("--accent"),
-              borderWidth: 2.5,
-              backgroundColor: nwGradient,
-              fill: true,
-              tension: 0.25,
-              pointRadius: nwSorted.length > 30 ? 0 : 3,
-              pointBackgroundColor: getCSSVar("--accent"),
-              pointBorderColor: getCSSVar("--card"),
-              pointBorderWidth: 2
+              label: "Held", data: nwSorted.map(h => h.netWorth),
+              borderColor: getCSSVar("--ink-soft"), borderWidth: 1.25,
+              backgroundColor: "transparent", fill: false, tension: 0.3,
+              pointRadius: 0, pointHoverRadius: 4,
+              pointBackgroundColor: getCSSVar("--ink"), pointBorderWidth: 0
             }]
           },
           options: {
-            responsive:true, maintainAspectRatio:false,
-            plugins:{ legend:{ display:false } },
-            scales:{
-              y:{ border:{ display:false },
-                  ticks:{ color:inkSoft, padding:8, maxTicksLimit:5, callback:(v)=> fmtAxis(v) },
-                  grid: chartGrid(lineColor) },
-              x:{ border:{ display:false },
-                  ticks:{ color:inkSoft, padding:6, maxRotation:0, autoSkip:true, maxTicksLimit:6 },
-                  grid:{ display:false } }
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { border: { display: false },
+                   ticks: { color: inkDim, padding: 10, maxTicksLimit: 3, callback: v => fmtAxis(v) },
+                   grid: chartGrid(lineColor) },
+              x: { border: { display: false },
+                   ticks: { color: inkDim, padding: 8, maxRotation: 0, autoSkip: true, maxTicksLimit: 4 },
+                   grid: { display: false } }
             }
           }
         });
       }
       hideChartLoading("chart-networth");
-    }).catch(()=>{
-      hideChartLoading("chart-bar");
-      hideChartLoading("chart-pie");
-      hideChartLoading("chart-networth");
-      showToast("Couldn't load the chart library — check your connection.");
+    }).catch(() => {
+      ["chart-bar", "chart-pie", "chart-networth"].forEach(hideChartLoading);
+      showToast("Couldn't load the chart library \u2014 check your connection.");
     });
   }
+
 
 
   /* ================= Device sync (private GitHub gist) =================
