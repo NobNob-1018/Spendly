@@ -1336,6 +1336,64 @@
 
 
   .wc-pct.is-quiet{ font-weight:600; opacity:.6; font-variant-numeric:normal; }
+
+  /* ---------- category profile ----------------------------------------------------- */
+  .cp-pick{ display:flex; flex-wrap:wrap; gap: var(--sp-4); padding-bottom: var(--sp-6);
+    margin-bottom: var(--sp-6); border-bottom:1px solid var(--line); }
+  .cp-tab{ display:inline-flex; align-items:center; gap: var(--sp-4); border:1px solid var(--line);
+    border-radius: var(--r-pill); background: var(--surface); padding: 3px var(--sp-5);
+    font-size: var(--fs-3xs); color: var(--ink-soft); cursor:pointer; }
+  .cp-tab.is-active{ border-color: var(--accent); background: var(--accent-light); color: var(--ink);
+    font-weight:700; }
+  .cp-dot{ width:7px; height:7px; border-radius:50%; }
+  .cp-months{ display:grid; grid-template-columns: repeat(6, 1fr); gap: var(--sp-5);
+    align-items:end; margin: var(--sp-7) 0; }
+  .cp-month{ display:flex; flex-direction:column; align-items:center; gap: var(--sp-3);
+    height: 118px; justify-content:flex-end; }
+  .cp-bar{ width:100%; background: var(--accent); border-radius: 3px 3px 0 0; }
+  .cp-month.is-empty .cp-bar{ background: var(--line); }
+  .cp-mon{ font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .cp-amt{ font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .cp-bands{ display:flex; flex-direction:column; gap: var(--sp-4); margin-bottom: var(--sp-5); }
+  .cp-band{ display:grid; grid-template-columns: minmax(130px, 1fr) minmax(90px, 2fr) auto;
+    align-items:center; gap: var(--sp-5); font-size: var(--fs-3xs); }
+  .cp-band-k{ color: var(--ink-dim); }
+  .cp-band-rail{ position:relative; height:6px; background: var(--line); border-radius:3px; }
+  .cp-band-rail i{ position:absolute; inset:0 auto 0 0; background: var(--accent); opacity:.8;
+    border-radius:3px; }
+  .cp-band-v{ color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .cp-sub{ margin: var(--sp-7) 0 var(--sp-5); font-size: var(--fs-3xs); text-transform:uppercase;
+    letter-spacing:.06em; color: var(--ink-dim); }
+  .cp-inside{ display:flex; flex-direction:column; }
+  .cp-in-row{ display:grid; grid-template-columns: minmax(120px, 1.2fr) minmax(80px, 2fr) auto auto;
+    align-items:center; gap: var(--sp-5); padding: var(--sp-4) 0; border-bottom:1px solid var(--line);
+    font-size: var(--fs-2xs); }
+  .cp-in-row:last-child{ border-bottom:0; }
+  .cp-in-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cp-in-rail{ position:relative; height:6px; background: var(--line); border-radius:3px; }
+  .cp-in-rail i{ position:absolute; inset:0 auto 0 0; border-radius:3px; opacity:.8; }
+  .cp-in-n{ font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .cp-in-v{ font-variant-numeric: tabular-nums; font-weight:600; white-space:nowrap; }
+
+
+  /* ---------- tag breakdown --------------------------------------------------------- */
+  .tg-list{ display:flex; flex-direction:column; margin: var(--sp-6) 0; }
+  .tg-row{ display:grid; grid-template-columns: minmax(96px, 1fr) minmax(80px, 2fr) auto auto;
+    grid-template-areas: "name rail total cats" "meta meta meta meta";
+    align-items:center; gap: var(--sp-3) var(--sp-5); padding: var(--sp-5) 0;
+    border-bottom:1px solid var(--line); cursor:pointer; }
+  .tg-row:last-child{ border-bottom:0; }
+  @media (hover: hover){ .tg-row:hover .tg-name{ color: var(--accent); } }
+  .tg-name{ grid-area: name; font-size: var(--fs-2xs); font-weight:600;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tg-rail{ grid-area: rail; position:relative; height:7px; background: var(--line); border-radius:4px; }
+  .tg-rail i{ position:absolute; inset:0 auto 0 0; background: var(--accent); border-radius:4px; opacity:.85; }
+  .tg-total{ grid-area: total; font-size: var(--fs-2xs); font-weight:700;
+    font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .tg-cats{ grid-area: cats; display:flex; gap:3px; }
+  .tg-dot{ width:7px; height:7px; border-radius:50%; display:block; }
+  .tg-meta{ grid-area: meta; font-size: var(--fs-3xs); color: var(--ink-faint); }
+
 </style>
 </head>
 
@@ -4061,19 +4119,31 @@
 
   /* ---------- Category dropdowns ---------- */
   function renderCategoryOptions(){
-    // Only the Add form's category select lives outside a re-rendered table now;
-    // the history category filters are built into their table headers instead.
     const addSelect = document.getElementById("in-category");
     const activeList = entryMode === "income" ? INCOME_CATEGORIES : categories;
-    // Replacing the options resets the select to its first entry, which is "Food".
-    // This runs on every sync, so without holding on to the choice a background poll
-    // landing mid-entry quietly refiled what you were typing. Switching between
-    // expense and income still resets, and should: the name will not be in the new
-    // list.
     const chosen = addSelect.value;
-    addSelect.innerHTML = activeList.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+    const source = entryMode === "income" ? incomes : expenses;
+    const monthKey = todayISO().slice(0, 7);
+    const thisMonth = {}, ever = {};
+    source.forEach(x => {
+      ever[x.category] = (ever[x.category] || 0) + 1;
+      if (String(x.date).slice(0, 7) === monthKey) thisMonth[x.category] = (thisMonth[x.category] || 0) + 1;
+    });
+    const recent = activeList.filter(c => thisMonth[c]).sort((a, b) => thisMonth[b] - thisMonth[a]);
+    const older = activeList.filter(c => !thisMonth[c] && ever[c]).sort((a, b) => ever[b] - ever[a]);
+    const never = activeList.filter(c => !ever[c]);
+    const opt = (c, n) => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) +
+      (n ? "  (" + n + ")" : "") + '</option>';
+    const group = (label, list, counts) => list.length
+      ? '<optgroup label="' + label + '">' + list.map(c => opt(c, counts ? counts[c] : 0)).join("") + '</optgroup>'
+      : "";
+    addSelect.innerHTML =
+      group("Used this month", recent, thisMonth) +
+      group("Used before", older, ever) +
+      group("Not used yet", never, null);
     if (chosen && activeList.indexOf(chosen) !== -1) addSelect.value = chosen;
   }
+
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
@@ -5066,7 +5136,9 @@
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const from = tmShown;
     tmShown = to;
-    if (reduce || from === null || Math.abs(to - from) < 0.01){
+    // document.hidden: rAF is paused there, so a counted animation would leave
+    // the old figure on screen until the tab is looked at again.
+    if (reduce || document.hidden || from === null || Math.abs(to - from) < 0.01){
       el.innerHTML = fmtMoneyRich(to);
       return;
     }
@@ -10491,6 +10563,305 @@
         bento.appendChild(card);
         const body = document.getElementById("wc-body");
         if (body) body.innerHTML = build();
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
+
+    /* ======================================================================
+       CATEGORY PROFILE — /ui workspace, round five
+
+       Every other panel here aggregates across categories. None of them let you
+       stand inside one and look around, so "is Food actually a problem or does
+       it just look big" had no answer.
+
+       Pick a category and this gives its whole shape: the months it has run at,
+       the distribution of its entries, where the money actually goes inside it,
+       how it compares against the rest, and its budget position if it has one.
+       Reads only.
+       ====================================================================== */
+    (function workspaceCategoryProfile(){
+      "use strict";
+
+      const money = n => fmtMoney(round2(n));
+      const monthKeyOf = d => String(d).slice(0, 7);
+      const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const shortMonth = k => MON[Number(String(k).slice(5, 7)) - 1];
+
+      let chosen = null;
+
+      function median(nums){
+        if (!nums.length) return 0;
+        const s = nums.slice().sort((a, b) => a - b);
+        const m = Math.floor(s.length / 2);
+        return s.length % 2 ? s[m] : round2((s[m - 1] + s[m]) / 2);
+      }
+
+      function monthsBack(n){
+        const out = [];
+        const now = new Date();
+        for (let i = n - 1; i >= 0; i--){
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          out.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"));
+        }
+        return out;
+      }
+
+      function profile(cat){
+        const rows = expenses.filter(e => e.category === cat);
+        const total = round2(rows.reduce((t, e) => t + e.amount, 0));
+        const amounts = rows.map(e => e.amount);
+        const keys = monthsBack(6);
+        const series = keys.map(k => ({
+          key: k,
+          total: round2(rows.filter(e => monthKeyOf(e.date) === k).reduce((t, e) => t + e.amount, 0)),
+          n: rows.filter(e => monthKeyOf(e.date) === k).length
+        }));
+        const active = series.filter(s => s.total > 0);
+
+        // Where the money goes inside the category: the same description added
+        // up. A category total says how much; this says on what.
+        const byName = {};
+        rows.forEach(e => {
+          const k = String(e.description || "(no description)").trim().replace(/\s+/g, " ").toLowerCase();
+          const b = byName[k] || (byName[k] = { label: String(e.description || "(no description)").trim(), n: 0, total: 0 });
+          b.n++; b.total = round2(b.total + e.amount);
+        });
+        const inside = Object.keys(byName).map(k => byName[k])
+          .sort((a, b) => b.total - a.total);
+
+        const grandTotal = round2(expenses.reduce((t, e) => t + e.amount, 0));
+        return {
+          cat: cat, rows: rows, total: total, count: rows.length,
+          median: median(amounts),
+          mean: rows.length ? round2(total / rows.length) : 0,
+          biggest: rows.slice().sort((a, b) => b.amount - a.amount)[0] || null,
+          series: series, active: active,
+          perMonth: active.length ? round2(active.reduce((t, s) => t + s.total, 0) / active.length) : 0,
+          share: grandTotal ? (total / grandTotal) * 100 : 0,
+          inside: inside,
+          budget: budgets[cat] || 0
+        };
+      }
+
+      function build(){
+        const cats = categories.slice().sort((a, b) => {
+          const A = expenses.filter(e => e.category === a).reduce((t, e) => t + e.amount, 0);
+          const B = expenses.filter(e => e.category === b).reduce((t, e) => t + e.amount, 0);
+          return B - A;
+        });
+        if (!cats.length) return '<p class="hint">No categories yet.</p>';
+        if (!chosen || cats.indexOf(chosen) === -1) chosen = cats[0];
+        const p = profile(chosen);
+
+        const picker = '<div class="cp-pick">' + cats.map(c =>
+          '<button class="cp-tab' + (c === chosen ? " is-active" : "") + '" data-cat="' + escapeHtml(c) + '">' +
+            '<span class="cp-dot" style="background:' + colorFor(c) + '"></span>' + escapeHtml(c) +
+          '</button>').join("") + '</div>';
+
+        if (!p.count){
+          return picker + '<p class="hint">Nothing has ever been filed under ' + escapeHtml(chosen) + '.</p>';
+        }
+
+        const figures =
+          '<div class="fig-row">' +
+            '<div class="fig-cell"><span class="fig-k">All time</span><span class="fig-v">' + money(p.total) +
+              '</span><span class="fig-sub">' + p.count + ' entries, ' + p.share.toFixed(1) + '% of all spending</span></div>' +
+            '<div class="fig-cell"><span class="fig-k">A typical month</span><span class="fig-v">' + money(p.perMonth) +
+              '</span><span class="fig-sub">over ' + p.active.length + ' month' + (p.active.length === 1 ? "" : "s") + ' with activity</span></div>' +
+            '<div class="fig-cell"><span class="fig-k">A typical entry</span><span class="fig-v">' + money(p.median) +
+              '</span><span class="fig-sub">median; the mean is ' + money(p.mean) + '</span></div>' +
+          '</div>';
+
+        const peak = Math.max.apply(null, p.series.map(s => s.total).concat([1]));
+        const months =
+          '<div class="cp-months">' + p.series.map(s =>
+            '<div class="cp-month' + (s.total === 0 ? " is-empty" : "") + '" title="' + s.key + ' · ' +
+              money(s.total) + ' over ' + s.n + ' entr' + (s.n === 1 ? "y" : "ies") + '">' +
+              '<span class="cp-bar" style="height:' + Math.max(3, Math.round((s.total / peak) * 100)) + '%"></span>' +
+              '<span class="cp-mon">' + shortMonth(s.key) + '</span>' +
+              '<span class="cp-amt">' + (s.total ? fmtAxis(s.total) : "—") + '</span>' +
+            '</div>').join("") + '</div>';
+
+        // The distribution, in four bands against the category's own median.
+        const bands = [
+          { k: "Under half the usual", test: a => a < p.median * 0.5 },
+          { k: "Around the usual", test: a => a >= p.median * 0.5 && a <= p.median * 1.5 },
+          { k: "Half again or more", test: a => a > p.median * 1.5 && a <= p.median * 2.5 },
+          { k: "More than twice", test: a => a > p.median * 2.5 }
+        ].map(b => {
+          const hit = p.rows.filter(r => b.test(r.amount));
+          return { k: b.k, n: hit.length, sum: round2(hit.reduce((t, r) => t + r.amount, 0)) };
+        });
+        const spread =
+          '<div class="cp-bands">' + bands.map(b =>
+            '<div class="cp-band"><span class="cp-band-k">' + b.k + '</span>' +
+              '<span class="cp-band-rail"><i style="width:' +
+                (p.count ? Math.round((b.n / p.count) * 100) : 0) + '%"></i></span>' +
+              '<span class="cp-band-v">' + b.n + ' · ' + money(b.sum) + '</span></div>').join("") + '</div>' +
+          '<p class="hint">Bands are set against this category’s own median of ' + money(p.median) +
+            ', not a fixed figure, so a category of small frequent entries and one of rare large ones ' +
+            'are each measured against themselves.</p>';
+
+        const insideList =
+          '<p class="cp-sub">Where it goes</p>' +
+          '<div class="cp-inside">' + p.inside.slice(0, 8).map(b =>
+            '<div class="cp-in-row"><span class="cp-in-name">' + escapeHtml(b.label) + '</span>' +
+              '<span class="cp-in-rail"><i style="width:' +
+                Math.round((b.total / (p.inside[0].total || 1)) * 100) + '%; background:' + colorFor(chosen) + '"></i></span>' +
+              '<span class="cp-in-n">' + b.n + '×</span>' +
+              '<span class="cp-in-v">' + money(b.total) + '</span></div>').join("") + '</div>' +
+          (p.inside.length > 8 ? '<p class="hint">' + (p.inside.length - 8) + ' more descriptions under this category.</p>' : "");
+
+        const now = new Date();
+        const thisKey = monthKeyOf(todayISO());
+        const spentThis = round2(p.rows.filter(e => monthKeyOf(e.date) === thisKey).reduce((t, e) => t + e.amount, 0));
+        const budgetLine = !p.budget
+          ? '<p class="hint">No limit is set on ' + escapeHtml(chosen) + '. A typical month runs at ' +
+            money(p.perMonth) + ', if you want a figure to start from.</p>'
+          : '<p class="hint"><strong>' + money(spentThis) + '</strong> of a ' + money(p.budget) +
+            ' limit has gone this month, and a typical month for this category is ' + money(p.perMonth) + ' — ' +
+            (p.perMonth > p.budget
+              ? 'the limit is below what this category normally costs, so it will usually be breached.'
+              : 'the limit is above a normal month, so breaching it means something out of the ordinary happened.') + '</p>';
+
+        return picker + figures + months + spread + insideList + budgetLine;
+      }
+
+      function paint(){
+        const body = document.getElementById("cp-body");
+        if (!body) return;
+        body.innerHTML = build();
+        body.querySelectorAll("[data-cat]").forEach(btn => {
+          btn.addEventListener("click", () => { chosen = btn.dataset.cat; paint(); });
+        });
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-charts");
+        if (!panel || panel.querySelector("#cp-card")) return;
+        const card = document.createElement("div");
+        card.className = "card is-board";
+        card.id = "cp-card";
+        card.innerHTML =
+          '<header class="panel-head is-toolbar">' +
+            '<h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6 3"/></svg></span><span class="h-text">Category profile</span></h2>' +
+            '<p class="sub">Stand inside one category: its months, the shape of its entries, what it is actually made of, and where its limit sits.</p>' +
+          '</header><div id="cp-body"></div>';
+        panel.appendChild(card);
+        paint();
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
+
+    /* ======================================================================
+       TAG BREAKDOWN — /ui workspace, round six
+
+       Tags have been enterable since the beginning and have never been shown
+       anywhere except as text on a row. They are the one dimension in this data
+       that cuts across categories — "work trip" touches Transport, Food and
+       Bills at once — and no panel could see across it.
+
+       This ranks them, says how many categories each one spans, and reports
+       what share of spending carries no tag at all, because a breakdown that
+       quietly omits the untagged majority is a breakdown of nothing.
+       ====================================================================== */
+    (function workspaceTagBreakdown(){
+      "use strict";
+
+      const money = n => fmtMoney(round2(n));
+      const tagsOf = x => Array.isArray(x.tags) ? x.tags.filter(t => String(t).trim()) : [];
+
+      function build(){
+        const rows = expenses.slice();
+        const total = round2(rows.reduce((t, e) => t + e.amount, 0));
+        const tagged = rows.filter(e => tagsOf(e).length);
+        const untagged = round2(rows.filter(e => !tagsOf(e).length).reduce((t, e) => t + e.amount, 0));
+
+        if (!tagged.length){
+          return '<p class="hint">Nothing is tagged yet. A tag cuts across categories — ' +
+                 '“work trip” can cover Transport, Food and Bills at once — which is the one ' +
+                 'thing a category cannot do. Add one in the Tags field when you enter something.</p>';
+        }
+
+        // An entry with three tags is counted once under each. The totals
+        // therefore overlap, and the panel says so rather than presenting a
+        // column that does not add to anything.
+        const byTag = {};
+        tagged.forEach(e => {
+          tagsOf(e).forEach(t => {
+            const k = String(t).trim().toLowerCase();
+            const b = byTag[k] || (byTag[k] = { label: String(t).trim(), n: 0, total: 0, cats: {}, last: e.date });
+            b.n++; b.total = round2(b.total + e.amount);
+            b.cats[e.category] = (b.cats[e.category] || 0) + 1;
+            if (e.date > b.last) b.last = e.date;
+          });
+        });
+        const list = Object.keys(byTag).map(k => byTag[k]).sort((a, b) => b.total - a.total);
+        const peak = list[0].total || 1;
+        const taggedTotal = round2(tagged.reduce((t, e) => t + e.amount, 0));
+
+        const head =
+          '<div class="fig-row">' +
+            '<div class="fig-cell"><span class="fig-k">Tags in use</span><span class="fig-v">' + list.length +
+              '</span><span class="fig-sub">across ' + tagged.length + ' entries</span></div>' +
+            '<div class="fig-cell"><span class="fig-k">Tagged spending</span><span class="fig-v">' + money(taggedTotal) +
+              '</span><span class="fig-sub">' + Math.round((taggedTotal / (total || 1)) * 100) + '% of everything</span></div>' +
+            '<div class="fig-cell"><span class="fig-k">Untagged</span><span class="fig-v">' + money(untagged) +
+              '</span><span class="fig-sub">' + (rows.length - tagged.length) + ' entries carry no tag</span></div>' +
+          '</div>';
+
+        const table = '<div class="tg-list">' + list.slice(0, 14).map(b => {
+          const cats = Object.keys(b.cats).sort((x, y) => b.cats[y] - b.cats[x]);
+          return '<div class="tg-row" data-tag="' + escapeHtml(b.label) + '">' +
+            '<span class="tg-name">#' + escapeHtml(b.label) + '</span>' +
+            '<span class="tg-rail"><i style="width:' + Math.round((b.total / peak) * 100) + '%"></i></span>' +
+            '<span class="tg-total">' + money(b.total) + '</span>' +
+            '<span class="tg-meta">' + b.n + ' entr' + (b.n === 1 ? "y" : "ies") + ' · ' +
+              (cats.length === 1 ? 'only ' + escapeHtml(cats[0])
+                                 : 'across ' + cats.length + ' categories: ' + cats.slice(0, 3).map(escapeHtml).join(", ")) +
+              ' · last ' + fmtDate(b.last) + '</span>' +
+            '<span class="tg-cats">' + cats.slice(0, 6).map(c =>
+              '<i class="tg-dot" style="background:' + colorFor(c) + '" title="' + escapeHtml(c) + '"></i>').join("") + '</span>' +
+          '</div>';
+        }).join("") + '</div>';
+
+        const note = '<p class="hint">An entry with more than one tag is counted under each of them, so these ' +
+          'totals overlap and are not meant to add up to the figure above. Following a tag puts it into the ' +
+          'history search.' + (list.length > 14 ? ' Showing the 14 largest of ' + list.length + '.' : '') + '</p>';
+
+        return head + table + note;
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-history");
+        if (!panel || panel.querySelector("#tg-card")) return;
+        const card = document.createElement("div");
+        card.className = "card is-board";
+        card.id = "tg-card";
+        card.innerHTML =
+          '<header class="panel-head is-toolbar">' +
+            '<h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11V4h7l10 10-7 7L3 11z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg></span><span class="h-text">By tag</span></h2>' +
+            '<p class="sub">The one dimension that cuts across categories, and the only one nothing has ever shown.</p>' +
+          '</header><div id="tg-body"></div>';
+        panel.appendChild(card);
+        const body = document.getElementById("tg-body");
+        body.innerHTML = build();
+        body.addEventListener("click", ev => {
+          const row = ev.target.closest("[data-tag]");
+          if (!row) return;
+          const search = document.getElementById("filter-search");
+          if (!search) return;
+          search.value = row.dataset.tag;
+          search.dispatchEvent(new Event("input", { bubbles: true }));
+          search.scrollIntoView({ block: "center" });
+          showToast("Showing everything tagged " + row.dataset.tag + ".");
+        });
       }
 
       mount();

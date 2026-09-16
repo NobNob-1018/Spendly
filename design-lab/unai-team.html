@@ -1269,6 +1269,87 @@
   .cmp-figs{ flex:none; font-size: var(--fs-3xs); color: var(--ink-dim);
     font-variant-numeric: tabular-nums; white-space:nowrap; }
 
+
+  /* ---------- marginalia --------------------------------------------------------- */
+  .mg-list{ display:flex; flex-direction:column; }
+  .mg-row{ padding: var(--sp-6) 0; border-bottom:1px solid var(--line); }
+  .mg-row:last-child{ border-bottom:0; }
+  .mg-month{ display:flex; align-items:baseline; gap: var(--sp-5); margin: 0 0 var(--sp-4);
+    font-size: var(--fs-sm); font-weight:600; color: var(--ink); }
+  .mg-empty{ font-size: var(--fs-3xs); font-style: italic; font-weight:400; color: var(--ink-dim); }
+  .mg-note{ width:100%; max-width: 62ch; resize: vertical; font-size: var(--fs-sm);
+    line-height:1.7; padding: var(--sp-5); }
+  .mg-row.has-note .mg-note{ border-left: 2px solid var(--accent-quiet); }
+  .mg-inline{ margin: 0 0 var(--sp-7); padding: var(--sp-5) var(--sp-6);
+    border-left:2px solid var(--accent-quiet); background: var(--sunken);
+    border-radius: 0 var(--r-md) var(--r-md) 0; font-size: var(--fs-sm); line-height:1.7;
+    color: var(--ink-soft); max-width: 62ch; }
+  .mg-inline-k{ display:block; margin-bottom: var(--sp-3); font-size: var(--fs-3xs);
+    text-transform:uppercase; letter-spacing: var(--track-caps); color: var(--ink-dim); }
+
+  /* ---------- read through -------------------------------------------------------- */
+  .rt-list{ list-style:none; margin:0; padding:0; }
+  .rt-row{ display:grid; grid-template-columns: 22px 1fr auto; align-items:center;
+    gap: var(--sp-5); padding: var(--sp-6) 0; border-bottom:1px solid var(--line); }
+  .rt-row:last-child{ border-bottom:0; }
+  .rt-mark{ width:20px; height:20px; border-radius: 50%; border:1px solid var(--line-strong);
+    display:grid; place-items:center; font-size: 11px; font-weight:700; color: transparent; }
+  .rt-row.is-read .rt-mark{ border-color: var(--positive); color: var(--positive); }
+  .rt-row.is-stale .rt-mark{ border-color: var(--warn); color: var(--warn); }
+  .rt-body{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .rt-month{ font-size: var(--fs-md); color: var(--ink); }
+  .rt-row.is-unread .rt-month{ color: var(--ink-soft); }
+  .rt-detail{ font-size: var(--fs-3xs); color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+  .rt-btn{ background:none; border:0; border-bottom:1px solid var(--accent); border-radius:0;
+    padding: 0 1px; font-size: var(--fs-2xs); color: var(--accent); cursor:pointer; white-space:nowrap; }
+  .rt-btn:hover{ color: var(--accent-dark); border-bottom-color: var(--accent-dark); }
+
+
+  /* ---------- the book, month by month -------------------------------------------- */
+  .rb-table{ width:100%; border-collapse:collapse; font-size: var(--fs-sm); margin: var(--sp-7) 0; }
+  .rb-table th{ text-align:left; font-size: var(--fs-3xs); text-transform:uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim); font-weight:400;
+    padding-bottom: var(--sp-4); border-bottom:1px solid var(--line-strong); }
+  .rb-table th.num, .rb-table td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+  .rb-table tbody tr{ border-bottom:1px solid var(--line); }
+  .rb-table tbody tr:last-child{ border-bottom:0; }
+  .rb-table td{ padding: var(--sp-5) var(--sp-4); vertical-align: middle; }
+  .rb-month{ display:flex; flex-direction:column; gap:1px; color: var(--ink); white-space:nowrap; }
+  .rb-count{ font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .rb-in{ color: var(--positive); } .rb-out{ color: var(--ink-soft); }
+  .rb-net{ font-weight:600; }
+  .rb-table tr.is-down .rb-net{ color: var(--negative); }
+  .rb-table tr.is-up .rb-net{ color: var(--positive); }
+  .rb-close{ font-weight:700; color: var(--ink); }
+  .rb-shape{ width: 22%; min-width: 96px; }
+  .rb-rail{ display:flex; align-items:center; justify-content:center; height:10px; }
+  .rb-rail .rb-neg, .rb-rail .rb-pos{ height:6px; border-radius:2px; }
+  .rb-neg{ background: var(--negative); opacity:.7; margin-left:auto; }
+  .rb-pos{ background: var(--positive); opacity:.7; margin-right:auto; }
+  .rb-mid{ width:1px; height:12px; background: var(--line-strong); flex:none; }
+
+
+  /* ---------- the statement as plain text ------------------------------------------ */
+  .st-text-preview{ margin-top: var(--sp-7); padding-top: var(--sp-6); border-top:1px solid var(--line); }
+  .st-text-preview summary{ font-size: var(--fs-sm); color: var(--accent); cursor:pointer;
+    list-style:none; }
+  .st-text-preview summary::-webkit-details-marker{ display:none; }
+  .st-text-preview summary::before{ content:"▸"; display:inline-block; margin-right: var(--sp-4);
+    transition: transform var(--dur-base) var(--ease-out); }
+  .st-text-preview[open] summary::before{ transform: rotate(90deg); }
+  .st-text-preview pre{ margin: var(--sp-6) 0 0; padding: var(--sp-6); overflow-x:auto;
+    background: var(--sunken); border:1px solid var(--line); border-radius: var(--r-md);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px; line-height:1.55; color: var(--ink-soft); white-space: pre; }
+
+
+  /* The card must never overflow, whatever the table does. */
+  .rb-scroll{ overflow-x:auto; margin: var(--sp-7) 0; }
+  .rb-scroll .rb-table{ margin:0; min-width: 100%; }
+  /* Below a comfortable width the opening column goes: every row's carried
+     forward is the next row's brought forward, so the figure is still on screen. */
+  @media (max-width: 900px){ .rb-table .is-opening{ display:none; } }
+
 </style>
 </head>
 
@@ -3906,19 +3987,23 @@
 
   /* ---------- Category dropdowns ---------- */
   function renderCategoryOptions(){
-    // Only the Add form's category select lives outside a re-rendered table now;
-    // the history category filters are built into their table headers instead.
     const addSelect = document.getElementById("in-category");
     const activeList = entryMode === "income" ? INCOME_CATEGORIES : categories;
-    // Replacing the options resets the select to its first entry, which is "Food".
-    // This runs on every sync, so without holding on to the choice a background poll
-    // landing mid-entry quietly refiled what you were typing. Switching between
-    // expense and income still resets, and should: the name will not be in the new
-    // list.
     const chosen = addSelect.value;
-    addSelect.innerHTML = activeList.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+    const source = entryMode === "income" ? incomes : expenses;
+    const used = {};
+    source.forEach(x => { used[x.category] = (used[x.category] || 0) + 1; });
+    const common = activeList.filter(c => used[c] >= 3)
+      .sort((a, b) => used[b] - used[a]).slice(0, 5);
+    const rest = activeList.filter(c => common.indexOf(c) === -1);
+    const opt = c => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>';
+    addSelect.innerHTML = common.length
+      ? '<optgroup label="Where most of it goes">' + common.map(opt).join("") + '</optgroup>' +
+        '<optgroup label="Everything else">' + rest.map(opt).join("") + '</optgroup>'
+      : activeList.map(opt).join("");
     if (chosen && activeList.indexOf(chosen) !== -1) addSelect.value = chosen;
   }
+
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
@@ -4886,7 +4971,9 @@
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const from = tmShown;
     tmShown = to;
-    if (reduce || from === null || Math.abs(to - from) < 0.01){
+    // document.hidden: rAF is paused there, so a counted animation would leave
+    // the old figure on screen until the tab is looked at again.
+    if (reduce || document.hidden || from === null || Math.abs(to - from) < 0.01){
       el.innerHTML = fmtMoneyRich(to);
       return;
     }
@@ -10174,6 +10261,589 @@
 
       mount();
       document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
+
+    /* ======================================================================
+       MARGINALIA — /unai-team ledger, round five
+
+       A written note against a month. The app already lets you annotate a loan;
+       the book itself had nowhere to say "the Health figure is the dentist, not
+       a pattern", which is exactly the sort of thing you know in September and
+       have forgotten by January.
+
+       Notes are written through the app's own store, which means they survive a
+       reload and respect this build's storage namespace — but the key is outside
+       SYNCED_KEYS, so they stay on this device and are not carried by sync or by
+       a backup file. Wiring a new key into the merge would mean touching the sync
+       invariants for a convenience feature. The panel says so rather than letting
+       anyone assume otherwise. Nothing here touches money.
+       ====================================================================== */
+    (function ledgerMarginalia(){
+      "use strict";
+
+      const MONL = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
+      const longMonth = k => MONL[Number(String(k).slice(5, 7)) - 1] + " " + String(k).slice(0, 4);
+      const monthKeyOf = d => String(d).slice(0, 7);
+
+      const notesStore = makeStore("spendly_month_notes_v1", {}, false);
+      let notes = notesStore.load() || {};
+      function saveNotes(){ notesStore.save(notes); }
+
+      function monthsOnFile(){
+        const keys = {};
+        expenses.forEach(e => keys[monthKeyOf(e.date)] = true);
+        incomes.forEach(i => keys[monthKeyOf(i.date)] = true);
+        Object.keys(notes).forEach(k => { if (/^\d{4}-\d{2}$/.test(k)) keys[k] = true; });
+        return Object.keys(keys).sort().reverse();
+      }
+
+      function build(){
+        const months = monthsOnFile();
+        if (!months.length){
+          return '<p class="wk">Nothing is in the book yet, so there is nothing to annotate.</p>';
+        }
+        const written = months.filter(m => (notes[m] || "").trim());
+        const lead = '<p class="wk">' +
+          (written.length
+            ? written.length + ' of the ' + months.length + ' months on file carry a note. '
+            : 'No month carries a note yet. ') +
+          'A note is kept on this device and survives a reload. It is not carried by sync or by a ' +
+          'backup file — the figures are what travel between devices, not the marginalia.</p>';
+
+        const list = '<div class="mg-list">' + months.map(m => {
+          const text = notes[m] || "";
+          return '<div class="mg-row' + (text.trim() ? " has-note" : "") + '" data-month="' + m + '">' +
+            '<p class="mg-month">' + escapeHtml(longMonth(m)) +
+              (text.trim() ? '' : '<span class="mg-empty">no note</span>') + '</p>' +
+            '<textarea class="mg-note" rows="2" data-month="' + m + '" ' +
+              'placeholder="What should you remember about ' + escapeHtml(longMonth(m)) + '?" ' +
+              'aria-label="Note on ' + escapeHtml(longMonth(m)) + '">' + escapeHtml(text) + '</textarea>' +
+          '</div>';
+        }).join("") + '</div>';
+
+        return lead + list;
+      }
+
+      function wire(){
+        const body = document.getElementById("mg-body");
+        if (!body) return;
+        body.querySelectorAll("textarea[data-month]").forEach(ta => {
+          let t = null;
+          const commit = () => {
+            const m = ta.dataset.month;
+            const v = ta.value;
+            if ((notes[m] || "") === v) return;
+            if (v.trim()) notes[m] = v; else delete notes[m];
+            saveNotes();
+            const row = ta.closest(".mg-row");
+            if (row) row.classList.toggle("has-note", !!v.trim());
+            paintStatementNote();
+          };
+          // Debounced while typing, committed on blur. Saving on every keystroke
+          // would write the store thirty times for one sentence.
+          ta.addEventListener("input", () => { clearTimeout(t); t = setTimeout(commit, 600); });
+          ta.addEventListener("blur", () => { clearTimeout(t); commit(); });
+        });
+      }
+
+      // The note belongs beside the statement it describes, not only on the
+      // page where it was typed.
+      function paintStatementNote(){
+        const sel = document.getElementById("st-month");
+        const body = document.getElementById("st-body");
+        if (!sel || !body) return;
+        let el = document.getElementById("st-margin-note");
+        const text = (notes[sel.value] || "").trim();
+        if (!text){ if (el) el.remove(); return; }
+        if (!el){
+          el = document.createElement("p");
+          el.id = "st-margin-note";
+          el.className = "mg-inline";
+          body.parentNode.insertBefore(el, body);
+        }
+        el.innerHTML = '<span class="mg-inline-k">Noted at the time</span>' + escapeHtml(text);
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-history");
+        if (!panel || panel.querySelector("#mg-card")) return;
+        const card = document.createElement("div");
+        card.className = "card is-sheet";
+        card.id = "mg-card";
+        card.innerHTML =
+          '<header class="panel-head is-chapter">' +
+            '<h2>In the margin</h2>' +
+            '<p class="sub">A line against a month, for the thing you will have forgotten by next year.</p>' +
+          '</header><div id="mg-body"></div>';
+        panel.appendChild(card);
+        document.getElementById("mg-body").innerHTML = build();
+        wire();
+        paintStatementNote();
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(() => { mount(); paintStatementNote(); }, 200), true);
+      document.addEventListener("change", e => {
+        if (e.target && e.target.id === "st-month") setTimeout(paintStatementNote, 30);
+      }, true);
+    })();
+
+    /* ======================================================================
+       READ THROUGH — /unai-team ledger, round five
+
+       A book you keep is a book you go back over. Marking a month as checked is
+       the ordinary bookkeeping act the app had no way to record, so there was
+       no answer to "which months have I actually looked at".
+
+       The mark is derived against the month's own contents: check a month, and
+       if entries are added to it afterwards the mark is shown as stale rather
+       than silently standing for rows you never saw.
+       ====================================================================== */
+    (function ledgerReadThrough(){
+      "use strict";
+
+      const MONL = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
+      const longMonth = k => MONL[Number(String(k).slice(5, 7)) - 1] + " " + String(k).slice(0, 4);
+      const monthKeyOf = d => String(d).slice(0, 7);
+      const money = n => fmtMoney(round2(n));
+
+      // Local to this device, like the marginalia above and for the same reason:
+      // "have I read this" is a fact about you, not about the book.
+      const marksStore = makeStore("spendly_month_reviewed_v1", {}, false);
+      let marks = marksStore.load() || {};
+      function saveMarks(){ marksStore.save(marks); }
+
+      function monthRows(k){
+        return expenses.filter(e => monthKeyOf(e.date) === k)
+          .concat(incomes.filter(i => monthKeyOf(i.date) === k));
+      }
+
+      function monthsOnFile(){
+        const keys = {};
+        expenses.forEach(e => keys[monthKeyOf(e.date)] = true);
+        incomes.forEach(i => keys[monthKeyOf(i.date)] = true);
+        return Object.keys(keys).sort().reverse();
+      }
+
+      function stateOf(k){
+        const mark = marks[k];
+        const rows = monthRows(k);
+        const spent = round2(rows.filter(r => expenses.indexOf(r) !== -1).reduce((t, r) => t + r.amount, 0));
+        if (!mark) return { state: "unread", rows: rows.length, spent: spent };
+        // Stale when the month has gained entries since it was checked. A mark
+        // that silently covers rows you never saw is worse than no mark.
+        if (mark.count !== rows.length)
+          return { state: "stale", rows: rows.length, spent: spent, at: mark.at, was: mark.count };
+        return { state: "read", rows: rows.length, spent: spent, at: mark.at };
+      }
+
+      function build(){
+        const months = monthsOnFile();
+        if (!months.length) return '<p class="wk">Nothing to go back over yet.</p>';
+        const states = months.map(m => ({ key: m, s: stateOf(m) }));
+        const unread = states.filter(x => x.s.state === "unread");
+        const stale = states.filter(x => x.s.state === "stale");
+
+        const lead = '<p class="wk">' +
+          (unread.length === 0 && stale.length === 0
+            ? 'Every month on file has been gone over.'
+            : (unread.length ? unread.length + ' month' + (unread.length === 1 ? " has" : "s have") + ' not been looked at' : '') +
+              (unread.length && stale.length ? ', and ' : '') +
+              (stale.length ? stale.length + ' ' + (stale.length === 1 ? 'has' : 'have') + ' gained entries since ' +
+                (stale.length === 1 ? 'it was' : 'they were') + ' checked' : '') + '.') +
+          ' Marking a month is a note to yourself; it changes nothing in the figures.</p>';
+
+        const list = '<ol class="rt-list">' + states.map(x =>
+          '<li class="rt-row is-' + x.s.state + '" data-month="' + x.key + '">' +
+            '<span class="rt-mark" aria-hidden="true">' +
+              (x.s.state === "read" ? "✓" : x.s.state === "stale" ? "!" : "") + '</span>' +
+            '<span class="rt-body">' +
+              '<span class="rt-month">' + escapeHtml(longMonth(x.key)) + '</span>' +
+              '<span class="rt-detail">' + x.s.rows + ' entr' + (x.s.rows === 1 ? "y" : "ies") +
+                ', ' + money(x.s.spent) + ' paid out' +
+                (x.s.state === "read" ? ' · checked ' + escapeHtml(daysAgoLabel(String(x.s.at).slice(0, 10), false)) : '') +
+                (x.s.state === "stale" ? ' · ' + (x.s.rows - x.s.was) + ' added since it was checked' : '') +
+              '</span>' +
+            '</span>' +
+            '<button class="rt-btn" data-mark="' + x.key + '">' +
+              (x.s.state === "read" ? "Unmark" : x.s.state === "stale" ? "Check again" : "Mark as read") + '</button>' +
+          '</li>').join("") + '</ol>';
+
+        return lead + list;
+      }
+
+      function paint(){
+        const body = document.getElementById("rt-body");
+        if (!body) return;
+        body.innerHTML = build();
+        body.querySelectorAll("[data-mark]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const k = btn.dataset.mark;
+            const st = stateOf(k);
+            if (st.state === "read"){
+              delete marks[k];
+              saveMarks(); paint();
+              showToast(longMonth(k) + " is unmarked.");
+            } else {
+              marks[k] = { at: new Date().toISOString(), count: monthRows(k).length };
+              saveMarks(); paint();
+              showToast(longMonth(k) + " marked as read.");
+            }
+          });
+        });
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-dashboard");
+        if (!panel || panel.querySelector("#rt-card")) return;
+        const card = document.createElement("div");
+        card.className = "card is-sheet";
+        card.id = "rt-card";
+        card.innerHTML =
+          '<header class="panel-head is-chapter">' +
+            '<h2>Read through</h2>' +
+            '<p class="sub">Which months you have been over, and which have changed since.</p>' +
+          '</header><div id="rt-body"></div>';
+        panel.appendChild(card);
+        paint();
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
+
+    /* ======================================================================
+       THE BOOK, MONTH BY MONTH — /unai-team ledger, round six
+
+       The statement sets out one month. This sets out all of them on one page,
+       each line carrying forward into the next, so the book can be read as a
+       run rather than as a stack of separate months.
+
+       The closing figure of every month is derived from today's balances less
+       everything entered since, which is the same anchor the single-month
+       statement uses — so the two cannot disagree, and the last closing figure
+       on this page is Total money by construction.
+       ====================================================================== */
+    (function ledgerRunningBook(){
+      "use strict";
+
+      const money = n => fmtMoney(round2(n));
+      const monthKeyOf = d => String(d).slice(0, 7);
+      const MONL = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
+      const longMonth = k => MONL[Number(String(k).slice(5, 7)) - 1] + " " + String(k).slice(0, 4);
+
+      function monthsOnFile(){
+        const keys = {};
+        expenses.forEach(e => keys[monthKeyOf(e.date)] = true);
+        incomes.forEach(i => keys[monthKeyOf(i.date)] = true);
+        return Object.keys(keys).sort();          // oldest first: a book runs forward
+      }
+
+      function closingAt(key){
+        const held = round2(savings.reduce((t, a) => t + (Number(a.amount) || 0), 0));
+        const after = [].concat(
+          expenses.filter(e => monthKeyOf(e.date) > key).map(e => -e.amount),
+          incomes.filter(i => monthKeyOf(i.date) > key).map(i => i.amount)
+        ).reduce((t, v) => t + v, 0);
+        return round2(held - after);
+      }
+
+      function rowsFor(keys){
+        return keys.map(k => {
+          const paid = round2(expenses.filter(e => monthKeyOf(e.date) === k).reduce((t, e) => t + e.amount, 0));
+          const recv = round2(incomes.filter(i => monthKeyOf(i.date) === k).reduce((t, i) => t + i.amount, 0));
+          const closing = closingAt(k);
+          return { key: k, paid: paid, recv: recv, closing: closing,
+                   opening: round2(closing - recv + paid), net: round2(recv - paid),
+                   entries: expenses.filter(e => monthKeyOf(e.date) === k).length +
+                            incomes.filter(i => monthKeyOf(i.date) === k).length };
+        });
+      }
+
+      function build(){
+        const keys = monthsOnFile();
+        if (!keys.length) return '<p class="wk">The book is empty.</p>';
+        const rows = rowsFor(keys);
+        const first = rows[0], last = rows[rows.length - 1];
+        const totalRecv = round2(rows.reduce((t, r) => t + r.recv, 0));
+        const totalPaid = round2(rows.reduce((t, r) => t + r.paid, 0));
+        const moved = round2(last.closing - first.opening);
+
+        const lead = '<p class="wk">The book runs from <strong>' + escapeHtml(longMonth(first.key)) +
+          '</strong> to <strong>' + escapeHtml(longMonth(last.key)) + '</strong>. Over that time <strong>' +
+          money(totalRecv) + '</strong> came in and <strong>' + money(totalPaid) +
+          '</strong> went out, taking what is held from ' + money(first.opening) + ' to <strong>' +
+          money(last.closing) + '</strong> — ' + (moved >= 0 ? 'a gain of ' : 'a fall of ') +
+          money(Math.abs(moved)) + '.</p>';
+
+        // A bar per month, signed, on a shared scale: the shape of the run is
+        // the thing a table of twelve rows cannot show you.
+        const peak = Math.max.apply(null, rows.map(r => Math.abs(r.net)).concat([1]));
+
+        const table =
+          '<div class="rb-scroll"><table class="rb-table"><thead><tr>' +
+            '<th>Month</th><th class="num is-opening">Brought forward</th><th class="num">Received</th>' +
+            '<th class="num">Paid out</th><th class="num">Net</th><th>Shape</th><th class="num">Carried forward</th>' +
+          '</tr></thead><tbody>' +
+          rows.slice().reverse().map(r => {
+            const w = Math.round((Math.abs(r.net) / peak) * 46);
+            return '<tr class="' + (r.net < 0 ? "is-down" : "is-up") + '">' +
+              '<td class="rb-month">' + escapeHtml(longMonth(r.key)) +
+                '<span class="rb-count">' + r.entries + ' entr' + (r.entries === 1 ? "y" : "ies") + '</span></td>' +
+              '<td class="num is-opening">' + money(r.opening) + '</td>' +
+              '<td class="num rb-in">' + (r.recv ? money(r.recv) : "—") + '</td>' +
+              '<td class="num rb-out">' + (r.paid ? money(r.paid) : "—") + '</td>' +
+              '<td class="num rb-net">' + (r.net >= 0 ? "" : "−") + money(Math.abs(r.net)) + '</td>' +
+              '<td class="rb-shape"><span class="rb-rail">' +
+                '<i class="rb-neg" style="width:' + (r.net < 0 ? w : 0) + '%"></i>' +
+                '<b class="rb-mid"></b>' +
+                '<i class="rb-pos" style="width:' + (r.net >= 0 ? w : 0) + '%"></i></span></td>' +
+              '<td class="num rb-close">' + money(r.closing) + '</td>' +
+            '</tr>';
+          }).join("") +
+          '</tbody></table></div>';
+
+        const best = rows.slice().sort((a, b) => b.net - a.net)[0];
+        const worst = rows.slice().sort((a, b) => a.net - b.net)[0];
+        const ahead = rows.filter(r => r.net > 0).length;
+
+        const tail = '<p class="wk">' +
+          ahead + ' of the ' + rows.length + ' months closed ahead. ' +
+          (best && best.net > 0 ? 'The best was <strong>' + escapeHtml(longMonth(best.key)) + '</strong>, ' +
+            money(best.net) + ' to the good. ' : '') +
+          (worst && worst.net < 0 ? 'The worst was <strong>' + escapeHtml(longMonth(worst.key)) + '</strong>, ' +
+            money(Math.abs(worst.net)) + ' behind. ' : '') +
+          'Each line carries into the one below it, and the last figure in the column is what is held today.</p>';
+
+        return lead + table + tail;
+      }
+
+      function mount(){
+        const panel = document.getElementById("tab-savings");
+        if (!panel || panel.querySelector("#rb-card")) return;
+        const card = document.createElement("div");
+        card.className = "card is-sheet";
+        card.id = "rb-card";
+        card.innerHTML =
+          '<header class="panel-head is-chapter">' +
+            '<h2>The book, month by month</h2>' +
+            '<p class="sub">Every month on one page, each one carried forward into the next.</p>' +
+          '</header><div id="rb-body"></div>';
+        panel.appendChild(card);
+        const body = document.getElementById("rb-body");
+        if (body) body.innerHTML = build();
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 200), true);
+    })();
+
+
+    /* ======================================================================
+       THE BOOK AS TEXT — /unai-team ledger, round seven
+
+       A statement you can print but not copy is a statement you cannot send.
+       This sets the same figures as fixed-width plain text: leader dots made of
+       full stops, amounts right-aligned on a fixed column, headings underlined
+       with hyphens. It survives being pasted into an email, a note, or a chat
+       window, which is where a statement usually has to end up.
+
+       Nothing is recalculated here. The figures come from the same derivation
+       the statement panel uses, so the text and the page cannot drift apart.
+       ====================================================================== */
+    (function ledgerPlainText(){
+      "use strict";
+
+      const WIDTH = 64;
+      const monthKeyOf = d => String(d).slice(0, 7);
+      const MONL = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
+      const longMonth = k => MONL[Number(String(k).slice(5, 7)) - 1] + " " + String(k).slice(0, 4);
+
+      // Plain digits with grouping, no currency mark: a fixed-width column reads
+      // better without a symbol repeated down every row, and the heading says
+      // what the unit is once.
+      const plain = n => Number(round2(n)).toLocaleString("en-US",
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      function leader(label, amount, indent){
+        const pad = indent || 0;
+        const right = plain(amount);
+        const left = " ".repeat(pad) + label;
+        const room = WIDTH - left.length - right.length - 2;
+        return left + " " + (room > 0 ? ".".repeat(room) : "") + " " + right;
+      }
+
+      function rule(ch){ return (ch || "-").repeat(WIDTH); }
+
+      function heading(text){
+        return text.toUpperCase() + "\n" + rule("-");
+      }
+
+      function monthsOnFile(){
+        const keys = {};
+        expenses.forEach(e => keys[monthKeyOf(e.date)] = true);
+        incomes.forEach(i => keys[monthKeyOf(i.date)] = true);
+        return Object.keys(keys).sort().reverse();
+      }
+
+      function closingAt(key){
+        const held = round2(savings.reduce((t, a) => t + (Number(a.amount) || 0), 0));
+        const after = [].concat(
+          expenses.filter(e => monthKeyOf(e.date) > key).map(e => -e.amount),
+          incomes.filter(i => monthKeyOf(i.date) > key).map(i => i.amount)
+        ).reduce((t, v) => t + v, 0);
+        return round2(held - after);
+      }
+
+      function statementText(key){
+        const exp = expenses.filter(e => monthKeyOf(e.date) === key);
+        const inc = incomes.filter(i => monthKeyOf(i.date) === key);
+        const paid = round2(exp.reduce((t, e) => t + e.amount, 0));
+        const recv = round2(inc.reduce((t, i) => t + i.amount, 0));
+        const closing = closingAt(key);
+        const opening = round2(closing - recv + paid);
+
+        const out = [];
+        const title = "STATEMENT OF ACCOUNT — " + longMonth(key).toUpperCase();
+        out.push(rule("="), title, "All figures in Philippine pesos.", rule("="), "");
+        out.push(leader("Brought forward", opening), "");
+
+        if (inc.length){
+          const bySrc = {};
+          inc.forEach(i => { (bySrc[i.category] = bySrc[i.category] || []).push(i); });
+          out.push(heading("Received"));
+          Object.keys(bySrc).sort().forEach(src => {
+            out.push("  " + src);
+            bySrc[src].slice().sort((a, b) => a.date.localeCompare(b.date)).forEach(r => {
+              out.push(leader(r.date.slice(5) + "  " + (r.description || "(no description)"), r.amount, 4));
+            });
+            if (bySrc[src].length > 1)
+              out.push(leader("subtotal", round2(bySrc[src].reduce((t, r) => t + r.amount, 0)), 4));
+            out.push("");
+          });
+          out.push(leader("Total received", recv), "");
+        }
+
+        if (exp.length){
+          const byCat = {};
+          exp.forEach(e => { (byCat[e.category] = byCat[e.category] || []).push(e); });
+          const order = Object.keys(byCat).sort((a, b) =>
+            byCat[b].reduce((t, r) => t + r.amount, 0) - byCat[a].reduce((t, r) => t + r.amount, 0));
+          out.push(heading("Paid out"));
+          order.forEach(cat => {
+            const sub = round2(byCat[cat].reduce((t, r) => t + r.amount, 0));
+            out.push("  " + cat + "   (" + Math.round((sub / (paid || 1)) * 100) + "% of the month)");
+            byCat[cat].slice().sort((a, b) => a.date.localeCompare(b.date)).forEach(r => {
+              out.push(leader(r.date.slice(5) + "  " + (r.description || "(no description)"), r.amount, 4));
+            });
+            out.push(leader("subtotal", sub, 4), "");
+          });
+          out.push(leader("Total paid out", paid), "");
+        }
+
+        out.push(rule("="));
+        out.push(leader("Brought forward", opening));
+        out.push(leader("Received", recv));
+        out.push(leader("Paid out", -paid));
+        out.push(rule("-"));
+        out.push(leader("Carried forward", closing));
+        out.push(rule("="));
+        out.push("");
+        out.push("Prepared " + todayISO() + " from " + (exp.length + inc.length) + " entries.");
+        return out.join("\n");
+      }
+
+      function bookText(){
+        const keys = monthsOnFile().slice().reverse();
+        const out = [rule("="), "THE BOOK, MONTH BY MONTH", "All figures in Philippine pesos.", rule("="), ""];
+        // Fixed columns rather than leader dots: this one is a table, and a
+        // table pasted into a monospaced window should still line up.
+        const head = "Month".padEnd(18) + "Received".padStart(13) + "Paid out".padStart(13) + "Carried".padStart(15);
+        out.push(head, rule("-"));
+        keys.forEach(k => {
+          const recv = round2(incomes.filter(i => monthKeyOf(i.date) === k).reduce((t, i) => t + i.amount, 0));
+          const paid = round2(expenses.filter(e => monthKeyOf(e.date) === k).reduce((t, e) => t + e.amount, 0));
+          out.push(longMonth(k).padEnd(18) + plain(recv).padStart(13) +
+                   plain(paid).padStart(13) + plain(closingAt(k)).padStart(15));
+        });
+        out.push(rule("-"));
+        const totalRecv = round2(incomes.reduce((t, i) => t + i.amount, 0));
+        const totalPaid = round2(expenses.reduce((t, e) => t + e.amount, 0));
+        out.push("Whole book".padEnd(18) + plain(totalRecv).padStart(13) + plain(totalPaid).padStart(13) +
+                 plain(closingAt(keys[keys.length - 1] || todayISO().slice(0, 7))).padStart(15));
+        return out.join("\n");
+      }
+
+      function copy(text, said){
+        if (navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(text).then(
+            () => showToast(said),
+            () => showToast("Couldn't reach the clipboard on this device."));
+        } else {
+          showToast("The clipboard is not available here — use the download instead.");
+        }
+      }
+
+      function mount(){
+        const card = document.getElementById("st-card");
+        if (!card || card.querySelector("#btn-st-text")) return;
+        const pick = card.querySelector(".st-pick");
+        if (!pick) return;
+
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "btn btn-ghost btn-sm";
+        copyBtn.id = "btn-st-text";
+        copyBtn.textContent = "Copy as text";
+        pick.appendChild(copyBtn);
+
+        const saveBtn = document.createElement("button");
+        saveBtn.className = "btn btn-ghost btn-sm";
+        saveBtn.id = "btn-st-download";
+        saveBtn.textContent = "Save as a text file";
+        pick.appendChild(saveBtn);
+
+        const bookBtn = document.createElement("button");
+        bookBtn.className = "btn btn-ghost btn-sm";
+        bookBtn.id = "btn-book-text";
+        bookBtn.textContent = "Copy the whole book";
+        pick.appendChild(bookBtn);
+
+        const keyOf = () => {
+          const sel = document.getElementById("st-month");
+          return sel ? sel.value : todayISO().slice(0, 7);
+        };
+        copyBtn.addEventListener("click", () =>
+          copy(statementText(keyOf()), "The statement is on the clipboard."));
+        bookBtn.addEventListener("click", () =>
+          copy(bookText(), "The whole book is on the clipboard."));
+        saveBtn.addEventListener("click", () => {
+          const k = keyOf();
+          downloadFile("spendly-statement-" + k + ".txt", statementText(k), "text/plain");
+        });
+
+        // A preview, because a copy button that shows nothing asks you to paste
+        // somewhere else to find out what you copied.
+        const pre = document.createElement("details");
+        pre.className = "st-text-preview";
+        pre.innerHTML = '<summary>See the text version</summary><pre id="st-text-body"></pre>';
+        card.appendChild(pre);
+        const paint = () => {
+          const body = document.getElementById("st-text-body");
+          if (body) body.textContent = statementText(keyOf());
+        };
+        pre.addEventListener("toggle", () => { if (pre.open) paint(); });
+        const sel = document.getElementById("st-month");
+        if (sel) sel.addEventListener("change", () => { if (pre.open) paint(); });
+      }
+
+      mount();
+      document.addEventListener("click", () => setTimeout(mount, 220), true);
     })();
 
 

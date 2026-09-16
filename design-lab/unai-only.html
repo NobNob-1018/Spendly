@@ -4227,19 +4227,22 @@
 
   /* ---------- Category dropdowns ---------- */
   function renderCategoryOptions(){
-    // Only the Add form's category select lives outside a re-rendered table now;
-    // the history category filters are built into their table headers instead.
     const addSelect = document.getElementById("in-category");
     const activeList = entryMode === "income" ? INCOME_CATEGORIES : categories;
-    // Replacing the options resets the select to its first entry, which is "Food".
-    // This runs on every sync, so without holding on to the choice a background poll
-    // landing mid-entry quietly refiled what you were typing. Switching between
-    // expense and income still resets, and should: the name will not be in the new
-    // list.
     const chosen = addSelect.value;
-    addSelect.innerHTML = activeList.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+    const monthKey = todayISO().slice(0, 7);
+    const source = entryMode === "income" ? incomes : expenses;
+    const spent = {};
+    source.filter(x => String(x.date).slice(0, 7) === monthKey)
+      .forEach(x => { spent[x.category] = round2((spent[x.category] || 0) + x.amount); });
+    addSelect.innerHTML = activeList.map(c => {
+      const v = spent[c];
+      return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) +
+        (v ? "  \u2014  " + fmtMoney(v) + " so far" : "") + '</option>';
+    }).join("");
     if (chosen && activeList.indexOf(chosen) !== -1) addSelect.value = chosen;
   }
+
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
@@ -5193,7 +5196,9 @@
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const from = tmShown;
     tmShown = to;
-    if (reduce || from === null || Math.abs(to - from) < 0.01){
+    // document.hidden: rAF is paused there, so a counted animation would leave
+    // the old figure on screen until the tab is looked at again.
+    if (reduce || document.hidden || from === null || Math.abs(to - from) < 0.01){
       el.innerHTML = fmtMoneyRich(to);
       return;
     }
