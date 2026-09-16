@@ -12068,7 +12068,8 @@
 
       let dragging = false;
       grip.addEventListener("pointerdown", ev => {
-        if (ev.button !== 0) return;
+        // The same mode as the cards: the layout is editable, or it is not.
+        if (ev.button !== 0 || !document.body.classList.contains("is-layout-editing")) return;
         dragging = true;
         // Throws on a pointer id this element never saw, and a half-started
         // drag is worse than an uncaptured one.
@@ -12095,6 +12096,7 @@
       window.addEventListener("pointercancel", stop);
 
       grip.addEventListener("dblclick", () => {
+        if (!document.body.classList.contains("is-layout-editing")) return;
         apply(DEFAULT, true);
         if (typeof showToast === "function") showToast("Rail back to its usual width.");
       });
@@ -12105,6 +12107,7 @@
 
       grip.addEventListener("keydown", ev => {
         const k = ev.key;
+        if (!document.body.classList.contains("is-layout-editing")) return;
         if (k !== "ArrowLeft" && k !== "ArrowRight" && k !== "Home") return;
         ev.preventDefault();
         const next = k === "Home" ? DEFAULT : now + (k === "ArrowRight" ? STEP : -STEP);
@@ -12550,6 +12553,9 @@
         box.addEventListener("click", ev => {
           if (ev.target.closest("[data-edit]")){
             editing = !editing;
+            // Published, because the rail's own width control is a different
+            // module and there should be one fact about this, not two.
+            document.body.classList.toggle("is-layout-editing", editing);
             signature = ""; buildContents(false);
             return;
           }
@@ -12899,7 +12905,9 @@
 
         // A second pass, because whether a card has a visible card after it
         // depends on the widths the first pass just applied.
-        cards.forEach((el, i) => {
+        // Only while the layout is being edited. On a page you are reading,
+        // a strip of the card that resizes it when dragged is a surprise.
+        if (editing) cards.forEach((el, i) => {
           // The width handle needs something to its right to be worth dragging;
           // the height handle is always worth it.
           if (i < cards.length - 1){
@@ -12959,6 +12967,7 @@
         });
         // After the spans are applied, because whether two cards share a line
         // depends on how wide they just became.
+        document.body.classList.toggle("is-layout-editing", !!editing);
         // Widths and seams are a property of the bento, not of the rail's list.
         applySpansAndSeams(host, tab);
         if (host.dataset.dragWired) return;
@@ -12979,7 +12988,7 @@
         // flag comes off for the duration and goes back on after.
         host.addEventListener("pointerdown", ev => {
           const seam = ev.target.closest(".card-seam, .card-seam-v, .card-seam-c");
-          if (!seam || ev.button !== 0) return;
+          if (!seam || !editing || ev.button !== 0) return;
           const axis = seam.classList.contains("card-seam-v") ? "y"
                      : seam.classList.contains("card-seam-c") ? "xy" : "x";
           // Its own card, which is its parent. Asking for the nearest ancestor
@@ -13095,7 +13104,7 @@
         window.addEventListener("pointercancel", endSeam);
         host.addEventListener("dblclick", ev => {
           const vert = ev.target.closest(".card-seam-v");
-          if (vert){
+          if (vert && editing){
             // Back to the height the contents want, which is the useful reset
             // for a dimension whose "default" was measured in the first place.
             const card = vert.parentElement;
@@ -13106,7 +13115,7 @@
             return;
           }
           const seam = ev.target.closest(".card-seam, .card-seam-c");
-          if (!seam) return;
+          if (!seam || !editing) return;
           const left = seam.parentElement;
           if (!left) return;
           const right = lineMate(left);
@@ -14459,6 +14468,44 @@
   @media (hover: hover){ .card-menu-i:hover:not([disabled]){ background: var(--raised); } }
   .card-menu-i:focus-visible{ outline: 2px solid var(--accent); outline-offset: -2px; }
   .card-menu-i[disabled]{ color: var(--ink-dim); cursor: default; opacity: .55; }
+
+  /* ---------- the handles, in the mode that owns them ---------------------- */
+  /* Out of the mode there is nothing to hit and nothing to see. The rail's grip
+     is built once and lives outside the bento, so it is hidden here rather than
+     not built. */
+  .rail-resize{ display: none; }
+  body.is-layout-editing .rail-resize{ display: block; }
+
+  /* Having asked for them, you should not have to hunt. A 5px bar at full
+     strength with a ring, so it reads on a pale card as well as a dark one. */
+  .card-seam::after,
+  .card-seam-v::after,
+  body.is-layout-editing .rail-resize::after{
+    opacity: 1;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg) 78%, transparent);
+  }
+  .card-seam::after{ width: 5px; height: 44px; right: 3px; }
+  .card-seam-v::after{ height: 5px; width: 44px; bottom: 3px; }
+  body.is-layout-editing .rail-resize::after{ width: 5px; height: 44px; left: 1px; }
+  @media (hover: hover){
+    .card-seam:hover::after{ height: 64px; }
+    .card-seam-v:hover::after{ width: 64px; }
+    body.is-layout-editing .rail-resize:hover::after{ height: 64px; }
+  }
+  body.is-seam-resizing .card-seam::after{ height: 64px; }
+  body.is-seam-resizing .card-seam-v::after{ width: 64px; }
+
+  /* The corner is a grip, not a hint: two strokes and a fill behind them. */
+  .card-seam-c::after{
+    opacity: 1; right: 4px; bottom: 4px; width: 11px; height: 11px;
+    border-right-width: 3px; border-bottom-width: 3px;
+    border-bottom-right-radius: 5px;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg) 78%, transparent);
+  }
+  /* The hit areas can be generous now that they only exist in the mode. */
+  .card-seam{ width: 18px; }
+  .card-seam-v{ height: 18px; right: 18px; }
+  .card-seam-c{ width: 22px; height: 22px; }
 </style>
 </body>
 </html>
