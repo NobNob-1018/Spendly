@@ -11,7 +11,11 @@ const SEED = fs.readFileSync(path.join(__dirname, "seed-data.json"), "utf8");
 const VARIANTS = [
   { file: "unai-only.html", ns: "LAB_UNAI_",     label: "un-ai only",     note: "/unai — the video corpus is the sole authority" },
   { file: "unai-team.html", ns: "LAB_UNAITEAM_", label: "un-ai + others", note: "/unai-team — corpus at layer 3, other skills fill the rest" },
-  { file: "ui-only.html",   ns: "LAB_UI_",       label: "others only",    note: "/ui — the nine-skill stack, no un-ai-ify" }
+  { file: "ui-only.html",   ns: "LAB_UI_",       label: "others only",    note: "/ui — the nine-skill stack, no un-ai-ify" },
+  /* Not generated from the baseline: copied from ui-only and worked on from
+     there, because the picks it is assembling are mostly that variant's. Listed
+     so the namespace is registered and so build.js refuses to flatten it. */
+  { file: "combined.html",  ns: "LAB_COMBINED_", label: "combined",       note: "the aspects picked out of the three — sidebar first" }
 ];
 
 const harness = v => `
