@@ -60,7 +60,13 @@ const savings = [
   { id: uid("sv"), provider: "Maya Bank",             amount: 84250.40, rate: 3.5, taxRate: 20, tiered: true,  tierCap: 100000, tierOverRate: 1.5, dateAdded: iso(dayBack(210)) },
   { id: uid("sv"), provider: "GCash GSave",           amount: 31400.00, rate: 2.6, taxRate: 20, tiered: false, tierCap: null, tierOverRate: null, dateAdded: iso(dayBack(180)) },
   { id: uid("sv"), provider: "CIMB Bank PH",          amount: 60000.00, rate: 4.0, taxRate: 20, tiered: false, tierCap: null, tierOverRate: null, dateAdded: iso(dayBack(150)) },
-  { id: uid("sv"), provider: "Cash / Physical wallet", amount: 4820.00, rate: 0,   taxRate: 0,  tiered: false, tierCap: null, tierOverRate: null, dateAdded: iso(dayBack(120)) }
+  { id: uid("sv"), provider: "Cash / Physical wallet", amount: 4820.00, rate: 0,   taxRate: 0,  tiered: false, tierCap: null, tierOverRate: null, dateAdded: iso(dayBack(120)) },
+  /* These three were missing while the expenses, loans, investments and
+     recurring entries all named them, so a freshly seeded copy had money
+     charged against accounts it did not have. */
+  { id: uid("sv"), provider: "BPI",    amount: 41200.00, rate: 0.0625, taxRate: 20, tiered: false, tierCap: null, tierOverRate: null, dateAdded: iso(dayBack(165)) },
+  { id: uid("sv"), provider: "GCash",  amount: 6350.50,  rate: 0,      taxRate: 0,  tiered: false, tierCap: null, tierOverRate: null, dateAdded: iso(dayBack(167)) },
+  { id: uid("sv"), provider: "GoTyme", amount: 12900.00, rate: 4.0,    taxRate: 20, tiered: false, tierCap: null, tierOverRate: null, dateAdded: iso(dayBack(140)) }
 ];
 savings.forEach(a => { a.opening = a.amount; });
 
