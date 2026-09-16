@@ -1427,6 +1427,73 @@
     #toast{ left: calc(50% - (var(--margin-col) + var(--sp-10)) / 2); }
   }
 
+
+  /* ---------- a statement is one surface, not a stack of panels ------------- */
+  .card{
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    /* Ruled under, not over: on the Settings tab only one group is shown at a
+       time, and a rule above the first visible card reads as a stray line under
+       the heading. Under the last one it reads as the end of a section. */
+    border-bottom: 1px solid var(--line);
+    padding: var(--sp-10) 0;
+    margin: 0;
+  }
+  .card.is-sheet, .card.is-panel, .card.is-board{ border-radius: 0; }
+  .tab-panel > .card:first-child,
+  .tab-panel > .bento > .card:first-child{ padding-top: var(--sp-7); }
+  .tab-panel > .card:last-child,
+  .tab-panel > .bento > .card:last-child{ border-bottom: 0; }
+  /* A section inside a section does not get its own rule or its own padding. */
+  .card .card{ border-bottom: 0; padding: 0; }
+
+  /* The onboarding note is an aside, not part of the statement: it is set in
+     from the measure and marked in the margin the way a note would be. */
+  .card.onboard{
+    border-bottom: 0;
+    border-left: 2px solid var(--accent-deep);
+    padding: var(--sp-7) var(--sp-8);
+    margin: 0 0 var(--sp-8);
+    background: var(--sunken);
+  }
+
+  /* The masthead keeps its plate — a statement does carry a printed summary
+     block at the top of page one. */
+  #total-money-bar{ margin-bottom: var(--sp-10); }
+
+  /* Sticky column headers sat on --raised to match the card they were in.
+     There is no card any more, so they have to match the page or they float. */
+  thead th{ background: var(--bg); }
+
+  /* The chart still needs a field to sit in; it is a plate on the page, so it
+     gets the page's own quiet inset rather than a second card. */
+  .chart-box{ border-radius: var(--r-sm); background: var(--sunken); border: 1px solid var(--line); }
+
+  /* With no card padding the panel head would sit hard against the rule above. */
+  .card > .panel-head:first-child{ margin-top: 0; }
+
+
+  #run-card{ background: none; }
+  #run-card .run-line{ font-size: var(--fs-lg); line-height: 1.75; color: var(--ink-soft); max-width: 60ch; }
+  #run-card .run-line strong{ color: var(--ink); }
+
+
+  .insight-prose .insight, .insight-prose p.insight{ background: none; box-shadow: none; }
+  .stm-doc{ background: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+  /* The statement still needs to read as a block of its own, so it is ruled
+     rather than boxed — the same device the sections use. */
+  .stm-doc{ border-top: 1px solid var(--line); padding-top: var(--sp-8); }
+
+
+  [id$="-table-wrap"]{
+    background: none; border: 0; border-radius: 0;
+    border-top: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--line-strong);
+    /* overflow-x stays: some of these tables are wider than the measure. */
+  }
+
 </style>
 </head>
 
