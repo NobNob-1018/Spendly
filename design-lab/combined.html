@@ -29,6 +29,11 @@
       var k = "spendly_theme_v1";
       var t = localStorage.getItem(k) || localStorage.getItem("LAB_COMBINED_" + k);
       if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+      // The rail's width, for the same reason: it would otherwise open at its
+      // default and jump on the next frame.
+      var wk = "spendly_rail_width_v1";
+      var w = parseInt(localStorage.getItem(wk) || localStorage.getItem("LAB_COMBINED_" + wk), 10);
+      if (w >= 200 && w <= 420) document.documentElement.style.setProperty("--sidebar-w", w + "px");
     } catch (e){}
   })();
 </script>
@@ -366,18 +371,31 @@
   .status-select{ width:auto; max-width:140px; }
   .deadline-cell input{ width:140px; }
   .deadline-note{ font-size: var(--fs-3xs); color: var(--ink-dim); }
-  .row-action{ width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid transparent; border-radius: var(--r-sm); color: var(--ink-soft); cursor:pointer; }
-  .row-action svg{ width:14px; height:14px; }
-  @media (hover: hover) and (pointer: fine){
-    tbody tr .row-action{ visibility:hidden; opacity:0; transition: opacity var(--dur-fast) var(--ease-out); }
-    tbody tr:hover .row-action, tbody tr:focus-within .row-action, tbody tr:has(input:checked) .row-action{ visibility:visible; opacity:1; }
-    .row-action:hover{ background: var(--over); border-color: var(--line); color: var(--ink); }
+  /* A column headed ACTIONS shows its actions. They used to be hidden until the
+     row was hovered, and hidden outright on a coarse pointer in favour of a
+     kebab that no renderer has ever emitted, which left the column empty on
+     every touch device. Quiet at rest, full ink on hover or focus. */
+  .row-action{
+    width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;
+    background:transparent; border:1px solid var(--line); border-radius: var(--r-sm);
+    color: var(--ink-soft); cursor:pointer; opacity: .75;
+    transition: opacity var(--dur-fast) var(--ease-out),
+                background-color var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
   }
+  .row-action svg{ width:14px; height:14px; }
+  tbody tr:hover .row-action,
+  tbody tr:focus-within .row-action,
+  tbody tr:has(input:checked) .row-action{ opacity: 1; }
+  @media (hover: hover) and (pointer: fine){
+    .row-action:hover{ background: var(--over); border-color: var(--line-strong); color: var(--ink); opacity: 1; }
+  }
+  .row-action:focus-visible{ opacity: 1; }
   .row-action-danger:hover{ color: var(--negative); }
-  .row-kebab{ display:none; }
+  /* A finger needs more than 28px, and there is room for it in that column. */
   @media (hover:none),(pointer:coarse){
-    .row-kebab{ display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; background:transparent; border:1px solid var(--line); border-radius: var(--r-sm); color: var(--ink-soft); cursor:pointer; }
-    tbody tr .row-action{ display:none; }
+    .row-action{ width:34px; height:34px; opacity: 1; }
+    .row-action svg{ width:16px; height:16px; }
   }
   .row-action-bar{ display:flex; flex-wrap:wrap; align-items:center; gap: var(--sp-5); }
   .has-action-row td{ border-bottom:0; }
@@ -11973,6 +11991,86 @@
       paint();
     })();
 
+    /* The rail's width, dragged and remembered. */
+    (function railWidth(){
+      const KEY  = "spendly_rail_width_v1";
+      const MIN  = 200, MAX = 420, DEFAULT = 264, STEP = 16;
+      const root = document.documentElement;
+      const nav  = document.querySelector("nav.tabs");
+      if (!nav || nav.querySelector(".rail-resize")) return;
+
+      const clamp = n => Math.max(MIN, Math.min(MAX, Math.round(n)));
+
+      const grip = document.createElement("div");
+      grip.className = "rail-resize";
+      grip.tabIndex = 0;
+      grip.setAttribute("role", "separator");
+      grip.setAttribute("aria-orientation", "vertical");
+      grip.setAttribute("aria-label", "Rail width");
+      grip.setAttribute("aria-valuemin", String(MIN));
+      grip.setAttribute("aria-valuemax", String(MAX));
+      grip.title = "Drag to resize. Double-click to reset.";
+      nav.appendChild(grip);
+
+      // The value that was last applied. Remembering this rather than measuring
+      // the rail is the whole point: the rendered width is not the variable
+      // below 1000px, where the rail is a bottom bar and the rect reads 0.
+      let now = DEFAULT;
+      function apply(px, remember){
+        const n = clamp(px);
+        now = n;
+        root.style.setProperty("--sidebar-w", n + "px");
+        grip.setAttribute("aria-valuenow", String(n));
+        if (remember){ try { localStorage.setItem(KEY, String(n)); } catch (e){} }
+        return n;
+      }
+
+      // A stored number is input like any other: clamped on the way in, and
+      // dropped rather than trusted if it is not a number at all.
+      let saved = NaN;
+      try { saved = parseInt(localStorage.getItem(KEY), 10); } catch (e){}
+      apply(saved >= MIN && saved <= MAX ? saved : DEFAULT, false);
+
+      let dragging = false;
+      grip.addEventListener("pointerdown", ev => {
+        if (ev.button !== 0) return;
+        dragging = true;
+        // Throws on a pointer id this element never saw, and a half-started
+        // drag is worse than an uncaptured one.
+        try { grip.setPointerCapture(ev.pointerId); } catch (e){}
+        document.body.classList.add("is-rail-resizing");
+        ev.preventDefault();
+      });
+      grip.addEventListener("pointermove", ev => {
+        if (!dragging) return;
+        // The rail starts at the left edge, so the pointer's x IS the width.
+        apply(ev.clientX, false);
+      });
+      function stop(ev){
+        if (!dragging) return;
+        dragging = false;
+        try { grip.releasePointerCapture(ev.pointerId); } catch (e){}
+        document.body.classList.remove("is-rail-resizing");
+        apply(now, true);
+      }
+      grip.addEventListener("pointerup", stop);
+      grip.addEventListener("pointercancel", stop);
+
+      grip.addEventListener("dblclick", () => {
+        apply(DEFAULT, true);
+        if (typeof showToast === "function") showToast("Rail back to its usual width.");
+      });
+
+      grip.addEventListener("keydown", ev => {
+        const k = ev.key;
+        if (k !== "ArrowLeft" && k !== "ArrowRight" && k !== "Home") return;
+        ev.preventDefault();
+        const next = k === "Home" ? DEFAULT : now + (k === "ArrowRight" ? STEP : -STEP);
+        const got = apply(next, true);
+        if (typeof showToast === "function") showToast("Rail " + got + "px.");
+      });
+    })();
+
     (function combinedRail(){
       "use strict";
 
@@ -12298,7 +12396,8 @@
         const away = new Set(hiddenSecs[tab] || []);
         const onPage = new Set(glanceOf(tab, secs));
         const listed = editing
-          ? secs.filter(x => !away.has(x.id))
+          ? [...secs.filter(x => !away.has(x.id) && onPage.has(x.id)),
+             ...secs.filter(x => !away.has(x.id) && !onPage.has(x.id))]
           : secs.filter(x => !onPage.has(x.id) && !away.has(x.id));
         const gone = editing ? secs.filter(x => away.has(x.id)) : [];
         head.innerHTML =
@@ -12309,8 +12408,23 @@
             (editing ? "Done" : "Edit") + '</button>';
         box.appendChild(head);
 
+        // Which group a chip belongs to, so the heading can change between them.
+        let lastGroup = null;
         listed.forEach(s => {
-          const on = chosen.has(s.id);
+          // The set the pin WRITES, not the set arrange mode widens to include
+          // every card. `chosen` is every section while editing, so reading it
+          // here lit all six pins at once and told you nothing.
+          const on = onPage.has(s.id);
+          if (editing){
+            const g = on ? "on" : "beside";
+            if (g !== lastGroup){
+              lastGroup = g;
+              const gh = document.createElement("p");
+              gh.className = "nav-group-k";
+              gh.textContent = on ? "On the page" : "Opens beside";
+              box.appendChild(gh);
+            }
+          }
           const item = document.createElement("div");
           item.className = "nav-item";
 
@@ -12492,6 +12606,27 @@
          are reading should not rearrange itself under the cursor. */
       let railMoveTo = null;
       let dragCard = null;
+      /* The handle. A grip so the card reads as draggable, and two buttons so
+         dragging is not the only way to move it. */
+      function arrangeTag(){
+        const tag = document.createElement("div");
+        tag.className = "arrange-tag";
+        tag.innerHTML =
+          '<span class="arrange-grip" aria-hidden="true">' +
+            '<svg viewBox="0 0 10 16"><circle cx="3" cy="3" r="1.3"/><circle cx="7" cy="3" r="1.3"/>' +
+            '<circle cx="3" cy="8" r="1.3"/><circle cx="7" cy="8" r="1.3"/>' +
+            '<circle cx="3" cy="13" r="1.3"/><circle cx="7" cy="13" r="1.3"/></svg>' +
+          '</span>' +
+          '<span class="arrange-tag-t">Drag</span>' +
+          '<button type="button" class="arrange-step" data-step="up" draggable="false" ' +
+            'aria-label="Move this up" title="Move this up">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg></button>' +
+          '<button type="button" class="arrange-step" data-step="down" draggable="false" ' +
+            'aria-label="Move this down" title="Move this down">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10l6 6 6-6"/></svg></button>';
+        return tag;
+      }
+
       function wireCardDrag(panel, secs, tab){
         const host = panel.querySelector(".bento") || panel;
         secs.forEach(sec => {
@@ -12500,6 +12635,11 @@
           b.dataset.arrangeId = sec.id;
           b.classList.toggle("is-arrangeable", editing);
           b.draggable = !!editing;
+          // Rebuilt every time rather than left in place: a tag from the last
+          // pass would carry the last pass's position in its labels.
+          const old = b.querySelector(".arrange-tag");
+          if (old) old.remove();
+          if (editing) b.appendChild(arrangeTag());
         });
         if (host.dataset.dragWired) return;
         host.dataset.dragWired = "1";
@@ -12537,6 +12677,30 @@
           host.querySelectorAll(".is-drop-before, .is-dragging")
             .forEach(x => x.classList.remove("is-drop-before", "is-dragging"));
           if (railMoveTo) railMoveTo(id, over && over.dataset.arrangeId !== id ? over.dataset.arrangeId : null);
+        });
+
+        // The same move, one press at a time. Reading the order off the page
+        // rather than off the saved array, because the page is what the user is
+        // looking at and the two can differ for a section the order never saw.
+        host.addEventListener("click", ev => {
+          const step = ev.target.closest("[data-step]");
+          if (!step || !editing) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          const card = step.closest("[data-arrange-id]");
+          if (!card || !railMoveTo) return;
+          const ids = [...host.querySelectorAll("[data-arrange-id]")].map(x => x.dataset.arrangeId);
+          const i = ids.indexOf(card.dataset.arrangeId);
+          if (i < 0) return;
+          if (step.dataset.step === "up"){
+            if (i === 0){ showToast("That is already first."); return; }
+            railMoveTo(ids[i], ids[i - 1]);
+          } else {
+            if (i === ids.length - 1){ showToast("That is already last."); return; }
+            // Past the next one: the slot after it is the slot before the one
+            // after it, and at the end there is no "before", which is null.
+            railMoveTo(ids[i], ids[i + 2] || null);
+          }
         });
       }
 
@@ -13284,6 +13448,147 @@
     :root:not([data-theme="dark"]) #btn-theme .theme-moon{ display: none; }
   }
   #btn-theme svg{ width: 16px; height: 16px; }
+
+  /* ---------- pinned, and visibly so --------------------------------------- */
+  /* L4, the filter rule: idle is surface and a border, active is FILLED with a
+     mark. Never a five percent background shift - the difference between chosen
+     and not chosen is the highest-value contrast in the control. */
+  .nav-group-k{
+    margin: var(--sp-6) 0 var(--sp-3); padding: 0 var(--sp-3);
+    font-size: var(--fs-3xs); font-weight: 700; letter-spacing: var(--track-caps);
+    text-transform: uppercase; color: var(--ink-dim);
+  }
+  .nav-contents > .nav-group-k:first-of-type{ margin-top: var(--sp-4); }
+  nav.tabs .nav-pin{
+    background: transparent; border: 1px solid var(--line-strong); color: var(--ink-dim);
+  }
+  nav.tabs .nav-pin[aria-pressed="true"]{
+    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  }
+  nav.tabs .nav-pin[aria-pressed="true"] svg path{ fill: currentColor; }
+  nav.tabs .nav-pin[aria-pressed="false"] svg path{ fill: none; }
+  @media (hover: hover){
+    nav.tabs .nav-pin[aria-pressed="false"]:hover{ border-color: var(--accent); color: var(--accent); }
+    nav.tabs .nav-pin[aria-pressed="true"]:hover{ background: var(--accent-dark); border-color: var(--accent-dark); }
+  }
+  /* And the row it sits in carries the same fact, so the list reads as two
+     groups at a glance rather than six rows with a badge somewhere on them. */
+  nav.tabs .nav-content.is-chip.is-on{ box-shadow: inset 2px 0 0 var(--accent); }
+
+  /* ---------- the handle on an arrangeable card ---------------------------- */
+  /* The old badge was a ::before carrying the words DRAG TO MOVE and no grip,
+     which named the gesture without offering anything to take hold of. */
+  .is-arrangeable::before{ content: none; }
+  .arrange-tag{
+    position: absolute; top: 8px; right: 8px; z-index: 3;
+    display: flex; align-items: center; gap: 2px;
+    padding: 2px 2px 2px var(--sp-4);
+    border-radius: var(--r-pill);
+    background: var(--accent); color: var(--on-accent);
+    box-shadow: var(--elev-2);
+    cursor: grab;
+  }
+  .arrange-tag:active{ cursor: grabbing; }
+  .arrange-grip{ display: inline-flex; }
+  .arrange-grip svg{ width: 10px; height: 16px; fill: currentColor; opacity: .85; }
+  .arrange-tag-t{
+    font-size: var(--fs-3xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+    padding-right: 2px;
+  }
+  .arrange-step{
+    width: 22px; height: 22px; padding: 0; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--on-accent) 18%, transparent);
+    border: 0; border-radius: var(--r-sm);
+    color: var(--on-accent); cursor: pointer;
+  }
+  .arrange-step svg{ width: 14px; height: 14px; fill: none; stroke: currentColor;
+    stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  @media (hover: hover){
+    .arrange-step:hover{ background: color-mix(in srgb, var(--on-accent) 34%, transparent); }
+  }
+  .arrange-step:focus-visible{ outline: 2px solid var(--on-accent); outline-offset: -2px; }
+
+  /* Where it will land, in the gap above the card, rather than a hairline
+     inside its top edge that reads as "this one is selected". */
+  .is-arrangeable.is-drop-before{ box-shadow: none; position: relative; }
+  .is-arrangeable.is-drop-before::before{
+    content: ""; position: absolute; left: 0; right: 0; top: -7px; height: 3px;
+    border-radius: var(--r-pill); background: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
+    z-index: 4;
+  }
+  .is-arrangeable.is-dragging .arrange-tag{ opacity: 0; }
+
+  /* Small screens: the words go, the grip and the two buttons stay. */
+  @media (max-width: 720px){
+    .arrange-tag-t{ display: none; }
+    .arrange-tag{ padding-left: var(--sp-3); }
+  }
+
+  /* ---------- the rail's edge, which is now a control ---------------------- */
+  /* Six pixels of target over a one pixel rule: the rule is the border that was
+     always there, the target is what a pointer can actually hit. */
+  .rail-resize{
+    position: absolute; top: 0; bottom: 0; right: -3px; width: 7px;
+    z-index: 2; cursor: col-resize; touch-action: none;
+    background: transparent;
+  }
+  .rail-resize::after{
+    content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px;
+    background: var(--accent); opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){ .rail-resize:hover::after{ opacity: .9; } }
+  .rail-resize:focus-visible{ outline: none; }
+  .rail-resize:focus-visible::after{ opacity: 1; width: 3px; left: 2px; }
+  body.is-rail-resizing{ cursor: col-resize; user-select: none; }
+  body.is-rail-resizing .rail-resize::after{ opacity: 1; width: 3px; left: 2px; }
+  /* The rail scrolls; the handle must not scroll away with its contents. */
+  nav.tabs{ position: fixed; }
+  /* On a phone the rail is a 64px bottom bar and there is no width to drag. */
+  @media (max-width: 1000px){ .rail-resize{ display: none; } }
+
+  /* ---------- a destination row that survives a narrow rail ---------------- */
+  /* The label is the only part of this row that can give. Say so, or the caret
+     is pushed out of the button and over the rail's border. */
+  nav.tabs button{ min-width: 0; }
+  nav.tabs button .tab-label{
+    min-width: 0; flex: 1 1 auto;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  nav.tabs button .tab-icon,
+  nav.tabs button .nav-caret,
+  nav.tabs button .nav-key{ flex: 0 0 auto; }
+
+  /* ---------- room for the handle ----------------------------------------- */
+  .is-arrangeable > header.panel-head,
+  .is-arrangeable > h2,
+  .is-arrangeable > h3,
+  .is-arrangeable > h2 + p.sub{ margin-right: 95px; padding-right: 0; }
+  /* The words drop out below 720, so the room they needed goes with them. */
+  @media (max-width: 720px){
+    .is-arrangeable > header.panel-head,
+    .is-arrangeable > h2,
+    .is-arrangeable > h3,
+    .is-arrangeable > h2 + p.sub{ margin-right: 62px; padding-right: 0; }
+  }
+
+  /* ---------- the glyph needs room to be a glyph --------------------------- */
+  /* nav.tabs button (0,1,2) beats .nav-pin (0,1,0) and hands every control in
+     the rail its 10px/12px padding. At 24px square that is a content box 0 wide
+     and the icon disappears into it. Restated where it wins. */
+  nav.tabs .nav-pin,
+  nav.tabs .nav-hide{
+    padding: 0; min-height: 0; min-width: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  nav.tabs .nav-pin{ width: 24px; height: 24px; }
+  nav.tabs .nav-hide{ width: 22px; height: 22px; }
+  /* And the icon may not be the thing that gives. */
+  nav.tabs .nav-pin svg{ flex: 0 0 auto; width: 13px; height: 13px; }
+  nav.tabs .nav-hide svg{ flex: 0 0 auto; width: 11px; height: 11px; }
 </style>
 </body>
 </html>
