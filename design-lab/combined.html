@@ -13649,6 +13649,53 @@
   .is-arrangeable input,
   .is-arrangeable select,
   .is-arrangeable textarea{ user-select: text; -webkit-user-select: text; }
+
+  /* ---------- KPI tiles fill the line they are on ------------------------- */
+  /* Was an auto-fit grid, which leaves the last line part-empty, plus
+     align-items:start from .stat-row, which let every tile pick its own height.
+     A flex line grows its items to fill itself and stretches them to its own
+     height, which is both problems answered by one rule. */
+  #money-overview-row,
+  #stat-row{
+    display: flex; flex-wrap: wrap; align-items: stretch;
+    gap: var(--sp-6);
+  }
+  /* 190px is the basis, not the width: four fit above ~800px and grow to share
+     it, three below that with the fourth taking the whole of its own line. */
+  #money-overview-row > *,
+  #stat-row > *{ flex: 1 1 190px; min-width: 0; }
+
+  /* Now that a tile can be taller than its contents, whatever it ends with
+     sits at the bottom rather than floating. .kpi-trend already did this. */
+  .kpi > .kpi-gauge:last-child{ margin-top: auto; }
+
+  /* "SPENT THIS M..." was truncated at 300px and would be worse at 220. There
+     is height to spare in a stretched tile, so the label takes a second line
+     instead of losing its own words. */
+  .kpi-label{
+    white-space: normal; overflow: visible; text-overflow: clip;
+    line-height: 1.25;
+  }
+
+  /* ---------- a card takes the spot it is put in -------------------------- */
+  /* Twelve fixed columns are exact when the spans happen to pair and leave a
+     hole when they do not - and arrange mode hands the pairing to the user, so
+     they will not. On a flex line the items grow into what is left, so 7 + 5
+     still share a line and whatever is alone takes the whole of one.
+     The grid-column declarations above are left in place: they still describe
+     the intent, and they are what applies if this ever goes back to a grid. */
+  .bento{
+    display: flex; flex-wrap: wrap; align-items: flex-start;
+    gap: var(--sp-7);
+  }
+  .bento > *{ min-width: 0; }
+  /* 7/12 and 5/12, less this item's share of the one gap between them. */
+  .bento-span-7{ flex: 1 1 calc(58.333% - (var(--sp-7) / 2)); }
+  .bento-span-5{ flex: 1 1 calc(41.667% - (var(--sp-7) / 2)); }
+  .bento-span-12{ flex: 1 1 100%; }
+  @media (max-width: 1100px){
+    .bento-span-5, .bento-span-7{ flex-basis: 100%; }
+  }
 </style>
 </body>
 </html>
