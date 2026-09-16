@@ -1467,6 +1467,9 @@
   @media (max-width: 900px){
     #pl-body{ overflow-x: auto; overscroll-behavior-x: contain; }
     .pl-table{ min-width: 720px; }
+    /* Now that #pl-body scrolls, the header's offset is measured from IT, and
+       var(--bar-h) would park it that far down onto the first rows. */
+    #pl-body thead th{ top: 0; }
   }
   .pl-name{ min-width: 0; }
   /* A five-pixel burst from a toolbar row that cannot wrap. */
@@ -2294,6 +2297,73 @@
     .av-tag{ grid-column: 3 / -1; grid-row: 2; }
     .av-bal{ grid-column: 4; grid-row: 2; }
   }
+
+  /* ---------- the chosen bank stays chosen --------------------------------- */
+  .rail-place.is-chosen{
+    background: var(--accent-light);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .rail-place.is-chosen .rail-place-tick{ background: var(--accent); }
+  .rail-place.is-chosen .rail-place-name{ color: var(--ink); }
+  /* Both panels sit above the shadow; the drop stays on top because it is the
+     thing being chosen from. */
+  .places-scrim{ z-index: 54; }
+  .rail-drawer{ z-index: 58; }
+  .rail-scrim{ z-index: 53; }
+  .places-drop{ z-index: 60; }
+
+  /* ---------- arranging happens on the cards ------------------------------- */
+  .is-arrangeable{ position: relative; cursor: grab; }
+  .is-arrangeable:active{ cursor: grabbing; }
+  .is-arrangeable::after{
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    border: 1px dashed var(--accent); border-radius: inherit; opacity: .65;
+  }
+  .is-arrangeable::before{
+    content: "drag to move"; position: absolute; top: 8px; right: 8px; z-index: 2;
+    padding: 2px var(--sp-5); border-radius: var(--r-pill);
+    background: var(--accent); color: var(--bg);
+    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--track-caps); pointer-events: none;
+  }
+  .is-arrangeable.is-dragging{ opacity: .35; }
+  .is-arrangeable.is-drop-before{ box-shadow: inset 0 3px 0 var(--accent); }
+
+  /* ---------- taking a section out of the list ----------------------------- */
+  .nav-hide{
+    width: 22px; height: 22px; padding: 0; flex: 0 0 auto; margin-left: 2px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: none; border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+    color: var(--ink-dim); cursor: pointer;
+  }
+  .nav-hide svg{ width: 11px; height: 11px; fill: none; stroke: currentColor;
+    stroke-width: 2; stroke-linecap: round; }
+  @media (hover: hover){ .nav-hide:hover{ border-color: var(--negative); color: var(--negative); } }
+  nav.tabs .nav-content.is-chip{ grid-template-columns: 9px minmax(0, 1fr) 24px 22px; }
+  nav.tabs .nav-content.is-chip .nav-content-dot{ grid-column: 1; }
+  nav.tabs .nav-content.is-chip .nav-content-t{ grid-column: 2; }
+  nav.tabs .nav-content.is-chip .nav-pin{ grid-column: 3; }
+  nav.tabs .nav-content.is-chip .nav-hide{ grid-column: 4; }
+
+  .nav-gone{ margin-top: var(--sp-5); padding-top: var(--sp-5);
+    border-top: 1px dashed var(--line-strong); }
+  .nav-gone-k{ margin: 0 0 var(--sp-3); font-size: var(--fs-3xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--ink-dim); }
+  nav.tabs .nav-restore{
+    display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
+    width: 100%; height: auto; min-height: 0; margin: 0 0 2px;
+    padding: var(--sp-3) var(--sp-4);
+    background: none; border: 1px dashed var(--line-strong); border-radius: var(--r-sm);
+    font: inherit; font-size: var(--fs-xs); color: var(--ink-dim);
+    text-align: left; cursor: pointer;
+  }
+  @media (hover: hover){ nav.tabs .nav-restore:hover{ border-color: var(--accent); color: var(--ink); } }
+  .nav-restore-plus{ flex: 0 0 auto; font-size: var(--fs-md); line-height: 1; color: var(--accent); }
+
+  /* ---------- nothing ends up under the add button ------------------------- */
+  /* Measured at 900px: the button hard-overlapped "Next" in the record list.
+     The page ends above it now, so no control can land underneath. */
+  .app{ padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 </style>
 </head>
 
@@ -11827,6 +11897,7 @@
       const LIST_KEY = "spendly_rail_lists_v1";
       const PIN_KEY = "spendly_rail_pinned_v1";
       const ORDER_KEY = "spendly_rail_order_v1";
+      const HIDE_KEY = "spendly_rail_hidden_v1";
 
       let open = {};
       try{ open = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(e){ open = {}; }
@@ -11840,6 +11911,10 @@
       // are the reader's arrangement, so both outlive the session.
       let pinned = {};
       try{ pinned = JSON.parse(localStorage.getItem(PIN_KEY) || "{}") || {}; }catch(e){ pinned = {}; }
+      // Sections the reader has taken out of the list entirely. Not everything
+      // this app can show is relevant to everyone.
+      let hiddenSecs = {};
+      try{ hiddenSecs = JSON.parse(localStorage.getItem(HIDE_KEY) || "{}") || {}; }catch(e){ hiddenSecs = {}; }
       let order = {};
       try{ order = JSON.parse(localStorage.getItem(ORDER_KEY) || "{}") || {}; }catch(e){ order = {}; }
       let editing = false;
@@ -11850,6 +11925,7 @@
           localStorage.setItem(LIST_KEY, JSON.stringify(listOpen));
           localStorage.setItem(PIN_KEY, JSON.stringify(pinned));
           localStorage.setItem(ORDER_KEY, JSON.stringify(order));
+          localStorage.setItem(HIDE_KEY, JSON.stringify(hiddenSecs));
         }catch(e){}
       }
 
@@ -11905,7 +11981,10 @@
       function isListOpen(tab){ return !!listOpen[tab]; }
       function paintCarets(){
         buttons.forEach(b => {
-          const on = isListOpen(b.dataset.tab);
+          // Only the active destination has a fold beneath it, so only it can
+          // be expanded. The remembered preference still decides what you find
+          // when you get there.
+          const on = b.classList.contains("active") && isListOpen(b.dataset.tab);
           const c = b.querySelector(".nav-caret");
           if (c) c.setAttribute("aria-expanded", on ? "true" : "false");
           b.classList.toggle("is-list-open", on);
@@ -12082,8 +12161,11 @@
 
         const ordered = arrange(tab, secs);
         secs.length = 0; ordered.forEach(x => secs.push(x));
-        const chosen = new Set(glanceOf(tab, secs));
+        // While arranging, everything is on the page: a card you cannot see is
+        // a card you cannot drag.
+        const chosen = editing ? new Set(secs.map(x => x.id)) : new Set(glanceOf(tab, secs));
         applyOrderToPage(secs);
+        wireCardDrag(panel, secs, tab);
         // A section that is currently open beside the page is not in the page,
         // and must not be dragged back into it by a re-render.
         secs.forEach(s => { if (!homeOf.has(s.block)) setBlock(s.block, chosen.has(s.id)); });
@@ -12122,7 +12204,12 @@
         // What is listed is what opens beside; the glance is already in front of
         // you. Editing shows everything, because that is when you are choosing
         // which is which.
-        const listed = editing ? secs : secs.filter(x => !chosen.has(x.id));
+        const away = new Set(hiddenSecs[tab] || []);
+        const onPage = new Set(glanceOf(tab, secs));
+        const listed = editing
+          ? secs.filter(x => !away.has(x.id))
+          : secs.filter(x => !onPage.has(x.id) && !away.has(x.id));
+        const gone = editing ? secs.filter(x => away.has(x.id)) : [];
         head.innerHTML =
           '<span class="nav-contents-label">' +
             (editing ? "Arrange" : "Opens beside") + '</span>' +
@@ -12144,12 +12231,9 @@
           b.dataset.sec = s.id;
           b.setAttribute("aria-pressed", on ? "true" : "false");
           if (beside) b.setAttribute("aria-current", "true");
-          if (editing){
-            b.draggable = true;
-            b.title = "Drag to reorder, or alt+\u2191 / alt+\u2193";
-          }
+          if (editing) b.title = "Drag the card itself to reorder it";
           b.innerHTML =
-            (editing ? '<span class="nav-grip" aria-hidden="true"></span>' : '') +
+            '' +
             '<span class="nav-content-dot" aria-hidden="true"></span>' +
             '<span class="nav-content-t">' + escapeHtml(s.head.textContent.trim()) + '</span>' +
             (editing ? '<button type="button" class="nav-pin" data-pin="' + escapeHtml(s.id) + '" ' +
@@ -12161,7 +12245,14 @@
               '<svg viewBox="0 0 24 24" aria-hidden="true">' +
                 '<path d="M9 4h6l-1 6 4 3v2H6v-2l4-3z"/>' +
                 '<line x1="12" y1="15" x2="12" y2="21"/>' +
-              '</svg></button>' : '');
+              '</svg></button>' +
+              '<button type="button" class="nav-hide" data-hide="' + escapeHtml(s.id) + '" ' +
+                'aria-label="Take this out of the list" ' +
+                'title="Take this out of the list">' +
+                '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+                  '<line x1="6" y1="6" x2="18" y2="18"/>' +
+                  '<line x1="18" y1="6" x2="6" y2="18"/>' +
+                '</svg></button>' : '');
           item.appendChild(b);
 
           // Whatever is inside the card only has somewhere to go while the card
@@ -12191,6 +12282,16 @@
           }
         });
 
+        if (gone.length){
+          const g = document.createElement("div");
+          g.className = "nav-gone";
+          g.innerHTML = '<p class="nav-gone-k">Not in the list</p>' +
+            gone.map(x => '<button type="button" class="nav-restore" data-restore="' +
+              escapeHtml(x.id) + '">' + escapeHtml(x.head.textContent.trim()) +
+              '<span class="nav-restore-plus" aria-hidden="true">+</span></button>').join("");
+          box.appendChild(g);
+        }
+
         active.insertAdjacentElement("afterend", fold);
         if (wantOpen && animate) openSoon(fold);
         paintCarets();
@@ -12199,6 +12300,29 @@
           if (ev.target.closest("[data-edit]")){
             editing = !editing;
             signature = ""; buildContents(false);
+            return;
+          }
+          const hide = ev.target.closest("[data-hide]");
+          if (hide){
+            ev.stopPropagation();
+            const now = new Set(hiddenSecs[tab] || []);
+            now.add(hide.dataset.hide);
+            hiddenSecs[tab] = [...now];
+            // A section nobody can reach is not allowed to also be the one
+            // holding the page open.
+            const keep = new Set(glanceOf(tab, secs));
+            if (keep.has(hide.dataset.hide) && keep.size === 1){
+              const other = secs.find(x => x.id !== hide.dataset.hide && !now.has(x.id));
+              if (other) pinned[tab] = [other.id];
+            }
+            save(); signature = ""; buildContents(false);
+            return;
+          }
+          const restore = ev.target.closest("[data-restore]");
+          if (restore){
+            ev.stopPropagation();
+            hiddenSecs[tab] = (hiddenSecs[tab] || []).filter(x => x !== restore.dataset.restore);
+            save(); signature = ""; buildContents(false);
             return;
           }
           const pin = ev.target.closest("[data-pin]");
@@ -12237,8 +12361,8 @@
         });
 
         /* ---- arranging ------------------------------------------------------
-           The list and the page share one order, so dropping a chip moves the
-           card too. */
+           The order lives in one place and the cards are what move; moveTo is
+           called from the card drag below, and from the keyboard. */
         function moveTo(id, beforeId){
           const ids = secs.map(x => x.id);
           const from = ids.indexOf(id);
@@ -12249,36 +12373,10 @@
           order[tab] = ids;
           save(); signature = ""; buildContents(false);
         }
-        let dragId = null;
-        box.addEventListener("dragstart", ev => {
-          const chip = ev.target.closest("[data-sec]");
-          if (!chip || !editing) return;
-          dragId = chip.dataset.sec;
-          chip.classList.add("is-dragging");
-          if (ev.dataTransfer){ ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", dragId); }
-        });
-        box.addEventListener("dragend", ev => {
-          const chip = ev.target.closest("[data-sec]");
-          if (chip) chip.classList.remove("is-dragging");
-          box.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
-          dragId = null;
-        });
-        box.addEventListener("dragover", ev => {
-          if (!editing || !dragId) return;
-          ev.preventDefault();
-          if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
-          const over = ev.target.closest("[data-sec]");
-          box.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
-          if (over && over.dataset.sec !== dragId) over.classList.add("is-drop-before");
-        });
-        box.addEventListener("drop", ev => {
-          if (!editing || !dragId) return;
-          ev.preventDefault();
-          const over = ev.target.closest("[data-sec]");
-          const id = dragId; dragId = null;
-          moveTo(id, over && over.dataset.sec !== id ? over.dataset.sec : null);
-        });
-        // Dragging is not available to a keyboard; this is.
+        railMoveTo = moveTo;
+
+        // Dragging is not available to a keyboard, and the chips are the only
+        // part of this that a keyboard can reach.
         box.addEventListener("keydown", ev => {
           if (!editing || !ev.altKey) return;
           if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
@@ -12296,6 +12394,59 @@
           }, 0);
         });
         spy();
+      }
+
+      /* ---- the cards move ---------------------------------------------------
+         You drag the thing, not a proxy for it. Only while arranging: a page you
+         are reading should not rearrange itself under the cursor. */
+      let railMoveTo = null;
+      let dragCard = null;
+      function wireCardDrag(panel, secs, tab){
+        const host = panel.querySelector(".bento") || panel;
+        secs.forEach(sec => {
+          const b = sec.block;
+          b.classList.remove("is-dragging", "is-drop-before");
+          b.dataset.arrangeId = sec.id;
+          b.classList.toggle("is-arrangeable", editing);
+          b.draggable = !!editing;
+        });
+        if (host.dataset.dragWired) return;
+        host.dataset.dragWired = "1";
+
+        host.addEventListener("dragstart", ev => {
+          const card = ev.target.closest("[data-arrange-id]");
+          if (!editing || !card){ ev.preventDefault(); return; }
+          dragCard = card.dataset.arrangeId;
+          card.classList.add("is-dragging");
+          if (ev.dataTransfer){
+            ev.dataTransfer.effectAllowed = "move";
+            ev.dataTransfer.setData("text/plain", dragCard);
+          }
+        });
+        host.addEventListener("dragend", () => {
+          host.querySelectorAll(".is-dragging").forEach(x => x.classList.remove("is-dragging"));
+          host.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
+          dragCard = null;
+        });
+        host.addEventListener("dragover", ev => {
+          if (!editing || !dragCard) return;
+          ev.preventDefault();
+          if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+          const over = ev.target.closest("[data-arrange-id]");
+          host.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
+          if (over && over.dataset.arrangeId !== dragCard) over.classList.add("is-drop-before");
+        });
+        host.addEventListener("drop", ev => {
+          if (!editing || !dragCard) return;
+          ev.preventDefault();
+          const over = ev.target.closest("[data-arrange-id]");
+          const id = dragCard; dragCard = null;
+          // Both, here, now: dragend may not arrive before the rebuild below
+          // replaces the list, and then nothing clears it.
+          host.querySelectorAll(".is-drop-before, .is-dragging")
+            .forEach(x => x.classList.remove("is-drop-before", "is-dragging"));
+          if (railMoveTo) railMoveTo(id, over && over.dataset.arrangeId !== id ? over.dataset.arrangeId : null);
+        });
       }
 
       function spy(){
@@ -12461,6 +12612,8 @@
 
       function closeBeside(){
         if (!besideNow) return;
+        document.querySelectorAll("[data-place].is-chosen")
+          .forEach(x => x.classList.remove("is-chosen"));
         putBack();
         drawer.classList.remove("is-open");
         scrim.classList.remove("is-open");
@@ -12703,8 +12856,14 @@
         document.addEventListener("keydown", e => {
           if (e.key === "Escape" && open){ e.stopPropagation(); set(false); btn.focus(); }
         }, true);
-        // Going to an account is going somewhere, so the drop gets out of the way.
-        drop.addEventListener("click", e => { if (e.target.closest("[data-place]")) set(false); });
+        // The drop stays: picking from a list you are comparing against should
+        // not take the list away. The chosen one is marked instead.
+        drop.addEventListener("click", e => {
+          const p = e.target.closest("[data-place]");
+          if (!p) return;
+          drop.querySelectorAll("[data-place]").forEach(x =>
+            x.classList.toggle("is-chosen", x === p));
+        });
         set(false);
       })();
 
