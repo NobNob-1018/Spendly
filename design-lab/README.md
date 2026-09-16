@@ -55,8 +55,22 @@ text is how three rounds of visible defects got past review: a seven-column
 chart collapsed to 60px still reports the right seven day names.
 
 It reports overlapping text, grids whose tracks computed to zero, elements
-outside their container, sticky elements given a **non-zero** offset inside a
-scroll container, and text clipped with no ellipsis.
+whose **box** is outside their container, elements whose **ink** is wider than
+their own box with nothing downstream to clip it, sticky elements given a
+**non-zero** offset inside a scroll container, and text clipped with no
+ellipsis.
+
+The ink check exists because a rect is where the box is and `scrollWidth` is
+where the glyphs are. The ledger's today figure sat perfectly inside its parent
+by rect while painting 51px past its column, so every rect-based check passed
+it — and it was the break visible in a screenshot.
+
+> **It audits the whole document, not the open tab panel.** It used to scope
+> itself to the active `.tab-panel`, which is fine for a design whose surface
+> IS a panel and useless for one whose surface is not. The ledger's frame is a
+> sibling of the panels, so for that variant the auditor was measuring a hidden
+> panel inside a closed drawer and reporting clean without having looked. If you
+> narrow the scope again, check what falls outside it first.
 
 `audit-contrast.js` composites the real background through every ancestor —
 honouring alpha — and compares it with the real foreground, then reports
@@ -83,9 +97,12 @@ reads the fourth time.
   the correct construction. The defect it looks for is an offset measured for
   the viewport being applied against a container — a `th` given the masthead's
   height and then pinned from the top of a table, which parks it on the rows.
-- **A full-bleed row** (negative margin, matching padding, so its rule reaches
-  the card edge) reports as overflowing its parent by that margin. Check whether
-  the *content* still lines up with its siblings before treating it as real.
+- **A full-bleed row** (negative horizontal margin that its own padding gives
+  back) is now recognised and skipped in both the box and ink checks, including
+  when it is several levels below the container reporting the excess. The guard
+  demands the pull-out be at least as large as the excess it excuses, so a real
+  60px of ink is still reported in a container that happens to hold a 24px
+  full-bleed row.
 - **Focus rings cannot be tested from script.** `:focus-visible` does not match
   a programmatic `.focus()`, so a script that focuses each control and compares
   what it paints will report every single one as having no visible focus. It is
