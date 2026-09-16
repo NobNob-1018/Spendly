@@ -1171,6 +1171,87 @@
   .sr-amount.is-in{ color: var(--positive); } .sr-amount.is-out{ color: var(--negative); }
   .sr-more{ margin:0; padding: var(--sp-6) var(--sp-8); font-size: var(--fs-3xs); color: var(--ink-faint); }
 
+
+  /* ---------- the filter strip (layer-4 rule) --------------------------------- */
+  .filter-chips{ display:flex; align-items:center; gap: var(--sp-5); padding: var(--sp-5) 0;
+    min-width:0; }
+  .filter-chips-label{ display:flex; flex-direction:column; gap:1px; flex:none;
+    font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.06em; color: var(--ink-dim); }
+  .fc-logic{ font-size: 9px; letter-spacing:.08em; color: var(--ink-faint); }
+  /* Rule 5: one scrolling row with a faded trailing edge, never a wall of rows. */
+  .fc-scroller{ display:flex; gap: var(--sp-4); overflow-x:auto; overflow-y:hidden;
+    flex:1 1 auto; min-width:0; padding-bottom:2px; scrollbar-width:none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+  .fc-scroller::-webkit-scrollbar{ display:none; }
+  .filter-chip{ display:inline-flex; align-items:center; gap: var(--sp-3); flex:none;
+    border:1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface);
+    padding: 3px var(--sp-5); font-size: var(--fs-3xs); color: var(--ink-soft); cursor:pointer; }
+  /* Rule 1: chosen must not look like not-chosen. Filled, with a check. */
+  .filter-chip.is-active{ background: var(--accent); border-color: var(--accent);
+    color: var(--on-accent); font-weight:700; }
+  .filter-chip.is-active .fc-key{ opacity:.72; }
+  .filter-chip:disabled, .filter-chip.is-disabled{ opacity:.4; border-color: var(--line); cursor:default; }
+  @media (hover: hover){ .filter-chip.is-active:hover{ background: var(--accent-dark); } }
+  .fc-check{ font-size: 9px; }
+  .fc-x{ font-size: 12px; opacity:.8; }
+  .fc-count{ flex:none; font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .fc-count b{ color: var(--ink); font-variant-numeric: tabular-nums; }
+  .fc-dir{ margin-left: var(--sp-4); font-weight:700; }
+  .fc-dir.is-wider{ color: var(--positive); } .fc-dir.is-tighter{ color: var(--warn); }
+  .filter-chip.is-clear{ background: var(--sunken); border-style:dashed; color: var(--ink-dim); }
+  .filter-chip.is-clear b{ color: var(--ink); }
+  .filter-status{ display:flex; align-items:center; gap: var(--sp-5); font-size: var(--fs-3xs);
+    color: var(--ink-dim); }
+  .filter-status-clear{ border:1px solid var(--line-strong); border-radius: var(--r-pill);
+    background: var(--sunken); padding: 2px var(--sp-5); font-size: var(--fs-3xs); color: var(--ink-soft); }
+
+  /* ---------- sortable headers -------------------------------------------------- */
+  .th-sort{ display:inline-flex; align-items:center; gap: var(--sp-3); background:none;
+    border:0; padding:0; font: inherit; color: inherit; cursor:pointer; }
+  .th-sort-arrow{ display:inline-block; width:10px; font-size:10px; color: var(--ink-faint); }
+  .th-sort.is-active{ color: var(--ink); font-weight:700; box-shadow: inset 0 -2px 0 var(--accent); }
+  .th-sort.is-active .th-sort-arrow{ color: var(--accent); }
+  .th-filter-wrap{ position:relative; display:inline-block; }
+  .th-filter-wrap.is-active::after{ content:""; position:absolute; top:-1px; right:-3px;
+    width:5px; height:5px; border-radius:50%; background: var(--accent); }
+  .th-filter{ border:0; border-radius: var(--r-sm); background:none; padding: 1px var(--sp-4) 1px 0;
+    font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .th-filter.is-active{ color: var(--ink); font-weight:700; }
+
+  /* ---------- deadlines as bands ------------------------------------------------ */
+  .deadline-cell{ display:flex; align-items:center; gap: var(--sp-4); flex-wrap:wrap; }
+  .deadline-note{ display:inline-flex; align-items:center; padding: 1px var(--sp-4);
+    border-radius: var(--r-pill); font-size: var(--fs-3xs); font-weight:700;
+    font-variant-numeric: tabular-nums; background: var(--sunken); color: var(--ink-dim); }
+  .deadline-note[data-band="week"]{ background: rgb(233 162 78 / .16); color: var(--warn); }
+  .deadline-note[data-band="today"]{ background: rgb(233 162 78 / .24); color: var(--warn); }
+  .deadline-note[data-band="overdue"]{ background: rgb(228 105 92 / .18); color: var(--negative); }
+  .deadline-cell.deadline-done{ opacity:.55; }
+
+  /* ---------- tracked rates as cards --------------------------------------------- */
+  .rate-head-row{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-5);
+    padding-bottom: var(--sp-5); margin-bottom: var(--sp-6); border-bottom:1px solid var(--line);
+    font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.05em; color: var(--ink-dim); }
+  .rate-stale-count{ color: var(--warn); font-weight:700; }
+  .rate-fresh-count{ color: var(--positive); }
+  .rate-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(214px, 1fr)); gap: var(--sp-6); }
+  .rate-card{ display:flex; flex-direction:column; gap: var(--sp-5); padding: var(--sp-6);
+    background: var(--sunken); border:1px solid var(--line); border-radius: var(--r-md); }
+  .rate-card.is-stale{ border-style: dashed; }
+  .rate-card-top{ display:grid; grid-template-columns: auto 1fr auto; gap: var(--sp-5); align-items:center; }
+  .rate-badge{ width:26px; height:26px; border-radius: var(--r-sm); display:grid; place-items:center;
+    font-size: var(--fs-3xs); font-weight:700; }
+  .rate-id{ display:flex; flex-direction:column; min-width:0; }
+  .rate-code{ font-size: var(--fs-2xs); font-weight:700; }
+  .rate-name{ font-size: var(--fs-3xs); color: var(--ink-dim); overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .rate-input{ display:flex; flex-direction:column; gap: var(--sp-3); }
+  .rate-input span{ font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .rate-input input{ width:100%; height:32px; text-align:right; font-variant-numeric: tabular-nums; }
+  .rate-age{ font-size: var(--fs-3xs); color: var(--ink-faint); }
+  .rate-age.is-stale{ color: var(--warn); }
+
 </style>
 </head>
 
@@ -4687,43 +4768,67 @@
   function renderCurrencyList(){
     const wrap = document.getElementById("currency-list");
     if (!currencies.length){
-      wrap.innerHTML = emptyStateHtml("plus", "No currencies tracked yet", "Add one above to see its rate against ₱.");
+      wrap.innerHTML = emptyStateHtml("plus", "No currencies tracked yet",
+        "Add one above to see its rate against \u20B1.");
       return;
     }
-    const rows = currencies.slice().sort((a,b)=>a.code.localeCompare(b.code)).map(c=>{
-      const ageLabel = daysAgoLabel(c.lastUpdated, false);
-      return `
-        <tr data-code="${c.code}">
-          <td style="font-weight:700;">${c.code}</td>
-          <td><input type="number" min="0" step="0.0001" value="${c.rate}" data-field="rate" style="width:110px;"> PHP</td>
-          <td class="hint">Updated ${ageLabel}</td>
-          <td class="cell-actions" data-label=""><button class="btn-danger-text" data-action="delete">Remove</button></td>
-        </tr>`;
-    }).join("");
-    wrap.innerHTML = `<table><thead><tr><th>Currency</th><th>Rate</th><th>Last updated</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const sorted = currencies.slice().sort((a, b) => a.code.localeCompare(b.code));
+    const stale = sorted.filter(c => {
+      const t = c.lastUpdated ? new Date(c.lastUpdated + "T00:00:00").getTime() : NaN;
+      return !isFinite(t) || (Date.now() - t) / 864e5 > 7;
+    }).length;
 
-    wrap.querySelectorAll("tr[data-code]").forEach(row=>{
+    wrap.innerHTML =
+      '<div class="rate-head-row">' +
+        '<span>' + sorted.length + ' tracked</span>' +
+        (stale ? '<span class="rate-stale-count">' + stale + ' older than a week</span>'
+               : '<span class="rate-fresh-count">all current</span>') +
+      '</div>' +
+      '<div class="rate-grid">' + sorted.map((c, i) => {
+        const name = (CURRENCY_OPTIONS.find(o => o.code === c.code) || {}).name || "";
+        const t = c.lastUpdated ? new Date(c.lastUpdated + "T00:00:00").getTime() : NaN;
+        const age = isFinite(t) ? Math.floor((Date.now() - t) / 864e5) : null;
+        const isStale = age == null || age > 7;
+        return '<div class="rate-card' + (isStale ? " is-stale" : "") + '" data-code="' + c.code + '">' +
+          '<div class="rate-card-top">' +
+            '<span class="rate-badge ' + CURRENCY_BADGE_COLORS[i % CURRENCY_BADGE_COLORS.length] + '">' +
+              c.code.slice(0, 2) + '</span>' +
+            '<span class="rate-id"><span class="rate-code">' + c.code + '</span>' +
+              '<span class="rate-name">' + escapeHtml(name) + '</span></span>' +
+            '<button class="row-action row-action-danger" data-action="delete" ' +
+              'title="Stop tracking ' + c.code + '" aria-label="Stop tracking ' + c.code + '">\u2715</button>' +
+          '</div>' +
+          '<label class="rate-input"><span>Pesos per ' + c.code + '</span>' +
+            '<input type="number" min="0" step="0.0001" value="' + c.rate + '" data-field="rate"></label>' +
+          '<span class="rate-age' + (isStale ? " is-stale" : "") + '">' +
+            (age == null ? "never checked" : "checked " + daysAgoLabel(c.lastUpdated, false)) +
+            (isStale ? " \u00B7 may be out of date" : "") + '</span>' +
+        '</div>';
+      }).join("") + '</div>';
+
+    wrap.querySelectorAll("[data-code]").forEach(row => {
       const code = row.dataset.code;
-      row.querySelector('[data-field="rate"]').addEventListener("change", (e)=>{
-        const item = currencies.find(c=>c.code===code);
+      row.querySelector('[data-field="rate"]').addEventListener("change", e => {
+        const item = currencies.find(c => c.code === code);
         if (!item) return;
         const v = parseFloat(e.target.value);
         if (isNaN(v) || v <= 0){ showToast("Rate must be greater than 0."); e.target.value = item.rate; return; }
         item.rate = round2(v);
-        item.lastUpdated = todayISO(); // editing the rate counts as having just checked it
+        item.lastUpdated = todayISO();
         saveCurrencies(currencies);
         renderCurrencyList();
         showToast("Saved.");
       });
-      row.querySelector('[data-action="delete"]').addEventListener("click", ()=>{
-        currencies = currencies.filter(c=>c.code!==code);
+      row.querySelector('[data-action="delete"]').addEventListener("click", () => {
+        currencies = currencies.filter(c => c.code !== code);
         saveCurrencies(currencies);
         populateCurrencyOptions();
         renderCurrencyList();
-        showToast(`Stopped tracking ${code}.`);
+        showToast("Stopped tracking " + code + ".");
       });
     });
   }
+
 
   const CURRENCY_BADGE_COLORS = ["stat-badge-teal", "stat-badge-green", "stat-badge-purple", "stat-badge-blue"];
   // Builds a small trend line from a currency's synced history. Needs at least 2
@@ -4933,22 +5038,38 @@
   /* ---------- Crypto tracker (BTC & ETH only) ---------- */
   function renderCryptoList(){
     const wrap = document.getElementById("crypto-list");
-    const rows = cryptos.slice().sort((a,b)=>a.code.localeCompare(b.code)).map(c=>{
-      const asset = CRYPTO_ASSETS.find(a=>a.code===c.code) || {};
-      const ageLabel = !c.lastUpdated ? "never synced" : daysAgoLabel(c.lastUpdated, false);
-      return `
-        <tr data-code="${c.code}">
-          <td style="font-weight:700;">${c.code} <span class="hint" style="font-weight:400;">${escapeHtml(asset.name||"")}</span></td>
-          <td><input type="number" min="0" step="0.01" value="${c.price}" data-field="price" style="width:130px;"> PHP</td>
-          <td class="hint">Updated ${ageLabel}</td>
-        </tr>`;
-    }).join("");
-    wrap.innerHTML = `<table><thead><tr><th>Asset</th><th>Price</th><th>Last updated</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const sorted = cryptos.slice().sort((a, b) => a.code.localeCompare(b.code));
+    const never = sorted.filter(c => !c.lastUpdated).length;
+    wrap.innerHTML =
+      '<div class="rate-head-row">' +
+        '<span>' + sorted.length + ' asset' + (sorted.length === 1 ? "" : "s") + '</span>' +
+        (never ? '<span class="rate-stale-count">' + never + ' never synced</span>'
+               : '<span class="rate-fresh-count">all have a price</span>') +
+      '</div>' +
+      '<div class="rate-grid">' + sorted.map((c, i) => {
+        const asset = CRYPTO_ASSETS.find(a => a.code === c.code) || {};
+        const t = c.lastUpdated ? new Date(c.lastUpdated + "T00:00:00").getTime() : NaN;
+        const age = isFinite(t) ? Math.floor((Date.now() - t) / 864e5) : null;
+        const isStale = age == null || age > 2;
+        return '<div class="rate-card' + (isStale ? " is-stale" : "") + '" data-code="' + c.code + '">' +
+          '<div class="rate-card-top">' +
+            '<span class="rate-badge ' + CURRENCY_BADGE_COLORS[i % CURRENCY_BADGE_COLORS.length] + '">' +
+              c.code.slice(0, 2) + '</span>' +
+            '<span class="rate-id"><span class="rate-code">' + c.code + '</span>' +
+              '<span class="rate-name">' + escapeHtml(asset.name || "") + '</span></span>' +
+          '</div>' +
+          '<label class="rate-input"><span>Pesos per ' + c.code + '</span>' +
+            '<input type="number" min="0" step="0.01" value="' + c.price + '" data-field="price"></label>' +
+          '<span class="rate-age' + (isStale ? " is-stale" : "") + '">' +
+            (age == null ? "never synced" : "synced " + daysAgoLabel(c.lastUpdated, false)) +
+            (age != null && isStale ? " \u00B7 moves fast, worth refreshing" : "") + '</span>' +
+        '</div>';
+      }).join("") + '</div>';
 
-    wrap.querySelectorAll("tr[data-code]").forEach(row=>{
+    wrap.querySelectorAll("[data-code]").forEach(row => {
       const code = row.dataset.code;
-      row.querySelector('[data-field="price"]').addEventListener("change", (e)=>{
-        const item = cryptos.find(c=>c.code===code);
+      row.querySelector('[data-field="price"]').addEventListener("change", e => {
+        const item = cryptos.find(c => c.code === code);
         if (!item) return;
         const v = parseFloat(e.target.value);
         if (isNaN(v) || v <= 0){ showToast("Price must be greater than 0."); e.target.value = item.price; return; }
@@ -4960,6 +5081,7 @@
       });
     });
   }
+
 
   // Loans falling due in the next 30 days, both directions, soonest first.
   // Overdue items are included and sort to the top — they're the most urgent.
@@ -5251,29 +5373,57 @@
   // Renders the active filters as dismissible chips. Kept generic so both history
   // tables use it; `defs` is [{ label, value, clear }] and empty ones are skipped.
   function filterChipsHtml(defs){
-    const active = defs.filter(d=>d.value);
+    const active = defs.filter(d => d.value);
     if (!active.length) return "";
-    return `<div class="filter-chips">
-      <span class="filter-chips-label">Filtered by</span>
-      ${active.map((d,i)=>`
-        <button class="filter-chip" data-chip="${i}">
-          <span class="fc-key">${escapeHtml(d.label)}</span>
-          <span class="fc-val">${escapeHtml(String(d.value))}</span>
-          <span class="fc-x" aria-hidden="true">×</span>
-        </button>`).join("")}
-      <button class="filter-chip is-clear" data-chip="all">Clear all</button>
-    </div>`;
+    // Pinned above the results, each chip removable on its own, the logic named,
+    // and Clear all in the same place every time with the cost written on it.
+    return '<div class="filter-chips" role="group" aria-label="Active filters">' +
+      '<span class="filter-chips-label">Filtered by' +
+        '<span class="fc-logic" title="Conditions from different columns narrow the list together">AND across</span>' +
+      '</span>' +
+      '<div class="fc-scroller">' +
+        active.map((d, i) =>
+          '<button class="filter-chip is-active" data-chip="' + i + '" aria-pressed="true" ' +
+            'title="Remove the ' + escapeHtml(String(d.label).toLowerCase()) + ' filter">' +
+            '<span class="fc-check" aria-hidden="true">\u2713</span>' +
+            '<span class="fc-key">' + escapeHtml(d.label) + '</span>' +
+            '<span class="fc-val">' + escapeHtml(String(d.value)) + '</span>' +
+            '<span class="fc-x" aria-hidden="true">\u00D7</span>' +
+          '</button>').join("") +
+      '</div>' +
+      '<span class="fc-count" data-fc-count aria-live="polite"></span>' +
+      '<button class="filter-chip is-clear" data-chip="all">Clear all <b>' + active.length + '</b></button>' +
+    '</div>';
   }
+
+  const _fcLastCount = {};
   function wireFilterChips(wrap, defs, rerender){
-    const active = defs.filter(d=>d.value);
-    wrap.querySelectorAll("[data-chip]").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        if (btn.dataset.chip === "all") active.forEach(d=>d.clear());
-        else active[parseInt(btn.dataset.chip,10)].clear();
+    const active = defs.filter(d => d.value);
+    wrap.querySelectorAll("[data-chip]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (btn.dataset.chip === "all") active.forEach(d => d.clear());
+        else active[parseInt(btn.dataset.chip, 10)].clear();
         rerender();
       });
     });
+    // Rule 3: the answer lands in the same frame as the tap, and it says which
+    // way the list moved. A tap with no visible consequence gets tapped twice.
+    const slot = wrap.querySelector("[data-fc-count]");
+    if (slot){
+      const rows = wrap.querySelectorAll("tr[data-id], [data-id].history-card").length;
+      const key = wrap.id || "wrap";
+      const was = _fcLastCount[key];
+      let dir = "";
+      if (was != null && was !== rows){
+        dir = rows > was
+          ? '<span class="fc-dir is-wider">\u2191 wider</span>'
+          : '<span class="fc-dir is-tighter">\u2193 tighter</span>';
+      }
+      slot.innerHTML = '<b>' + rows + '</b> shown' + dir;
+      _fcLastCount[key] = rows;
+    }
   }
+
 
   /* A money field shows the formatted figure until you are actually editing it. Bound
      to the document rather than to rows, because the rows are rebuilt constantly and a
@@ -5932,11 +6082,13 @@
   // and clearing four column filters means changing four dropdowns one at a time.
   function buildFilterStatus(activeCount, clearId){
     if (!activeCount) return "";
-    return `<div class="filter-status">
-      <span class="filter-status-count">${activeCount} filter${activeCount>1?"s":""} active</span>
-      <button class="filter-status-clear" id="${clearId}">Clear all</button>
-    </div>`;
+    // Rule 4: the exit is labelled with what pressing it costs.
+    return '<div class="filter-status">' +
+      '<span class="filter-status-count">' + activeCount + ' filter' + (activeCount > 1 ? "s" : "") + ' narrowing this list</span>' +
+      '<button class="filter-status-clear" id="' + clearId + '">Clear all ' + activeCount + '</button>' +
+    '</div>';
   }
+
 
   // Which column the table is ordered by is a property of the whole column, so the
   // column is what carries the mark. Both history tables share this order:
@@ -5949,10 +6101,17 @@
 
   function buildSortableTh(id, label, sortKey, sort){
     const isActive = sort.key === sortKey;
-    const arrow = isActive ? (sort.dir === "asc" ? "▲" : "▼") : "";
+    const arrow = isActive ? (sort.dir === "asc" ? "\u2191" : "\u2193") : "\u2195";
     const ariaSort = isActive ? (sort.dir === "asc" ? "ascending" : "descending") : "none";
-    return `<th class="${sortKey === "amount" ? "num" : ""}" aria-sort="${ariaSort}"><button class="th-sort ${isActive ? "is-active" : ""}" id="${id}" data-sort-key="${sortKey}" title="Sort by ${escapeHtml(label.toLowerCase())}">${escapeHtml(label)}<span class="th-sort-arrow">${arrow}</span></button></th>`;
+    // The inactive arrow is shown at low contrast rather than hidden: a header
+    // that only reveals it is sortable on hover is not discoverable by touch.
+    return '<th class="' + (sortKey === "amount" ? "num" : "") + '" aria-sort="' + ariaSort + '">' +
+      '<button class="th-sort ' + (isActive ? "is-active" : "") + '" id="' + id + '" data-sort-key="' + sortKey +
+      '" title="Sort by ' + escapeHtml(String(label).toLowerCase()) +
+      (isActive ? ", currently " + (sort.dir === "asc" ? "ascending" : "descending") : "") + '">' +
+      escapeHtml(label) + '<span class="th-sort-arrow">' + arrow + '</span></button></th>';
   }
+
 
   // Renders a deadline with urgency colour so the table is scannable at a glance —
   // a loan due tomorrow shouldn't look identical to one due in six months.
@@ -5960,26 +6119,31 @@
   // How close a deadline is, as a class and a note. Split out so the cell can show
   // the same urgency around an editable date rather than only around a printed one.
   function deadlineState(item){
-    if (!item.deadline) return { cls:"", note:"" };
-    if (item.status !== "outstanding") return { cls:"deadline-done", note:"" };
-    const today = new Date(); today.setHours(0,0,0,0);
-    const due = new Date(item.deadline + "T00:00:00");
-    const days = Math.round((due - today) / (1000*60*60*24));
-    if (days < 0)   return { cls:"deadline-overdue", note: Math.abs(days) + "d overdue" };
-    if (days === 0) return { cls:"deadline-soon",    note:"Due today" };
-    if (days <= 7)  return { cls:"deadline-soon",    note:"in " + days + "d" };
-    return { cls:"", note:"" };
+    if (!item.deadline) return { cls: "", note: "" };
+    if (item.status !== "outstanding") return { cls: "deadline-done", note: "settled" };
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = Math.round((new Date(item.deadline + "T00:00:00") - today) / 864e5);
+    if (days < 0)   return { cls: "deadline-overdue", note: Math.abs(days) + "d overdue", band: "overdue" };
+    if (days === 0) return { cls: "deadline-soon", note: "due today", band: "today" };
+    if (days <= 7)  return { cls: "deadline-soon", note: days + "d left", band: "week" };
+    if (days <= 30) return { cls: "deadline-near", note: days + "d left", band: "month" };
+    return { cls: "", note: days + "d left", band: "far" };
   }
+
 
   // Editable: a deadline is the thing most likely to move, and retyping the loan to
   // change one was the only way to do it.
   function deadlineCellHtml(item){
     const st = deadlineState(item);
-    return `<div class="deadline-cell ${st.cls}">`
-      + `<input type="date" data-field="deadline" value="${escapeHtml(item.deadline || "")}" aria-label="Deadline">`
-      + (st.note ? `<div class="deadline-note">${escapeHtml(st.note)}</div>` : "")
-      + `</div>`;
+    // The countdown is a chip so urgency is a shape as well as a colour — the
+    // one signal that survives being printed, dimmed, or read by someone who
+    // cannot separate red from grey.
+    return '<div class="deadline-cell ' + st.cls + '">' +
+      '<input type="date" data-field="deadline" value="' + escapeHtml(item.deadline || "") + '" aria-label="Deadline">' +
+      (st.note ? '<span class="deadline-note" data-band="' + (st.band || "") + '">' + escapeHtml(st.note) + '</span>' : "") +
+    '</div>';
   }
+
 
   document.getElementById("btn-add-loan-given").addEventListener("click", ()=>{
     const person = document.getElementById("lg-person").value.trim();
@@ -6068,15 +6232,22 @@
   // nothing is selected; picking a value replaces it and turns the header accent-
   // colored. Shared by every filterable loan/investment column.
   function buildThFilter(id, label, options, selected, titleText){
-    return `<select class="th-filter ${selected ? "is-active" : ""}" id="${id}" title="${escapeHtml(titleText)}">
-      <option value="">${escapeHtml(label)}</option>
-      ${options.map(o=>{
-        const val = typeof o === "string" ? o : o.value;
-        const text = typeof o === "string" ? o : o.text;
-        return `<option value="${escapeHtml(val)}" ${val===selected?"selected":""}>${escapeHtml(text)}</option>`;
-      }).join("")}
-    </select>`;
+    // Rule 1 in a select: chosen has to look unmistakably different from not
+    // chosen, so an active filter carries a dot and the value replaces the label.
+    return '<span class="th-filter-wrap' + (selected ? " is-active" : "") + '">' +
+      '<select class="th-filter ' + (selected ? "is-active" : "") + '" id="' + id +
+        '" title="' + escapeHtml(titleText) + '">' +
+        '<option value="">' + escapeHtml(label) + '</option>' +
+        options.map(o => {
+          const val = typeof o === "string" ? o : o.value;
+          const text = typeof o === "string" ? o : o.text;
+          return '<option value="' + escapeHtml(val) + '"' + (val === selected ? " selected" : "") + '>' +
+            escapeHtml(text) + '</option>';
+        }).join("") +
+      '</select>' +
+    '</span>';
   }
+
 
   // Date presets for the loan tables' Date column filter.
   const LOAN_DATE_OPTIONS = [

@@ -1114,6 +1114,52 @@
   .sr-amount{ grid-area: amount; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; color: var(--ink-soft); }
   .sr-aside{ grid-area: aside; font-size: var(--fs-3xs); color: var(--ink-dim); }
 
+
+  /* ---------- filters as a sentence -------------------------------------------- */
+  .filter-chips{ margin: 0 0 var(--sp-6); font-size: var(--fs-sm); line-height:1.8;
+    color: var(--ink-dim); max-width: 66ch; }
+  .filter-chip{ background:none; border:0; border-bottom:1px solid var(--line-strong);
+    border-radius:0; padding: 0 1px; font: inherit; color: var(--ink); cursor:pointer; }
+  @media (hover: hover){ .filter-chip:hover{ color: var(--negative); border-bottom-color: var(--negative); } }
+  .fc-x{ margin-left: 3px; font-size: .8em; color: var(--ink-dim); }
+  .filter-chip.is-clear{ border-bottom-color: var(--accent); color: var(--accent); }
+  @media (hover: hover){ .filter-chip.is-clear:hover{ color: var(--accent-dark); border-bottom-color: var(--accent-dark); } }
+  .fc-count{ color: var(--ink-dim); }
+  .filter-status{ margin: 0 0 var(--sp-5); font-size: var(--fs-sm); line-height:1.7; color: var(--ink-dim); }
+  .filter-status-clear{ background:none; border:0; padding:0; font: inherit; color: var(--accent);
+    text-decoration: underline; text-underline-offset: 2px; cursor:pointer; }
+
+  /* ---------- headers ---------------------------------------------------------- */
+  .th-sort{ display:inline-flex; align-items:baseline; gap: var(--sp-3); background:none;
+    border:0; padding:0 0 2px; font: inherit; color: inherit; cursor:pointer; }
+  .th-sort-arrow{ display:inline-block; width:10px; font-size:10px; color: var(--accent); }
+  .th-sort.is-active{ color: var(--ink); font-weight:700; border-bottom:1px solid var(--accent); }
+  .th-filter{ border:0; border-bottom:1px solid transparent; border-radius:0; background:none;
+    padding: 0 var(--sp-3) 2px 0; font-size: var(--fs-2xs); color: var(--ink-dim); }
+  .th-filter.is-active{ color: var(--ink); border-bottom-color: var(--accent); }
+
+  /* ---------- deadlines written out --------------------------------------------- */
+  .deadline-cell{ display:flex; flex-direction:column; gap: var(--sp-3); }
+  .deadline-note{ font-size: var(--fs-3xs); color: var(--ink-dim); font-style: italic; }
+  .deadline-cell.deadline-soon .deadline-note{ color: var(--warn); font-style:normal; }
+  .deadline-cell.deadline-overdue .deadline-note{ color: var(--negative); font-style:normal; font-weight:600; }
+  .deadline-cell.deadline-done .deadline-note{ color: var(--ink-dim); }
+
+  /* ---------- tracked rates as descriptions -------------------------------------- */
+  .rate-list{ display:flex; flex-direction:column; }
+  .rate-row{ padding: var(--sp-7) 0; border-bottom:1px solid var(--line); }
+  .rate-row:last-child{ border-bottom:0; }
+  .rate-row.is-stale .rate-said{ color: var(--ink-dim); }
+  .rate-head{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-6); }
+  .rate-name{ font-size: var(--fs-md); color: var(--ink); }
+  .rate-code{ font-size: var(--fs-3xs); letter-spacing: var(--track-caps); color: var(--ink-dim); }
+  .rate-said{ margin: var(--sp-4) 0 0; font-size: var(--fs-sm); line-height:2;
+    color: var(--ink-soft); max-width: 60ch; }
+  .rate-field{ display:inline-block; }
+  .rate-field input{ width: 116px; height: 30px; text-align:right; padding: 0 var(--sp-4);
+    font-size: var(--fs-sm); font-variant-numeric: tabular-nums; vertical-align: baseline; }
+  .rate-warn{ color: var(--warn); }
+
 </style>
 </head>
 
@@ -4588,43 +4634,54 @@
   function renderCurrencyList(){
     const wrap = document.getElementById("currency-list");
     if (!currencies.length){
-      wrap.innerHTML = emptyStateHtml("plus", "No currencies tracked yet", "Add one above to see its rate against ₱.");
+      wrap.innerHTML = emptyStateHtml("plus", "No currencies are being tracked",
+        "Add one above and its rate against the peso will be kept here.");
       return;
     }
-    const rows = currencies.slice().sort((a,b)=>a.code.localeCompare(b.code)).map(c=>{
-      const ageLabel = daysAgoLabel(c.lastUpdated, false);
-      return `
-        <tr data-code="${c.code}">
-          <td style="font-weight:700;">${c.code}</td>
-          <td><input type="number" min="0" step="0.0001" value="${c.rate}" data-field="rate" style="width:110px;"> PHP</td>
-          <td class="hint">Updated ${ageLabel}</td>
-          <td class="cell-actions" data-label=""><button class="btn-danger-text" data-action="delete">Remove</button></td>
-        </tr>`;
-    }).join("");
-    wrap.innerHTML = `<table><thead><tr><th>Currency</th><th>Rate</th><th>Last updated</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
+    // Each tracked rate as one line of description with its figure set in it,
+    // rather than a four-column table for what is really a sentence.
+    const sorted = currencies.slice().sort((a, b) => a.code.localeCompare(b.code));
+    wrap.innerHTML = '<div class="rate-list">' + sorted.map(c => {
+      const name = (CURRENCY_OPTIONS.find(o => o.code === c.code) || {}).name || c.code;
+      const age = c.lastUpdated ? Math.floor((Date.now() - new Date(c.lastUpdated + "T00:00:00").getTime()) / 864e5) : 999;
+      return '<div class="rate-row' + (age > 7 ? " is-stale" : "") + '" data-code="' + c.code + '">' +
+        '<div class="rate-head">' +
+          '<span class="rate-name"><strong>' + escapeHtml(name) + '</strong> <span class="rate-code">' + c.code + '</span></span>' +
+          '<button class="btn-danger-text" data-action="delete">Stop tracking</button>' +
+        '</div>' +
+        '<p class="rate-said">One ' + escapeHtml(name) + ' is worth ' +
+          '<label class="rate-field"><input type="number" min="0" step="0.0001" value="' + c.rate + '" data-field="rate" aria-label="Rate in pesos"></label>' +
+          ' pesos. ' + (c.lastUpdated
+            ? 'Last checked ' + escapeHtml(daysAgoLabel(c.lastUpdated, false)) + '.'
+            : 'That rate has never been checked.') +
+          (age > 7 ? ' <span class="rate-warn">That is old enough to be worth checking again.</span>' : '') +
+        '</p>' +
+      '</div>';
+    }).join("") + '</div>';
 
-    wrap.querySelectorAll("tr[data-code]").forEach(row=>{
+    wrap.querySelectorAll("[data-code]").forEach(row => {
       const code = row.dataset.code;
-      row.querySelector('[data-field="rate"]').addEventListener("change", (e)=>{
-        const item = currencies.find(c=>c.code===code);
+      row.querySelector('[data-field="rate"]').addEventListener("change", e => {
+        const item = currencies.find(c => c.code === code);
         if (!item) return;
         const v = parseFloat(e.target.value);
-        if (isNaN(v) || v <= 0){ showToast("Rate must be greater than 0."); e.target.value = item.rate; return; }
+        if (isNaN(v) || v <= 0){ showToast("A rate has to be greater than zero."); e.target.value = item.rate; return; }
         item.rate = round2(v);
-        item.lastUpdated = todayISO(); // editing the rate counts as having just checked it
+        item.lastUpdated = todayISO();
         saveCurrencies(currencies);
         renderCurrencyList();
         showToast("Saved.");
       });
-      row.querySelector('[data-action="delete"]').addEventListener("click", ()=>{
-        currencies = currencies.filter(c=>c.code!==code);
+      row.querySelector('[data-action="delete"]').addEventListener("click", () => {
+        currencies = currencies.filter(c => c.code !== code);
         saveCurrencies(currencies);
         populateCurrencyOptions();
         renderCurrencyList();
-        showToast(`Stopped tracking ${code}.`);
+        showToast("No longer tracking " + code + ".");
       });
     });
   }
+
 
   const CURRENCY_BADGE_COLORS = ["stat-badge-teal", "stat-badge-green", "stat-badge-purple", "stat-badge-blue"];
   // Builds a small trend line from a currency's synced history. Needs at least 2
@@ -4814,25 +4871,30 @@
   /* ---------- Crypto tracker (BTC & ETH only) ---------- */
   function renderCryptoList(){
     const wrap = document.getElementById("crypto-list");
-    const rows = cryptos.slice().sort((a,b)=>a.code.localeCompare(b.code)).map(c=>{
-      const asset = CRYPTO_ASSETS.find(a=>a.code===c.code) || {};
-      const ageLabel = !c.lastUpdated ? "never synced" : daysAgoLabel(c.lastUpdated, false);
-      return `
-        <tr data-code="${c.code}">
-          <td style="font-weight:700;">${c.code} <span class="hint" style="font-weight:400;">${escapeHtml(asset.name||"")}</span></td>
-          <td><input type="number" min="0" step="0.01" value="${c.price}" data-field="price" style="width:130px;"> PHP</td>
-          <td class="hint">Updated ${ageLabel}</td>
-        </tr>`;
-    }).join("");
-    wrap.innerHTML = `<table><thead><tr><th>Asset</th><th>Price</th><th>Last updated</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const sorted = cryptos.slice().sort((a, b) => a.code.localeCompare(b.code));
+    wrap.innerHTML = '<div class="rate-list">' + sorted.map(c => {
+      const asset = CRYPTO_ASSETS.find(a => a.code === c.code) || {};
+      const name = asset.name || c.code;
+      const age = c.lastUpdated ? Math.floor((Date.now() - new Date(c.lastUpdated + "T00:00:00").getTime()) / 864e5) : 999;
+      return '<div class="rate-row' + (age > 2 ? " is-stale" : "") + '" data-code="' + c.code + '">' +
+        '<div class="rate-head">' +
+          '<span class="rate-name"><strong>' + escapeHtml(name) + '</strong> <span class="rate-code">' + c.code + '</span></span>' +
+        '</div>' +
+        '<p class="rate-said">One ' + escapeHtml(c.code) + ' last changed hands at ' +
+          '<label class="rate-field"><input type="number" min="0" step="0.01" value="' + c.price + '" data-field="price" aria-label="Price in pesos"></label>' +
+          ' pesos. ' + (c.lastUpdated ? 'Noted ' + escapeHtml(daysAgoLabel(c.lastUpdated, false)) + '.' : 'Never synced.') +
+          (age > 2 ? ' <span class="rate-warn">Crypto moves quickly; this is worth refreshing.</span>' : '') +
+        '</p>' +
+      '</div>';
+    }).join("") + '</div>';
 
-    wrap.querySelectorAll("tr[data-code]").forEach(row=>{
+    wrap.querySelectorAll("[data-code]").forEach(row => {
       const code = row.dataset.code;
-      row.querySelector('[data-field="price"]').addEventListener("change", (e)=>{
-        const item = cryptos.find(c=>c.code===code);
+      row.querySelector('[data-field="price"]').addEventListener("change", e => {
+        const item = cryptos.find(c => c.code === code);
         if (!item) return;
         const v = parseFloat(e.target.value);
-        if (isNaN(v) || v <= 0){ showToast("Price must be greater than 0."); e.target.value = item.price; return; }
+        if (isNaN(v) || v <= 0){ showToast("A price has to be greater than zero."); e.target.value = item.price; return; }
         item.price = round2(v);
         item.lastUpdated = todayISO();
         saveCrypto(cryptos);
@@ -4841,6 +4903,7 @@
       });
     });
   }
+
 
   // Loans falling due in the next 30 days, both directions, soonest first.
   // Overdue items are included and sort to the top — they're the most urgent.
@@ -5104,34 +5167,46 @@
 
   // Renders the active filters as dismissible chips. Kept generic so both history
   // tables use it; `defs` is [{ label, value, clear }] and empty ones are skipped.
-  function filterChipsHtml(defs, resultCount){
-    const active = defs.filter(d=>d.value);
+  function filterChipsHtml(defs){
+    const active = defs.filter(d => d.value);
     if (!active.length) return "";
-    // L3 VUI-FIL-009: the count rides with the chips so a short list explains itself.
-    const count = (resultCount == null) ? "" :
-      `<span class="filter-chips-count">${resultCount} ${resultCount === 1 ? "result" : "results"}</span>`;
-    return `<div class="filter-chips">
-      <span class="filter-chips-label">Active filters</span>
-      ${active.map((d,i)=>`
-        <button class="filter-chip" data-chip="${i}">
-          <span class="fc-key">${escapeHtml(d.label)}</span>
-          <span class="fc-val">${escapeHtml(String(d.value))}</span>
-          <span class="fc-x" aria-hidden="true">×</span>
-        </button>`).join("")}
-      <button class="filter-chip is-clear" data-chip="all">Clear ${active.length} filter${active.length>1?"s":""}</button>
-      ${count}
-    </div>`;
+    // "Showing only Food, from September, over ₱500. Show everything." The way
+    // out is a word in the sentence, so it can never be out of sight.
+    const parts = active.map((d, i) =>
+      '<button class="filter-chip" data-chip="' + i + '" title="Drop this condition">' +
+        escapeHtml(String(d.value)) + '<span class="fc-x" aria-hidden="true">\u00D7</span></button>');
+    const said = parts.length === 1 ? parts[0]
+      : parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
+    return '<p class="filter-chips">Showing only ' + said +
+      '. <button class="filter-chip is-clear" data-chip="all">Show everything again.</button>' +
+      '<span class="fc-count" data-fc-count></span></p>';
   }
+
+  const _fcLastCount = {};
   function wireFilterChips(wrap, defs, rerender){
-    const active = defs.filter(d=>d.value);
-    wrap.querySelectorAll("[data-chip]").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        if (btn.dataset.chip === "all") active.forEach(d=>d.clear());
-        else active[parseInt(btn.dataset.chip,10)].clear();
+    const active = defs.filter(d => d.value);
+    wrap.querySelectorAll("[data-chip]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (btn.dataset.chip === "all") active.forEach(d => d.clear());
+        else active[parseInt(btn.dataset.chip, 10)].clear();
         rerender();
       });
     });
+    // A short list has to say what made it short, or it reads as a failure.
+    const slot = wrap.querySelector("[data-fc-count]");
+    if (slot){
+      const rows = wrap.querySelectorAll("tr[data-id], [data-id].history-card").length;
+      const key = wrap.id || "wrap";
+      const was = _fcLastCount[key];
+      const moved = was == null || was === rows ? ""
+        : rows > was ? " That is " + (rows - was) + " more than a moment ago."
+                     : " That is " + (was - rows) + " fewer than a moment ago.";
+      slot.textContent = " " + (rows === 0 ? "Nothing matches." :
+        rows === 1 ? "One entry matches." : rows + " entries match.") + moved;
+      _fcLastCount[key] = rows;
+    }
   }
+
 
   /* A money field shows the formatted figure until you are actually editing it. Bound
      to the document rather than to rows, because the rows are rebuilt constantly and a
@@ -5778,11 +5853,12 @@
   // and clearing four column filters means changing four dropdowns one at a time.
   function buildFilterStatus(activeCount, clearId){
     if (!activeCount) return "";
-    return `<div class="filter-status">
-      <span class="filter-status-count">${activeCount} filter${activeCount>1?"s":""} active</span>
-      <button class="filter-status-clear" id="${clearId}">Clear all</button>
-    </div>`;
+    const said = activeCount === 1 ? "One condition is" : activeCount + " conditions are";
+    return '<p class="filter-status">' + said + ' narrowing this list. ' +
+      '<button class="filter-status-clear" id="' + clearId + '">Clear ' +
+      (activeCount === 1 ? "it" : "them") + '.</button></p>';
   }
+
 
   // Which column the table is ordered by is a property of the whole column, so the
   // column is what carries the mark. Both history tables share this order:
@@ -5795,10 +5871,16 @@
 
   function buildSortableTh(id, label, sortKey, sort){
     const isActive = sort.key === sortKey;
-    const arrow = isActive ? (sort.dir === "asc" ? "▲" : "▼") : "";
+    const arrow = isActive ? (sort.dir === "asc" ? "\u2191" : "\u2193") : "";
     const ariaSort = isActive ? (sort.dir === "asc" ? "ascending" : "descending") : "none";
-    return `<th class="${sortKey === "amount" ? "num" : ""}" aria-sort="${ariaSort}"><button class="th-sort ${isActive ? "is-active" : ""}" id="${id}" data-sort-key="${sortKey}" title="Sort by ${escapeHtml(label.toLowerCase())}">${escapeHtml(label)}<span class="th-sort-arrow">${arrow}</span></button></th>`;
+    // Weight and a rule under the label. A filled header cell reads as a
+    // selected row, which is the one thing a header must never look like.
+    return '<th class="' + (sortKey === "amount" ? "num" : "") + '" aria-sort="' + ariaSort + '">' +
+      '<button class="th-sort ' + (isActive ? "is-active" : "") + '" id="' + id + '" data-sort-key="' + sortKey +
+      '" title="Order by ' + escapeHtml(String(label).toLowerCase()) + '">' +
+      escapeHtml(label) + '<span class="th-sort-arrow">' + arrow + '</span></button></th>';
   }
+
 
   // Renders a deadline with urgency colour so the table is scannable at a glance —
   // a loan due tomorrow shouldn't look identical to one due in six months.
@@ -5806,26 +5888,33 @@
   // How close a deadline is, as a class and a note. Split out so the cell can show
   // the same urgency around an editable date rather than only around a printed one.
   function deadlineState(item){
-    if (!item.deadline) return { cls:"", note:"" };
-    if (item.status !== "outstanding") return { cls:"deadline-done", note:"" };
-    const today = new Date(); today.setHours(0,0,0,0);
-    const due = new Date(item.deadline + "T00:00:00");
-    const days = Math.round((due - today) / (1000*60*60*24));
-    if (days < 0)   return { cls:"deadline-overdue", note: Math.abs(days) + "d overdue" };
-    if (days === 0) return { cls:"deadline-soon",    note:"Due today" };
-    if (days <= 7)  return { cls:"deadline-soon",    note:"in " + days + "d" };
-    return { cls:"", note:"" };
+    if (!item.deadline) return { cls: "", note: "" };
+    if (item.status !== "outstanding") return { cls: "deadline-done", note: "settled" };
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = Math.round((new Date(item.deadline + "T00:00:00") - today) / 864e5);
+    // Written, because a reader converts "-9" into "nine days late" anyway and
+    // the page may as well do it for them.
+    if (days < -30) return { cls: "deadline-overdue", note: "months overdue" };
+    if (days < -7)  return { cls: "deadline-overdue", note: "weeks overdue" };
+    if (days < 0)   return { cls: "deadline-overdue", note: Math.abs(days) + (Math.abs(days) === 1 ? " day late" : " days late") };
+    if (days === 0) return { cls: "deadline-soon", note: "due today" };
+    if (days === 1) return { cls: "deadline-soon", note: "due tomorrow" };
+    if (days <= 7)  return { cls: "deadline-soon", note: "due this week" };
+    if (days <= 31) return { cls: "", note: "due in " + Math.round(days / 7) + " weeks" };
+    return { cls: "", note: "due in " + Math.round(days / 30) + " months" };
   }
+
 
   // Editable: a deadline is the thing most likely to move, and retyping the loan to
   // change one was the only way to do it.
   function deadlineCellHtml(item){
     const st = deadlineState(item);
-    return `<div class="deadline-cell ${st.cls}">`
-      + `<input type="date" data-field="deadline" value="${escapeHtml(item.deadline || "")}" aria-label="Deadline">`
-      + (st.note ? `<div class="deadline-note">${escapeHtml(st.note)}</div>` : "")
-      + `</div>`;
+    return '<div class="deadline-cell ' + st.cls + '">' +
+      '<input type="date" data-field="deadline" value="' + escapeHtml(item.deadline || "") + '" aria-label="Deadline">' +
+      (st.note ? '<div class="deadline-note">' + escapeHtml(st.note) + '</div>' : "") +
+    '</div>';
   }
+
 
   document.getElementById("btn-add-loan-given").addEventListener("click", ()=>{
     const person = document.getElementById("lg-person").value.trim();
@@ -5914,15 +6003,18 @@
   // nothing is selected; picking a value replaces it and turns the header accent-
   // colored. Shared by every filterable loan/investment column.
   function buildThFilter(id, label, options, selected, titleText){
-    return `<select class="th-filter ${selected ? "is-active" : ""}" id="${id}" title="${escapeHtml(titleText)}">
-      <option value="">${escapeHtml(label)}</option>
-      ${options.map(o=>{
+    return '<select class="th-filter ' + (selected ? "is-active" : "") + '" id="' + id +
+      '" title="' + escapeHtml(titleText) + '">' +
+      '<option value="">' + escapeHtml(label) + '</option>' +
+      options.map(o => {
         const val = typeof o === "string" ? o : o.value;
         const text = typeof o === "string" ? o : o.text;
-        return `<option value="${escapeHtml(val)}" ${val===selected?"selected":""}>${escapeHtml(text)}</option>`;
-      }).join("")}
-    </select>`;
+        return '<option value="' + escapeHtml(val) + '"' + (val === selected ? " selected" : "") + '>' +
+          escapeHtml(text) + '</option>';
+      }).join("") +
+    '</select>';
   }
+
 
   // Date presets for the loan tables' Date column filter.
   const LOAN_DATE_OPTIONS = [
