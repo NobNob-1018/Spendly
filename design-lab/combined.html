@@ -2146,6 +2146,68 @@
   }
   .rail-place.is-empty{ opacity: .55; }
   .rail-place.is-empty .rail-place-name{ font-weight: 500; }
+
+  /* ---------- arranging ----------------------------------------------------- */
+  nav.tabs .nav-edit{
+    width: auto; height: auto; min-height: 0; flex: 0 0 auto;
+    padding: 0; margin: 0 0 0 var(--sp-4); background: none; border: 0; cursor: pointer;
+    font: inherit; font-size: var(--fs-3xs); font-weight: 700;
+    text-transform: none; letter-spacing: 0; color: var(--accent);
+    text-decoration: underline; text-underline-offset: 2px; white-space: nowrap;
+  }
+  /* In edit mode an entry is a chip: it has a handle, a pin, and it moves. */
+  .nav-content.is-chip{
+    grid-template-columns: 10px 9px minmax(0, 1fr) auto;
+    background: var(--raised); border: 1px solid var(--line);
+    margin-bottom: 2px; cursor: grab;
+  }
+  .nav-content.is-chip:active{ cursor: grabbing; }
+  .nav-grip{
+    width: 10px; height: 14px; align-self: center;
+    background-image: radial-gradient(currentColor 1px, transparent 1px);
+    background-size: 4px 4px; background-position: 0 2px;
+    color: var(--ink-dim); opacity: .8;
+  }
+  .nav-content.is-dragging{ opacity: .4; }
+  .nav-content.is-drop-before{ box-shadow: inset 0 2px 0 var(--accent); }
+  .nav-pin{
+    flex: 0 0 auto; padding: 1px var(--sp-4); margin: 0;
+    background: none; border: 1px solid var(--line-strong); border-radius: var(--r-pill);
+    font: inherit; font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-dim);
+    cursor: pointer; white-space: nowrap;
+  }
+  @media (hover: hover){ .nav-pin:hover{ border-color: var(--accent); color: var(--ink); } }
+  .nav-pin[aria-pressed="true"]{
+    background: var(--accent-light); border-color: var(--accent); color: var(--accent);
+  }
+
+  /* A glyph, not three words: in a 264px rail the words were taking the room
+     the section's own name needs, and the name is what you are dragging. */
+  .nav-pin{
+    width: 24px; height: 24px; padding: 0; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--r-sm);
+  }
+  .nav-pin svg{
+    width: 14px; height: 14px;
+    fill: none; stroke: currentColor; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .nav-pin[aria-pressed="true"] svg path{ fill: currentColor; }
+  /* And two lines where a name needs them, rather than a cut. */
+  .nav-content.is-chip .nav-content-t{ -webkit-line-clamp: 2; }
+
+  /* Same depth as nav.tabs .nav-content, so it is not beaten by source order,
+     and every child placed by name so nothing is auto-placed into the wrong
+     column. */
+  nav.tabs .nav-content.is-chip{
+    grid-template-columns: 10px 9px minmax(0, 1fr) 24px;
+    align-items: center;
+  }
+  nav.tabs .nav-content.is-chip .nav-grip{ grid-column: 1; }
+  nav.tabs .nav-content.is-chip .nav-content-dot{ grid-column: 2; }
+  nav.tabs .nav-content.is-chip .nav-content-t{ grid-column: 3; }
+  nav.tabs .nav-content.is-chip .nav-pin{ grid-column: 4; }
 </style>
 </head>
 
@@ -11677,6 +11739,8 @@
       const KEY = "spendly_rail_open_v1";
       const PLACES_KEY = "spendly_rail_places_v1";
       const LIST_KEY = "spendly_rail_lists_v1";
+      const PIN_KEY = "spendly_rail_pinned_v1";
+      const ORDER_KEY = "spendly_rail_order_v1";
 
       let open = {};
       try{ open = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(e){ open = {}; }
@@ -11686,11 +11750,20 @@
       // asked for — that is the whole point of the caret.
       let listOpen = {};
       try{ listOpen = JSON.parse(localStorage.getItem(LIST_KEY) || "{}") || {}; }catch(e){ listOpen = {}; }
+      // Which sections stay on the page, and what order everything is in. Both
+      // are the reader's arrangement, so both outlive the session.
+      let pinned = {};
+      try{ pinned = JSON.parse(localStorage.getItem(PIN_KEY) || "{}") || {}; }catch(e){ pinned = {}; }
+      let order = {};
+      try{ order = JSON.parse(localStorage.getItem(ORDER_KEY) || "{}") || {}; }catch(e){ order = {}; }
+      let editing = false;
       function save(){
         try{
           localStorage.setItem(KEY, JSON.stringify(open));
           localStorage.setItem(PLACES_KEY, placesOpen ? "1" : "0");
           localStorage.setItem(LIST_KEY, JSON.stringify(listOpen));
+          localStorage.setItem(PIN_KEY, JSON.stringify(pinned));
+          localStorage.setItem(ORDER_KEY, JSON.stringify(order));
         }catch(e){}
       }
 
@@ -11856,8 +11929,41 @@
       // What stays in the page: the first headed section, plus every block that
       // has no heading of its own — the insight strip, the week, the recap. The
       // rest is reachable, not resident.
-      function glanceOf(secs){
+      function glanceOf(tab, secs){
+        const want = pinned[tab];
+        if (want && want.length){
+          const live = want.filter(id => secs.some(x => x.id === id));
+          if (live.length) return live;
+        }
         return secs.length ? [secs[0].id] : [];
+      }
+
+      /* The reader's order, applied to the page as well as to the list — a list
+         that reorders only itself is a list that lies about the page. */
+      // Always a NEW array: the caller empties `secs` before copying the result
+      // back into it, and handing back the same array made that a self-erasure.
+      function arrange(tab, secs){
+        const want = order[tab];
+        if (!want || !want.length) return secs.slice();
+        const by = new Map(secs.map(x => [x.id, x]));
+        const out = [];
+        want.forEach(id => { if (by.has(id)){ out.push(by.get(id)); by.delete(id); } });
+        // Anything the saved order has never seen keeps its own place at the end.
+        by.forEach(v => out.push(v));
+        return out;
+      }
+      function applyOrderToPage(secs){
+        // Moving a block that is open at the side would tear it out of the panel.
+        const home = secs.filter(x => !homeOf.has(x.block));
+        if (home.length < 2) return;
+        const parent = home[0].block.parentElement;
+        if (!parent) return;
+        let prev = null;
+        home.forEach(sec => {
+          if (sec.block.parentElement !== parent) return;
+          if (prev) { if (prev.nextElementSibling !== sec.block) parent.insertBefore(sec.block, prev.nextElementSibling); }
+          prev = sec.block;
+        });
       }
       function currentTab(){
         const b = buttons.find(x => x.classList.contains("active"));
@@ -11888,7 +11994,10 @@
         }
         if (!besideNow) known[tab] = secs.map(x => x.id);
 
-        const chosen = new Set(glanceOf(secs));
+        const ordered = arrange(tab, secs);
+        secs.length = 0; ordered.forEach(x => secs.push(x));
+        const chosen = new Set(glanceOf(tab, secs));
+        applyOrderToPage(secs);
         // A section that is currently open beside the page is not in the page,
         // and must not be dragged back into it by a re-render.
         secs.forEach(s => { if (!homeOf.has(s.block)) setBlock(s.block, chosen.has(s.id)); });
@@ -11924,12 +12033,19 @@
 
         const head = document.createElement("p");
         head.className = "nav-contents-k";
+        // What is listed is what opens beside; the glance is already in front of
+        // you. Editing shows everything, because that is when you are choosing
+        // which is which.
+        const listed = editing ? secs : secs.filter(x => !chosen.has(x.id));
         head.innerHTML =
-          '<span class="nav-contents-label">On this page</span>' +
-          '<span class="nav-contents-n">' + secs.length + '</span>';
+          '<span class="nav-contents-label">' +
+            (editing ? "Arrange" : "Opens beside") + '</span>' +
+          '<span class="nav-contents-n">' + listed.length + '</span>' +
+          '<button type="button" class="nav-edit" data-edit>' +
+            (editing ? "Done" : "Edit") + '</button>';
         box.appendChild(head);
 
-        secs.forEach(s => {
+        listed.forEach(s => {
           const on = chosen.has(s.id);
           const item = document.createElement("div");
           item.className = "nav-item";
@@ -11937,13 +12053,29 @@
           const b = document.createElement("button");
           b.type = "button";
           const beside = !!(besideNow && besideNow.id === s.id);
-          b.className = "nav-content" + (on ? " is-on" : "") + (beside ? " is-beside" : "");
+          b.className = "nav-content" + (on ? " is-on" : "") + (beside ? " is-beside" : "") +
+            (editing ? " is-chip" : "");
           b.dataset.sec = s.id;
           b.setAttribute("aria-pressed", on ? "true" : "false");
           if (beside) b.setAttribute("aria-current", "true");
+          if (editing){
+            b.draggable = true;
+            b.title = "Drag to reorder, or alt+\u2191 / alt+\u2193";
+          }
           b.innerHTML =
+            (editing ? '<span class="nav-grip" aria-hidden="true"></span>' : '') +
             '<span class="nav-content-dot" aria-hidden="true"></span>' +
-            '<span class="nav-content-t">' + escapeHtml(s.head.textContent.trim()) + '</span>';
+            '<span class="nav-content-t">' + escapeHtml(s.head.textContent.trim()) + '</span>' +
+            (editing ? '<button type="button" class="nav-pin" data-pin="' + escapeHtml(s.id) + '" ' +
+              'aria-pressed="' + (on ? "true" : "false") + '" ' +
+              'aria-label="' + (on ? "On the page. Unpin to make it open beside instead."
+                                   : "Pin to keep this on the page.") + '" ' +
+              'title="' + (on ? "On the page \u2014 unpin to send it beside"
+                              : "Pin to keep it on the page") + '">' +
+              '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+                '<path d="M9 4h6l-1 6 4 3v2H6v-2l4-3z"/>' +
+                '<line x1="12" y1="15" x2="12" y2="21"/>' +
+              '</svg></button>' : '');
           item.appendChild(b);
 
           // Whatever is inside the card only has somewhere to go while the card
@@ -11978,6 +12110,26 @@
         paintCarets();
 
         box.addEventListener("click", ev => {
+          if (ev.target.closest("[data-edit]")){
+            editing = !editing;
+            signature = ""; buildContents(false);
+            return;
+          }
+          const pin = ev.target.closest("[data-pin]");
+          if (pin){
+            ev.stopPropagation();
+            const id = pin.dataset.pin;
+            const now = new Set(glanceOf(tab, secs));
+            // One has to stay: a page with nothing on it is not a glance.
+            if (now.has(id) && now.size === 1){
+              showToast("Something has to stay on the page. Pin another first.");
+              return;
+            }
+            now.has(id) ? now.delete(id) : now.add(id);
+            pinned[tab] = [...now];
+            save(); signature = ""; buildContents(false);
+            return;
+          }
           const jump = ev.target.closest("[data-jump]");
           if (jump){
             const t = document.getElementById(jump.dataset.jump);
@@ -11996,6 +12148,66 @@
           }
           s.tab = tab;
           openBeside(s, secs.filter(x => !chosen.has(x.id)));
+        });
+
+        /* ---- arranging ------------------------------------------------------
+           The list and the page share one order, so dropping a chip moves the
+           card too. */
+        function moveTo(id, beforeId){
+          const ids = secs.map(x => x.id);
+          const from = ids.indexOf(id);
+          if (from < 0) return;
+          ids.splice(from, 1);
+          const at = beforeId ? ids.indexOf(beforeId) : ids.length;
+          ids.splice(at < 0 ? ids.length : at, 0, id);
+          order[tab] = ids;
+          save(); signature = ""; buildContents(false);
+        }
+        let dragId = null;
+        box.addEventListener("dragstart", ev => {
+          const chip = ev.target.closest("[data-sec]");
+          if (!chip || !editing) return;
+          dragId = chip.dataset.sec;
+          chip.classList.add("is-dragging");
+          if (ev.dataTransfer){ ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", dragId); }
+        });
+        box.addEventListener("dragend", ev => {
+          const chip = ev.target.closest("[data-sec]");
+          if (chip) chip.classList.remove("is-dragging");
+          box.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
+          dragId = null;
+        });
+        box.addEventListener("dragover", ev => {
+          if (!editing || !dragId) return;
+          ev.preventDefault();
+          if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+          const over = ev.target.closest("[data-sec]");
+          box.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
+          if (over && over.dataset.sec !== dragId) over.classList.add("is-drop-before");
+        });
+        box.addEventListener("drop", ev => {
+          if (!editing || !dragId) return;
+          ev.preventDefault();
+          const over = ev.target.closest("[data-sec]");
+          const id = dragId; dragId = null;
+          moveTo(id, over && over.dataset.sec !== id ? over.dataset.sec : null);
+        });
+        // Dragging is not available to a keyboard; this is.
+        box.addEventListener("keydown", ev => {
+          if (!editing || !ev.altKey) return;
+          if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
+          const chip = ev.target.closest("[data-sec]");
+          if (!chip) return;
+          ev.preventDefault();
+          const ids = secs.map(x => x.id);
+          const i = ids.indexOf(chip.dataset.sec);
+          const j = ev.key === "ArrowUp" ? i - 1 : i + 1;
+          if (i < 0 || j < 0 || j >= ids.length) return;
+          moveTo(chip.dataset.sec, ev.key === "ArrowUp" ? ids[j] : (ids[j + 1] || null));
+          setTimeout(() => {
+            const again = box.querySelector('[data-sec="' + CSS.escape(chip.dataset.sec) + '"]');
+            if (again) again.focus();
+          }, 0);
         });
         spy();
       }
