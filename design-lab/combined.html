@@ -12432,6 +12432,10 @@
           '<span class="nav-contents-label">' +
             (editing ? "Arrange" : "Opens beside") + '</span>' +
           '<span class="nav-contents-n">' + listed.length + '</span>' +
+          // Resizing happens with or without arrange mode, so the way to undo a
+          // gap has to be reachable without it either.
+          '<button type="button" class="nav-tidy" data-tidy ' +
+            'title="Close up any gaps between the cards">Tidy</button>' +
           '<button type="button" class="nav-edit" data-edit>' +
             (editing ? "Done" : "Edit") + '</button>';
         box.appendChild(head);
@@ -12551,6 +12555,18 @@
             save(); signature = ""; buildContents(false);
             return;
           }
+          const tidy = ev.target.closest("[data-tidy]");
+          if (tidy){
+            ev.stopPropagation();
+            const panel = document.getElementById("tab-" + tab);
+            const host = panel && (panel.querySelector(".bento") || panel);
+            const moved = tidyBento(host, tab);
+            if (typeof showToast === "function"){
+              showToast(moved ? "Tidied - " + moved + " row" + (moved === 1 ? "" : "s") + " closed up."
+                              : "No gaps to close.");
+            }
+            return;
+          }
           const restore = ev.target.closest("[data-restore]");
           if (restore){
             ev.stopPropagation();
@@ -12642,7 +12658,53 @@
       let spans = {};
       try { spans = JSON.parse(localStorage.getItem(SPAN_KEY) || "{}") || {}; } catch (e){ spans = {}; }
       const saveSpans = () => { try { localStorage.setItem(SPAN_KEY, JSON.stringify(spans)); } catch (e){} };
-      const SPAN_MIN = 3, SPAN_MAX = 9, SPAN_OF = 12;
+      const SPAN_MIN = 2, SPAN_MAX = 12, SPAN_OF = 12;
+      const ROW_PX = 12, ROW_GAP = 16, ROWS_MIN = 4, ROWS_MAX = 120;
+      /* Measured, not derived. A card N rows tall comes out at 28N - 32, which
+         is one gap less than 12N + 16(N-1), consistently on every card at every
+         span tried. The step is exactly row + gap so the pitch is right; only
+         the constant is unaccounted for, and an unexplained constant in a
+         formula is how every card ends up 16px out the day a token changes.
+         Asking the live grid costs two forced layouts and cannot drift. */
+      let rowPitch = ROW_PX + ROW_GAP, rowOffset = -2 * ROW_GAP;
+      function calibrateRows(host){
+        const probe = [...host.children].find(k => k.getBoundingClientRect().height > 0);
+        if (!probe) return;
+        const had = probe.style.getPropertyValue("--rows");
+        probe.style.setProperty("--rows", "4");
+        const h4 = probe.getBoundingClientRect().height;
+        probe.style.setProperty("--rows", "8");
+        const h8 = probe.getBoundingClientRect().height;
+        if (had) probe.style.setProperty("--rows", had); else probe.style.removeProperty("--rows");
+        if (h8 > h4){ rowPitch = (h8 - h4) / 4; rowOffset = h4 - 4 * rowPitch; }
+      }
+      const rowsForHeight = h => Math.max(ROWS_MIN,
+        Math.min(ROWS_MAX, Math.ceil((h - rowOffset) / rowPitch)));
+
+      // Stored values are a rectangle now. The old format was a bare number and
+      // meant the width, so it is read as one rather than thrown away.
+      function rectOf(tab, el){
+        const v = spans[tab] && spans[tab][keyOf(el)];
+        if (typeof v === "number") return { c: v, r: null };
+        if (v && typeof v === "object") return { c: v.c || null, r: v.r || null };
+        return { c: null, r: null };
+      }
+      function remember(tab, el, patch){
+        const id = keyOf(el);
+        if (!id) return;
+        spans[tab] = spans[tab] || {};
+        const now = rectOf(tab, el);
+        // Absent means leave it; null means clear it. Testing for null could
+        // only ever say "leave it", so there was no way to ask for the measured
+        // height back and the refit did nothing.
+        const next = {
+          c: ("c" in patch) ? patch.c : now.c,
+          r: ("r" in patch) ? patch.r : now.r
+        };
+        if (next.c == null && next.r == null) delete spans[tab][id];
+        else spans[tab][id] = next;
+        saveSpans();
+      }
 
       // The width it was designed with, read off the class rather than kept in a
       // second list that could disagree with it.
@@ -12655,16 +12717,16 @@
       // A card with neither is still draggable, just not remembered.
       function keyOf(el){ return el.dataset.arrangeId || el.id || ""; }
       function spanOf(tab, el){
-        const saved = spans[tab] && spans[tab][keyOf(el)];
-        return (saved >= SPAN_MIN && saved <= SPAN_MAX) ? saved : bornSpan(el);
+        const c = rectOf(tab, el).c;
+        return (c >= SPAN_MIN && c <= SPAN_MAX) ? c : bornSpan(el);
       }
+      function setRows(el, n){ el.style.setProperty("--rows", String(n)); }
       function setSpan(el, n){ el.style.setProperty("--span", String(n)); }
+      // What the card is currently set to, which is what its row is made of -
+      // spanOf answers what it WOULD be, and after a fill those differ.
+      const curSpan = el => parseInt(getComputedStyle(el).getPropertyValue("--span"), 10) || 12;
       function rememberSpan(tab, el, n){
-        const id = keyOf(el);
-        if (!id) return;
-        spans[tab] = spans[tab] || {};
-        if (n === bornSpan(el)) delete spans[tab][id]; else spans[tab][id] = n;
-        saveSpans();
+        remember(tab, el, { c: n === bornSpan(el) ? null : n });
       }
       // Its neighbour on the SAME line. Two cards that merely follow each other
       // in the DOM may be on different lines, and there is no seam between those.
@@ -12680,16 +12742,90 @@
         return Math.abs(a.top - b.top) < 2 ? next : null;
       }
 
+      /* Pack the gaps out, on request. Dense auto-flow is the browser's own
+         packer and it is the one that decided the layout was gappy, so its
+         answer agrees with what is on screen. It is turned on for one frame,
+         the resulting visual order is read off, and that order is written back
+         as document order - so the packed layout holds still afterwards instead
+         of being maintained by a setting that also moves cards you did not
+         touch. */
+      function tidyBento(host, tab){
+        if (!host) return 0;
+        const cards = [...host.children].filter(k => k.getBoundingClientRect().height > 0);
+        if (!cards.length) return 0;
+        // Group by row, by the only thing that reliably says which row a card is
+        // on: where it is.
+        const rows = new Map();
+        cards.forEach(el => {
+          const top = Math.round(el.getBoundingClientRect().top);
+          if (!rows.has(top)) rows.set(top, []);
+          rows.get(top).push(el);
+        });
+        let widened = 0;
+        rows.forEach(row => {
+          row.sort((x, y) => x.getBoundingClientRect().left - y.getBoundingClientRect().left);
+          const used = row.reduce((n, el) => n + spanOf(tab, el), 0);
+          const slack = SPAN_OF - used;
+          if (slack <= 0) return;
+          // To the last card on the row: it is the one the gap is beside.
+          const last = row[row.length - 1];
+          setSpan(last, spanOf(tab, last) + slack);
+          rememberSpan(tab, last, spanOf(tab, last) + slack);
+          widened++;
+        });
+        if (widened) applySpansAndSeams(host, tab);
+        return widened;
+      }
+
       /* Every card on the page that has a card after it, arranging or not. The
          rail's sections are a subset: the page owns cards the rail has never
          heard of, and they are just as resizable. */
-      function applySpansAndSeams(host, tab){
+
+      /* `again` marks the follow-up. Cards finish rendering after the rebuild
+         that placed them - charts, lists, anything async - so a row that was
+         full when the fill ran can be short a moment later, and nothing was
+         looking. One delayed re-run catches that; passing again=true stops it
+         scheduling another, so it is exactly one, not a loop. */
+      let refill = null;
+      function applySpansAndSeams(host, tab, again){
         if (!host || seamDrag) return;   // never while a drag is live
+        if (!again){
+          clearTimeout(refill);
+          refill = setTimeout(() => { if (!seamDrag) applySpansAndSeams(host, tab, true); }, 450);
+        }
         const cards = [...host.children].filter(k => k.getBoundingClientRect().height > 0);
+        calibrateRows(host);
         cards.forEach(el => {
-          const old = el.querySelector(":scope > .card-seam");
-          if (old) old.remove();
+          el.querySelectorAll(":scope > .card-seam, :scope > .card-seam-v, :scope > .card-seam-c")
+            .forEach(x => x.remove());
           setSpan(el, spanOf(tab, el));
+        });
+
+        /* Heights. A card the user has sized keeps that size; one they have not
+           is measured, so an untouched page looks exactly as it did before there
+           were heights at all. The measuring pass costs one layout and is the
+           only way to know what a card actually wants. */
+        const needMeasuring = cards.filter(el => !(rectOf(tab, el).r >= ROWS_MIN));
+        if (needMeasuring.length){
+          host.classList.add("is-measuring");
+          const natural = needMeasuring.map(el => el.getBoundingClientRect().height);
+          host.classList.remove("is-measuring");
+          needMeasuring.forEach((el, i) => setRows(el, rowsForHeight(natural[i])));
+        }
+        cards.forEach(el => {
+          const r = rectOf(tab, el).r;
+          if (r >= ROWS_MIN) setRows(el, r);
+        });
+        /* And check. The natural pass reports a card with nothing holding it,
+           and the parts that size themselves against the card measure smaller
+           there than they will be once it is put back - measured at up to 105px
+           short. scrollHeight is the content's height in the box it actually
+           got, so one corrective pass settles it. A height the user chose is
+           not a mistake, so those are left exactly as they are. */
+        cards.forEach(el => {
+          if (rectOf(tab, el).r >= ROWS_MIN) return;
+          const over = el.scrollHeight - el.clientHeight;
+          if (over > 2) setRows(el, rowsForHeight(el.scrollHeight));
         });
         /* A lone card is DRAWN at the full width by flex-grow while its number
            says less, so a line can look full and still have room in it - which
@@ -12699,15 +12835,37 @@
            from, so a card set to 12 is thereafter always alone, and the
            correction can never lapse. It left every card on its own line. The
            reflow stays; it is flex using the room that is genuinely there. */
+        /* NO AUTOMATIC FILL, on purpose. A grid can leave a gap - that is the
+           price of exact placement, and it was the trade-off chosen. Four
+           attempts at closing gaps automatically all failed the same way: they
+           ran against a layout that was still moving, and each fix produced a
+           different wrong answer. Tidy does the same job correctly on a press,
+           when the page is definitely settled, so that is the only thing that
+           does it. One behaviour, working, beats two where one is a guess. */
+
+
         // A second pass, because whether a card has a visible card after it
         // depends on the widths the first pass just applied.
         cards.forEach((el, i) => {
-          if (i >= cards.length - 1) return;
-          const seam = document.createElement("div");
-          seam.className = "card-seam";
-          seam.title = "Drag to share the width. Double-click to reset.";
-          seam.setAttribute("aria-hidden", "true");
-          el.appendChild(seam);
+          // The width handle needs something to its right to be worth dragging;
+          // the height handle is always worth it.
+          if (i < cards.length - 1){
+            const seam = document.createElement("div");
+            seam.className = "card-seam";
+            seam.title = "Drag to set the width. Double-click to reset.";
+            seam.setAttribute("aria-hidden", "true");
+            el.appendChild(seam);
+          }
+          const vert = document.createElement("div");
+          vert.className = "card-seam-v";
+          vert.title = "Drag to set the height. Double-click to fit the contents.";
+          vert.setAttribute("aria-hidden", "true");
+          el.appendChild(vert);
+          const corner = document.createElement("div");
+          corner.className = "card-seam-c";
+          corner.title = "Drag to set both. Double-click to reset.";
+          corner.setAttribute("aria-hidden", "true");
+          el.appendChild(corner);
         });
       }
 
@@ -12770,8 +12928,10 @@
         // and must not start one: the card is draggable while arranging, so the
         // flag comes off for the duration and goes back on after.
         host.addEventListener("pointerdown", ev => {
-          const seam = ev.target.closest(".card-seam");
+          const seam = ev.target.closest(".card-seam, .card-seam-v, .card-seam-c");
           if (!seam || ev.button !== 0) return;
+          const axis = seam.classList.contains("card-seam-v") ? "y"
+                     : seam.classList.contains("card-seam-c") ? "xy" : "x";
           // Its own card, which is its parent. Asking for the nearest ancestor
           // the rail has named returns null for every card the rail does not
           // track, and those are resizable too.
@@ -12793,9 +12953,10 @@
             ? Math.round((right.getBoundingClientRect().right - leftBox.left) * px)
             : 0;
           seamDrag = {
-            left, right, total, beforeSpan,
+            left, right, total, beforeSpan, axis,
             hostLeft: hostBox.left,
             hostW: hostBox.width,
+            topY: leftBox.top,
             wasDraggable: left.draggable
           };
           left.draggable = false;
@@ -12807,7 +12968,17 @@
         // started from still existing.
         window.addEventListener("pointermove", ev => {
           if (!seamDrag) return;
-          const { left, right, total, beforeSpan, hostLeft, hostW } = seamDrag;
+          const { left, right, total, beforeSpan, hostLeft, hostW, axis, topY } = seamDrag;
+          if (axis === "y" || axis === "xy"){
+            // From the card's top edge to the pointer, in rows. The gap between
+            // rows counts toward the span, which is why the pitch is ROW + GAP.
+            const px = ev.clientY - topY;
+            const n = Math.max(ROWS_MIN, Math.min(ROWS_MAX,
+              Math.round((px - rowOffset) / rowPitch)));
+            setRows(left, n);
+            seamDrag.r = n;
+          }
+          if (axis === "y") return;
           // Where the seam IS, in twelfths across the bento, less what the cards
           // before it on this line already take. Pixels to twelfths, rounded:
           // every width you can stop on is one the layout already knew how to be.
@@ -12832,6 +13003,7 @@
         function endSeam(ev){
           if (!seamDrag) return;
           const { left, right, wasDraggable, a, b } = seamDrag;
+          const seamRows = seamDrag.r;
           seamDrag = null;
           document.body.classList.remove("is-seam-resizing");
           left.draggable = wasDraggable;
@@ -12839,6 +13011,7 @@
             rememberSpan(tab, left, a);
             if (right && b != null) rememberSpan(tab, right, b);
           }
+          if (seamRows != null) remember(tab, left, { r: seamRows });
           // The rebuilds that were held off may have left the seams stale, and
           // which cards share a line has very likely just changed.
           applySpansAndSeams(host, tab);
@@ -12846,7 +13019,18 @@
         window.addEventListener("pointerup", endSeam);
         window.addEventListener("pointercancel", endSeam);
         host.addEventListener("dblclick", ev => {
-          const seam = ev.target.closest(".card-seam");
+          const vert = ev.target.closest(".card-seam-v");
+          if (vert){
+            // Back to the height the contents want, which is the useful reset
+            // for a dimension whose "default" was measured in the first place.
+            const card = vert.parentElement;
+            ev.preventDefault();
+            remember(tab, card, { r: null });
+            applySpansAndSeams(host, tab);
+            if (typeof showToast === "function") showToast("Height back to fit.");
+            return;
+          }
+          const seam = ev.target.closest(".card-seam, .card-seam-c");
           if (!seam) return;
           const left = seam.parentElement;
           if (!left) return;
@@ -13869,22 +14053,44 @@
      still share a line and whatever is alone takes the whole of one.
      The grid-column declarations above are left in place: they still describe
      the intent, and they are what applies if this ever goes back to a grid. */
+  /* ---------- the bento is a grid of rectangles ---------------------------- */
+  /* Twelve columns and a 12px row, both spanned by a number the card carries.
+     A card owns a rectangle, so height is something you can set and nothing
+     rearranges itself: auto-flow is row, NOT row dense. The cost is chosen -
+     exact placement means you can leave a gap, and "Tidy" is the way back. */
   .bento{
-    display: flex; flex-wrap: wrap; align-items: flex-start;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-auto-rows: 12px;
+    grid-auto-flow: row;
+    align-items: stretch;
     gap: var(--sp-7);
   }
-  .bento > *{ min-width: 0; }
-  /* 7/12 and 5/12, less this item's share of the one gap between them. */
-  /* The span is a number on the element now, so a drag can change it without
-     swapping classes, and the class is only its starting value. */
-  .bento > *{ --span: 12; flex: 1 1 calc(var(--span) / 12 * 100% - (var(--sp-7) / 2)); }
+  .bento > *{
+    --span: 12; --rows: 10;
+    grid-column: span min(var(--span), 12);
+    grid-row: span var(--rows);
+    min-width: 0; min-height: 0;
+    /* A row span is a real height, so content can be taller than its card. The
+       alternative to scrolling is painting over the card below. */
+    overflow: auto; overscroll-behavior: contain;
+  }
   .bento-span-7{ --span: 7; }
   .bento-span-5{ --span: 5; }
   .bento-span-12{ --span: 12; }
-  /* Under 1100 there is not room for two, so a dragged width is set aside
-     rather than honoured - and comes back when there is room again. */
+
+  /* Measuring pass (stage 2): natural heights, so the first layout matches what
+     the cards actually want and nothing has to scroll until you shrink it. */
+  .bento.is-measuring{ grid-auto-rows: auto; align-items: start; }
+  .bento.is-measuring > *{ grid-row: auto; overflow: visible; height: auto; }
+
+
+  /* Under 1100 there is one column, and a dragged width is set aside rather
+     than honoured - it comes back when there is room again. Heights are kept:
+     they are about the card, not about how many fit beside it. */
   @media (max-width: 1100px){
-    .bento > *{ flex-basis: 100%; }
+    .bento{ grid-template-columns: minmax(0, 1fr); }
+    .bento > *{ grid-column: 1 / -1; }
   }
 
   /* ---------- the seam between two cards ---------------------------------- */
@@ -13905,6 +14111,34 @@
     opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
   }
   @media (hover: hover){ .card-seam:hover::after{ opacity: .85; } }
+  /* The bottom edge, and the corner that does both. Same idea as the right
+     edge: inside the card's own padding, invisible until reached for. */
+  .card-seam-v{
+    position: absolute; left: 0; right: 14px; bottom: 0; height: 14px;
+    z-index: 4; cursor: row-resize; touch-action: none;
+  }
+  .card-seam-v::after{
+    content: ""; position: absolute; left: 12px; right: 12px; bottom: 4px; height: 3px;
+    border-radius: var(--r-pill); background: var(--accent);
+    opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .card-seam-c{
+    position: absolute; right: 0; bottom: 0; width: 16px; height: 16px;
+    z-index: 5; cursor: nwse-resize; touch-action: none;
+  }
+  .card-seam-c::after{
+    content: ""; position: absolute; right: 3px; bottom: 3px; width: 9px; height: 9px;
+    border-right: 3px solid var(--accent); border-bottom: 3px solid var(--accent);
+    border-bottom-right-radius: 4px;
+    opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){
+    .card-seam-v:hover::after, .card-seam-c:hover::after{ opacity: .9; }
+  }
+  body.is-seam-resizing .card-seam-v::after,
+  body.is-seam-resizing .card-seam-c::after{ opacity: 1; }
+  .is-arrangeable .card-seam-v::after, .is-arrangeable .card-seam-c::after{ opacity: .3; }
+
   /* While arranging it shows without being reached for: that is the mode where
      you are looking for handles. */
   .is-arrangeable .card-seam::after{ opacity: .3; }
@@ -13916,6 +14150,20 @@
   /* The card is the seam's positioning context; .is-arrangeable is already
      relative, and this only exists while arranging. */
   .is-arrangeable{ position: relative; }
+
+  /* ---------- Tidy, beside Edit ------------------------------------------- */
+  nav.tabs .nav-tidy{
+    width: auto; height: auto; min-height: 0; padding: 0 var(--sp-3); margin: 0 var(--sp-3) 0 auto;
+    background: none; border: 0; color: var(--ink-dim);
+    font: inherit; font-size: var(--fs-3xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+    cursor: pointer; white-space: nowrap;
+  }
+  @media (hover: hover){ nav.tabs .nav-tidy:hover{ color: var(--accent); } }
+  nav.tabs .nav-tidy:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* Edit already pushed itself to the right; with Tidy there, that job is
+     Tidy's and Edit simply follows it. */
+  nav.tabs .nav-edit{ margin-left: 0; }
 </style>
 </body>
 </html>
