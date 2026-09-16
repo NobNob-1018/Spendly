@@ -64,11 +64,11 @@
     --line-strong: rgb(255 255 255 / .16);
 
     --ink:      #E8EDF5;
-    --ink-soft: #9AA7B8;
-    --ink-dim:  #6B7788;
+    --ink-soft: #A8B4C5;
+    --ink-dim:  #8794A7;
     /* A fourth text level, for the metadata under a figure: units, ranges, ages.
        Three levels are not enough once a panel labels its own numbers. */
-    --ink-faint: #4E5868;
+    --ink-faint: #8794A7;
     --on-accent: #06211F;
 
     --accent:       #37C8B8;
@@ -1470,6 +1470,12 @@
 
 
   .section-head-row > *{ min-width: 0; }
+
+
+  /* Tinted state chips sit on a darkened ground of their own colour, so the
+     label is lifted above the token rather than matching it. */
+  .deadline-note[data-band="overdue"]{ color: #FF9C8E; }
+  .deadline-note[data-band="today"], .deadline-note[data-band="week"]{ color: #F5C078; }
 
 </style>
 </head>

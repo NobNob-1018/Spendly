@@ -3074,18 +3074,18 @@
     --rule-2:     #C4BBA8;
 
     --ink:        #17160F;
-    --ink-2:      #4E4A3F;
-    --ink-3:      #837D6D;
-    --ink-4:      #A9A294;
+    --ink-2:      #413D34;
+    --ink-3:      #5B5648;
+    --ink-4:      #6E695A;
 
     /* From the notes in a Philippine wallet. The hundred is violet and it is the
        one you handle most, so it carries interaction. */
-    --peso-100:   #6D3C93;      /* violet — interactive, today, the accent */
-    --peso-100-d: #52276F;
+    --peso-100:   #5F3382;      /* violet — interactive, today, the accent */
+    --peso-100-d: #46215E;
     --peso-100-l: #EFE6F6;
-    --peso-200:   #2C7A50;      /* green — money coming in */
-    --peso-50:    #A93B2B;      /* red — money going out */
-    --peso-500:   #B5790B;      /* amber — due, watch this */
+    --peso-200:   #1F5B3B;      /* green — money coming in */
+    --peso-50:    #9A3325;      /* red — money going out */
+    --peso-500:   #8A5B00;      /* amber — due, watch this */
     --peso-1000:  #1D4F7C;      /* blue — held, at rest */
 
     --in:         var(--peso-200);
@@ -3095,6 +3095,10 @@
     --accent-d:   var(--peso-100-d);
     --accent-l:   var(--peso-100-l);
     --on-accent:  #FFFFFF;
+    /* Re-grounded from the baseline dark palette: a state colour has to be
+       legible on the surface it is actually painted on. */
+    --caution:    #8A5B00;      /* due soon — the same amber as --due */
+    --selected:   rgba(95, 51, 130, 0.12);
 
     /* Compatibility with the app's own names, so no renderer has to be rewritten
        just to keep its colours. */
