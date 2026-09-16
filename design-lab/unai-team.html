@@ -3438,7 +3438,11 @@
 
   .sp-date.is-late{ color: var(--out); font-weight: 700; text-transform: uppercase;
     letter-spacing: var(--track-caps); font-size: var(--fs-3xs); }
-  .sp-row.is-future .sp-date.is-late + .sp-node::before{ border-color: var(--out); border-style: solid; }
+  /* Lateness belongs to the row, not to the direction marker. The dot goes on
+     saying which way the money moves — it was being repainted red on incoming
+     repayments, which put a red dot beside a green figure on the same line. */
+  .sp-row.is-late{ box-shadow: inset 3px 0 0 var(--out); }
+  .sp-row.is-late .sp-what{ color: var(--ink); font-weight: 600; }
 
 
   /* ======================================================================
@@ -3704,31 +3708,31 @@
   :root[data-theme="dark"]{
     color-scheme: dark;
 
-    --paper:      #17150F;
-    --paper-2:    #1F1C15;
-    --paper-3:    #2A251C;
-    --card:       #262119;      /* raised, which on paper meant white and here means nearer the lamp */
-    --rule:       #38322A;
-    --rule-2:     #4E4739;
+    --paper:      #14151A;
+    --paper-2:    #1A1C22;
+    --paper-3:    #23262E;
+    --card:       #1E2027;      /* raised — what the one true white becomes */
+    --rule:       #353944;
+    --rule-2:     #484D5C;
 
-    --ink:        #F4EFE4;
-    --ink-2:      #D3CABA;
-    --ink-3:      #AEA593;
-    --ink-4:      #9A917F;
+    --ink:        #EEF0F4;
+    --ink-2:      #C6CAD3;
+    --ink-3:      #9BA1AD;
+    --ink-4:      #8A909C;
 
-    --peso-100:   #C49AE4;
-    --peso-100-d: #DCC2F0;
-    --peso-100-l: #2E2437;
-    --peso-200:   #7FCB9F;
-    --peso-50:    #F0958A;
-    --peso-500:   #E5BA6D;
-    --peso-1000:  #93BCE0;
+    --peso-100:   #C0A0E8;
+    --peso-100-d: #D6BEF2;
+    --peso-100-l: #251F33;
+    --peso-200:   #6FD39B;
+    --peso-50:    #FF9A8B;
+    --peso-500:   #E8BC6B;
+    --peso-1000:  #8FBEE8;
 
-    --on-accent:  #1B1023;      /* the accent is now the light one, so its ink is dark */
-    --caution:    #E5BA6D;
-    --selected:   rgb(196 154 228 / .18);
-    --violet-soft: #B98ADB;
-    --accent-quiet: #B98ADB;
+    --on-accent:  #16101F;      /* the accent is the light one now, so its ink is dark */
+    --caution:    #E8BC6B;
+    --selected:   rgb(192 160 232 / .18);
+    --violet-soft: #B08FDC;
+    --accent-quiet: #B08FDC;
 
     --elev-3: 0 6px 22px rgb(0 0 0 / .55);
     --elev-4: 0 18px 48px rgb(0 0 0 / .68);
@@ -3737,7 +3741,7 @@
   :root[data-theme="dark"] .drawer-scrim{ background: rgb(0 0 0 / .58); }
   /* The tick and the count inside a filled chip sit on a LIGHT accent at night,
      so a white wash would disappear. */
-  :root[data-theme="dark"] .spine-mode.is-on .chip-n{ background: rgb(27 16 35 / .18); }
+  :root[data-theme="dark"] .spine-mode.is-on .chip-n{ background: rgb(22 16 31 / .20); }
   /* The card white the app uses for inputs is the raised surface here, and a
      hairline is needed to keep a field from dissolving into the page. */
   :root[data-theme="dark"] .quick input,
@@ -3747,19 +3751,19 @@
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
       color-scheme: dark;
-      --paper: #17150F; --paper-2: #1F1C15; --paper-3: #2A251C; --card: #262119;
-      --rule: #38322A; --rule-2: #4E4739;
-      --ink: #F4EFE4; --ink-2: #D3CABA; --ink-3: #AEA593; --ink-4: #9A917F;
-      --peso-100: #C49AE4; --peso-100-d: #DCC2F0; --peso-100-l: #2E2437;
-      --peso-200: #7FCB9F; --peso-50: #F0958A; --peso-500: #E5BA6D; --peso-1000: #93BCE0;
-      --on-accent: #1B1023; --caution: #E5BA6D; --selected: rgb(196 154 228 / .18);
-      --violet-soft: #B98ADB; --accent-quiet: #B98ADB;
+      --paper: #14151A; --paper-2: #1A1C22; --paper-3: #23262E; --card: #1E2027;
+      --rule: #353944; --rule-2: #484D5C;
+      --ink: #EEF0F4; --ink-2: #C6CAD3; --ink-3: #9BA1AD; --ink-4: #8A909C;
+      --peso-100: #C0A0E8; --peso-100-d: #D6BEF2; --peso-100-l: #251F33;
+      --peso-200: #6FD39B; --peso-50: #FF9A8B; --peso-500: #E8BC6B; --peso-1000: #8FBEE8;
+      --on-accent: #16101F; --caution: #E8BC6B; --selected: rgb(192 160 232 / .18);
+      --violet-soft: #B08FDC; --accent-quiet: #B08FDC;
       --elev-3: 0 6px 22px rgb(0 0 0 / .55);
       --elev-4: 0 18px 48px rgb(0 0 0 / .68);
     }
     :root:not([data-theme="light"]) ::selection{ background: var(--peso-100-l); color: var(--ink); }
     :root:not([data-theme="light"]) .drawer-scrim{ background: rgb(0 0 0 / .58); }
-    :root:not([data-theme="light"]) .spine-mode.is-on .chip-n{ background: rgb(27 16 35 / .18); }
+    :root:not([data-theme="light"]) .spine-mode.is-on .chip-n{ background: rgb(22 16 31 / .20); }
     :root:not([data-theme="light"]) .quick input,
     :root:not([data-theme="light"]) .quick select,
     :root:not([data-theme="light"]) .rail-find input{ background: var(--paper-3); }
@@ -3989,6 +3993,61 @@
     .brand p{ display: none; }
     #save-status{ display: none; }
   }
+
+  /* ---------- scrollbars: a rule in the margin, not a widget ---------------- */
+  /* The thumb is the same weight as the hairlines it runs beside, because on a
+     page made of rules a scrollbar is just one more rule — one that moves. */
+  html{ scrollbar-width: thin; scrollbar-color: var(--rule-2) transparent; }
+  .places, .act, .drawer, .spine-wrap,
+  [id$="-table-wrap"], .drawer-body, #global-search-results{
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule-2) transparent;
+  }
+  ::-webkit-scrollbar{ width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track{ background: transparent; }
+  ::-webkit-scrollbar-thumb{
+    background: var(--rule-2);
+    border: 3px solid transparent;          /* inset, so the bar reads as thin */
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  @media (hover: hover){
+    ::-webkit-scrollbar-thumb:hover{ background: var(--ink-4); background-clip: content-box; }
+  }
+  ::-webkit-scrollbar-corner{ background: transparent; }
+
+  /* The strips that fade instead. A bar here would be a second explanation of
+     something the fade has already said. */
+  #places-body, .ref-list, .fold, .sticky-top,
+  .rail-sections, .nav-contents{
+    scrollbar-width: none;
+  }
+  #places-body::-webkit-scrollbar, .ref-list::-webkit-scrollbar,
+  .fold::-webkit-scrollbar, .sticky-top::-webkit-scrollbar,
+  .rail-sections::-webkit-scrollbar, .nav-contents::-webkit-scrollbar{
+    width: 0; height: 0;
+  }
+
+  /* ---------- motion: two things that changed and could not be seen to ----- */
+  /* A page enters from the side it came from. Ten pixels, because that is how
+     far a page moves; two hundred milliseconds, because a page is not a card. */
+  @keyframes page-fwd{  from{ opacity: 0; transform: translateX(12px); }  to{ opacity: 1; transform: none; } }
+  @keyframes page-back{ from{ opacity: 0; transform: translateX(-12px); } to{ opacity: 1; transform: none; } }
+  .spine-wrap.is-fwd  #fold, .spine-wrap.is-fwd  #spine{ animation: page-fwd  var(--dur-slow) var(--ease-out); }
+  .spine-wrap.is-back #fold, .spine-wrap.is-back #spine{ animation: page-back var(--dur-slow) var(--ease-out); }
+
+  /* The figure that moved says so, once, and then goes back to being a figure. */
+  @keyframes figure-changed{
+    0%   { color: var(--accent); }
+    70%  { color: var(--accent); }
+    100% { color: inherit; }
+  }
+  .sp-today-bal.is-changed{ animation: figure-changed 1100ms var(--ease-out); }
+
+  .act{ background: var(--paper-2); }
+  /* Below 1180 the act column is a band under the rail rather than a flank, so
+     it goes back to the page's own ground and is separated by its rule alone. */
+  @media (max-width: 1180px){ .act{ background: var(--paper); } }
 </style>
 <script>
 /* Runs before anything is painted. A reader who chose the night edition should
@@ -11753,6 +11812,10 @@
         return round2(sum);
       }
 
+      // What the balance was the last time the rail drew, so a change can be
+      // told from a redraw. Null means "no comparison to make".
+      let lastAnchor = null;
+
       /* ---- the rail -------------------------------------------------------- */
       function renderSpine(){
         const host = $("spine");
@@ -11761,6 +11824,13 @@
         const ym = S.ym;
         const isNow = ym === today.slice(0, 7);
         const { rows, hidden } = events(ym);
+
+        // Did the money actually move since the last time this drew? Not "is it
+        // a different number" — filtering to one account is a different number
+        // and is not news.
+        const anchorNow = anchorBalance();
+        const moved = lastAnchor !== null && Math.abs(anchorNow - lastAnchor) >= 0.01;
+        lastAnchor = anchorNow;
 
         const past = rows.filter(e => e.kind === "record");
         const ahead = rows.filter(e => e.kind !== "record")
@@ -11794,6 +11864,7 @@
           const future = e.kind !== "record";
           const isOpen = S.open === e.key;
           return '<div class="sp-row is-' + e.dir + (future ? " is-future" : "") +
+                   (e.late ? " is-late" : "") +
                    (sameDay ? " is-same-day" : "") + (isOpen ? " is-open" : "") +
                    '" data-key="' + escapeHtml(e.key) + '" data-idx="' + idx + '" ' +
                    'tabindex="-1" role="button" aria-expanded="' + (isOpen ? "true" : "false") + '">' +
@@ -11854,6 +11925,14 @@
         if (S.cursor >= 0){
           const cur = host.querySelector('[data-idx="' + S.cursor + '"]');
           if (cur) cur.classList.add("is-cursor");
+        }
+        if (moved && !prefersStill()){
+          const fig = $("sp-today") && $("sp-today").querySelector(".sp-today-bal");
+          if (fig){
+            fig.classList.remove("is-changed");
+            void fig.offsetWidth;
+            fig.classList.add("is-changed");
+          }
         }
       }
 
@@ -11964,6 +12043,7 @@
           b.addEventListener("click", () => {
             S.place = (S.place === b.dataset.place) ? "" : b.dataset.place;
             S.open = ""; S.cursor = -1;
+            lastAnchor = null;        // a filtered figure is not a changed one
             repaint();
           });
         });
@@ -12161,12 +12241,23 @@
         }
       }
 
+      let turnTimer = null;
       function turn(to){
         const list = pages();
         const at = list.indexOf(to);
         if (at === -1) return;
+        // Which way, so the page can enter from the side it came from.
+        const dir = at > list.indexOf(S.ym) ? "is-fwd" : "is-back";
         S.ym = to; S.open = ""; S.cursor = -1;
         repaint();
+        const wrapEl = document.querySelector(".spine-wrap");
+        if (wrapEl && !prefersStill()){
+          wrapEl.classList.remove("is-fwd", "is-back");
+          void wrapEl.offsetWidth;          // restart, rather than ignore a repeat
+          wrapEl.classList.add(dir);
+          clearTimeout(turnTimer);
+          turnTimer = setTimeout(() => wrapEl.classList.remove("is-fwd", "is-back"), 320);
+        }
         const wrap = document.querySelector(".spine-wrap");
         if (wrap) wrap.scrollTop = 0;
         const sp = $("spine");

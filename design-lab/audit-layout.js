@@ -37,9 +37,10 @@
  * Sweep every variant x every tab x {420, 900, 1400, 1900} before calling a
  * design pass done. It found eleven real defects on its first run.
  *
- * KNOWN FALSE POSITIVE. A full-bleed toolbar row (negative margin, matching
- * padding, so its border reaches the card edge) reports as overflowing its
- * parent by the margin. Its CONTENT lines up; only its box hangs out.
+ * A full-bleed row — negative horizontal margin that its own padding gives
+ * back, so its rule reaches the container edge while its content stays on the
+ * measure — used to report twice per sweep, as overflow and again as bleed. It
+ * is recognised and skipped now.
  */
 (function(){
   const out = { overlaps: [], collapsed: [], overflow: [], bleed: [], sticky: [], clipped: [] };
@@ -53,6 +54,26 @@
     return r.width > 0 && r.height > 0;
   };
   const clipRect = el => { let r = el.getBoundingClientRect(); let p = el.parentElement; while (p && p !== document.body){ const s = getComputedStyle(p); if (["auto","scroll","hidden"].includes(s.overflowY) || ["auto","scroll","hidden"].includes(s.overflowX)){ const c = p.getBoundingClientRect(); const top=Math.max(r.top,c.top), bottom=Math.min(r.bottom,c.bottom), left=Math.max(r.left,c.left), right=Math.min(r.right,c.right); if (bottom<=top||right<=left) return null; r={top,bottom,left,right,width:right-left,height:bottom-top}; } p=p.parentElement; } return r; };
+  // A row pulled out to the container's edge: negative horizontal margin, and
+  // its own padding puts the content back on the measure. Its box hangs out on
+  // purpose and its parent's scrollWidth grows by the same amount.
+  const fullBleed = el => {
+    const s = getComputedStyle(el);
+    const ml = parseFloat(s.marginLeft) || 0, mr = parseFloat(s.marginRight) || 0;
+    if (ml > -1 && mr > -1) return false;
+    const pl = parseFloat(s.paddingLeft) || 0, pr = parseFloat(s.paddingRight) || 0;
+    return Math.abs(pl + ml) < 2 && Math.abs(pr + mr) < 2;
+  };
+  // A pulled-out row inflates the scrollWidth of every ancestor, not only its
+  // parent, so this looks down the subtree — and only accepts the excuse when
+  // the pull-out is at least as large as the excess being explained.
+  const bleedExplained = (el, excess) =>
+    [...el.querySelectorAll('*')].some(c => {
+      if (!fullBleed(c)) return false;
+      const cs = getComputedStyle(c);
+      const pull = Math.max(-(parseFloat(cs.marginLeft) || 0), -(parseFloat(cs.marginRight) || 0));
+      return pull >= excess - 1;
+    });
   const inFixed = el => {
     let n = el;
     while (n && n.nodeType === 1 && n !== document.body){
@@ -123,6 +144,7 @@
     if (s.position === 'absolute' || s.position === 'fixed') return;
     const r = el.getBoundingClientRect(), pr = p.getBoundingClientRect();
     if (pr.width < 2) return;
+    if (fullBleed(el)) return;
     if (r.right > pr.right + 2 || r.left < pr.left - 2)
       out.overflow.push(name(el) + ' outside ' + name(p) + ' by ' +
         Math.round(Math.max(r.right - pr.right, pr.left - r.left)) + 'px');
@@ -146,6 +168,7 @@
       p = p.parentElement;
     }
     if (contained) return;
+    if (bleedExplained(el, bleed)) return;
     out.bleed.push(name(el) + ' paints ' + bleed + 'px past its own box (' +
       el.scrollWidth + ' into ' + el.clientWidth + ')');
   });

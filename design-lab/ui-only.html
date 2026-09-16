@@ -1510,6 +1510,44 @@
     }
     .brand p{ display: none; }
   }
+
+  /* ---------- scrollbars: quiet, rounded, out of the way ------------------- */
+  html{ scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  nav.tabs, [id$="-table-wrap"], #side-panel, #global-search-results, .drawer{
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  ::-webkit-scrollbar{ width: 12px; height: 12px; }
+  ::-webkit-scrollbar-track{ background: transparent; }
+  ::-webkit-scrollbar-thumb{
+    background: var(--line-strong);
+    border: 3.5px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  @media (hover: hover){
+    ::-webkit-scrollbar-thumb:hover{ background: var(--ink-dim); background-clip: content-box; }
+  }
+  ::-webkit-scrollbar-corner{ background: transparent; }
+
+  /* The strips that fade instead. A bar here would be a second explanation of
+     something the fade has already said. */
+  #places-body, .ref-list, .fold, .sticky-top,
+  .rail-sections, .nav-contents{
+    scrollbar-width: none;
+  }
+  #places-body::-webkit-scrollbar, .ref-list::-webkit-scrollbar,
+  .fold::-webkit-scrollbar, .sticky-top::-webkit-scrollbar,
+  .rail-sections::-webkit-scrollbar, .nav-contents::-webkit-scrollbar{
+    width: 0; height: 0;
+  }
+
+  .nav-content-dot{
+    transition: background-color var(--dur-base) var(--ease-out),
+                box-shadow var(--dur-base) var(--ease-out),
+                transform var(--dur-base) var(--ease-out);
+  }
+  .nav-content.is-here .nav-content-dot{ transform: scale(1.15); }
 </style>
 </head>
 
