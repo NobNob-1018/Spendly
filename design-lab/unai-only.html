@@ -1569,6 +1569,15 @@
   .ml-table .is-in{ color: var(--positive); } .ml-table .is-out{ color: var(--negative); }
   .ml-after{ font-weight:700; }
 
+
+  /* Six cells, laid out as 2 / 3 / 6 rather than auto-fitted: auto-fit gave five
+     across and left the sixth alone on a row of its own. */
+  #money-overview-row{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  @media (min-width: 760px){ #money-overview-row{ grid-template-columns: repeat(3, minmax(0,1fr)); } }
+  @media (min-width: 1240px){ #money-overview-row{ grid-template-columns: repeat(6, minmax(0,1fr)); } }
+  #money-overview-row .metric{ border-bottom:1px solid var(--line); }
+  @media (min-width: 1240px){ #money-overview-row .metric{ border-bottom:0; } }
+
 </style>
 </head>
 

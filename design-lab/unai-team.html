@@ -9370,7 +9370,7 @@
         // The month before, so the comparison names what it compares to.
         const d = new Date(key + "-01T00:00:00");
         d.setMonth(d.getMonth() - 1);
-        const prevKey = d.toISOString().slice(0, 7);
+        const prevKey = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
         const prevSpent = sum(inMonth(expenses, prevKey));
         const delta = prevSpent > 0 ? round2(spent - prevSpent) : null;
         const deltaPct = prevSpent > 0 ? Math.abs(Math.round((delta / prevSpent) * 100)) : null;
@@ -9722,7 +9722,7 @@
         // partway through: comparing a half month to a whole one is nonsense.
         const d = new Date(k + "-01T00:00:00");
         d.setMonth(d.getMonth() - 1);
-        const prevKey = d.toISOString().slice(0, 7);
+        const prevKey = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
         const prevToDate = round2(expenses
           .filter(e => String(e.date).slice(0, 7) === prevKey && Number(String(e.date).slice(8, 10)) <= day)
           .reduce((t, e) => t + e.amount, 0));
@@ -9737,7 +9737,7 @@
             <strong>${fmtMoney(earned)}</strong>.
             ${diff !== null
               ? `By this point last month it was <strong>${fmtMoney(prevToDate)}</strong> —
-                 you are ${diff > 0 ? "ahead by" : "behind by"} <strong>${fmtMoney(Math.abs(diff))}</strong>.`
+                 you are ${diff > 0 ? "behind by" : "ahead by"} <strong>${fmtMoney(Math.abs(diff))}</strong>.`
               : `There is no comparable stretch of last month recorded.`}
             At this rate the month closes near <strong>${fmtMoney(projected)}</strong>.
           </p>`;

@@ -9808,7 +9808,7 @@
         const d = new Date();
         d.setDate(1);
         d.setMonth(d.getMonth() - n);
-        return d.toISOString().slice(0, 7);
+        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
       }
       function totalsFor(key){
         const inMonth = list => (list || []).filter(r => String(r.date || "").slice(0, 7) === key);
@@ -10064,7 +10064,7 @@
         const keys = [];
         for (let i = 1; i <= n; i++){
           const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          keys.push(d.toISOString().slice(0, 7));
+          keys.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"));
         }
         return keys;
       }
