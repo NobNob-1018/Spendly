@@ -3198,6 +3198,40 @@
       </div>
     </div>
 
+    <div data-settings-group="appearance" class="card">
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14V8a4 4 0 0 1 4-4h6"/><path d="M20 10v6a4 4 0 0 1-4 4h-6"/></svg></span><span class="h-text">Corners</span></h2>
+        <p class="sub">Every rounded edge in Spendly comes from one set of values. This changes all of them at once.</p>
+      </header>
+      <div class="range-tabs" id="corners-toggle" style="display:inline-flex;">
+        <button data-corners="rounded">Rounded</button>
+        <button data-corners="soft">Soft</button>
+        <button data-corners="square">Square</button>
+      </div>
+    </div>
+
+    <div data-settings-group="appearance" class="card">
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" fill="currentColor"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg></span><span class="h-text">Contrast</span></h2>
+        <p class="sub">Borders and dividers are deliberately quiet. On a cheap panel, in sunlight, or if an edge should look like an edge, turn them up.</p>
+      </header>
+      <div class="range-tabs" id="contrast-toggle" style="display:inline-flex;">
+        <button data-contrast="normal">Normal</button>
+        <button data-contrast="high">High</button>
+      </div>
+    </div>
+
+    <div data-settings-group="appearance" class="card">
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="5"/><circle cx="15" cy="15" r="5"/></svg></span><span class="h-text">Category colours</span></h2>
+        <p class="sub">Bills and Health are the two biggest slices on the donut, and they are a red and a green. The second set separates every pair by lightness as well as hue.</p>
+      </header>
+      <div class="range-tabs" id="palette-toggle" style="display:inline-flex;">
+        <button data-palette="default">Default</button>
+        <button data-palette="cvd">Colour-blind safe</button>
+      </div>
+    </div>
+
     <div data-settings-group="sync" class="card">
       <header class="panel-head is-toolbar">
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span><span class="h-text">Sync between devices</span></h2>
@@ -3579,7 +3613,28 @@
   // on the 8th custom category, giving it the same colour as the 1st.
   const FALLBACK_COLORS = ["#7FD4E8","#A8571C","#C9B3E8","#2F6B4A","#E8C86A","#6A5FA8","#D98BA8","#4A7A2E"];
 
+  /* Bills (#8F3A18) and Health (#1F7A5C) are a red and a green, and they are
+     the two biggest arcs on the donut. To a deuteranope they land within a few
+     points of one another. This set separates every pair by LIGHTNESS as well
+     as hue, so the chart still reads when the hue does not. */
+  const CATEGORY_COLORS_CVD = {
+    "Food": "#E8A33D",
+    "Transport": "#2B6CB0",
+    "Entertainment": "#B07AA1",
+    "Bills": "#4A2E86",
+    "Shopping": "#F2E6B0",
+    "Health": "#59A5D8",
+    "Other": "#6B7280"
+  };
+  const FALLBACK_COLORS_CVD = ["#9BD1E8","#8A5A1C","#C9B3E8","#2F4A6B","#E8C86A","#4A3F78","#D9A8C8","#5A6E88"];
+
   function colorFor(category){
+    if ((uiPrefs && uiPrefs.palette) === "cvd"){
+      if (CATEGORY_COLORS_CVD[category]) return CATEGORY_COLORS_CVD[category];
+      let h = 0;
+      for (let i = 0; i < category.length; i++){ h = category.charCodeAt(i) + ((h << 5) - h); }
+      return FALLBACK_COLORS_CVD[Math.abs(h) % FALLBACK_COLORS_CVD.length];
+    }
     if (CATEGORY_COLORS[category]) return CATEGORY_COLORS[category];
     let hash = 0;
     for (let i=0;i<category.length;i++){ hash = category.charCodeAt(i) + ((hash<<5)-hash); }
@@ -7709,13 +7764,16 @@
     // The countdown is a chip so urgency is a shape as well as a colour — the
     // one signal that survives being printed, dimmed, or read by someone who
     // cannot separate red from grey.
-    // Nothing at all once it is settled. The date cannot be acted on any
-    // more and the chip said "settled" underneath a stamp that already says
-    // it - two redundancies stacked under a third.
-    if (item.status && item.status !== "outstanding") return "";
-    return '<div class="deadline-cell ' + st.cls + '">' +
+    // Once it is settled the date cannot be acted on, and the chip said
+    // "settled" underneath a stamp that already says it - two redundancies
+    // stacked under a third. So it is not SHOWN on a settled entry; it is
+    // still rendered, because the moment you pick up the pencil that entry is
+    // being edited like any other and the field has to be there to edit. The
+    // countdown stays off: it is a countdown to a date that has passed.
+    const settled = !!(item.status && item.status !== "outstanding");
+    return '<div class="deadline-cell ' + st.cls + (settled ? " is-when-settled" : "") + '">' +
       '<input type="date" data-field="deadline" value="' + escapeHtml(item.deadline || "") + '" aria-label="Deadline">' +
-      (st.note ? '<span class="deadline-note" data-band="' + (st.band || "") + '">' + escapeHtml(st.note) + '</span>' : "") +
+      (!settled && st.note ? '<span class="deadline-note" data-band="' + (st.band || "") + '">' + escapeHtml(st.note) + '</span>' : "") +
     '</div>';
   }
 
@@ -11365,10 +11423,65 @@
     });
   });
 
+  function applyCorners(v){
+    const mode = (v === "soft" || v === "square") ? v : "rounded";
+    document.documentElement.setAttribute("data-corners", mode);
+    markSegmented(document.querySelectorAll("#corners-toggle button"),
+      b => b.dataset.corners === mode);
+    document.querySelectorAll("#corners-toggle button").forEach(b =>
+      b.classList.toggle("active", b.dataset.corners === mode));
+  }
+  function applyContrast(v){
+    const mode = v === "high" ? "high" : "normal";
+    document.documentElement.setAttribute("data-contrast", mode);
+    markSegmented(document.querySelectorAll("#contrast-toggle button"),
+      b => b.dataset.contrast === mode);
+    document.querySelectorAll("#contrast-toggle button").forEach(b =>
+      b.classList.toggle("active", b.dataset.contrast === mode));
+  }
+  function applyPalette(v){
+    const mode = v === "cvd" ? "cvd" : "default";
+    markSegmented(document.querySelectorAll("#palette-toggle button"),
+      b => b.dataset.palette === mode);
+    document.querySelectorAll("#palette-toggle button").forEach(b =>
+      b.classList.toggle("active", b.dataset.palette === mode));
+    // Everything that has already drawn a colour is holding the old one: the
+    // canvases bake it in, and the lists write it into a style attribute.
+    try { if (typeof renderCharts === "function") renderCharts(); } catch (e){}
+    try { if (typeof renderDashboardSummary === "function") renderDashboardSummary(); } catch (e){}
+    try { if (typeof renderHistory === "function") renderHistory(); } catch (e){}
+  }
+
+  document.querySelectorAll("#corners-toggle button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      applyCorners(btn.dataset.corners);
+      setUiPref("corners", btn.dataset.corners);
+      showToast("Corners: " + btn.dataset.corners + ".");
+    });
+  });
+  document.querySelectorAll("#contrast-toggle button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      applyContrast(btn.dataset.contrast);
+      setUiPref("contrast", btn.dataset.contrast);
+      showToast(btn.dataset.contrast === "high" ? "Higher contrast on." : "Normal contrast.");
+    });
+  });
+  document.querySelectorAll("#palette-toggle button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      setUiPref("palette", btn.dataset.palette);
+      applyPalette(btn.dataset.palette);
+      showToast(btn.dataset.palette === "cvd" ? "Colour-blind safe palette on."
+                                              : "Default palette.");
+    });
+  });
+
   applyEdition(currentEdition());
   applyAccent(pref("accent", "teal"));
   applyTextSize(pref("textSize", "standard"));
   applyMotion(pref("motion", "full"));
+  applyCorners(pref("corners", "rounded"));
+  applyContrast(pref("contrast", "normal"));
+  applyPalette(pref("palette", "default"));
   // lg-bank / lt-bank / inv-bank are covered by refreshAccountSelects above.
   populateInCurrencyOptions();
   populateCurrencyOptions();
@@ -13771,8 +13884,18 @@
           // set: it is the contents. And the one there used to be was a bar the
           // full width of the card lying in the gutter below it, which is the
           // space a dragged card has to land in.
+          /* The next card has to be on the SAME ROW. "Not the last in the
+             list" is not the same test: the card at the end of a row has a
+             card after it, on the next line, and a handle that resizes this
+             one against that one is a handle for a gesture with no meaning -
+             drawn, at 1440, as four bars up to 836px tall standing in the
+             empty right-hand gutter. Tops within 4px is the same row; the
+             grid aligns them exactly, and the 4 is for subpixel. */
+          const next = cards[i + 1];
+          const sameRow = next &&
+            Math.abs(next.getBoundingClientRect().top - el.getBoundingClientRect().top) < 4;
           pad.innerHTML =
-            (i < cards.length - 1
+            (sameRow
               ? '<div class="card-seam" title="Drag to set the width. Double-click to reset."></div>' : "");
           host.appendChild(pad);
           placeHandles(host, el, pad);
@@ -17459,6 +17582,68 @@
   /* The account is a select again while editing, so the chip that stood in for
      it has nothing left to say. */
   .loan-card.is-closed.is-editing .loan-chip.is-bank{ display: none; }
+
+  /* ---------- the chip and the row count stop sharing a corner ------------- */
+  /* The chip is absolute at the card's top right and the header runs the full
+     width under it: measured, the chip spans 1345-1398 and "Show 8" 1303-1381.
+     The header gives the corner back while the chip is there. */
+  body.is-layout-editing .dash-subhead-row{ padding-right: 72px; }
+
+  /* ---------- the date field waits for the pencil -------------------------- */
+  .deadline-cell.is-when-settled{ display: none; }
+  .loan-card.is-editing .deadline-cell.is-when-settled{ display: flex; }
+
+  /* ---------- and the mark goes out of focus ------------------------------- */
+  /* Behind everything was right; behind everything and still perfectly sharp
+     was not. While you are editing, it is the backdrop. */
+  .loan-card.is-closed.is-editing::after,
+  .loan-card.is-closed.is-editing[data-repaid]::after{
+    filter: blur(2px); opacity: .3;
+  }
+
+  /* ---------- appearance: corners ------------------------------------------ */
+  /* Five tokens, and every rounded edge in the app follows. The pill stays a
+     pill in Soft because a pill is a shape, not a radius - a 6px "pill" is a
+     rectangle with a mistake in it. */
+  :root[data-corners="soft"]{
+    --r-sm: 2px; --r-md: 3px; --r-lg: 5px; --r-xl: 7px;
+  }
+  :root[data-corners="square"]{
+    --r-sm: 0px; --r-md: 0px; --r-lg: 0px; --r-xl: 0px; --r-pill: 3px;
+  }
+
+  /* ---------- appearance: contrast ------------------------------------------ */
+  /* --line is 8% white on the night ground and --line-strong 16%. That quiet is
+     deliberate and it is also the first thing to go on a cheap panel or in
+     sunlight. High turns the edges up and the dim ink with them - nothing else
+     moves, so the layout is identical either way. */
+  :root[data-contrast="high"]{
+    --line:        rgb(255 255 255 / .22);
+    --line-strong: rgb(255 255 255 / .42);
+    --ink-dim:     #A9B6C9;
+  }
+  :root[data-contrast="high"][data-theme="light"],
+  :root[data-contrast="high"]:not([data-theme="dark"]){
+    --line:        rgb(15 23 38 / .30);
+    --line-strong: rgb(15 23 38 / .52);
+  }
+  :root[data-contrast="high"][data-theme="light"]{ --ink-dim: #3E4A5C; }
+  @media (prefers-color-scheme: light){
+    :root[data-contrast="high"]:not([data-theme="dark"]){ --ink-dim: #3E4A5C; }
+  }
+  /* An edge you asked to see should not be hidden by the one rule in the app
+     that draws a border and then apologises for it. */
+  :root[data-contrast="high"] .card{ border-color: var(--line-strong); }
+
+  /* A row says it in its own voice - body.list-as-rows .loan-card.is-closed
+     ::after carries an element in the selector, so it outranks every rule that
+     only names classes, including the one that puts the mark behind while you
+     edit. The row needs its own copy of that. */
+  body.list-as-rows .loan-card.is-closed.is-editing::after,
+  body.list-as-rows .loan-card.is-closed.is-editing[data-repaid]::after{
+    z-index: 0; opacity: .3; filter: blur(2px);
+  }
+  body.list-as-rows .loan-card.is-closed.is-editing > *{ position: relative; z-index: 1; }
 </style>
 </body>
 </html>
