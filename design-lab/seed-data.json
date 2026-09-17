@@ -1477,6 +1477,96 @@
       "deadline": "2026-07-17",
       "status": "repaid",
       "bank": "Maya Bank"
+    },
+    {
+      "id": "lg_1757000012370_sad",
+      "person": "Ate Marivic",
+      "amount": 4500,
+      "dateGiven": "2026-05-02",
+      "deadline": "2026-09-25",
+      "status": "outstanding",
+      "bank": "BPI"
+    },
+    {
+      "id": "lg_1757000012407_sbd",
+      "person": "Jomar",
+      "amount": 1200,
+      "dateGiven": "2026-05-19",
+      "deadline": "2026-08-30",
+      "status": "outstanding",
+      "bank": "GCash"
+    },
+    {
+      "id": "lg_1757000012444_scd",
+      "person": "Ninong Ric",
+      "amount": 20000,
+      "dateGiven": "2026-04-11",
+      "deadline": "2026-11-15",
+      "status": "outstanding",
+      "bank": "Maya Bank"
+    },
+    {
+      "id": "lg_1757000012481_sdd",
+      "person": "Cherry",
+      "amount": 800,
+      "dateGiven": "2026-06-05",
+      "deadline": "2026-09-20",
+      "status": "repaid",
+      "bank": "BDO"
+    },
+    {
+      "id": "lg_1757000012518_sed",
+      "person": "Kuya Boy",
+      "amount": 6500,
+      "dateGiven": "2026-06-22",
+      "deadline": "2026-10-12",
+      "status": "outstanding",
+      "bank": "Metrobank"
+    },
+    {
+      "id": "lg_1757000012555_sfd",
+      "person": "Dianne",
+      "amount": 3000,
+      "dateGiven": "2026-07-01",
+      "deadline": "2026-09-18",
+      "status": "outstanding",
+      "bank": "Cash / Physical wallet"
+    },
+    {
+      "id": "lg_1757000012592_sgd",
+      "person": "Mang Tonyo",
+      "amount": 1500,
+      "dateGiven": "2026-07-14",
+      "deadline": "2026-08-28",
+      "status": "repaid",
+      "bank": "GoTyme"
+    },
+    {
+      "id": "lg_1757000012629_shd",
+      "person": "Rhea",
+      "amount": 9200,
+      "dateGiven": "2026-07-28",
+      "deadline": "2026-12-01",
+      "status": "outstanding",
+      "bank": "BPI"
+    },
+    {
+      "id": "lg_1757000012666_sid",
+      "person": "Paolo",
+      "amount": 2750,
+      "dateGiven": "2026-08-03",
+      "deadline": "2026-10-30",
+      "status": "outstanding",
+      "bank": "GCash"
+    },
+    {
+      "id": "lg_1757000012703_sjd",
+      "person": "Tita Baby",
+      "amount": 11000,
+      "dateGiven": "2026-08-16",
+      "deadline": "2026-11-20",
+      "status": "outstanding",
+      "bank": "Maya Bank"
     }
   ],
   "spendly_loans_taken_v1": [
@@ -1497,6 +1587,42 @@
       "deadline": "2026-08-01",
       "status": "repaid",
       "bank": "BPI"
+    },
+    {
+      "id": "lt_1757000012740_skd",
+      "person": "Kuya Dante",
+      "amount": 5000,
+      "dateGiven": "2026-05-08",
+      "deadline": "2026-09-28",
+      "status": "outstanding",
+      "bank": "BDO"
+    },
+    {
+      "id": "lt_1757000012777_sld",
+      "person": "Ate Grace",
+      "amount": 15000,
+      "dateGiven": "2026-06-14",
+      "deadline": "2026-12-15",
+      "status": "outstanding",
+      "bank": "Metrobank"
+    },
+    {
+      "id": "lt_1757000012814_smd",
+      "person": "Office SSS loan",
+      "amount": 22000,
+      "dateGiven": "2026-03-20",
+      "deadline": "2026-10-05",
+      "status": "outstanding",
+      "bank": "Cash / Physical wallet"
+    },
+    {
+      "id": "lt_1757000012851_snd",
+      "person": "Nanay",
+      "amount": 3500,
+      "dateGiven": "2026-07-09",
+      "deadline": "2026-09-22",
+      "status": "repaid",
+      "bank": "GoTyme"
     }
   ],
   "spendly_investments_v1": [
@@ -1532,6 +1658,61 @@
       "feePercent": 3,
       "dateAdded": "2026-01-18",
       "bank": "Maya Bank"
+    },
+    {
+      "id": "inv_1757000013000_v0k",
+      "name": "Pag-IBIG MP2",
+      "category": "Government / Bonds",
+      "amount": 50000,
+      "projectedPrice": 62000,
+      "actualSoldPrice": null,
+      "feePercent": 1,
+      "dateAdded": "2026-02-14",
+      "bank": "Maya Bank"
+    },
+    {
+      "id": "inv_1757000013041_v1k",
+      "name": "SM Prime shares",
+      "category": "Stocks",
+      "amount": 18000,
+      "projectedPrice": 21500,
+      "actualSoldPrice": null,
+      "feePercent": 1.5,
+      "dateAdded": "2026-03-28",
+      "bank": "BDO"
+    },
+    {
+      "id": "inv_1757000013082_v2k",
+      "name": "BPI Money Market",
+      "category": "Mutual Fund / UITF",
+      "amount": 30000,
+      "projectedPrice": 32400,
+      "actualSoldPrice": null,
+      "feePercent": 1,
+      "dateAdded": "2026-04-22",
+      "bank": "Metrobank"
+    },
+    {
+      "id": "inv_1757000013123_v3k",
+      "name": "Jollibee shares",
+      "category": "Stocks",
+      "amount": 12500,
+      "projectedPrice": 11800,
+      "actualSoldPrice": null,
+      "feePercent": 1.5,
+      "dateAdded": "2026-05-30",
+      "bank": "Cash / Physical wallet"
+    },
+    {
+      "id": "inv_1757000013164_v4k",
+      "name": "Treasury bill 182d",
+      "category": "Government / Bonds",
+      "amount": 40000,
+      "projectedPrice": 42100,
+      "actualSoldPrice": null,
+      "feePercent": 0.5,
+      "dateAdded": "2026-06-18",
+      "bank": "GoTyme"
     }
   ],
   "spendly_budgets_v1": {

@@ -3132,9 +3132,9 @@
       </header>
       <p class="hint is-help">Your data lives only on this device.</p>
       <button class="btn btn-primary btn-sm" id="btn-export-json"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><path d="M12 20V6"/><path d="M6 12l6-6 6 6"/></svg>Back up everything (JSON)</button>
-      <p class="hint is-help" style="margin:-4px 0 6px;">The complete backup — use this one to restore or move devices.</p>
+      <p class="hint is-help" style="margin:var(--sp-4) 0 6px;">The complete backup — use this one to restore or move devices.</p>
       <button class="btn btn-outline btn-sm" id="btn-export-csv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></svg>Export for Excel / Sheets</button>
-      <p class="hint is-help" style="margin:-4px 0 6px;">All your data as a spreadsheet, for viewing and analysis. Can't be imported back.</p>
+      <p class="hint is-help" style="margin:var(--sp-4) 0 6px;">All your data as a spreadsheet, for viewing and analysis. Can't be imported back.</p>
       <button class="btn btn-outline btn-sm" id="btn-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><path d="M12 4v14"/><path d="M6 12l6 6 6-6"/></svg>Import backup</button>
       <input type="file" id="file-import" accept=".json,.csv" style="display:none;">
     </div>
@@ -3146,7 +3146,7 @@
       </header>
       <p class="hint is-help" style="margin-bottom:10px;">This build: <strong id="app-build">—</strong></p>
       <button class="btn btn-outline btn-sm" id="btn-check-update"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg>Check for a newer version</button>
-      <p class="hint is-help" id="update-status" style="margin:-4px 0 0;">The app keeps itself up to date in the background, so a new version usually arrives on your next open. This fetches it now.</p>
+      <p class="hint is-help" id="update-status" style="margin:var(--sp-4) 0 0;">The app keeps itself up to date in the background, so a new version usually arrives on your next open. This fetches it now.</p>
     </div>
   </section>
 
@@ -12407,10 +12407,40 @@
       // open at the side is still part of its page; it is just not standing in
       // it at this moment.
       const known = {};
+      /* Tabs with their own sub-navigation. The rail must not also own the
+         visibility of their cards: setBlock writes a hidden attribute AND
+         display:none, the sub-nav only ever clears display, so the attribute
+         wins and the card the sub-tab asked for stays hidden. That is how
+         Settings sat on "Table density" with About selected, and how both of
+         Loans' other two sub-tabs showed the wrong card. */
+      const SELF_NAVIGATING = new Set(["settings", "loans"]);
+
       function buildContents(animate){
         const tab = currentTab();
         const panel = tab && document.getElementById("tab-" + tab);
         if (!panel) return;
+
+        if (SELF_NAVIGATING.has(tab)){
+          // Clear anything an earlier pass stranded, then let the tab's own
+          // navigation say what is on screen. Re-pressing the live sub-tab is
+          // the decoupled way to ask: it runs whatever that tab does without
+          // this module having to know what that is. Those handlers only call
+          // their group function, so there is no way back in here.
+          panel.querySelectorAll("[data-rail-block][hidden]").forEach(b => {
+            b.removeAttribute("hidden");
+            b.style.removeProperty("display");
+          });
+          const own = panel.querySelector(".settings-nav button.active");
+          if (own) own.click();
+          // No list to disclose: the sub-tabs are the list.
+          nav.querySelectorAll(".nav-contents-fold").forEach(el => el.remove());
+          spyTargets = [];
+          const here = buttons.find(b => b.classList.contains("active"));
+          if (here) here.classList.add("has-no-list");
+          if (listOpen[tab]){ delete listOpen[tab]; save(); }
+          paintCarets();
+          return;
+        }
 
         showAllBlocks(panel);
         const secs = sectionsOf(panel);
@@ -12820,6 +12850,24 @@
         const a = el.getBoundingClientRect(), b = next.getBoundingClientRect();
         return Math.abs(a.top - b.top) < 2 ? next : null;
       }
+
+      /* NO RUNTIME TUNER for overscroll-behavior, and the reason is worth
+         keeping. The idea was to contain only while a container has room to
+         scroll, since Chrome applies containment whether or not there is
+         anywhere to go and a container that fits then swallows the wheel across
+         its whole area. Deciding it at runtime works in one direction and not
+         the other: a table is re-rendered by REPLACING its wrapper, and a
+         ResizeObserver holds nodes rather than selectors, so the observer ends
+         up watching a node that has left the page. Forcing real scroll room
+         into a wrap left it on auto every time, because nothing was left to
+         notice. A MutationObserver rescan did not close it either - the size
+         change is an attribute change, which childList does not see.
+
+         So it is settled in the stylesheet instead: these never contain
+         vertically. Reaching the end of a list and having the page carry on is
+         ordinary behaviour; a wheel that does nothing over a 1163x477 table is
+         not. Horizontal containment stays, where a sideways flick would
+         otherwise be a gesture to navigate back. */
 
       // A window resize moves every card without anything else noticing.
       let handleReflow = null;
@@ -14785,6 +14833,49 @@
     margin: calc(var(--sp-9) * -1) calc(var(--sp-9) * -1) var(--sp-7);
     border-radius: var(--r-lg) var(--r-lg) 0 0;
   }
+
+  /* ---------- a page does not begin against the masthead ------------------- */
+  /* Measured on all six tabs: the gap between the fixed bar and the first thing
+     in the panel was 0px on every one. Nothing was wrong with any single page;
+     the gap had simply never been written anywhere. */
+  .tab-panel{ padding-top: var(--sp-7); }
+  @media (max-width: 720px){ .tab-panel{ padding-top: var(--sp-6); } }
+
+  /* ---------- the chips, the sentence and the figures are three things ----- */
+  /* Measured flush: 0px under the range chips, then 0px again under the line
+     that reads "Spent X across N expenses". Three separate statements stacked
+     with nothing between them read as one block. */
+  .range-tabs{ margin-bottom: var(--sp-6); }
+  .range-tabs + .loan-summary,
+  .loan-summary{ margin: 0 0 var(--sp-6); }
+  .loan-summary + .stat-row{ margin-top: var(--sp-6); }
+
+  /* ---------- nothing swallows the wheel ---------------------------------- */
+  /* Measured in one pass across every tab: four containers were containing the
+     vertical axis with nothing to scroll - #rd-body at 879x847,
+     #history-table-wrap at 1163x477, #loans-given-table-wrap at 1153x317 and
+     .rail-scroll at 239x878. Over any of them the page would not move.
+
+     overflow-x:auto is half the cause: CSS will not let one axis be visible
+     while the other scrolls, so a table wrapper that only ever wanted sideways
+     scrolling became a vertical scroll container too, and then contained it. */
+  [id$="-table-wrap"], .rail-scroll, #rd-body, .places-drop, #pl-body{
+    overscroll-behavior-y: auto;
+  }
+  [id$="-table-wrap"], #pl-body{ overscroll-behavior-x: contain; }
+
+  /* ---------- a currency badge you can read ------------------------------- */
+  /* .rate-badge set a fill and no ink, so the badge text inherited the page ink
+     - which is light, on fills that are light in the night edition. Measured at
+     2.12 on the teal and 2.31 on the green, against 4.5.
+
+     --on-fill is the token for exactly this - ink that sits ON a filled
+     element - and it already flips: #FFFFFF by day, #0B0D10 by night, which is
+     what these fills need since they sit at opposite ends in the two editions.
+     Measured: 4.88 on the day teal and 7.7 on the night one. The page ground
+     was the first attempt and missed by four hundredths in daylight, 4.46
+     against 4.5. */
+  .rate-badge{ color: var(--on-fill); }
 </style>
 </body>
 </html>
