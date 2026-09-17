@@ -2424,10 +2424,12 @@
            header's sync shortcut and the syncing/error tint it carried; sync
            itself lives in Settings > Sync, and the automatic loop never used
            this button. -->
-      <!-- No "All places" label either: it named the state the app is in until
-           you choose a place, which is to say it named nothing. The figure and
-           its caret still open the picker. -->
+      <!-- "All accounts" is the literal truth about this figure, not a label
+           for a state: it is the total across every account, and choosing a row
+           in the drop opens that account rather than filtering this. A bare
+           number with a caret did not say what it was the total of. -->
       <button class="top-total" id="top-total" type="button" aria-expanded="false" aria-controls="places-drop">
+        <span class="top-total-k">All accounts</span>
         <span class="top-total-v num" id="top-total-v">₱0.00</span>
         <span class="top-total-caret" aria-hidden="true"></span>
       </button>
@@ -12241,24 +12243,31 @@
           b.classList.toggle("is-list-open", on);
         });
       }
-      // Taken in the capture phase: the caret lives inside the destination
-      // button, and the app's own handler would navigate on the same click.
+      // Taken in the capture phase, because this has to run instead of the
+      // app's own navigation rather than after it.
       nav.addEventListener("click", ev => {
-        const c = ev.target.closest(".nav-caret");
-        if (!c) return;
-        const btn = c.closest("button[data-tab]");
+        const btn = ev.target.closest("button[data-tab]");
         if (!btn) return;
+        // The controls that sit inside a destination row are not the row.
+        if (ev.target.closest(".nav-pin, .nav-hide, .nav-key")) return;
+        // Nothing to disclose here, so the press is simply navigation and the
+        // app's own handler should have it.
+        if (btn.classList.contains("has-no-list")) return;
         ev.preventDefault();
         ev.stopPropagation();
         const tab = btn.dataset.tab;
-        listOpen[tab] = !listOpen[tab];
-        save();
         if (tab !== currentTab()){
-          // Asking to see inside somewhere is also asking to go there.
-          if (listOpen[tab]) activateTab(tab);
-          else paintCarets();
+          // Going somewhere is also asking to see what is in it. Always open,
+          // never toggle: a press that navigates should not be able to arrive
+          // with the list shut because of what it was last time.
+          listOpen[tab] = true;
+          save();
+          activateTab(tab);
           return;
         }
+        // Already here, so the press is the toggle.
+        listOpen[tab] = !listOpen[tab];
+        save();
         paintCarets();
         // This destination's own fold — it is the element immediately after the
         // button, not merely the first one in the rail.
@@ -14791,13 +14800,12 @@
     border-radius: var(--r-pill);
     background: color-mix(in srgb, var(--accent) 70%, transparent);
   }
-  .rail-place.is-chosen{ position: relative; box-shadow: none; }
-  .rail-place.is-chosen::before{
-    content: ""; position: absolute; left: 0; top: 50%;
-    width: 3px; height: 16px; margin-top: -8px;
-    border-radius: var(--r-pill);
-    background: var(--accent);
-  }
+  /* No mark of my own here. .rail-place-tick is already a 3x18 pill centred in
+     the row and already turns accent when the row is chosen - adding a second
+     one beside it put two teal bars on the same row. The original had the same
+     doubling in another shape, tick plus an inset edge; swapping the edge for a
+     pill fixed how the mark looked and not how many there were. */
+  .rail-place.is-chosen{ box-shadow: none; }
 
   /* ---------- the side panel names the section once ----------------------- */
   /* It was naming it three times: this heading, the tab strip below it, and the
@@ -14876,6 +14884,13 @@
      was the first attempt and missed by four hundredths in daylight, 4.46
      against 4.5. */
   .rate-badge{ color: var(--on-fill); }
+
+  /* ---------- the peers strip is not sitting on the line ------------------- */
+  /* .rd-bar had padding-bottom: 0, which was fine while its last row was plain
+     text. The strip ends in a filled pill, and measured, that pill's bottom was
+     1px from the bar's border and 1px from the body under it. */
+  .rd-bar{ padding-bottom: var(--sp-5); }
+  .rd-tabs{ margin-bottom: 0; }
 </style>
 </body>
 </html>
