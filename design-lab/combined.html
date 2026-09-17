@@ -7514,6 +7514,10 @@
     // The countdown is a chip so urgency is a shape as well as a colour — the
     // one signal that survives being printed, dimmed, or read by someone who
     // cannot separate red from grey.
+    // Nothing at all once it is settled. The date cannot be acted on any
+    // more and the chip said "settled" underneath a stamp that already says
+    // it - two redundancies stacked under a third.
+    if (item.status && item.status !== "outstanding") return "";
     return '<div class="deadline-cell ' + st.cls + '">' +
       '<input type="date" data-field="deadline" value="' + escapeHtml(item.deadline || "") + '" aria-label="Deadline">' +
       (st.note ? '<span class="deadline-note" data-band="' + (st.band || "") + '">' + escapeHtml(st.note) + '</span>' : "") +
@@ -7727,6 +7731,7 @@
         <div class="loan-card-head">
           <span class="loan-who">${escapeHtml(l.person)}</span>
           <span class="status-pill ${l.status === "outstanding" ? "outstanding" : ""}">${l.status === "outstanding" ? "Outstanding" : "Repaid"}</span>
+          ${canPay ? "" : `<button class="row-action loan-edit" data-action="unlock" title="Edit this settled entry" aria-label="Edit this settled entry">✎</button>`}
           <button class="row-action row-action-danger loan-remove" data-action="delete" title="Remove this entry" aria-label="Remove this entry">✕</button>
         </div>
         <div class="loan-amt-row">
@@ -7739,11 +7744,11 @@
           ${l.notes && l.notes.trim() ? `<span class="loan-chip is-quiet" title="${escapeHtml(l.notes.trim())}">Note</span>` : ""}
         </div>
         <div class="loan-card-controls">
-          <select class="status-select" data-action="status">
+          <select class="status-select" data-action="status"${canPay ? "" : " disabled"}>
             <option value="outstanding" ${l.status==="outstanding"?"selected":""}>Outstanding</option>
             <option value="repaid" ${l.status==="repaid"?"selected":""}>Repaid</option>
           </select>
-          <select class="status-select" data-action="bank">
+          <select class="status-select" data-action="bank"${canPay ? "" : " disabled"}>
             <option value="">— No account —</option>${bankOpts}</select>
         </div>
         <div data-payment-for="${l.id}">${actionBar}</div>
@@ -7920,6 +7925,18 @@
         cfg.save();
         renderLoans(dir);
         showToast(newBank ? `Linked to ${newBank}.` : "Account link removed.");
+      });
+      // Only on a settled row, which is the only row that renders it.
+      const unlock = row.querySelector('[data-action="unlock"]');
+      if (unlock) unlock.addEventListener("click", ()=>{
+        row.querySelectorAll("select[disabled], input[disabled]").forEach(el=>{
+          el.disabled = false;
+        });
+        row.classList.add("is-unlocked");
+        unlock.remove();
+        const first = row.querySelector("select");
+        if (first) first.focus();
+        showToast("Unlocked. Set it back to Outstanding to change the rest.");
       });
       row.querySelector('[data-action="delete"]').addEventListener("click", ()=>{
         const item = cfg.list.find(x=>x.id===id);
@@ -15321,9 +15338,10 @@
      to read it to know. It says so before you read it now, and softens behind
      the stamp - 0.6px and a dim, because the point is to say "done" and not to
      hide the figure. Reaching for the row brings it back sharp. */
-  body.list-as-rows .loan-card.is-closed{ position: relative; overflow: hidden; }
+  /* The list keeps the blur; a row is short enough that a stamp over sharp
+     text is hard to read, and a card is not. */
   body.list-as-rows .loan-card.is-closed > *{
-    filter: blur(0.6px); opacity: .5;
+    filter: blur(0.6px);
     transition: filter var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
   }
   body.list-as-rows .loan-card.is-closed::after{
@@ -15349,6 +15367,70 @@
   @media (prefers-reduced-motion: reduce){
     body.list-as-rows .loan-card.is-closed > *,
     body.list-as-rows .loan-card.is-closed::after{ transition: none; }
+  }
+
+  /* ---------- the remove looks like every other remove -------------------- */
+  /* I had given this card its own borderless 26px control. Every other card in
+     the app uses .row-action - 28px, bordered, three quarters opacity - and a
+     control that looks like itself everywhere beats a bespoke one. The bespoke
+     one was mine, so it goes. */
+  .loan-remove{
+    width: 28px; height: 28px; padding: 0; flex: 0 0 auto;
+    background: transparent; border: 1px solid var(--line);
+    border-radius: var(--r-sm); color: var(--ink-soft);
+    opacity: .75; font-size: var(--fs-xs); line-height: 1; cursor: pointer;
+  }
+  .loan-edit{
+    width: 28px; height: 28px; padding: 0; flex: 0 0 auto;
+    background: transparent; border: 1px solid var(--line);
+    border-radius: var(--r-sm); color: var(--ink-soft);
+    opacity: .75; font-size: var(--fs-xs); line-height: 1; cursor: pointer;
+  }
+  @media (hover: hover){
+    .loan-edit:hover{ opacity: 1; color: var(--accent); border-color: var(--accent); }
+  }
+  .loan-edit:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* ---------- a settled entry reads as settled ---------------------------- */
+  /* The stamp is no longer list-only: a card said "Repaid" in a pill the same
+     size as every other pill, which is a thing you read rather than a thing
+     you see. */
+  .loan-card.is-closed{ position: relative; overflow: hidden; }
+  .loan-card.is-closed::after{
+    content: "Repaid";
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-8deg);
+    padding: 2px var(--sp-6);
+    border: 2px solid color-mix(in srgb, var(--positive) 70%, transparent);
+    border-radius: var(--r-sm);
+    font-size: var(--fs-md); font-weight: 800;
+    letter-spacing: var(--track-caps); text-transform: uppercase;
+    color: color-mix(in srgb, var(--positive) 85%, transparent);
+    background: color-mix(in srgb, var(--bg) 55%, transparent);
+    pointer-events: none; white-space: nowrap;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  /* The controls it still offers stay sharp - a stamp must not make the way
+     out of it unreadable. */
+  .loan-card.is-closed > *:not(.loan-card-head){ opacity: .55; }
+  .loan-card.is-closed .loan-card-head{ position: relative; z-index: 2; }
+  @media (hover: hover){
+    .loan-card.is-closed:hover > *{ opacity: 1; }
+    .loan-card.is-closed:hover::after{ opacity: .22; }
+  }
+  .loan-card.is-closed:focus-within > *{ opacity: 1; }
+  .loan-card.is-closed:focus-within::after{ opacity: .22; }
+
+  /* Locked until you ask. A disabled control should look unavailable rather
+     than merely quiet, or the first thing you learn is that it does nothing. */
+  .loan-card.is-closed .status-select[disabled]{
+    opacity: .6; cursor: not-allowed; border-style: dashed;
+  }
+  .loan-card.is-unlocked::after{ opacity: .18; }
+  .loan-card.is-unlocked > *{ opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce){
+    .loan-card.is-closed::after{ transition: none; }
   }
 </style>
 </body>
