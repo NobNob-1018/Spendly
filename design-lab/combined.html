@@ -7820,8 +7820,9 @@
          active dot permanently - and that dot is drawn 3px outside its box,
          which the layout auditor caught as ink past the edge. Sorting is not
          filtering, so it does not borrow filtering’s clothes. */
+      '<span class="list-controls-k">Sort</span>' +
       '<span class="th-filter-wrap is-sort">' +
-        '<select class="th-filter" id="' + cfg.prefix + '-f-sort" title="How the list is ordered">' +
+        '<select class="th-filter is-boxed" id="' + cfg.prefix + '-f-sort" title="How the list is ordered">' +
           sortOpts.map(o => '<option value="' + o.value + '"' +
             (o.value === cur ? " selected" : "") + '>' + escapeHtml(o.text) + '</option>').join("") +
         '</select>' +
@@ -7947,7 +7948,7 @@
         <div class="loan-card-head">
           <button type="button" class="loan-who is-link" data-person="${escapeHtml(l.person)}" title="Everything with ${escapeHtml(l.person)}">${escapeHtml(l.person)}</button>
           <span class="status-pill ${l.status === "outstanding" ? "outstanding" : ""}">${l.status === "outstanding" ? "Outstanding" : (l.repaidOn ? "Repaid " + fmtDate(l.repaidOn) : "Repaid")}</span>
-          ${canPay ? "" : `<button class="row-action loan-edit" data-action="unlock" title="Edit this settled entry" aria-label="Edit this settled entry">✎</button>`}
+          ${canPay ? "" : `<button class="row-action loan-edit" data-action="unlock" aria-pressed="false" title="Edit this settled entry" aria-label="Edit this settled entry"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>`}
           <button class="row-action row-action-danger loan-remove" data-action="delete" title="Remove this entry" aria-label="Remove this entry">✕</button>
         </div>
         <div class="loan-amt-row">
@@ -7970,7 +7971,6 @@
           </select>
           <select class="status-select" data-action="bank"${canPay ? "" : " disabled"}>
             <option value="">— No account —</option>${bankOpts}</select>
-          ${canPay ? "" : `<button class="btn btn-ghost btn-sm loan-finish" data-action="finish" hidden>Finish editing</button>`}
         </div>
         <div data-payment-for="${l.id}">${actionBar}</div>
       </div>`;
@@ -8175,26 +8175,24 @@
 
       // Only on a settled row, which is the only row that renders it.
       const unlock = row.querySelector('[data-action="unlock"]');
-      const finish = row.querySelector('[data-action="finish"]');
+      // One control for one state. It used to open the mode and hand the
+      // closing of it to a second button that only existed while the mode did,
+      // which put a control among the fields it was meant to sit outside.
       if (unlock) unlock.addEventListener("click", ()=>{
-        row.querySelectorAll("select[disabled], input[disabled]").forEach(el=>{
-          el.disabled = false;
-        });
-        // A mode you can see you are in, and can leave. It used to unlock and
-        // remove itself, which left the card in a different state with nothing
-        // saying so and nothing to press.
-        row.classList.add("is-editing");
-        unlock.hidden = true;
-        if (finish) finish.hidden = false;
-        const first = row.querySelector("select");
-        if (first) first.focus();
-      });
-      if (finish) finish.addEventListener("click", ()=>{
-        // Every change already saved itself on the way through; this closes the
-        // mode rather than committing anything, so there is nothing to lose by
-        // leaving and nothing to confirm.
-        renderLoans(dir);
-        showToast("Done editing.");
+        const editing = row.classList.toggle("is-editing");
+        unlock.setAttribute("aria-pressed", editing ? "true" : "false");
+        unlock.title = editing ? "Done editing" : "Edit this settled entry";
+        unlock.setAttribute("aria-label", unlock.title);
+        if (editing){
+          row.querySelectorAll("select[disabled], input[disabled]").forEach(el=>{ el.disabled = false; });
+          const first = row.querySelector("select");
+          if (first) first.focus();
+        } else {
+          // Everything saved itself on the way through, so leaving the mode is
+          // a re-render rather than a commit - nothing to lose, nothing to
+          // confirm.
+          renderLoans(dir);
+        }
       });
       row.querySelector('[data-action="delete"]').addEventListener("click", ()=>{
         const item = cfg.list.find(x=>x.id===id);
@@ -8267,9 +8265,15 @@
       holder.className = "list-controls";
       holder.innerHTML =
         '<span class="list-controls-k">View</span>' +
-        '<div class="seg" role="group" aria-label="How the list is laid out">' +
-          '<button type="button" data-layout="cards">Cards</button>' +
-          '<button type="button" data-layout="list">List</button>' +
+        '<div class="seg is-icons" role="group" aria-label="How the list is laid out">' +
+          '<button type="button" data-layout="cards" title="Cards" aria-label="Cards">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">' +
+              '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/>' +
+              '<rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></button>' +
+          '<button type="button" data-layout="list" title="List" aria-label="List">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">' +
+              '<line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/>' +
+              '<line x1="4" y1="18" x2="20" y2="18"/></svg></button>' +
         '</div>' +
         '<span class="list-controls-k">Per page</span>' +
         '<select class="list-per-page" aria-label="How many to show per page">' +
@@ -14112,7 +14116,7 @@
           probe: "inv-name", label: "Add an investment", title: "Log an investment" },
         { body: "savings-form-card", submit: "btn-add-savings",
           probe: "sv-amount", label: "Add an account", title: "Add a savings account",
-          headIn: "savings-list-card", hideBodyWhenEmpty: true }
+          headIn: "savings-list-card", hideBodyWhenEmpty: true, asModal: true }
       ];
 
       function wireLogForms(){
@@ -14187,6 +14191,11 @@
         const holder = cfg && document.getElementById(cfg.body + "-form");
         if (!holder) return;
         ev.preventDefault();
+        // Same machinery, different presentation: a short form you finish and
+        // leave belongs in front of the page, not beside it. The drawer wears
+        // a class rather than there being a second drawer to keep in step.
+        document.getElementById("rail-drawer").classList.toggle("is-modal", !!cfg.asModal);
+        document.getElementById("rail-scrim").classList.toggle("is-modal", !!cfg.asModal);
         openPanelBeside(holder, cfg.title);
         // After openPanelBeside has taken the focus to its close button, so
         // the caret lands in the first field rather than being moved off it.
@@ -14261,6 +14270,8 @@
       }
 
       function closeBeside(){
+        drawer.classList.remove("is-modal");
+        scrim.classList.remove("is-modal");
         if (!besideNow) return;
         document.querySelectorAll("[data-place].is-chosen")
           .forEach(x => x.classList.remove("is-chosen"));
@@ -15851,6 +15862,89 @@
   .loan-filters .th-filter-wrap.is-active{ padding-right: 8px; }
   .loan-filters .th-filter-wrap.is-active::after{ right: 0; top: 50%; margin-top: -2.5px; }
   .loan-filters .th-filter-wrap.is-sort::after{ content: none; }
+
+  /* ---------- the pencil says which way it goes --------------------------- */
+  .loan-edit svg{ width: 14px; height: 14px; }
+  /* In the mode: the nib gets a line to write on, and the control holds the
+     accent so it reads as pressed rather than merely hovered. */
+  .loan-edit[aria-pressed="true"]{
+    color: var(--accent); border-color: var(--accent); opacity: 1;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  .loan-edit[aria-pressed="true"]::after{
+    content: ""; position: absolute; left: 6px; right: 6px; bottom: 5px;
+    height: 2px; border-radius: 1px; background: currentColor;
+  }
+  .loan-edit{ position: relative; }
+
+  /* ---------- one row of controls, one design ----------------------------- */
+  .th-filter.is-boxed{
+    padding: 3px var(--sp-5); background: var(--sunken);
+    border: 1px solid var(--line); border-radius: var(--r-md);
+    color: var(--ink); font-size: var(--fs-2xs); font-weight: 600;
+  }
+  .loan-filters .th-filter-wrap.is-sort{ padding: 0; }
+
+  .list-controls .seg.is-icons button{
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 24px; padding: 0;
+  }
+  .list-controls .seg.is-icons svg{ width: 15px; height: 15px; }
+
+  /* ---------- a settled row stays readable -------------------------------- */
+  /* The blur said "done" by making the figures harder to read, which is the
+     wrong price: you still want to see what was repaid, and you can still edit
+     it. The stamp carries it on its own. */
+  body.list-as-rows .loan-card.is-closed > *{ filter: none; opacity: .78; }
+  body.list-as-rows .loan-card.is-closed .loan-card-head,
+  body.list-as-rows .loan-card.is-closed .loan-remove,
+  body.list-as-rows .loan-card.is-closed .loan-edit{ opacity: 1; }
+  /* The two controls go to the end of the row, where every other action is. */
+  body.list-as-rows .loan-card .loan-edit,
+  body.list-as-rows .loan-card .loan-remove{ order: 90; }
+  body.list-as-rows .loan-card .loan-edit{ margin-left: auto; }
+  body.list-as-rows .loan-card .loan-remove{ margin-left: 0; }
+  body.list-as-rows .loan-card-head{ display: contents; }
+  body.list-as-rows .loan-card .loan-who{ flex: 1 1 180px; min-width: 0; }
+  body.list-as-rows .loan-card .status-pill{ order: 2; flex: 0 0 auto; }
+
+  /* ---------- a form you finish and leave, in front of the page ----------- */
+  .rail-drawer.is-modal{
+    inset: auto; top: 50%; left: 50%; right: auto;
+    width: min(720px, 92vw); max-height: min(86vh, 900px);
+    transform: translate(-50%, -48%) scale(.98);
+    border: 1px solid var(--line-strong); border-radius: var(--r-lg);
+    opacity: 0;
+    transition: transform var(--dur-base) var(--ease-out),
+                opacity var(--dur-base) var(--ease-out), visibility var(--dur-base);
+  }
+  .rail-drawer.is-modal.is-open{ transform: translate(-50%, -50%); opacity: 1; }
+  /* The page behind goes soft, so the dialog is unmistakably the thing in
+     front rather than another panel among panels. */
+  .rail-scrim.is-modal{
+    inset: 0; backdrop-filter: blur(3px); background: var(--scrim-strong);
+  }
+  @media (prefers-reduced-motion: reduce){
+    .rail-drawer.is-modal{ transition: opacity var(--dur-fast) var(--ease-out); transform: translate(-50%, -50%); }
+  }
+
+  /* ---------- the way in has to be obvious -------------------------------- */
+  /* It was a small ghost button in a header full of other things. It is the one
+     thing on this screen that makes something new, so it is the one thing that
+     looks like it. */
+  /* Measured first: --sp-4/--sp-6 are 8/12px and --fs-sm is 12px, which is
+     exactly what btn-sm already gave it - so the first attempt at making this
+     obvious changed nothing at all. A step up the scale on both, which is the
+     difference between a button in a header and the way in. */
+  .panel-head.is-toolbar .log-open{
+    /* .btn-sm pins height:28px, so padding alone could not make this bigger -
+       the first two attempts grew the width and the type and left a 28px box
+       with 14px text crammed in it. The height has to be released by name. */
+    height: auto; min-height: 38px;
+    padding: var(--sp-5) var(--sp-7); font-size: var(--fs-md); font-weight: 700;
+    box-shadow: var(--elev-2); border-radius: var(--r-md);
+  }
+  .panel-head.is-toolbar .log-open svg{ width: 17px; height: 17px; }
 </style>
 </body>
 </html>
