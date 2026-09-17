@@ -3109,6 +3109,7 @@
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,3 21,9 3,9"/><line x1="5" y1="9" x2="5" y2="19"/><line x1="10" y1="9" x2="10" y2="19"/><line x1="14" y1="9" x2="14" y2="19"/><line x1="19" y1="9" x2="19" y2="19"/><line x1="3" y1="21" x2="21" y2="21"/></svg></span><span class="h-text">Your accounts</span></h2>
       </header>
       <div class="loan-summary" id="savings-summary" style="margin-top:0;"></div>
+      <div class="table-filter-bar" id="savings-filter-bar"></div>
       <div id="savings-table-wrap"></div>
     </div>
   </section>
@@ -5118,7 +5119,9 @@
     // Money arriving. ICON.in - an arrow standing on a line - is the upload
     // glyph, and beside a circled check, a list and a page it was the fourth
     // unreadable shape in a row of four.
-    receive: icon('<path d="M12 3v10"/><path d="M8 9l4 4 4-4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>')
+    receive: icon('<path d="M12 3v10"/><path d="M8 9l4 4 4-4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>'),
+    // Putting something back the way it was.
+    undo:  icon('<path d="M3 8h11a5 5 0 0 1 0 10H7"/><polyline points="7 4 3 8 7 12"/>')
   };
 
   function renderGlobalSearchResults(query){
@@ -7941,6 +7944,7 @@
     const actionBar = `
         <div class="row-action-bar">
           ${canPay ? `<button class="loan-payment-link" data-action="toggle-payment" data-tip="Log a payment" aria-label="Log a payment">${ICON.receive}<span class="act-lbl">Log a payment</span></button>` : ""}
+          ${!canPay ? `<button class="loan-payment-link is-unsettle" data-action="unsettle" data-tip="Mark unpaid — put this back to outstanding" aria-label="Mark unpaid">${ICON.undo}<span class="act-lbl">Mark unpaid</span></button>` : ""}
           ${canPay ? `<button class="loan-payment-link is-settle" data-action="settle" data-tip="Mark fully paid — the whole ${fmtMoney(l.amount)}" aria-label="Mark fully paid">${ICON.check}<span class="act-lbl">Mark fully paid</span></button>` : ""}
           ${paid.length ? `<button class="loan-payment-link" data-action="toggle-trail" aria-expanded="false" data-tip="${paid.length} payment${paid.length === 1 ? "" : "s"} recorded — open the trail" aria-label="${paid.length} payment${paid.length === 1 ? "" : "s"} recorded">${ICON.trail}<b class="act-n">${paid.length}</b><span class="act-lbl">payment${paid.length === 1 ? "" : "s"}</span></button>` : ""}
           <button class="loan-payment-link" data-action="toggle-note" aria-expanded="false" data-tip="${hasNote ? "View note" : "Add note"}" aria-label="${hasNote ? "View note" : "Add note"}">${ICON.note}<span class="act-lbl">${hasNote ? "View note" : "Add note"}</span></button>
@@ -7960,7 +7964,10 @@
     return `
       <div class="loan-card ${l.status === "outstanding" ? "is-open" : "is-closed"}" data-id="${l.id}"${l.status !== "outstanding" && l.repaidOn ? ` data-repaid="${escapeHtml(fmtDate(l.repaidOn))}"` : ""}>
         <div class="loan-card-head">
-          <button type="button" class="loan-who is-link" data-person="${escapeHtml(l.person)}" title="Everything with ${escapeHtml(l.person)}">${escapeHtml(l.person)}</button>
+          <span class="loan-who-wrap">
+            <button type="button" class="loan-who is-link" data-person="${escapeHtml(l.person)}" title="Everything with ${escapeHtml(l.person)}">${escapeHtml(l.person)}</button>
+            <span class="loan-logged" title="Logged on this date">${fmtDate(l[dateField])}</span>
+          </span>
           <span class="status-pill ${l.status === "outstanding" ? "outstanding" : ""}">${l.status === "outstanding" ? "Outstanding" : (l.repaidOn ? "Repaid " + fmtDate(l.repaidOn) : "Repaid")}</span>
           ${canPay ? "" : `<button class="row-action loan-edit" data-action="unlock" aria-pressed="false" title="Edit this settled entry" aria-label="Edit this settled entry"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>`}
           <button class="row-action row-action-danger loan-remove" data-action="delete" title="Remove this entry" aria-label="Remove this entry">✕</button>
@@ -7970,7 +7977,7 @@
           ${showProgress ? `<span class="hint">of ${fmtMoney(l.originalAmount)}</span>` : ""}
         </div>
         <div class="loan-meta-row">
-          <span>${fmtDate(l[dateField])}</span>${deadlineCellHtml(l)}
+          ${deadlineCellHtml(l)}
           ${nextDue ? `<span class="loan-chip is-due" title="Next monthly instalment">Next ${fmtDate(nextDue)}</span>`
             : l.repayMonthly ? `<span class="loan-chip" title="Repaid in monthly instalments">Monthly${l.repayDay ? " · " + ordinal(l.repayDay) : ""}</span>` : ""}
           ${interest > 0 ? `<span class="loan-chip is-interest" title="${l.interestKind === "flat" ? "Flat" : "Per month"} at ${l.interestRate}%, simple">+${fmtMoney(interest)} interest</span>` : ""}
@@ -8265,6 +8272,26 @@
         showToast(bank
           ? `Settled — ${fmtMoney(amount)} ${dir === "given" ? "back into" : "out of"} ${bank}.`
           : `Settled — ${fmtMoney(amount)}. No account was linked, so no balance moved.`);
+      });
+
+      /* The way back. Settling is one press and the only undo was the pencil,
+         then a select - two steps and a mode, to reverse one. The same call the
+         Status dropdown makes, so there is still one money path. */
+      // payRow, not row: this block's element is the one wirePaymentToggle was
+      // handed, and 'row' belongs to a different closure further down the file.
+      const unsettleBtn = payRow.querySelector('[data-action="unsettle"]');
+      if (unsettleBtn) unsettleBtn.addEventListener("click", ()=>{
+        const item = cfg.list.find(x=>x.id===id);
+        if (!item || item.status === "outstanding") return;
+        const amount = item.amount, bank = item.bank;
+        applyLoanStatusChange(item, "outstanding", dir);
+        item.status = "outstanding";
+        cfg.save();
+        renderLoans(dir);
+        renderSideUpcoming();
+        showToast(bank
+          ? `Back to outstanding — ${fmtMoney(amount)} ${dir === "given" ? "out of" : "back into"} ${bank}.`
+          : `Back to outstanding — ${fmtMoney(amount)}. No account was linked, so no balance moved.`);
       });
 
       const btn = payRow.querySelector('[data-action="log-payment"]');
@@ -8873,6 +8900,7 @@
     return grossMonthly * (1 - taxRate / 100);
   }
 
+  let savingsPage = 1;
   function renderSavingsList(){
     // Accounts may have just appeared or gone; the selects that name them follow.
     if (typeof refreshAccountSelects === "function") refreshAccountSelects();
@@ -8888,7 +8916,7 @@
     }
 
     const savingsTotal = savings.reduce((s,a)=>s+a.amount, 0);
-    const cards = savings.slice().sort((a,b)=>b.amount-a.amount).map(a=>{
+    const cardsList = savings.slice().sort((a,b)=>b.amount-a.amount).map(a=>{
       const netMonthly = netMonthlyInterest(a);
       const taxRate = a.taxRate != null ? a.taxRate : 20;
       const gross = grossMonthlyInterest(a);
@@ -8929,9 +8957,20 @@
           ${(a.rate || 0) > 0 ? `<label class="sa-auto"><input type="checkbox" data-field="autoInterest" ${a.autoInterest ? "checked" : ""}><span class="sa-auto-text">Post interest automatically${a.autoInterest && a.lastInterestMonth ? ` · to ${escapeHtml(a.lastInterestMonth)}` : ""}</span></label>` : ""}
           ${noteBar}
         </div>`;
-    }).join("");
+    });
 
-    wrap.innerHTML = `<div class="savings-list">${cards}</div>`;
+    /* Same page size the loan and investment lists use, so one preference
+       governs every list in the app rather than three. */
+    const pagedSv = paginate(cardsList, savingsPage, loanPageSize());
+    savingsPage = pagedSv.safePage;
+    wrap.innerHTML = `<div class="savings-list">${pagedSv.slice.join("")}</div>${pagedSv.barHtml}`;
+    wrap.querySelectorAll("[data-page-action]").forEach(b => {
+      b.addEventListener("click", () => {
+        savingsPage += b.dataset.pageAction === "next" ? 1 : -1;
+        renderSavingsList();
+      });
+    });
+    if (typeof paintListControls === "function") paintListControls();
 
     wrap.querySelectorAll(".savings-account").forEach(card=>{
       const id = card.dataset.id;
@@ -14477,7 +14516,13 @@
           }
         }
       });
-      scroller.appendChild(tools);
+      // At the TOP of the rail, above the destinations rather than below them:
+      // at the bottom it sat under six destinations and a fold that grows, so
+      // on a short window it was the first thing to go off the end. Here it is
+      // the first thing in the rail and it never moves.
+      const firstTab = scroller.querySelector("button[data-tab]");
+      if (firstTab) scroller.insertBefore(tools, firstTab);
+      else scroller.appendChild(tools);
       scroller.appendChild(back);
       nav.appendChild(scroller);
       paintTools();
@@ -16386,15 +16431,6 @@
      the "when" column is half empty on every one of them; the stamp takes the
      half that is empty, in the flow, colliding with nothing. */
   body.list-as-rows .loan-card.is-closed .loan-meta-row{ grid-area: 1 / 3 / 2 / 4; }
-  body.list-as-rows .loan-card.is-closed::after,
-  body.list-as-rows .loan-card.is-closed[data-repaid]::after{
-    position: static; grid-area: 1 / 4 / 2 / 5;
-    justify-self: start; align-self: center;
-    transform: rotate(-4deg); transform-origin: left center;
-    font-size: var(--fs-2xs); letter-spacing: .08em;
-    padding: 1px var(--sp-5); border-width: 2px;
-    left: auto; right: auto; top: auto;
-  }
   /* On ONE line the stamp cannot keep the cell it uses on two: the controls are
      up here now, and a grid lets two items share a cell in silence - the account
      select was sitting underneath the stamp, readable by nobody. The actions
@@ -16437,10 +16473,10 @@
   /* It was --ink-soft in a --line box and only turned red under the pointer,
      which is the moment the warning is least use: by then you have already
      decided to press it. Every X in the app carries the colour at rest. */
-  .row-action-danger{
-    color: color-mix(in srgb, var(--negative) 78%, var(--ink));
-    border-color: color-mix(in srgb, var(--negative) 34%, var(--line));
-  }
+  /* ...and then it was red on every row of every table at once, which is a lot
+     of alarm for a column of buttons nobody has reached for yet. Quiet at rest,
+     unmistakable under the pointer. */
+  .row-action-danger{ color: var(--ink-soft); border-color: var(--line); }
   @media (hover: hover) and (pointer: fine){
     .row-action-danger:hover{
       background: color-mix(in srgb, var(--negative) 18%, transparent);
@@ -16451,9 +16487,8 @@
   /* The loan card X was given a neutral box in the last pass; it is the same
      button as every other X and it says the same thing. */
   .loan-remove{
-    background: color-mix(in srgb, var(--negative) 8%, transparent);
-    border-color: color-mix(in srgb, var(--negative) 34%, var(--line));
-    color: color-mix(in srgb, var(--negative) 78%, var(--ink));
+    background: var(--sunken); border-color: var(--line);
+    color: var(--ink-soft);
   }
   @media (hover: hover){
     .loan-remove:hover{
@@ -16608,20 +16643,27 @@
   /* It sat in ONE track, at --fs-2xs, in a line laid out for controls a settled
      row does not have. It takes both middle tracks and the size that goes with
      them. */
+  /* In a row it is the same mark in the same place: the centre of the entry,
+     in front of it. Pinned into a grid track it was nowhere near the middle -
+     it was wherever that track happened to start. */
   body.list-as-rows .loan-card.is-closed::after,
   body.list-as-rows .loan-card.is-closed[data-repaid]::after{
-    grid-area: 1 / 3 / 2 / 5;
-    justify-self: center; align-self: center;
+    position: absolute; top: 50%; left: 50%; right: auto; bottom: auto;
+    grid-area: auto; width: auto; justify-self: auto; align-self: auto;
+    transform: translate(-50%, -50%) rotate(-3deg);
     font-size: var(--fs-lg); letter-spacing: .14em;
-    padding: var(--sp-3) var(--sp-7); border-width: 3px;
-    transform: rotate(-4deg); transform-origin: center;
+    padding: var(--sp-4) var(--sp-8); border-width: 3px;
+    z-index: 3;
   }
-  /* Which means the date beside it gives that space up, and goes back to
-     leading the row from its own track. */
-  body.list-as-rows .loan-card.is-closed .loan-meta-row{ grid-area: 2 / 1 / 3 / 2; }
-  body.list-as-rows .loan-card.is-closed .loan-who{ font-size: var(--fs-md); }
+  /* Two lines, and the second one is the note - so the centre of the row is a
+     real centre rather than the seam of an empty band left over from the
+     controls a settled row does not have. */
+  body.list-as-rows .loan-card.is-closed > [data-payment-for],
+  body.list-as-rows .loan-card.is-closed > [data-payment-for]:has(.loan-note-read){
+    grid-area: 2 / 1 / 3 / 7;
+  }
+  body.list-as-rows .loan-card.is-closed .loan-who{ font-size: var(--fs-lg); }
   body.list-as-rows .loan-card.is-closed .loan-amt{ font-size: var(--fs-2xl); }
-  body.list-as-rows .loan-card.is-closed .loan-card-controls{ grid-area: 2 / 2 / 3 / 4; }
   /* The third line is the note, and it is there on every settled row. */
   body.list-as-rows .loan-card.is-closed .loan-note-read{
     min-height: 0; margin: 0;
@@ -16631,17 +16673,8 @@
      note, so the settled row keeps the shape the rest of the list has and the
      stamp stays in the empty actions track. */
   @container loanrow (min-width: 1420px){
-    body.list-as-rows .loan-card.is-closed::after,
-    body.list-as-rows .loan-card.is-closed[data-repaid]::after{
-      grid-area: 1 / 5 / 2 / 6;
-      justify-self: start;
-      font-size: var(--fs-2xs); letter-spacing: .08em;
-      padding: 1px var(--sp-5); border-width: 2px;
-    }
     body.list-as-rows .loan-card.is-closed .loan-meta-row{ grid-area: 1 / 3 / 2 / 4; }
     body.list-as-rows .loan-card.is-closed .loan-card-controls{ grid-area: 1 / 4 / 2 / 5; }
-    body.list-as-rows .loan-card.is-closed .loan-who{ font-size: inherit; }
-    body.list-as-rows .loan-card.is-closed .loan-amt{ font-size: var(--fs-2xl); }
   }
 
   /* The header grew a headline figure, and the section head is a wrapping flex
@@ -16720,26 +16753,36 @@
      card, on its own line, crossing nothing. It keeps the tilt, the rule and
      the colour, so it still reads as pressed onto the card rather than as one
      more chip in a column of them. */
+  /* IN FRONT, not in line. A band of its own costs height, and height is
+     exactly what the figure, the date and the account needed. Superimposed it
+     costs nothing, and what it crosses is one hover away - the stamp drops to
+     a fifth and the record behind it comes up to full ink.
+
+     Ordering the card to make room for the in-flow version also gave every
+     part an order EXCEPT .loan-card-controls, which kept 0 and sorted ahead of
+     all of them: pressing the pencil put the two selects above the name. With
+     the stamp out of the flow the ordering goes with it. */
   .loan-card.is-closed::after,
   .loan-card.is-closed[data-repaid]::after{
-    position: static; order: 4; align-self: center;
-    margin: var(--sp-5) 0 var(--sp-2, 2px);
-    transform: rotate(-2.5deg);
-    opacity: 1;
-    background: color-mix(in srgb, var(--positive) 12%, transparent);
-    border-color: color-mix(in srgb, var(--positive) 55%, transparent);
+    position: absolute; top: 50%; left: 50%; right: auto; bottom: auto;
+    order: 0; margin: 0; align-self: auto;
+    transform: translate(-50%, -50%) rotate(-7deg);
+    z-index: 3; opacity: 1;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    border-color: color-mix(in srgb, var(--positive) 72%, transparent);
     color: var(--positive);
   }
-  .loan-card.is-closed .loan-card-head{ order: 1; }
-  .loan-card.is-closed .loan-amt-row{ order: 2; }
-  .loan-card.is-closed .loan-meta-row{ order: 3; }
-  .loan-card.is-closed > [data-payment-for]{ order: 5; }
-  /* Nothing is underneath it any more, so there is nothing to fade it for. */
+  /* The record steps back a little so the mark is unmistakably on top of it,
+     and comes forward the moment you look. */
+  .loan-card.is-closed > *:not(.loan-card-head){ opacity: .8; }
   @media (hover: hover){
-    .loan-card.is-closed:hover::after{ opacity: 1; }
+    .loan-card.is-closed:hover > *{ opacity: 1; }
+    .loan-card.is-closed:hover::after{ opacity: .2; }
   }
-  .loan-card.is-closed:focus-within::after{ opacity: 1; }
-  .loan-card.is-unlocked::after{ opacity: 1; }
+  .loan-card.is-closed:focus-within > *{ opacity: 1; }
+  .loan-card.is-closed:focus-within::after{ opacity: .2; }
+  .loan-card.is-unlocked::after{ opacity: .2; }
+  .loan-card.is-unlocked > *{ opacity: 1; }
 
   /* ---------- the layout controls, where they can be found ----------------- */
   .nav-tools{
@@ -16843,6 +16886,142 @@
       background: color-mix(in srgb, var(--warn) 12%, transparent);
     }
   }
+
+  /* ---------- the date logged sits with the name --------------------------- */
+  /* It was the first thing in the meta row, so the deadline field started
+     wherever that date ended and the countdown wrapped under it - while the two
+     selects below ran the full width. It is a fact about the entry, not about
+     when the entry is due, so it goes with the name. */
+  .loan-logged{
+    flex: 0 0 auto; font-size: var(--fs-2xs); color: var(--ink-dim);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .loan-card-head .status-pill{ margin-left: auto; }
+  .loan-card-head .loan-who{ flex: 0 1 auto; min-width: 0; }
+
+  /* With it gone the field starts at the card edge, the countdown is beside it
+     rather than under it, and the three controls share one left edge. */
+  body:not(.list-as-rows) .loan-card .deadline-cell{
+    flex: 1 1 100%; flex-wrap: nowrap; gap: var(--sp-4); min-width: 0;
+  }
+  body:not(.list-as-rows) .loan-card .deadline-cell input{
+    flex: 1 1 auto; width: auto; max-width: none; min-width: 0;
+  }
+  body:not(.list-as-rows) .loan-card .deadline-note{ flex: 0 0 auto; }
+  body:not(.list-as-rows) .loan-card-controls .status-select{ flex: 1 1 100%; max-width: none; }
+
+  /* ---------- the way back from settled ------------------------------------ */
+  .loan-payment-link.is-unsettle{ color: var(--warn); }
+  .loan-payment-link.is-unsettle{ border-color: color-mix(in srgb, var(--warn) 36%, var(--line)); }
+  @media (hover: hover){
+    .loan-payment-link.is-unsettle:hover{
+      background: color-mix(in srgb, var(--warn) 16%, transparent);
+      border-color: var(--warn);
+    }
+  }
+
+  /* ---------- what the stamp paid for -------------------------------------- */
+  /* Out of the flow it costs no height, so the record behind it can have it. */
+  .loan-card.is-closed .loan-who{ font-size: var(--fs-lg); }
+  .loan-card.is-closed .loan-logged{ font-size: var(--fs-sm); }
+  .loan-card.is-closed .loan-amt{ font-size: var(--fs-4xl); }
+  .loan-card.is-closed .loan-chip.is-bank{ font-size: var(--fs-2xs); padding: 3px var(--sp-6); }
+  .loan-card.is-closed[data-repaid]::after{
+    font-size: var(--fs-2xl); letter-spacing: .14em;
+    padding: var(--sp-5) var(--sp-7); border-width: 3px;
+    width: auto; white-space: nowrap;
+  }
+  /* The pencil answers the pointer, like the X beside it. */
+  .loan-edit{ background: var(--sunken); border-color: var(--line); color: var(--ink-soft); }
+  @media (hover: hover){
+    .loan-edit:hover{
+      background: color-mix(in srgb, var(--accent) 18%, transparent);
+      border-color: var(--accent); color: var(--accent);
+    }
+  }
+
+  /* ---------- what the stamp is allowed to cross -------------------------- */
+  /* Superimposed in the middle, it crosses whatever is in the middle - and on a
+     settled card that was "Mark unpaid", which is a control, not a fact. The
+     note and the buttons swap: the record and its note run under the mark, and
+     the two things you can DO sit below it in the clear.
+
+     Measured on a 227px card: the stamp spans 88-134, the buttons now start at
+     175. */
+  .loan-card.is-closed > [data-payment-for]{ display: flex; flex-direction: column; }
+  .loan-card.is-closed .loan-note-read{ order: 1; }
+  .loan-card.is-closed .row-action-bar{ order: 2; margin-top: var(--sp-5); }
+  .loan-card.is-closed .collapsible-body{ order: 3; }
+  /* A row has its own two lines and its own centre, so it keeps document order. */
+  body.list-as-rows .loan-card.is-closed > [data-payment-for]{ display: block; }
+
+  /* ---------- the name and its date are one thing ------------------------- */
+  /* In a row the head is display:contents, so a bare span beside the name is
+     its own grid item and auto-placement dropped the logged date into whatever
+     track was free - which put it at the far right of the row, next to the
+     pencil. Wrapped, the pair is one item in one track, in both views. */
+  .loan-who-wrap{
+    display: flex; align-items: baseline; gap: var(--sp-5);
+    flex: 1 1 auto; min-width: 0;
+  }
+  body.list-as-rows .loan-who-wrap{ grid-area: 1 / 1 / 2 / 2; min-width: 0; }
+  body.list-as-rows .loan-who{ grid-area: auto; }
+  @container loanrow (max-width: 760px){
+    body.list-as-rows .loan-who-wrap{ grid-area: 1 / 1 / 2 / 2; }
+  }
+
+  /* ---------- your accounts, as a list ------------------------------------- */
+  /* One account per line instead of a grid of cards. The figures lead, the
+     fields follow on a second line, and the share bar is the rule between them
+     - so the column that matters most, the balance, is readable straight down
+     the page. */
+  body.list-as-rows .savings-list{
+    display: flex; flex-direction: column; gap: var(--sp-4);
+  }
+  body.list-as-rows .savings-account{
+    display: grid; align-items: center;
+    grid-template-columns:
+      minmax(130px, 1.2fr)   /* which account */
+      minmax(150px, 1fr)     /* how much, and its share */
+      minmax(110px, .8fr)    /* interest a month */
+      minmax(90px, .6fr)     /* effective */
+      auto;                  /* remove */
+    gap: var(--sp-3) var(--sp-5);
+    padding: var(--sp-5) var(--sp-6);
+  }
+  body.list-as-rows .savings-account > *{ min-width: 0; }
+  body.list-as-rows .sa-head{ display: contents; }
+  body.list-as-rows .sa-name{
+    grid-area: 1 / 1 / 2 / 2; font-size: var(--fs-md); font-weight: 700;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  body.list-as-rows .sa-head .row-action{ grid-area: 1 / 5 / 2 / 6; margin: 0; }
+  body.list-as-rows .sv-metric{ grid-area: 1 / 2 / 2 / 3; }
+  body.list-as-rows .sv-kpis{ grid-area: 1 / 3 / 2 / 5; display: flex; gap: var(--sp-6); }
+  body.list-as-rows .sv-kpi{ flex: 1 1 0; min-width: 0; }
+  /* The share bar becomes the rule under the line it describes. */
+  body.list-as-rows .sa-share{ grid-area: 2 / 1 / 3 / 6; margin: 0; }
+  body.list-as-rows .sa-fields{
+    grid-area: 3 / 1 / 4 / 4; display: flex; gap: var(--sp-5); align-items: flex-end;
+  }
+  body.list-as-rows .sa-field{ flex: 1 1 0; min-width: 0; }
+  body.list-as-rows .savings-account > .row-action-bar{
+    grid-area: 3 / 4 / 4 / 6; justify-content: flex-end; border-top: 0;
+    padding-top: 0; margin: 0;
+  }
+  body.list-as-rows .sa-tier{ grid-area: 4 / 1 / 5 / 6; }
+  body.list-as-rows .sa-auto{ grid-area: 5 / 1 / 6 / 6; }
+  body.list-as-rows .savings-account > .collapsible-body{ grid-area: 6 / 1 / 7 / 6; }
+  /* Below this the tracks cannot all be honoured, so the line becomes a card
+     again - which is what a card is for. */
+  @media (max-width: 900px){
+    body.list-as-rows .savings-account{ display: flex; flex-direction: column; }
+    body.list-as-rows .sa-head{ display: flex; }
+  }
+
+  /* It leads the rail now, so it is spaced as a header rather than as a
+     footnote under the last destination. */
+  .nav-tools{ margin: 0 var(--sp-5) var(--sp-5); }
 </style>
 </body>
 </html>
