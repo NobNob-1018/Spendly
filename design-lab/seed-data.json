@@ -1476,7 +1476,8 @@
       "dateGiven": "2026-04-18",
       "deadline": "2026-07-17",
       "status": "repaid",
-      "bank": "Cash / Physical wallet"
+      "bank": "Cash / Physical wallet",
+      "repaidOn": "2026-07-14"
     },
     {
       "id": "lg_1757000100548_g4",
@@ -1512,7 +1513,8 @@
       "dateGiven": "2026-06-05",
       "deadline": "2026-09-20",
       "status": "repaid",
-      "bank": "Maya Bank"
+      "bank": "Maya Bank",
+      "repaidOn": "2026-09-02"
     },
     {
       "id": "lg_1757000101096_g8",
@@ -1539,7 +1541,8 @@
       "dateGiven": "2026-07-14",
       "deadline": "2026-08-28",
       "status": "repaid",
-      "bank": "Cash / Physical wallet"
+      "bank": "Cash / Physical wallet",
+      "repaidOn": "2026-09-04"
     },
     {
       "id": "lg_1757000101507_gb",
@@ -1593,7 +1596,8 @@
       "dateGiven": "2026-04-02",
       "deadline": "2026-06-30",
       "status": "repaid",
-      "bank": "CIMB Bank PH"
+      "bank": "CIMB Bank PH",
+      "repaidOn": "2026-06-30"
     },
     {
       "id": "lg_1757000102329_gh",
@@ -1620,7 +1624,8 @@
       "dateGiven": "2026-05-21",
       "deadline": "2026-07-25",
       "status": "repaid",
-      "bank": "GCash"
+      "bank": "GCash",
+      "repaidOn": "2026-08-08"
     },
     {
       "id": "lg_1757000102740_gk",
@@ -1656,7 +1661,8 @@
       "dateGiven": "2026-07-05",
       "deadline": "2026-08-20",
       "status": "repaid",
-      "bank": "CIMB Bank PH"
+      "bank": "CIMB Bank PH",
+      "repaidOn": "2026-08-19"
     },
     {
       "id": "lg_1757000103288_go",
@@ -1737,7 +1743,8 @@
       "dateGiven": "2026-02-14",
       "deadline": "2026-05-14",
       "status": "repaid",
-      "bank": "BPI"
+      "bank": "BPI",
+      "repaidOn": "2026-05-02"
     },
     {
       "id": "lg_1757000104521_gx",
@@ -1856,7 +1863,8 @@
       "deadline": "2026-08-01",
       "status": "repaid",
       "bank": "GCash GSave",
-      "dateTaken": "2026-02-27"
+      "dateTaken": "2026-02-27",
+      "repaidOn": "2026-08-01"
     },
     {
       "id": "lt_1757000200298_t2",
@@ -1892,7 +1900,8 @@
       "deadline": "2026-09-22",
       "status": "repaid",
       "bank": "GCash",
-      "dateTaken": "2026-07-09"
+      "dateTaken": "2026-07-09",
+      "repaidOn": "2026-09-08"
     },
     {
       "id": "lt_1757000200894_t6",
@@ -1946,7 +1955,8 @@
       "deadline": "2026-07-03",
       "status": "repaid",
       "bank": "BPI",
-      "dateTaken": "2026-03-03"
+      "dateTaken": "2026-03-03",
+      "repaidOn": "2026-06-26"
     }
   ],
   "spendly_investments_v1": [

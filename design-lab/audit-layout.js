@@ -199,6 +199,12 @@
   all.forEach(el => {
     if (ownText(el).length < 2) return;
     if (el.classList && el.classList.contains("sr-only")) return;
+    // Visually-hidden text is a 1x1 box with its overflow clipped away on
+    // purpose, and it is the IDIOM that makes it not a defect, not the class
+    // name it happens to carry. Keyed to .sr-only, this check called three
+    // perfectly good screen-reader labels a clipping bug the moment a button
+    // wore its label under a different name.
+    if (el.clientWidth <= 1 && el.clientHeight <= 1) return;
     const s = getComputedStyle(el);
     if (s.textOverflow === 'ellipsis') return;
     if (s.overflowX === 'visible') return;
