@@ -2716,6 +2716,7 @@
             <div class="chart-loading" id="chart-bar-loading"><div class="chart-loading-spinner"></div>Loading chart…</div>
             <canvas id="chart-bar"></canvas>
           </div>
+          <div class="chart-extra" id="biggest-few"></div>
         </div>
         <div>
           <header class="panel-head is-toolbar">
@@ -2754,7 +2755,7 @@
         <div>
           <header class="panel-head is-toolbar">
             <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span><span class="h-text">Money you've lent to others</span></h2>
-            <p class="sub">Track what you've allowed people to borrow, and when you expect it back.</p>
+            <div class="loan-summary is-headline" id="loans-given-summary"></div>
           </header>
         </div>
         <button class="btn btn-ghost btn-sm" id="btn-toggle-loans-given">▾ Collapse</button>
@@ -2846,7 +2847,6 @@
           <label class="range-inline">Date range
             <select id="lg-range-filter"></select>
           </label>
-          <div class="loan-summary" id="loans-given-summary" style="margin:0;"></div>
         </div>
         <p class="mobile-scroll-hint">← Scroll sideways to see all columns →</p>
         <div id="loans-given-table-wrap"></div>
@@ -2858,7 +2858,7 @@
         <div>
           <header class="panel-head is-toolbar">
             <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span><span class="h-text">Loans you've taken</span></h2>
-            <p class="sub">Money you've borrowed from others, and when you expect to pay it back.</p>
+            <div class="loan-summary is-headline" id="loans-taken-summary"></div>
           </header>
         </div>
         <button class="btn btn-ghost btn-sm" id="btn-toggle-loans-taken">▾ Collapse</button>
@@ -2950,7 +2950,6 @@
           <label class="range-inline">Date range
             <select id="lt-range-filter"></select>
           </label>
-          <div class="loan-summary" id="loans-taken-summary" style="margin:0;"></div>
         </div>
         <p class="mobile-scroll-hint">← Scroll sideways to see all columns →</p>
         <div id="loans-taken-table-wrap"></div>
@@ -2962,7 +2961,7 @@
         <div>
           <header class="panel-head is-toolbar">
             <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg></span><span class="h-text">Investments</span></h2>
-            <p class="sub">Track what you've put money into, what you expect it to be worth, and — once sold — your actual profit after fees.</p>
+            <div class="loan-summary is-headline" id="investments-summary"></div>
           </header>
         </div>
         <button class="btn btn-ghost btn-sm" id="btn-toggle-investments">▾ Collapse</button>
@@ -3021,7 +3020,6 @@
           <span>Count unsold investments in Total Money</span>
         </label>
         <p class="hint is-help" style="margin:0 0 10px;">Off by default: money you have put into something you still hold is not money you can spend, so it is listed here rather than in the headline figure. Sold investments always count, through the account the proceeds went to.</p>
-        <div class="loan-summary" id="investments-summary"></div>
         <p class="mobile-scroll-hint">← Scroll sideways to see all columns →</p>
         <div id="investments-table-wrap"></div>
       </div>
@@ -5116,7 +5114,11 @@
     // Two the set never had, and both were needed the moment a button had to
     // be able to stand without its label.
     note:  icon('<path d="M4 5a2 2 0 0 1 2-2h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/>'),
-    trail: icon('<path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="M4 6h.01"/><path d="M4 12h.01"/><path d="M4 18h.01"/>')
+    trail: icon('<path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="M4 6h.01"/><path d="M4 12h.01"/><path d="M4 18h.01"/>'),
+    // Money arriving. ICON.in - an arrow standing on a line - is the upload
+    // glyph, and beside a circled check, a list and a page it was the fourth
+    // unreadable shape in a row of four.
+    receive: icon('<path d="M12 3v10"/><path d="M8 9l4 4 4-4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>')
   };
 
   function renderGlobalSearchResults(query){
@@ -7706,8 +7708,10 @@
       const isHidden = panel.classList.contains("is-collapsed");
       panel.classList.toggle("is-collapsed", !isHidden);
       toggleBtn.setAttribute("aria-expanded", String(isHidden));
-      toggleBtn.innerHTML = ICON.in + '<span class="act-lbl">' +
-        (isHidden ? "Hide payment" : "Log a payment") + "</span>";
+      const lbl = isHidden ? "Hide payment" : "Log a payment";
+      toggleBtn.dataset.tip = lbl;
+      toggleBtn.setAttribute("aria-label", lbl);
+      toggleBtn.innerHTML = ICON.receive + '<span class="act-lbl">' + lbl + "</span>";
     });
   }
 
@@ -7734,8 +7738,10 @@
       const isHidden = panel.classList.contains("is-collapsed");
       panel.classList.toggle("is-collapsed", !isHidden);
       toggleBtn.setAttribute("aria-expanded", String(isHidden));
-      toggleBtn.innerHTML = ICON.note + '<span class="act-lbl">' +
-        (isHidden ? "Hide note" : (hasNote ? "View note" : "Add note")) + "</span>";
+      const lbl = isHidden ? "Hide note" : (hasNote ? "View note" : "Add note");
+      toggleBtn.dataset.tip = lbl;
+      toggleBtn.setAttribute("aria-label", lbl);
+      toggleBtn.innerHTML = ICON.note + '<span class="act-lbl">' + lbl + "</span>";
     });
     const saveBtn = panel.querySelector('[data-action="save-note"]');
     if (saveBtn){
@@ -7934,17 +7940,18 @@
         </div>` : "";
     const actionBar = `
         <div class="row-action-bar">
-          ${canPay ? `<button class="loan-payment-link" data-action="toggle-payment" title="Log a payment" aria-label="Log a payment">${ICON.in}<span class="act-lbl">Log a payment</span></button>` : ""}
-          ${canPay ? `<button class="loan-payment-link is-settle" data-action="settle" title="Settle the whole ${fmtMoney(l.amount)}" aria-label="Mark fully paid">${ICON.check}<span class="act-lbl">Mark fully paid</span></button>` : ""}
-          ${paid.length ? `<button class="loan-payment-link" data-action="toggle-trail" aria-expanded="false" title="${paid.length} payment${paid.length === 1 ? "" : "s"} recorded" aria-label="${paid.length} payment${paid.length === 1 ? "" : "s"} recorded">${ICON.trail}<b class="act-n">${paid.length}</b><span class="act-lbl">payment${paid.length === 1 ? "" : "s"}</span></button>` : ""}
-          <button class="loan-payment-link" data-action="toggle-note" aria-expanded="false" title="${hasNote ? "View note" : "Add note"}" aria-label="${hasNote ? "View note" : "Add note"}">${ICON.note}<span class="act-lbl">${hasNote ? "View note" : "Add note"}</span></button>
+          ${canPay ? `<button class="loan-payment-link" data-action="toggle-payment" data-tip="Log a payment" aria-label="Log a payment">${ICON.receive}<span class="act-lbl">Log a payment</span></button>` : ""}
+          ${canPay ? `<button class="loan-payment-link is-settle" data-action="settle" data-tip="Mark fully paid — the whole ${fmtMoney(l.amount)}" aria-label="Mark fully paid">${ICON.check}<span class="act-lbl">Mark fully paid</span></button>` : ""}
+          ${paid.length ? `<button class="loan-payment-link" data-action="toggle-trail" aria-expanded="false" data-tip="${paid.length} payment${paid.length === 1 ? "" : "s"} recorded — open the trail" aria-label="${paid.length} payment${paid.length === 1 ? "" : "s"} recorded">${ICON.trail}<b class="act-n">${paid.length}</b><span class="act-lbl">payment${paid.length === 1 ? "" : "s"}</span></button>` : ""}
+          <button class="loan-payment-link" data-action="toggle-note" aria-expanded="false" data-tip="${hasNote ? "View note" : "Add note"}" aria-label="${hasNote ? "View note" : "Add note"}">${ICON.note}<span class="act-lbl">${hasNote ? "View note" : "Add note"}</span></button>
         </div>
         ${canPay ? `
         <div class="loan-payment-row collapsible-body is-collapsed" data-payment-panel>
           <div class="amount-wrap"><span>₱</span><input type="number" min="0" step="0.01" data-field="payment" placeholder="0.00"></div>
           <button class="btn btn-primary btn-sm" data-action="log-payment">Log payment</button>
         </div>` : ""}
-        ${!canPay && hasNote ? `<p class="loan-note-read">${escapeHtml(l.notes.trim())}</p>` : ""}
+        ${!canPay ? `<p class="loan-note-read${hasNote ? "" : " is-empty"}">` +
+          `${hasNote ? escapeHtml(l.notes.trim()) : "No note on this one."}</p>` : ""}
         <div class="loan-payment-row collapsible-body is-collapsed" data-note-panel>
           <textarea data-field="notes" placeholder="Terms, reason, whatever is useful to remember." rows="2" style="flex:1; min-width:200px;">${escapeHtml(l.notes || "")}</textarea>
           <button class="btn btn-ghost btn-sm" data-action="save-note">Save note</button>
@@ -7970,6 +7977,7 @@
           ${l.reference ? `<span class="loan-chip is-quiet" title="${escapeHtml(l.reference)}">Ref</span>` : ""}
           ${paid.length ? `<span class="loan-chip is-quiet" title="${paid.length} payment${paid.length === 1 ? "" : "s"} recorded">${paid.length} paid</span>` : ""}
           ${l.notes && l.notes.trim() ? `<span class="loan-chip is-quiet" title="${escapeHtml(l.notes.trim())}">Note</span>` : ""}
+          ${!canPay && l.bank ? `<span class="loan-chip is-quiet is-bank" title="Held at ${escapeHtml(l.bank)}">${escapeHtml(l.bank)}</span>` : ""}
         </div>
         <div class="loan-card-controls">
           <select class="status-select" data-action="status"${canPay ? "" : " disabled"}>
@@ -8033,7 +8041,23 @@
     populateRangeFilter(document.getElementById(cfg.prefix + "-range-filter"), view.date, LOAN_DATE_OPTIONS);
     const outstandingLoans = cfg.list.filter(l=>l.status === "outstanding");
     const outstanding = outstandingLoans.reduce((s,l)=>s+l.amount,0);
-    summaryEl.innerHTML = `${cfg.summaryLead} <strong class="summary-figure">${fmtMoneyRich(outstanding)}</strong> across ${outstandingLoans.length} loan(s)`;
+    /* Urgency, not just a total. A number with nothing beside it says the same
+       thing whether every loan is months away or three of them are already
+       late, and late is the only part of it you can act on today. */
+    const bands = outstandingLoans.map(l => (deadlineState(l).band || ""));
+    const overdue = bands.filter(b => b === "overdue").length;
+    const thisWeek = bands.filter(b => b === "today" || b === "week").length;
+    const undated = outstandingLoans.filter(l => !l.deadline).length;
+    summaryEl.className = "loan-summary is-headline" +
+      (overdue ? " is-late" : thisWeek ? " is-soon" : "");
+    summaryEl.innerHTML =
+      `<span class="sum-k">${cfg.summaryLead}</span>` +
+      `<strong class="summary-figure">${fmtMoneyRich(outstanding)}</strong>` +
+      `<span class="sum-n">across ${outstandingLoans.length} loan${outstandingLoans.length === 1 ? "" : "s"}</span>` +
+      (overdue ? `<span class="sum-flag is-late">${overdue} overdue</span>` : "") +
+      (thisWeek ? `<span class="sum-flag is-soon">${thisWeek} due this week</span>` : "") +
+      (!overdue && !thisWeek && outstandingLoans.length && undated < outstandingLoans.length
+        ? `<span class="sum-flag is-calm">nothing due yet</span>` : "");
 
     if (!cfg.list.length){
       wrap.innerHTML = emptyStateHtml("plus", cfg.emptyTitle, cfg.emptyBody);
@@ -8642,7 +8666,7 @@
       const sold = inv.actualSoldPrice != null;
       const noteBlock = `
           <div class="row-action-bar">
-            <button class="loan-payment-link" data-action="toggle-note" aria-expanded="false" title="${hasNote ? "View note" : "Add note"}" aria-label="${hasNote ? "View note" : "Add note"}">${ICON.note}<span class="act-lbl">${hasNote ? "View note" : "Add note"}</span></button>
+            <button class="loan-payment-link" data-action="toggle-note" aria-expanded="false" data-tip="${hasNote ? "View note" : "Add note"}" aria-label="${hasNote ? "View note" : "Add note"}">${ICON.note}<span class="act-lbl">${hasNote ? "View note" : "Add note"}</span></button>
           </div>
           <div class="loan-payment-row collapsible-body is-collapsed" data-note-panel>
             <textarea data-field="notes" placeholder="Why you bought this, exit plan, whatever is useful to remember." rows="2" style="flex:1; min-width:200px;">${escapeHtml(inv.notes || "")}</textarea>
@@ -8873,7 +8897,7 @@
       const hasNote = !!(a.notes && a.notes.trim().length);
       const noteBar = `
           <div class="row-action-bar">
-            <button class="loan-payment-link" data-action="toggle-note" aria-expanded="false" title="${hasNote ? "View note" : "Add note"}" aria-label="${hasNote ? "View note" : "Add note"}">${ICON.note}<span class="act-lbl">${hasNote ? "View note" : "Add note"}</span></button>
+            <button class="loan-payment-link" data-action="toggle-note" aria-expanded="false" data-tip="${hasNote ? "View note" : "Add note"}" aria-label="${hasNote ? "View note" : "Add note"}">${ICON.note}<span class="act-lbl">${hasNote ? "View note" : "Add note"}</span></button>
           </div>
           <div class="loan-payment-row collapsible-body is-collapsed" data-note-panel>
             <textarea data-note-field="notes" placeholder="Add a note about this account." rows="2" style="flex:1; min-width:200px;">${escapeHtml(a.notes || "")}</textarea>
@@ -9747,6 +9771,37 @@
     renderRecentHistory();
   }
 
+  /* The six largest single expenses in the range, under the bars.
+
+     The bars say when, the donut says what kind, and until now nothing said
+     what it actually WAS - which is the question a spike raises. Each row is
+     drawn against the largest rather than against the total, because the point
+     is the relationship between them: six bars of roughly one length is a
+     different month from one long bar and five short ones. */
+  function renderBiggestFew(inRange, total){
+    const host = document.getElementById("biggest-few");
+    if (!host) return;
+    if (!inRange || !inRange.length){ host.innerHTML = ""; return; }
+    const rows = inRange.slice().sort((a, b) => b.amount - a.amount).slice(0, 6);
+    const top = rows[0].amount || 1;
+    const sum = round2(rows.reduce((t, e) => t + e.amount, 0));
+    const share = total ? Math.round((sum / total) * 100) : 0;
+    host.innerHTML =
+      '<h3 class="chart-extra-k">The biggest few</h3>' +
+      '<ol class="big-list">' + rows.map(e =>
+        '<li class="big-row">' +
+          '<span class="big-rule" aria-hidden="true"><i style="width:' +
+            Math.round((e.amount / top) * 100) + '%;background:' + colorFor(e.category) + '"></i></span>' +
+          '<span class="big-what" title="' + escapeHtml(e.description || e.category) + '">' +
+            escapeHtml(e.description || e.category) + '</span>' +
+          '<span class="big-cat">' + escapeHtml(e.category) + '</span>' +
+          '<span class="big-when">' + fmtDate(e.date) + '</span>' +
+          '<span class="big-amt num">' + fmtMoney(e.amount) + '</span>' +
+        '</li>').join("") + '</ol>' +
+      '<p class="cat-summary">These ' + rows.length + ' come to <strong>' + fmtMoney(sum) +
+        '</strong>, ' + share + '% of everything in the range.</p>';
+  }
+
   function renderCharts(){
     ["chart-bar", "chart-pie", "chart-networth"].forEach(id => {
       const el = document.getElementById(id + "-loading");
@@ -9780,6 +9835,7 @@
     const catColors = catLabels.map(colorFor);
 
     const total = round2(inRange.reduce((s, e) => s + e.amount, 0));
+    renderBiggestFew(inRange, total);
     const prevTotal = round2(prevData.reduce((s, v) => s + v, 0));
     const avg = keys.length ? round2(total / keys.length) : 0;
     const nonZero = data.filter(v => v > 0);
@@ -12901,7 +12957,7 @@
           const here = buttons.find(b => b.classList.contains("active"));
           if (here) here.classList.add("has-no-list");
           if (listOpen[tab]){ delete listOpen[tab]; save(); }
-          paintCarets();
+          paintCarets(); paintTools();
           return;
         }
 
@@ -12944,6 +13000,7 @@
         // Now that this panel has rendered we know whether it has anything to
         // disclose. A caret over nothing is a control that lies.
         active.classList.toggle("has-no-list", secs.length < 2);
+        paintTools();
         if (secs.length < 2){
           if (listOpen[tab]){ delete listOpen[tab]; save(); }
           paintCarets();
@@ -12969,16 +13026,20 @@
              ...secs.filter(x => !away.has(x.id) && !onPage.has(x.id))]
           : secs.filter(x => !onPage.has(x.id) && !away.has(x.id));
         const gone = editing ? secs.filter(x => away.has(x.id)) : [];
+        /* A heading over an empty list is a fold that pushes the whole rail
+           down and shows nothing. Edit and Tidy used to live in this header,
+           which is why it had to exist even when empty; they have a row of
+           their own now, so it does not. */
+        if (!editing && !listed.length && !gone.length){
+          active.classList.add("has-no-list");
+          if (listOpen[tab]){ delete listOpen[tab]; save(); }
+          paintCarets(); paintTools();
+          return;
+        }
         head.innerHTML =
           '<span class="nav-contents-label">' +
             (editing ? "Arrange" : "Opens beside") + '</span>' +
-          '<span class="nav-contents-n">' + listed.length + '</span>' +
-          // Resizing happens with or without arrange mode, so the way to undo a
-          // gap has to be reachable without it either.
-          '<button type="button" class="nav-tidy" data-tidy ' +
-            'title="Close up any gaps between the cards">Tidy</button>' +
-          '<button type="button" class="nav-edit" data-edit>' +
-            (editing ? "Done" : "Edit") + '</button>';
+          '<span class="nav-contents-n">' + listed.length + '</span>';
         box.appendChild(head);
 
         // Which group a chip belongs to, so the heading can change between them.
@@ -14091,8 +14152,15 @@
       }
       // A whole panel rather than a section of one: same drawer, no peer strip,
       // and it is put back exactly as a section is.
-      function openPanelBeside(el, title){
+      /* asModal picks the SHAPE the panel opens in, and it is set here rather
+         than by the caller on the element beforehand, so one place decides.
+         The shape also has to outlive the close - see closeBeside. */
+      let modalOffTimer = null;
+      function openPanelBeside(el, title, asModal){
         const body = document.getElementById("rd-body");
+        clearTimeout(modalOffTimer);
+        drawer.classList.toggle("is-modal", !!asModal);
+        scrim.classList.toggle("is-modal", !!asModal);
         if (besideNow) putBack();
         if (!homeOf.has(el))
           homeOf.set(el, { parent: el.parentElement, next: el.nextElementSibling });
@@ -14201,9 +14269,7 @@
         // Same machinery, different presentation: a short form you finish and
         // leave belongs in front of the page, not beside it. The drawer wears
         // a class rather than there being a second drawer to keep in step.
-        document.getElementById("rail-drawer").classList.toggle("is-modal", !!cfg.asModal);
-        document.getElementById("rail-scrim").classList.toggle("is-modal", !!cfg.asModal);
-        openPanelBeside(holder, cfg.title);
+        openPanelBeside(holder, cfg.title, cfg.asModal);
         // After openPanelBeside has taken the focus to its close button, so
         // the caret lands in the first field rather than being moved off it.
         const first = holder.querySelector("input, select, textarea");
@@ -14277,15 +14343,30 @@
       }
 
       function closeBeside(){
-        drawer.classList.remove("is-modal");
-        scrim.classList.remove("is-modal");
-        if (!besideNow) return;
+        /* is-modal used to come off HERE, one line before is-open, and that
+           one line is the whole bug: with the modal rules gone the drawer is
+           back under .rail-drawer, which is transform: translateX(100%), so
+           the exit the dialog played was the sidebar sliding out to the right.
+           The shape stays on until the close has finished playing. */
+        const wasModal = drawer.classList.contains("is-modal");
+        const dropShape = () => {
+          drawer.classList.remove("is-modal");
+          scrim.classList.remove("is-modal");
+        };
+        if (!besideNow){ dropShape(); return; }
         document.querySelectorAll("[data-place].is-chosen")
           .forEach(x => x.classList.remove("is-chosen"));
         putBack();
         drawer.classList.remove("is-open");
         scrim.classList.remove("is-open");
         document.body.classList.remove("beside-open");
+        clearTimeout(modalOffTimer);
+        // Long enough for --dur-base to finish, and guarded in case something
+        // has been opened again in the meantime.
+        if (wasModal) modalOffTimer = setTimeout(() => {
+          if (!document.body.classList.contains("beside-open")) dropShape();
+        }, 420);
+        else dropShape();
         if (lastFocus && document.contains(lastFocus)) lastFocus.focus({ preventScroll: true });
       }
       document.getElementById("rd-close").addEventListener("click", closeBeside);
@@ -14311,6 +14392,35 @@
       const back = document.createElement("button");
       back.type = "button";
       back.className = "nav-back";
+
+      // Assigned at mount; paintTools is called from buildContents, which can
+      // run before that, so it is a binding that exists from here down.
+      let tools = null;
+      function paintTools(){
+        if (!tools) return;
+        const tab = currentTab();
+        const panel = tab && document.getElementById("tab-" + tab);
+        // A destination that navigates itself has no bento to arrange, and one
+        // with a single section has nothing to arrange it against.
+        //
+        // Counted from the marks buildContents leaves on the blocks, NOT from
+        // sectionsOf: that one filters on offsetParent, so by the time this
+        // runs it can only see the sections currently on the page - which on a
+        // destination with one pinned card is one, and hid the control on every
+        // destination in the app.
+        const n = (!panel || SELF_NAVIGATING.has(tab)) ? 0
+          : panel.querySelectorAll("[data-rail-block]").length;
+        tools.hidden = n < 2;
+        if (tools.hidden){ tools.innerHTML = ""; return; }
+        tools.innerHTML =
+          '<span class="nav-tools-k" title="' + escapeHtml(NAMES[tab] || tab) + ' layout">Layout</span>' +
+          '<button type="button" class="nav-tool nav-tidy" data-tidy ' +
+            'title="Close up any gaps between the cards">Tidy</button>' +
+          '<button type="button" class="nav-tool nav-edit" data-edit ' +
+            'aria-pressed="' + (editing ? "true" : "false") + '" ' +
+            'title="Choose what stays on the page and what opens beside it">' +
+            (editing ? "Done" : "Edit") + '</button>';
+      }
       function paintBack(){
         const to = trail[trail.length - 1];
         back.hidden = !to;
@@ -14336,8 +14446,41 @@
       const scroller = document.createElement("div");
       scroller.className = "rail-scroll";
       [...nav.children].forEach(c => { if (c !== scroller) scroller.appendChild(c); });
+      /* ---- the layout controls, in one place ------------------------------
+         Edit was the last word of a heading inside a fold you had to open
+         first - and that fold is gone on exactly the destinations where you
+         most want it, the ones with everything already on the page. Here it is
+         a row under the destinations: always present, always in the same
+         place, and it names what it is about to rearrange. */
+      tools = document.createElement("div");
+      tools.className = "nav-tools";
+      tools.id = "nav-tools";
+      tools.addEventListener("click", ev => {
+        const tab = currentTab();
+        if (ev.target.closest("[data-edit]")){
+          editing = !editing;
+          // Published, because the rail's own width control is a different
+          // module and there should be one fact about this, not two.
+          document.body.classList.toggle("is-layout-editing", editing);
+          if (editing) listOpen[tab] = true;
+          signature = ""; buildContents(false); paintTools();
+          return;
+        }
+        if (ev.target.closest("[data-tidy]")){
+          const panel = document.getElementById("tab-" + tab);
+          const host = panel && (panel.querySelector(".bento") || panel);
+          if (!host) return;
+          const moved = tidyBento(host, tab);
+          if (typeof showToast === "function"){
+            showToast(moved ? "Tidied - " + moved + " row" + (moved === 1 ? "" : "s") + " closed up."
+                            : "No gaps to close.");
+          }
+        }
+      });
+      scroller.appendChild(tools);
       scroller.appendChild(back);
       nav.appendChild(scroller);
+      paintTools();
 
       let last = (buttons.find(b => b.classList.contains("active")) || buttons[0]).dataset.tab;
       function onChange(){
@@ -16289,6 +16432,417 @@
   body.list-as-rows .loan-card .loan-remove{ order: 0; }
   body.list-as-rows .loan-card .loan-edit{ margin-left: 0; }
   body.list-as-rows .loan-card .loan-who{ flex: 0 1 auto; }
+
+  /* ---------- removing looks like removing -------------------------------- */
+  /* It was --ink-soft in a --line box and only turned red under the pointer,
+     which is the moment the warning is least use: by then you have already
+     decided to press it. Every X in the app carries the colour at rest. */
+  .row-action-danger{
+    color: color-mix(in srgb, var(--negative) 78%, var(--ink));
+    border-color: color-mix(in srgb, var(--negative) 34%, var(--line));
+  }
+  @media (hover: hover) and (pointer: fine){
+    .row-action-danger:hover{
+      background: color-mix(in srgb, var(--negative) 18%, transparent);
+      border-color: var(--negative); color: var(--negative);
+    }
+  }
+  .row-action-danger:focus-visible{ outline: 2px solid var(--negative); outline-offset: 1px; }
+  /* The loan card X was given a neutral box in the last pass; it is the same
+     button as every other X and it says the same thing. */
+  .loan-remove{
+    background: color-mix(in srgb, var(--negative) 8%, transparent);
+    border-color: color-mix(in srgb, var(--negative) 34%, var(--line));
+    color: color-mix(in srgb, var(--negative) 78%, var(--ink));
+  }
+  @media (hover: hover){
+    .loan-remove:hover{
+      background: color-mix(in srgb, var(--negative) 20%, transparent);
+      border-color: var(--negative); color: var(--negative);
+    }
+  }
+
+  /* ---------- the notice you have seven seconds to read -------------------- */
+  /* The undo was the smallest text on screen - --fs-2xs for the message,
+     --fs-3xs for the button - on the one notice in the app with a deadline
+     attached to it. */
+  /* Measured after the first go: --fs-sm and --fs-2xs are 12px and 11px, one
+     step up from the 11 and 10 it had, which is not a change anyone would
+     notice. The scale tops out at 24, and this is a notice with a countdown on
+     it - the message reads at body size and the way out is a real button. */
+  #toast{
+    gap: var(--sp-6); padding: var(--sp-7) var(--sp-8);
+    border-radius: var(--r-xl, var(--r-lg));
+    max-width: min(92vw, 480px);
+    border-color: var(--line-strong); box-shadow: var(--elev-4);
+  }
+  .toast-icon{ width: 38px; height: 38px; border-radius: var(--r-md); }
+  .toast-icon svg{ width: 21px; height: 21px; }
+  .toast-msg{ font-size: var(--fs-md); line-height: 1.35; }
+  .toast-sub{ font-size: var(--fs-2xs); }
+  .toast-undo{
+    padding: var(--sp-5) var(--sp-7); font-size: var(--fs-sm);
+    border-color: var(--accent); color: var(--accent);
+  }
+  @media (hover: hover){
+    .toast-undo:hover{ background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  }
+  .toast-rail{ height: 3px; }
+
+  /* ---------- an icon that says its name ---------------------------------- */
+  /* In a row these four are icons in a fixed grid track, so the label cannot
+     come back by widening the button - that pushes the row apart and takes the
+     column out of agreement with every other row. It arrives above the button
+     instead, on hover, on focus, and on a press, which is what a finger does. */
+  .loan-payment-link[data-tip]{ position: relative; }
+  .loan-payment-link[data-tip]::after{
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 6px); left: 50%;
+    transform: translateX(-50%) translateY(3px);
+    padding: var(--sp-3) var(--sp-5); border-radius: var(--r-sm);
+    background: var(--ink); color: var(--surface);
+    font-size: var(--fs-3xs); font-weight: 700; letter-spacing: .01em;
+    white-space: nowrap; pointer-events: none; z-index: 6;
+    box-shadow: var(--elev-3);
+    opacity: 0; visibility: hidden;
+    transition: opacity var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out), visibility var(--dur-fast);
+  }
+  .loan-payment-link[data-tip]:focus-visible::after,
+  .loan-payment-link[data-tip]:active::after{
+    opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+  }
+  @media (hover: hover){
+    .loan-payment-link[data-tip]:hover::after{
+      opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+    }
+  }
+  /* With the label on the button there is nothing left for a tip to add. */
+  @container loanrow (min-width: 1420px){
+    body.list-as-rows .loan-payment-link[data-tip]:not([data-action="toggle-trail"])::after{
+      content: none;
+    }
+  }
+  body:not(.list-as-rows) .loan-payment-link[data-tip]:not([data-action="toggle-trail"])::after{
+    content: none;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .loan-payment-link[data-tip]::after{ transition: none; transform: translateX(-50%); }
+  }
+
+  /* ---------- the figure IS the header ------------------------------------ */
+  /* It was --fs-sm in a filter bar, two rows below the heading, next to a date
+     range select. It is the one number the screen exists to show. */
+  .loan-summary.is-headline{
+    display: flex; align-items: baseline; flex-wrap: wrap;
+    gap: var(--sp-3) var(--sp-5);
+    margin: var(--sp-4) 0 0; color: var(--ink-dim);
+  }
+  .loan-summary.is-headline .sum-k{
+    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim);
+  }
+  .loan-summary.is-headline .summary-figure{
+    font-size: var(--fs-4xl); font-weight: 800; line-height: 1; color: var(--ink);
+    letter-spacing: -.01em;
+  }
+  .loan-summary.is-headline .sum-n{ font-size: var(--fs-2xs); }
+  /* The flags are the urgency: a figure alone reads the same whether every loan
+     is months off or three are already late, and late is the part you can act
+     on today. */
+  .loan-summary.is-headline .sum-flag{
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+    padding: 2px var(--sp-5); border-radius: var(--r-pill);
+    font-size: var(--fs-3xs); font-weight: 700;
+    border: 1px solid transparent;
+  }
+  .sum-flag.is-late{
+    color: var(--negative); background: color-mix(in srgb, var(--negative) 16%, transparent);
+    border-color: color-mix(in srgb, var(--negative) 42%, transparent);
+  }
+  .sum-flag.is-soon{
+    color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent);
+    border-color: color-mix(in srgb, var(--warn) 42%, transparent);
+  }
+  .sum-flag.is-calm{ color: var(--ink-dim); background: var(--sunken); border-color: var(--line); }
+  /* When something is late the figure itself says so, because that is the part
+     read from across the room. */
+  .loan-summary.is-headline.is-late .summary-figure{ color: var(--negative); }
+  .loan-summary.is-headline.is-soon .summary-figure{ color: var(--warn); }
+
+  /* The filter bar lost its only non-control, so it closes up. */
+  .table-filter-bar:empty{ display: none; margin: 0; }
+
+  /* ---------- a settled card spends what it saved -------------------------- */
+  /* With the status select and the four actions gone, the card below the
+     account was empty. What is left IS the record, so it is read at the size a
+     record is read at. */
+  .loan-card.is-closed .loan-who{ font-size: var(--fs-lg); }
+  .loan-card.is-closed .loan-amt{ font-size: var(--fs-4xl); }
+  .loan-card.is-closed .loan-meta-row{ font-size: var(--fs-2xs); }
+  .loan-card.is-closed .loan-chip{ font-size: var(--fs-3xs); padding: 2px var(--sp-5); }
+  .loan-card.is-closed .status-select{ font-size: var(--fs-2xs); height: 34px; }
+  /* And the stamp crosses it, at the size of a thing you see rather than read. */
+  .loan-card.is-closed[data-repaid]::after{
+    font-size: var(--fs-2xl); letter-spacing: .12em;
+    padding: var(--sp-4) var(--sp-7); border-width: 3px;
+  }
+
+  /* ---------- the note has a slot, held open ------------------------------- */
+  /* Reserved whether or not there is a note in it: these are a grid of cards,
+     and one that is 40px taller than its neighbour because someone typed a
+     sentence into it is the uneven-row problem one level up. It also shows
+     where a note goes before there is one. */
+  .loan-card.is-closed .loan-note-read{
+    min-height: 42px; display: flex; align-items: center;
+    margin-top: var(--sp-5);
+  }
+  .loan-note-read.is-empty{
+    color: var(--ink-faint); font-style: italic;
+    border-left-color: var(--line);
+  }
+  /* In edit mode the editor takes the slot, so nothing moves when you open it. */
+  .loan-card.is-closed.is-editing .loan-note-read{ display: none; }
+
+  /* ---------- the row: the stamp crosses the middle ------------------------ */
+  /* It sat in ONE track, at --fs-2xs, in a line laid out for controls a settled
+     row does not have. It takes both middle tracks and the size that goes with
+     them. */
+  body.list-as-rows .loan-card.is-closed::after,
+  body.list-as-rows .loan-card.is-closed[data-repaid]::after{
+    grid-area: 1 / 3 / 2 / 5;
+    justify-self: center; align-self: center;
+    font-size: var(--fs-lg); letter-spacing: .14em;
+    padding: var(--sp-3) var(--sp-7); border-width: 3px;
+    transform: rotate(-4deg); transform-origin: center;
+  }
+  /* Which means the date beside it gives that space up, and goes back to
+     leading the row from its own track. */
+  body.list-as-rows .loan-card.is-closed .loan-meta-row{ grid-area: 2 / 1 / 3 / 2; }
+  body.list-as-rows .loan-card.is-closed .loan-who{ font-size: var(--fs-md); }
+  body.list-as-rows .loan-card.is-closed .loan-amt{ font-size: var(--fs-2xl); }
+  body.list-as-rows .loan-card.is-closed .loan-card-controls{ grid-area: 2 / 2 / 3 / 4; }
+  /* The third line is the note, and it is there on every settled row. */
+  body.list-as-rows .loan-card.is-closed .loan-note-read{
+    min-height: 0; margin: 0;
+  }
+
+  /* On ONE line there is no second row to move the date to, and no third for a
+     note, so the settled row keeps the shape the rest of the list has and the
+     stamp stays in the empty actions track. */
+  @container loanrow (min-width: 1420px){
+    body.list-as-rows .loan-card.is-closed::after,
+    body.list-as-rows .loan-card.is-closed[data-repaid]::after{
+      grid-area: 1 / 5 / 2 / 6;
+      justify-self: start;
+      font-size: var(--fs-2xs); letter-spacing: .08em;
+      padding: 1px var(--sp-5); border-width: 2px;
+    }
+    body.list-as-rows .loan-card.is-closed .loan-meta-row{ grid-area: 1 / 3 / 2 / 4; }
+    body.list-as-rows .loan-card.is-closed .loan-card-controls{ grid-area: 1 / 4 / 2 / 5; }
+    body.list-as-rows .loan-card.is-closed .loan-who{ font-size: inherit; }
+    body.list-as-rows .loan-card.is-closed .loan-amt{ font-size: var(--fs-2xl); }
+  }
+
+  /* The header grew a headline figure, and the section head is a wrapping flex
+     row: the title block kept its content width, so Add and Collapse were
+     pushed onto a line of their own. The title block takes the slack instead,
+     and the two buttons stay where they were. */
+  .section-head-row:has(.loan-summary.is-headline){ align-items: flex-start; }
+  .section-head-row:has(.loan-summary.is-headline) > div:first-child{
+    flex: 1 1 340px; min-width: 0;
+  }
+  .section-head-row:has(.loan-summary.is-headline) > .btn{ flex: 0 0 auto; }
+  /* Heading on one line, figure under it, rather than the figure trying to sit
+     beside a heading that is already using the width. */
+  .panel-head.is-toolbar:has(> .loan-summary.is-headline){
+    display: block;
+  }
+
+  /* ---------- a settled entry is a record, not a form --------------------- */
+  /* The stamp crosses the middle of the card, and the middle of the card was
+     the account select - so the stamp buried it. A settled entry has nothing
+     left to change until you pick up the pencil, so the account stops being a
+     control and joins the date as what it is: part of the record. The band the
+     stamp needs is then genuinely empty. */
+  .loan-card.is-closed:not(.is-editing) .loan-card-controls{ display: none; }
+  .loan-chip.is-bank{
+    border-color: color-mix(in srgb, var(--ink-dim) 30%, var(--line));
+    color: var(--ink-soft); font-weight: 600;
+  }
+  /* In a row the same thing happens: the middle two tracks are the stamp, so
+     the controls have nothing to hold and the account rides the meta line. */
+  body.list-as-rows .loan-card.is-closed:not(.is-editing) .loan-card-controls{ display: none; }
+
+  /* ---------- the stamp is a watermark, not a sticker ---------------------- */
+  /* Measured: the settled card is 194px tall and its four bands leave gaps of
+     8px, 8px and 8px. There is no empty middle for a solid label to sit in, so
+     a solid label always buries something - it was on the account, and once the
+     account moved out it was on the figure.
+
+     A stamp with no fill does not bury anything. It crosses the middle at the
+     size the middle allows, the record reads straight through it, and the
+     details behind go back to full ink because there is nothing solid on them
+     any more. */
+  .loan-card.is-closed::after{
+    background: transparent;
+    border-color: color-mix(in srgb, var(--positive) 46%, transparent);
+    color: color-mix(in srgb, var(--positive) 92%, transparent);
+    opacity: .52;
+  }
+  .loan-card.is-closed > *:not(.loan-card-head){ opacity: 1; }
+  /* Wider rather than taller: at --fs-4xl the longest of these - "Repaid Aug
+     19" - runs past a 292px card and gets clipped by the card own overflow.
+     The width is what reads as encompassing. */
+  .loan-card.is-closed[data-repaid]::after{
+    font-size: var(--fs-2xl); letter-spacing: .16em;
+    padding: var(--sp-5) var(--sp-6); border-width: 3px;
+    /* Measured: padding alone took it to 154px of a 270px card. A share of the
+       card is what makes it read as crossing the card, and it is the same share
+       whatever the date inside it happens to be - so every settled card in the
+       grid carries the same mark rather than five different widths. */
+    width: 82%; box-sizing: border-box; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: clip;
+  }
+  @media (hover: hover){
+    .loan-card.is-closed:hover::after{ opacity: .18; }
+  }
+
+  /* ---------- the stamp stops fighting the card --------------------------- */
+  /* Three positions tried, all measured against a settled card that is 194px
+     tall with bands at 17-45, 53-89, 97-117 and 125-177: centred it lands on
+     the figure, lower it lands on the note, and a watermark at 52% does not
+     bury them so much as blur both. The card has no empty middle to overlay,
+     because the last pass gave its empty middle back to the details.
+
+     So the stamp stops overlaying and takes a band of its own, between the
+     record and the note - which is the middle of the card, at the width of the
+     card, on its own line, crossing nothing. It keeps the tilt, the rule and
+     the colour, so it still reads as pressed onto the card rather than as one
+     more chip in a column of them. */
+  .loan-card.is-closed::after,
+  .loan-card.is-closed[data-repaid]::after{
+    position: static; order: 4; align-self: center;
+    margin: var(--sp-5) 0 var(--sp-2, 2px);
+    transform: rotate(-2.5deg);
+    opacity: 1;
+    background: color-mix(in srgb, var(--positive) 12%, transparent);
+    border-color: color-mix(in srgb, var(--positive) 55%, transparent);
+    color: var(--positive);
+  }
+  .loan-card.is-closed .loan-card-head{ order: 1; }
+  .loan-card.is-closed .loan-amt-row{ order: 2; }
+  .loan-card.is-closed .loan-meta-row{ order: 3; }
+  .loan-card.is-closed > [data-payment-for]{ order: 5; }
+  /* Nothing is underneath it any more, so there is nothing to fade it for. */
+  @media (hover: hover){
+    .loan-card.is-closed:hover::after{ opacity: 1; }
+  }
+  .loan-card.is-closed:focus-within::after{ opacity: 1; }
+  .loan-card.is-unlocked::after{ opacity: 1; }
+
+  /* ---------- the layout controls, where they can be found ----------------- */
+  .nav-tools{
+    display: flex; align-items: center; gap: var(--sp-4);
+    margin: var(--sp-5) var(--sp-5) 0;
+    padding: var(--sp-4) var(--sp-5);
+    border: 1px solid var(--line); border-radius: var(--r-md);
+    background: var(--sunken);
+  }
+  .nav-tools[hidden]{ display: none; }
+  .nav-tools-k{
+    flex: 1 1 auto; min-width: 0;
+    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .nav-tool{
+    flex: 0 0 auto; padding: 2px var(--sp-5);
+    background: var(--raised); border: 1px solid var(--line);
+    border-radius: var(--r-sm); color: var(--ink-soft);
+    font: inherit; font-size: var(--fs-3xs); font-weight: 700; cursor: pointer;
+  }
+  @media (hover: hover){
+    .nav-tool:hover{ color: var(--ink); border-color: var(--line-strong); }
+  }
+  .nav-tool:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+  /* While it is on, the control that turns it off is the loudest thing here. */
+  .nav-tool[aria-pressed="true"]{
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    border-color: var(--accent); color: var(--accent);
+  }
+  body.is-layout-editing .nav-tools{
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  }
+  @media (max-width: 720px){ .nav-tools{ display: none; } }
+
+  /* ---------- the left column has a second question ------------------------ */
+  .chart-extra{ margin-top: var(--sp-7); }
+  .chart-extra-k{
+    margin: 0 0 var(--sp-5); font-size: var(--fs-2xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--ink-dim);
+  }
+  .big-list{ list-style: none; margin: 0; padding: 0; counter-reset: big; }
+  .big-row{
+    position: relative; display: grid; align-items: center;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 2px var(--sp-5);
+    padding: var(--sp-5) var(--sp-5) var(--sp-5) var(--sp-6);
+    border-bottom: 1px solid var(--line);
+  }
+  .big-row:last-child{ border-bottom: 0; }
+  /* Drawn against the largest, not the total: six rules of one length is a
+     different month from one long rule and five short ones, and that shape is
+     the thing worth seeing at a glance. */
+  .big-rule{
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: var(--sunken); border-radius: var(--r-pill); overflow: hidden;
+  }
+  .big-rule i{ display: block; height: 100%; border-radius: inherit; opacity: .8; }
+  .big-what{
+    grid-column: 1; font-size: var(--fs-2xs); font-weight: 650; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .big-cat{
+    grid-column: 1; grid-row: 2; font-size: var(--fs-3xs); color: var(--ink-dim);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .big-when{
+    grid-column: 2; grid-row: 1 / span 2; align-self: center;
+    font-size: var(--fs-3xs); color: var(--ink-dim); white-space: nowrap;
+  }
+  .big-amt{
+    grid-column: 3; grid-row: 1 / span 2; align-self: center;
+    font-size: var(--fs-md); font-weight: 700; color: var(--ink);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  /* Below the breakpoint the two charts stack, so the left column is no longer
+     short and this is simply the next thing down the page. */
+
+  /* ---------- the urgency flags in the day edition ------------------------- */
+  /* Measured by the contrast pass: 3.71 for "9 overdue" and 4.10 for "4 due
+     this week", both against 4.5. The tint that makes the flag a flag also
+     lightens what the text sits on, and in the day edition that is the
+     difference between passing and not. The ink goes darker there; the night
+     edition already passes and is left alone. */
+  :root[data-theme="light"] .sum-flag.is-late{
+    color: color-mix(in srgb, var(--negative) 58%, #14161c);
+    background: color-mix(in srgb, var(--negative) 12%, transparent);
+  }
+  :root[data-theme="light"] .sum-flag.is-soon{
+    color: color-mix(in srgb, var(--warn) 58%, #14161c);
+    background: color-mix(in srgb, var(--warn) 12%, transparent);
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]) .sum-flag.is-late{
+      color: color-mix(in srgb, var(--negative) 58%, #14161c);
+      background: color-mix(in srgb, var(--negative) 12%, transparent);
+    }
+    :root:not([data-theme="dark"]) .sum-flag.is-soon{
+      color: color-mix(in srgb, var(--warn) 58%, #14161c);
+      background: color-mix(in srgb, var(--warn) 12%, transparent);
+    }
+  }
 </style>
 </body>
 </html>
