@@ -1443,43 +1443,43 @@
   ],
   "spendly_loans_given_v1": [
     {
-      "id": "lg_1757000012028_1ee5n",
-      "person": "Kuya Ramon",
-      "amount": 8000,
-      "dateGiven": "2026-07-13",
-      "deadline": "2026-10-01",
-      "status": "outstanding",
-      "bank": "Maya Bank"
-    },
-    {
-      "id": "lg_1757000012125_csfio",
+      "id": "lg_1757000100000_g0",
       "person": "Aira",
       "amount": 2500,
       "dateGiven": "2026-08-08",
       "deadline": "2026-09-19",
       "status": "outstanding",
-      "bank": "GCash"
+      "bank": "Maya Bank"
     },
     {
-      "id": "lg_1757000012222_uix24",
+      "id": "lg_1757000100137_g1",
+      "person": "Kuya Ramon",
+      "amount": 8000,
+      "dateGiven": "2026-07-13",
+      "deadline": "2026-10-01",
+      "status": "outstanding",
+      "bank": "GCash GSave"
+    },
+    {
+      "id": "lg_1757000100274_g2",
       "person": "Jen",
       "amount": 15000,
       "dateGiven": "2026-06-11",
       "deadline": "2026-09-09",
       "status": "outstanding",
-      "bank": "BPI"
+      "bank": "CIMB Bank PH"
     },
     {
-      "id": "lg_1757000012319_cy0ml",
+      "id": "lg_1757000100411_g3",
       "person": "Marco",
       "amount": 4200,
       "dateGiven": "2026-04-18",
       "deadline": "2026-07-17",
       "status": "repaid",
-      "bank": "Maya Bank"
+      "bank": "Cash / Physical wallet"
     },
     {
-      "id": "lg_1757000012370_sad",
+      "id": "lg_1757000100548_g4",
       "person": "Ate Marivic",
       "amount": 4500,
       "dateGiven": "2026-05-02",
@@ -1488,7 +1488,7 @@
       "bank": "BPI"
     },
     {
-      "id": "lg_1757000012407_sbd",
+      "id": "lg_1757000100685_g5",
       "person": "Jomar",
       "amount": 1200,
       "dateGiven": "2026-05-19",
@@ -1497,52 +1497,52 @@
       "bank": "GCash"
     },
     {
-      "id": "lg_1757000012444_scd",
+      "id": "lg_1757000100822_g6",
       "person": "Ninong Ric",
       "amount": 20000,
       "dateGiven": "2026-04-11",
       "deadline": "2026-11-15",
       "status": "outstanding",
-      "bank": "Maya Bank"
+      "bank": "GoTyme"
     },
     {
-      "id": "lg_1757000012481_sdd",
+      "id": "lg_1757000100959_g7",
       "person": "Cherry",
       "amount": 800,
       "dateGiven": "2026-06-05",
       "deadline": "2026-09-20",
       "status": "repaid",
-      "bank": "BDO"
+      "bank": "Maya Bank"
     },
     {
-      "id": "lg_1757000012518_sed",
+      "id": "lg_1757000101096_g8",
       "person": "Kuya Boy",
       "amount": 6500,
       "dateGiven": "2026-06-22",
       "deadline": "2026-10-12",
       "status": "outstanding",
-      "bank": "Metrobank"
+      "bank": "GCash GSave"
     },
     {
-      "id": "lg_1757000012555_sfd",
+      "id": "lg_1757000101233_g9",
       "person": "Dianne",
       "amount": 3000,
       "dateGiven": "2026-07-01",
       "deadline": "2026-09-18",
       "status": "outstanding",
-      "bank": "Cash / Physical wallet"
+      "bank": "CIMB Bank PH"
     },
     {
-      "id": "lg_1757000012592_sgd",
+      "id": "lg_1757000101370_ga",
       "person": "Mang Tonyo",
       "amount": 1500,
       "dateGiven": "2026-07-14",
       "deadline": "2026-08-28",
       "status": "repaid",
-      "bank": "GoTyme"
+      "bank": "Cash / Physical wallet"
     },
     {
-      "id": "lg_1757000012629_shd",
+      "id": "lg_1757000101507_gb",
       "person": "Rhea",
       "amount": 9200,
       "dateGiven": "2026-07-28",
@@ -1551,7 +1551,7 @@
       "bank": "BPI"
     },
     {
-      "id": "lg_1757000012666_sid",
+      "id": "lg_1757000101644_gc",
       "person": "Paolo",
       "amount": 2750,
       "dateGiven": "2026-08-03",
@@ -1560,74 +1560,398 @@
       "bank": "GCash"
     },
     {
-      "id": "lg_1757000012703_sjd",
+      "id": "lg_1757000101781_gd",
       "person": "Tita Baby",
       "amount": 11000,
       "dateGiven": "2026-08-16",
       "deadline": "2026-11-20",
       "status": "outstanding",
+      "bank": "GoTyme"
+    },
+    {
+      "id": "lg_1757000101918_ge",
+      "person": "Lorna",
+      "amount": 5400,
+      "dateGiven": "2026-03-09",
+      "deadline": "2026-08-12",
+      "status": "outstanding",
       "bank": "Maya Bank"
-    }
-  ],
-  "spendly_loans_taken_v1": [
-    {
-      "id": "lt_1757000012416_ye83c",
-      "person": "Tita Let",
-      "amount": 12000,
-      "dateGiven": "2026-06-27",
-      "deadline": "2026-10-10",
-      "status": "outstanding",
-      "bank": "BPI"
     },
     {
-      "id": "lt_1757000012513_1woml",
-      "person": "Office SSS",
-      "amount": 6000,
-      "dateGiven": "2026-02-27",
-      "deadline": "2026-08-01",
+      "id": "lg_1757000102055_gf",
+      "person": "Bukas Pa",
+      "amount": 350,
+      "dateGiven": "2026-03-27",
+      "deadline": "2026-09-05",
+      "status": "outstanding",
+      "bank": "GCash GSave"
+    },
+    {
+      "id": "lg_1757000102192_gg",
+      "person": "Kuya Nestor",
+      "amount": 7800,
+      "dateGiven": "2026-04-02",
+      "deadline": "2026-06-30",
       "status": "repaid",
-      "bank": "BPI"
+      "bank": "CIMB Bank PH"
     },
     {
-      "id": "lt_1757000012740_skd",
-      "person": "Kuya Dante",
-      "amount": 5000,
-      "dateGiven": "2026-05-08",
-      "deadline": "2026-09-28",
-      "status": "outstanding",
-      "bank": "BDO"
-    },
-    {
-      "id": "lt_1757000012777_sld",
-      "person": "Ate Grace",
-      "amount": 15000,
-      "dateGiven": "2026-06-14",
-      "deadline": "2026-12-15",
-      "status": "outstanding",
-      "bank": "Metrobank"
-    },
-    {
-      "id": "lt_1757000012814_smd",
-      "person": "Office SSS loan",
-      "amount": 22000,
-      "dateGiven": "2026-03-20",
-      "deadline": "2026-10-05",
+      "id": "lg_1757000102329_gh",
+      "person": "Michelle",
+      "amount": 2200,
+      "dateGiven": "2026-04-25",
+      "deadline": "2026-09-17",
       "status": "outstanding",
       "bank": "Cash / Physical wallet"
     },
     {
-      "id": "lt_1757000012851_snd",
+      "id": "lg_1757000102466_gi",
+      "person": "Arnel",
+      "amount": 13500,
+      "dateGiven": "2026-05-08",
+      "deadline": "2026-10-08",
+      "status": "outstanding",
+      "bank": "BPI"
+    },
+    {
+      "id": "lg_1757000102603_gj",
+      "person": "Tita Vi",
+      "amount": 950,
+      "dateGiven": "2026-05-21",
+      "deadline": "2026-07-25",
+      "status": "repaid",
+      "bank": "GCash"
+    },
+    {
+      "id": "lg_1757000102740_gk",
+      "person": "Jayson",
+      "amount": 4800,
+      "dateGiven": "2026-06-02",
+      "deadline": "2026-09-02",
+      "status": "outstanding",
+      "bank": "GoTyme"
+    },
+    {
+      "id": "lg_1757000102877_gl",
+      "person": "Karen",
+      "amount": 16500,
+      "dateGiven": "2026-06-18",
+      "deadline": "2026-11-30",
+      "status": "outstanding",
+      "bank": "Maya Bank"
+    },
+    {
+      "id": "lg_1757000103014_gm",
+      "person": "Ate Bles",
+      "amount": 1750,
+      "dateGiven": "2026-06-29",
+      "deadline": "2026-09-29",
+      "status": "outstanding",
+      "bank": "GCash GSave"
+    },
+    {
+      "id": "lg_1757000103151_gn",
+      "person": "Rommel",
+      "amount": 6200,
+      "dateGiven": "2026-07-05",
+      "deadline": "2026-08-20",
+      "status": "repaid",
+      "bank": "CIMB Bank PH"
+    },
+    {
+      "id": "lg_1757000103288_go",
+      "person": "Sheila",
+      "amount": 3400,
+      "dateGiven": "2026-07-19",
+      "deadline": "2026-10-19",
+      "status": "outstanding",
+      "bank": "Cash / Physical wallet"
+    },
+    {
+      "id": "lg_1757000103425_gp",
+      "person": "Kuya Toto",
+      "amount": 10500,
+      "dateGiven": "2026-07-24",
+      "deadline": "2027-01-15",
+      "status": "outstanding",
+      "bank": "BPI"
+    },
+    {
+      "id": "lg_1757000103562_gq",
+      "person": "Maricel",
+      "amount": 2050,
+      "dateGiven": "2026-08-01",
+      "deadline": "2026-09-16",
+      "status": "outstanding",
+      "bank": "GCash"
+    },
+    {
+      "id": "lg_1757000103699_gr",
+      "person": "Edgar",
+      "amount": 7300,
+      "dateGiven": "2026-08-11",
+      "deadline": "2026-10-05",
+      "status": "outstanding",
+      "bank": "GoTyme"
+    },
+    {
+      "id": "lg_1757000103836_gs",
+      "person": "Anna Liza",
+      "amount": 900,
+      "dateGiven": "2026-08-20",
+      "deadline": "2026-11-04",
+      "status": "outstanding",
+      "bank": "Maya Bank"
+    },
+    {
+      "id": "lg_1757000103973_gt",
+      "person": "Boyet",
+      "amount": 5600,
+      "dateGiven": "2026-08-27",
+      "deadline": "2026-09-27",
+      "status": "outstanding",
+      "bank": "GCash GSave"
+    },
+    {
+      "id": "lg_1757000104110_gu",
+      "person": "Grace",
+      "amount": 12800,
+      "dateGiven": "2026-09-01",
+      "deadline": "2026-12-20",
+      "status": "outstanding",
+      "bank": "CIMB Bank PH"
+    },
+    {
+      "id": "lg_1757000104247_gv",
+      "person": "Nico",
+      "amount": 1350,
+      "dateGiven": "2026-09-04",
+      "deadline": "2026-10-15",
+      "status": "outstanding",
+      "bank": "Cash / Physical wallet"
+    },
+    {
+      "id": "lg_1757000104384_gw",
+      "person": "Tita Perla",
+      "amount": 8900,
+      "dateGiven": "2026-02-14",
+      "deadline": "2026-05-14",
+      "status": "repaid",
+      "bank": "BPI"
+    },
+    {
+      "id": "lg_1757000104521_gx",
+      "person": "Ruel",
+      "amount": 4100,
+      "dateGiven": "2026-02-28",
+      "deadline": "2026-08-31",
+      "status": "outstanding",
+      "bank": "GCash"
+    },
+    {
+      "id": "lg_1757000104658_gy",
+      "person": "Divine",
+      "amount": 2900,
+      "dateGiven": "2026-03-15",
+      "deadline": "2026-09-12",
+      "status": "outstanding",
+      "bank": "GoTyme"
+    },
+    {
+      "id": "lg_1757000104795_gz",
+      "person": "Kuya Elmer",
+      "amount": 6750,
+      "dateGiven": "2026-09-08",
+      "deadline": "2026-11-08",
+      "status": "outstanding",
+      "bank": "Maya Bank"
+    },
+    {
+      "id": "lg_1757000400000_x0",
+      "person": "Tita Nene",
+      "amount": 3250,
+      "dateGiven": "2026-05-12",
+      "deadline": "2026-10-22",
+      "status": "outstanding",
+      "bank": "GCash GSave"
+    },
+    {
+      "id": "lg_1757000400151_x1",
+      "person": "Kuya Jun",
+      "amount": 7400,
+      "dateGiven": "2026-06-08",
+      "deadline": "2026-11-12",
+      "status": "outstanding",
+      "bank": "CIMB Bank PH"
+    },
+    {
+      "id": "lg_1757000400302_x2",
+      "person": "Melvin",
+      "amount": 1600,
+      "dateGiven": "2026-07-17",
+      "deadline": "2026-09-30",
+      "status": "outstanding",
+      "bank": "Cash / Physical wallet"
+    },
+    {
+      "id": "lg_1757000400453_x3",
+      "person": "Ate Joy",
+      "amount": 5900,
+      "dateGiven": "2026-08-05",
+      "deadline": "2026-12-05",
+      "status": "outstanding",
+      "bank": "BPI"
+    },
+    {
+      "id": "lg_1757000400604_x4",
+      "person": "Ronnie",
+      "amount": 2150,
+      "dateGiven": "2026-08-22",
+      "deadline": "2026-10-02",
+      "status": "outstanding",
+      "bank": "GCash"
+    },
+    {
+      "id": "lg_1757000400755_x5",
+      "person": "Tita Cora",
+      "amount": 14200,
+      "dateGiven": "2026-04-27",
+      "deadline": "2026-11-27",
+      "status": "outstanding",
+      "bank": "GoTyme"
+    },
+    {
+      "id": "lg_1757000400906_x6",
+      "person": "Jessa",
+      "amount": 980,
+      "dateGiven": "2026-09-02",
+      "deadline": "2026-09-24",
+      "status": "outstanding",
+      "bank": "Maya Bank"
+    },
+    {
+      "id": "lg_1757000401057_x7",
+      "person": "Kuya Ben",
+      "amount": 6100,
+      "dateGiven": "2026-06-30",
+      "deadline": "2026-10-28",
+      "status": "outstanding",
+      "bank": "GCash GSave"
+    }
+  ],
+  "spendly_loans_taken_v1": [
+    {
+      "id": "lt_1757000200000_t0",
+      "person": "Tita Let",
+      "amount": 12000,
+      "deadline": "2026-10-10",
+      "status": "outstanding",
+      "bank": "Maya Bank",
+      "dateTaken": "2026-06-27"
+    },
+    {
+      "id": "lt_1757000200149_t1",
+      "person": "Office SSS",
+      "amount": 6000,
+      "deadline": "2026-08-01",
+      "status": "repaid",
+      "bank": "GCash GSave",
+      "dateTaken": "2026-02-27"
+    },
+    {
+      "id": "lt_1757000200298_t2",
+      "person": "Kuya Dante",
+      "amount": 5000,
+      "deadline": "2026-09-28",
+      "status": "outstanding",
+      "bank": "CIMB Bank PH",
+      "dateTaken": "2026-05-08"
+    },
+    {
+      "id": "lt_1757000200447_t3",
+      "person": "Ate Grace",
+      "amount": 15000,
+      "deadline": "2026-12-15",
+      "status": "outstanding",
+      "bank": "Cash / Physical wallet",
+      "dateTaken": "2026-06-14"
+    },
+    {
+      "id": "lt_1757000200596_t4",
+      "person": "Office SSS loan",
+      "amount": 22000,
+      "deadline": "2026-10-05",
+      "status": "outstanding",
+      "bank": "BPI",
+      "dateTaken": "2026-03-20"
+    },
+    {
+      "id": "lt_1757000200745_t5",
       "person": "Nanay",
       "amount": 3500,
-      "dateGiven": "2026-07-09",
       "deadline": "2026-09-22",
       "status": "repaid",
-      "bank": "GoTyme"
+      "bank": "GCash",
+      "dateTaken": "2026-07-09"
+    },
+    {
+      "id": "lt_1757000200894_t6",
+      "person": "Pag-IBIG MPL",
+      "amount": 18000,
+      "deadline": "2026-11-06",
+      "status": "outstanding",
+      "bank": "GoTyme",
+      "dateTaken": "2026-04-06"
+    },
+    {
+      "id": "lt_1757000201043_t7",
+      "person": "Kuya Alvin",
+      "amount": 2400,
+      "deadline": "2026-09-14",
+      "status": "outstanding",
+      "bank": "Maya Bank",
+      "dateTaken": "2026-07-30"
+    },
+    {
+      "id": "lt_1757000201192_t8",
+      "person": "Tito Berting",
+      "amount": 9500,
+      "deadline": "2026-10-25",
+      "status": "outstanding",
+      "bank": "GCash GSave",
+      "dateTaken": "2026-05-25"
+    },
+    {
+      "id": "lt_1757000201341_t9",
+      "person": "Credit union",
+      "amount": 27000,
+      "deadline": "2027-01-30",
+      "status": "outstanding",
+      "bank": "CIMB Bank PH",
+      "dateTaken": "2026-01-30"
+    },
+    {
+      "id": "lt_1757000201490_ta",
+      "person": "Ate Cel",
+      "amount": 1800,
+      "deadline": "2026-09-26",
+      "status": "outstanding",
+      "bank": "Cash / Physical wallet",
+      "dateTaken": "2026-08-12"
+    },
+    {
+      "id": "lt_1757000201639_tb",
+      "person": "Lola Ime",
+      "amount": 7000,
+      "deadline": "2026-07-03",
+      "status": "repaid",
+      "bank": "BPI",
+      "dateTaken": "2026-03-03"
     }
   ],
   "spendly_investments_v1": [
     {
-      "id": "inv_1757000012610_sazrq",
+      "id": "inv_1757000300000_v0",
       "name": "BDO Equity Fund",
       "category": "Mutual Fund / UITF",
       "amount": 25000,
@@ -1635,10 +1959,10 @@
       "actualSoldPrice": null,
       "feePercent": 2,
       "dateAdded": "2026-04-08",
-      "bank": "BPI"
+      "bank": "Maya Bank"
     },
     {
-      "id": "inv_1757000012707_cbij3",
+      "id": "inv_1757000300163_v1",
       "name": "JFC shares",
       "category": "Stocks",
       "amount": 18000,
@@ -1646,10 +1970,10 @@
       "actualSoldPrice": null,
       "feePercent": 1.5,
       "dateAdded": "2026-06-12",
-      "bank": "BPI"
+      "bank": "GCash GSave"
     },
     {
-      "id": "inv_1757000012804_dbv5u",
+      "id": "inv_1757000300326_v2",
       "name": "ETH (small bag)",
       "category": "Crypto",
       "amount": 9000,
@@ -1657,10 +1981,10 @@
       "actualSoldPrice": 12400,
       "feePercent": 3,
       "dateAdded": "2026-01-18",
-      "bank": "Maya Bank"
+      "bank": "CIMB Bank PH"
     },
     {
-      "id": "inv_1757000013000_v0k",
+      "id": "inv_1757000300489_v3",
       "name": "Pag-IBIG MP2",
       "category": "Government / Bonds",
       "amount": 50000,
@@ -1668,10 +1992,10 @@
       "actualSoldPrice": null,
       "feePercent": 1,
       "dateAdded": "2026-02-14",
-      "bank": "Maya Bank"
+      "bank": "Cash / Physical wallet"
     },
     {
-      "id": "inv_1757000013041_v1k",
+      "id": "inv_1757000300652_v4",
       "name": "SM Prime shares",
       "category": "Stocks",
       "amount": 18000,
@@ -1679,10 +2003,10 @@
       "actualSoldPrice": null,
       "feePercent": 1.5,
       "dateAdded": "2026-03-28",
-      "bank": "BDO"
+      "bank": "BPI"
     },
     {
-      "id": "inv_1757000013082_v2k",
+      "id": "inv_1757000300815_v5",
       "name": "BPI Money Market",
       "category": "Mutual Fund / UITF",
       "amount": 30000,
@@ -1690,10 +2014,10 @@
       "actualSoldPrice": null,
       "feePercent": 1,
       "dateAdded": "2026-04-22",
-      "bank": "Metrobank"
+      "bank": "GCash"
     },
     {
-      "id": "inv_1757000013123_v3k",
+      "id": "inv_1757000300978_v6",
       "name": "Jollibee shares",
       "category": "Stocks",
       "amount": 12500,
@@ -1701,10 +2025,10 @@
       "actualSoldPrice": null,
       "feePercent": 1.5,
       "dateAdded": "2026-05-30",
-      "bank": "Cash / Physical wallet"
+      "bank": "GoTyme"
     },
     {
-      "id": "inv_1757000013164_v4k",
+      "id": "inv_1757000301141_v7",
       "name": "Treasury bill 182d",
       "category": "Government / Bonds",
       "amount": 40000,
@@ -1712,6 +2036,72 @@
       "actualSoldPrice": null,
       "feePercent": 0.5,
       "dateAdded": "2026-06-18",
+      "bank": "Maya Bank"
+    },
+    {
+      "id": "inv_1757000301304_v8",
+      "name": "BTC (small bag)",
+      "category": "Crypto",
+      "amount": 15000,
+      "projectedPrice": 26000,
+      "actualSoldPrice": null,
+      "feePercent": 3,
+      "dateAdded": "2026-02-02",
+      "bank": "GCash GSave"
+    },
+    {
+      "id": "inv_1757000301467_v9",
+      "name": "ALI shares",
+      "category": "Stocks",
+      "amount": 8500,
+      "projectedPrice": 9900,
+      "actualSoldPrice": 9100,
+      "feePercent": 1.5,
+      "dateAdded": "2026-03-11",
+      "bank": "CIMB Bank PH"
+    },
+    {
+      "id": "inv_1757000301630_va",
+      "name": "SSS PESO Fund",
+      "category": "Government / Bonds",
+      "amount": 22000,
+      "projectedPrice": 24600,
+      "actualSoldPrice": null,
+      "feePercent": 0.5,
+      "dateAdded": "2026-05-05",
+      "bank": "Cash / Physical wallet"
+    },
+    {
+      "id": "inv_1757000301793_vb",
+      "name": "First Metro ETF",
+      "category": "Mutual Fund / UITF",
+      "amount": 16000,
+      "projectedPrice": 18800,
+      "actualSoldPrice": null,
+      "feePercent": 1.75,
+      "dateAdded": "2026-07-02",
+      "bank": "BPI"
+    },
+    {
+      "id": "inv_1757000301956_vc",
+      "name": "MER shares",
+      "category": "Stocks",
+      "amount": 27500,
+      "projectedPrice": 30100,
+      "actualSoldPrice": null,
+      "feePercent": 1.5,
+      "dateAdded": "2026-01-26",
+      "bank": "GCash"
+    },
+    {
+      "id": "inv_1757000302119_vd",
+      "name": "Time deposit 1y",
+      "category": "Government / Bonds",
+      "amount": 60000,
+      "projectedPrice": 63000,
+      "actualSoldPrice": null,
+      "feePercent": 0,
+      "dateAdded": "2026-04-30",
       "bank": "GoTyme"
     }
   ],
