@@ -12144,7 +12144,7 @@
          the markup. A tab missing here keeps the old rule: its first section. */
       const TAB_DEFAULTS = {
         dashboard: { on: ["money-overview-card"],    first: "money-overview-card" },
-        charts:    { on: ["cp-card"],                first: "cp-card" },
+        charts:    { on: ["blk-spending-over-time"], first: "blk-spending-over-time" },
         history:   { on: ["history-expense-card"],   first: "history-expense-card" },
         savings:   { on: ["blk-where-is-your-money-", "blk-your-accounts"] }
       };
@@ -14040,8 +14040,16 @@
   .nav-content.is-sub .nav-content-t{ font-size: var(--fs-2xs); }
   h3{ scroll-margin-top: calc(var(--bar-h) + 20px); }
 
-  .nav-content{ align-items: start; }
-  .nav-content-dot{ margin-top: 6px; }
+  /* Every row in this list centres what is in it. This pair used to read
+     align-items:start with a 6px top margin on the dot, so the dot sat beside
+     the FIRST LINE of a name that wraps to two. That was a reasonable call when
+     the dot was the only mark on the row; it stopped being one once the row
+     also carries a state pill at its left edge, because the pill is centred and
+     the dot then disagreed with it by 3px on a one-line row and by half a line
+     on a two-line one. Centring both is the version where every mark on the row
+     agrees, whatever the name does. */
+  .nav-content{ align-items: center; }
+  .nav-content-dot{ margin-top: 0; }
   .nav-content-t{
     white-space: normal; text-overflow: clip; line-height: 1.35;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
@@ -14686,12 +14694,54 @@
   .arrange-tag, .arrange-tag:active{ cursor: default; }
   .is-arrangeable{ cursor: default; }
 
-  /* ---------- the dot, on the same line as its own mark ------------------- */
-  /* .nav-content is align-items:start with a 6px top margin on the dot, so it
-     sits beside the first line of a name that wraps. A chip centres instead,
-     and there the same margin pushes the dot 3px below the mark and the text -
-     measured at exactly 3px on every row, whatever its height. */
-  nav.tabs .nav-content.is-chip .nav-content-dot{ margin-top: 0; }
+
+  /* ---------- a field is as wide as what goes in it ----------------------- */
+  /* The sheet gives every field width:100%. That is right for a name, a note or
+     a search, and wrong for anything whose content has a known size: the loan
+     form's date picker was measured at 1153px against an intrinsic width of
+     135px, and in a flex row a 100%-wide control forces a wrap, which is why
+     From and To each took a whole line and left the rest of it empty.
+
+     Every cap below was measured against the real content and has room over it:
+     a date needs 135, a number holds 999,999,999.99 in 148, and the longest
+     option text across all 51 selects in this file is 298. Nothing truncates.
+     They are max-widths, so a field in a narrow column still shrinks. */
+  input[type="date"]{ max-width: 180px; }
+  input[type="number"]{ max-width: 240px; }
+  select{ max-width: 320px; }
+
+  /* A row of controls reads as a row. Without this the children inherit
+     width:100%, and flex-wrap then puts each one on a line of its own. */
+  .custom-range-row, .range-inline, .backsolve-row{ align-items: center; }
+  .custom-range-row > input, .custom-range-row > select,
+  .range-inline > input, .range-inline > select,
+  .backsolve-row > input, .backsolve-row > select{ width: auto; flex: 0 1 auto; }
+  .custom-range-row > label, .range-inline > label, .backsolve-row > label{
+    flex: 0 0 auto; margin: 0;
+  }
+
+  /* ---------- the last two full-height bars ------------------------------- */
+  /* Same change .is-on had: a mark centred on its row rather than an edge that
+     runs corner to corner and lines up with nothing in it. The tint already
+     says which row this is, so the mark is the quieter half of the pair.
+
+     Left alone on purpose: a checked table row and the active search result
+     keep their full-height edge. Those are uniform rows in a dense list, where
+     an edge reads as "this row" and has no dot beside it to disagree with. */
+  nav.tabs .nav-content.is-beside{ position: relative; box-shadow: none; }
+  nav.tabs .nav-content.is-beside::before{
+    content: ""; position: absolute; left: 0; top: 50%;
+    width: 3px; height: 14px; margin-top: -7px;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+  .rail-place.is-chosen{ position: relative; box-shadow: none; }
+  .rail-place.is-chosen::before{
+    content: ""; position: absolute; left: 0; top: 50%;
+    width: 3px; height: 16px; margin-top: -8px;
+    border-radius: var(--r-pill);
+    background: var(--accent);
+  }
 </style>
 </body>
 </html>
