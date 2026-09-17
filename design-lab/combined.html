@@ -3030,7 +3030,7 @@
 
   <!-- SAVINGS & INVESTMENTS -->
   <section id="tab-savings" class="tab-panel" style="display:none;">
-    <div class="card is-board">
+    <div class="card is-board" id="savings-form-card">
       <header class="panel-head is-toolbar">
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,3 21,9 3,9"/><line x1="5" y1="9" x2="5" y2="19"/><line x1="10" y1="9" x2="10" y2="19"/><line x1="14" y1="9" x2="14" y2="19"/><line x1="19" y1="9" x2="19" y2="19"/><line x1="3" y1="21" x2="21" y2="21"/></svg></span><span class="h-text">Where is your money?</span></h2>
         <p class="sub">Add every place you keep money — supports flat rates or tiered/capped rates (like Maya Savings) — and see the interest it's projected to earn each month, after tax.</p>
@@ -3106,7 +3106,7 @@
       </div>
     </div>
 
-    <div class="card is-board">
+    <div class="card is-board" id="savings-list-card">
       <header class="panel-head is-toolbar">
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,3 21,9 3,9"/><line x1="5" y1="9" x2="5" y2="19"/><line x1="10" y1="9" x2="10" y2="19"/><line x1="14" y1="9" x2="14" y2="19"/><line x1="19" y1="9" x2="19" y2="19"/><line x1="3" y1="21" x2="21" y2="21"/></svg></span><span class="h-text">Your accounts</span></h2>
       </header>
@@ -5687,6 +5687,11 @@
   // once repaid. Both directions reuse the same bank field on the loan for its
   // whole life, so a status flip either way just replays the matching operation.
   function applyLoanStatusChange(loan, newStatus, direction){
+    // WHEN it was settled is the fact a settled loan is missing; "Repaid" is
+    // already said by the pill, the select and the stamp. Set above the guard
+    // below, which returns early for a loan with no account.
+    if (newStatus === "repaid" && loan.status !== "repaid") loan.repaidOn = todayISO();
+    if (newStatus === "outstanding") loan.repaidOn = null;
     if (!loan.bank || loan.status === newStatus) return;
     const isRepaying = newStatus === "repaid";
     const shouldDeposit = (direction === "given") ? isRepaying : !isRepaying;
@@ -5794,6 +5799,9 @@
     if (loan.amount <= 0.01){
       loan.amount = 0;
       loan.status = "repaid";
+      // Settled by the last payment rather than by the dropdown, and it still
+      // happened on a day.
+      loan.repaidOn = todayISO();
     }
     return true;
   }
@@ -7694,7 +7702,7 @@
       const isHidden = panel.classList.contains("is-collapsed");
       panel.classList.toggle("is-collapsed", !isHidden);
       toggleBtn.setAttribute("aria-expanded", String(isHidden));
-      toggleBtn.innerHTML = isHidden ? "\u25B4 Hide" : `${ICON.in} Log a payment`;
+      toggleBtn.innerHTML = isHidden ? "\u25B4 Hide payment" : `${ICON.in} Log a payment`;
     });
   }
 
@@ -7721,7 +7729,7 @@
       const isHidden = panel.classList.contains("is-collapsed");
       panel.classList.toggle("is-collapsed", !isHidden);
       toggleBtn.setAttribute("aria-expanded", String(isHidden));
-      toggleBtn.innerHTML = isHidden ? "▴ Hide" : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><path d="M4 5a2 2 0 0 1 2-2h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg> ${hasNote ? "View note" : "Add note"}`;
+      toggleBtn.innerHTML = isHidden ? "▴ Hide note" : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><path d="M4 5a2 2 0 0 1 2-2h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg> ${hasNote ? "View note" : "Add note"}`;
     });
     const saveBtn = panel.querySelector('[data-action="save-note"]');
     if (saveBtn){
@@ -7781,11 +7789,84 @@
 
   // One wiring path for both loan tables. `dir` is "given" or "taken"; everything
   // that differs between them lives in LOAN_CONFIG.
+  /* The controls for filters that were already wired. wireLoanHeaderFilters
+     binds #<prefix>-f-person, -f-status and -f-bank, and they were rendered by
+     a table header that stopped existing when the list became cards - so the
+     filtering never broke, it just lost its controls. These put them back, in
+     the filter bar beside the date range where the rest of the narrowing is. */
+  function loanFilterControlsHtml(dir){
+    const cfg = LOAN_CONFIG[dir];
+    const view = loanView[dir];
+    const people = [...new Set(cfg.list.map(l => l.person).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    const banks = [...new Set(cfg.list.map(l => l.bank).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    const sortOpts = [
+      { value:"date|desc",     text:"Newest first" },
+      { value:"date|asc",      text:"Oldest first" },
+      { value:"amount|desc",   text:"Largest first" },
+      { value:"amount|asc",    text:"Smallest first" },
+      { value:"deadline|asc",  text:"Due soonest" },
+      { value:"person|asc",    text:"Name A–Z" }
+    ];
+    const cur = (view.sort && view.sort.key ? view.sort.key : "date") + "|" +
+      (view.sort && view.sort.dir ? view.sort.dir : "desc");
+    return '<div class="loan-filters">' +
+      buildThFilter(cfg.prefix + "-f-person", "Anyone", people, view.person || "", "Filter by who") +
+      buildThFilter(cfg.prefix + "-f-bank", "Any account", banks, view.bank || "", "Filter by account") +
+      buildThFilter(cfg.prefix + "-f-status", "Any state",
+        [{value:"outstanding",text:"Outstanding"},{value:"repaid",text:"Repaid"}],
+        view.status || "", "Filter by state") +
+      /* Not through buildThFilter’s active treatment: that marks a filter that
+         is NARROWING the list, and a sort always has a value, so it wore the
+         active dot permanently - and that dot is drawn 3px outside its box,
+         which the layout auditor caught as ink past the edge. Sorting is not
+         filtering, so it does not borrow filtering’s clothes. */
+      '<span class="th-filter-wrap is-sort">' +
+        '<select class="th-filter" id="' + cfg.prefix + '-f-sort" title="How the list is ordered">' +
+          sortOpts.map(o => '<option value="' + o.value + '"' +
+            (o.value === cur ? " selected" : "") + '>' + escapeHtml(o.text) + '</option>').join("") +
+        '</select>' +
+      '</span>' +
+    '</div>';
+  }
+
   function wireLoanHeaderFilters(wrap, dir){
     const cfg = LOAN_CONFIG[dir];
     const view = loanView[dir];
+    /* Put the controls in before binding them. The filter bar is a SIBLING of
+       the wrap, not inside it, so it is reached through the parent - and it is
+       rebuilt on every render because the values it shows (who, which account)
+       come from the list itself and change as the list does. */
+    const bar = wrap.parentElement && wrap.parentElement.querySelector(".table-filter-bar");
+    if (bar){
+      const old = bar.querySelector(".loan-filters");
+      if (old) old.remove();
+      const holder = document.createElement("div");
+      holder.innerHTML = loanFilterControlsHtml(dir);
+      const el = holder.firstElementChild;
+      const controls = bar.querySelector(".list-controls");
+      if (el){ if (controls) bar.insertBefore(el, controls); else bar.appendChild(el); }
+    }
+
+    // The sort control is one select rather than clickable column headers,
+    // because there are no column headers on a card.
+    /* Looked up in the bar as well as the wrap. Every one of these controls
+       used to live in a table header INSIDE the wrap; they sit in the filter
+       bar beside it now, so a lookup scoped to the wrap finds nothing and
+       binds nothing - the controls rendered and did exactly nothing when
+       changed, which is worse than not rendering them. */
+    const findControl = suffix =>
+      (bar && bar.querySelector("#" + cfg.prefix + suffix)) ||
+      wrap.querySelector("#" + cfg.prefix + suffix);
+    const sortSel = findControl("-f-sort");
+    if (sortSel) sortSel.addEventListener("change", e => {
+      const [key, sdir] = String(e.target.value || "date|desc").split("|");
+      view.sort = { key, dir: sdir || "desc" };
+      setUiPref(cfg.prefix + "Sort", view.sort);
+      view.page = 1;
+      renderLoans(dir);
+    });
     const bind = (suffix, field, prefKey)=>{
-      const el = wrap.querySelector("#" + cfg.prefix + suffix);
+      const el = findControl(suffix);
       if (!el) return;
       el.addEventListener("change", (e)=>{
         view[field] = e.target.value;
@@ -7854,8 +7935,7 @@
         ${canPay ? `
         <div class="loan-payment-row collapsible-body is-collapsed" data-payment-panel>
           <div class="amount-wrap"><span>₱</span><input type="number" min="0" step="0.01" data-field="payment" placeholder="0.00"></div>
-          <input type="text" data-field="payment-note" placeholder="Note (optional)" style="width:150px;">
-          <button class="btn btn-ghost btn-sm" data-action="log-payment">Log payment</button>
+          <button class="btn btn-primary btn-sm" data-action="log-payment">Log payment</button>
         </div>` : ""}
         <div class="loan-payment-row collapsible-body is-collapsed" data-note-panel>
           <textarea data-field="notes" placeholder="Terms, reason, whatever is useful to remember." rows="2" style="flex:1; min-width:200px;">${escapeHtml(l.notes || "")}</textarea>
@@ -7866,7 +7946,7 @@
       <div class="loan-card ${l.status === "outstanding" ? "is-open" : "is-closed"}" data-id="${l.id}">
         <div class="loan-card-head">
           <button type="button" class="loan-who is-link" data-person="${escapeHtml(l.person)}" title="Everything with ${escapeHtml(l.person)}">${escapeHtml(l.person)}</button>
-          <span class="status-pill ${l.status === "outstanding" ? "outstanding" : ""}">${l.status === "outstanding" ? "Outstanding" : "Repaid"}</span>
+          <span class="status-pill ${l.status === "outstanding" ? "outstanding" : ""}">${l.status === "outstanding" ? "Outstanding" : (l.repaidOn ? "Repaid " + fmtDate(l.repaidOn) : "Repaid")}</span>
           ${canPay ? "" : `<button class="row-action loan-edit" data-action="unlock" title="Edit this settled entry" aria-label="Edit this settled entry">✎</button>`}
           <button class="row-action row-action-danger loan-remove" data-action="delete" title="Remove this entry" aria-label="Remove this entry">✕</button>
         </div>
@@ -7890,6 +7970,7 @@
           </select>
           <select class="status-select" data-action="bank"${canPay ? "" : " disabled"}>
             <option value="">— No account —</option>${bankOpts}</select>
+          ${canPay ? "" : `<button class="btn btn-ghost btn-sm loan-finish" data-action="finish" hidden>Finish editing</button>`}
         </div>
         <div data-payment-for="${l.id}">${actionBar}</div>
       </div>`;
@@ -8066,6 +8147,23 @@
         renderLoans(dir);
         showToast(newBank ? `Linked to ${newBank}.` : "Account link removed.");
       });
+      /* One at a time. Each toggle used to set its own label to "Hide" with no
+         idea the others existed, so a card could show two Hides over three open
+         panels. Closing the siblings is done after the original handler, which
+         is why it waits a tick rather than replacing them. */
+      row.addEventListener("click", ev => {
+        const t = ev.target.closest && ev.target.closest('[data-action^="toggle-"]');
+        if (!t) return;
+        setTimeout(()=>{
+          const openOne = t.getAttribute("aria-expanded") === "true";
+          if (!openOne) return;
+          row.querySelectorAll('[data-action^="toggle-"]').forEach(other=>{
+            if (other === t) return;
+            if (other.getAttribute("aria-expanded") === "true") other.click();
+          });
+        }, 0);
+      });
+
       // The payments trail, on any row that has one.
       const trailBtn = row.querySelector('[data-action="toggle-trail"]');
       if (trailBtn) trailBtn.addEventListener("click", ()=>{
@@ -8077,15 +8175,26 @@
 
       // Only on a settled row, which is the only row that renders it.
       const unlock = row.querySelector('[data-action="unlock"]');
+      const finish = row.querySelector('[data-action="finish"]');
       if (unlock) unlock.addEventListener("click", ()=>{
         row.querySelectorAll("select[disabled], input[disabled]").forEach(el=>{
           el.disabled = false;
         });
-        row.classList.add("is-unlocked");
-        unlock.remove();
+        // A mode you can see you are in, and can leave. It used to unlock and
+        // remove itself, which left the card in a different state with nothing
+        // saying so and nothing to press.
+        row.classList.add("is-editing");
+        unlock.hidden = true;
+        if (finish) finish.hidden = false;
         const first = row.querySelector("select");
         if (first) first.focus();
-        showToast("Unlocked. Set it back to Outstanding to change the rest.");
+      });
+      if (finish) finish.addEventListener("click", ()=>{
+        // Every change already saved itself on the way through; this closes the
+        // mode rather than committing anything, so there is nothing to lose by
+        // leaving and nothing to confirm.
+        renderLoans(dir);
+        showToast("Done editing.");
       });
       row.querySelector('[data-action="delete"]').addEventListener("click", ()=>{
         const item = cfg.list.find(x=>x.id===id);
@@ -8133,15 +8242,12 @@
       if (!btn) return;
       btn.addEventListener("click", ()=>{
         const input = payRow.querySelector('[data-field="payment"]');
-        const noteInput = payRow.querySelector('[data-field="payment-note"]');
         const item = cfg.list.find(x=>x.id===id);
         const amt = parseFloat(input.value);
-        const note = noteInput.value.trim();
         // The History row is written first so its id can go on the payment,
         // which is what joins the loan to the ledger.
-        const entryId = logLoanPaymentToHistory(item, amt, dir, note);
-        if (!logLoanPayment(item, amt, dir, { note, entryId })) return;
-        noteInput.value = "";
+        const entryId = logLoanPaymentToHistory(item, amt, dir, "");
+        if (!logLoanPayment(item, amt, dir, { note: "", entryId })) return;
         cfg.save();
         renderLoans(dir);
         showToast(item.status === "repaid" ? `Final payment logged — marked Repaid.` : `Logged a payment of ${fmtMoney(amt)}.`);
@@ -14003,7 +14109,10 @@
         { body: "loans-taken-body", submit: "btn-add-loan-taken",
           probe: "lt-person", label: "Add a loan taken", title: "Log a loan you took" },
         { body: "investments-body", submit: "btn-add-investment",
-          probe: "inv-name", label: "Add an investment", title: "Log an investment" }
+          probe: "inv-name", label: "Add an investment", title: "Log an investment" },
+        { body: "savings-form-card", submit: "btn-add-savings",
+          probe: "sv-amount", label: "Add an account", title: "Add a savings account",
+          headIn: "savings-list-card", hideBodyWhenEmpty: true }
       ];
 
       function wireLogForms(){
@@ -14020,11 +14129,22 @@
           holder.className = "log-form";
           holder.id = cfg.body + "-form";
           body.insertBefore(holder, grid);
-          holder.appendChild(grid);
-          holder.appendChild(actions);
+          // Everything from the grid through the actions, INCLUSIVE - the
+          // savings form has a hint between the two, and moving only the ends
+          // would have left it behind on an otherwise empty board.
+          let walk = grid;
+          while (walk){
+            const next = walk.nextElementSibling;
+            holder.appendChild(walk);
+            if (walk === actions) break;
+            walk = next;
+          }
 
-          const head = body.parentElement &&
-            body.parentElement.querySelector(".panel-head.is-toolbar");
+          // Some forms ARE the card, so their own header leaves with them; the
+          // button then belongs on the header of whatever it adds to.
+          const headHost = cfg.headIn ? document.getElementById(cfg.headIn)
+            : (body.parentElement || body);
+          const head = headHost && headHost.querySelector(".panel-head.is-toolbar");
           if (head){
             const open = document.createElement("button");
             open.type = "button";
@@ -14044,6 +14164,9 @@
           // Success and failure are told apart by asking the app, not by
           // guessing: it clears this field when it has logged something, and
           // returns early leaving it filled when it has not.
+          // A card that is nothing but a header once its form has gone.
+          if (cfg.hideBodyWhenEmpty) body.classList.add("is-form-host");
+
           const submit = document.getElementById(cfg.submit);
           if (submit) submit.addEventListener("click", () => {
             setTimeout(() => {
@@ -15696,6 +15819,38 @@
   .pv-dir{ flex: 0 0 auto; font-weight: 700; color: var(--ink-soft); }
   .pv-amt{ flex: 0 0 auto; font-size: var(--fs-md); font-weight: 700; color: var(--ink); }
   .pv-state{ margin-left: auto; flex: 0 0 auto; font-weight: 700; }
+
+  /* ---------- the filters, beside the date range -------------------------- */
+  .loan-filters{ display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
+  .loan-filters .th-filter{ max-width: 150px; }
+
+  /* ---------- editing is a mode you can see you are in --------------------- */
+  .loan-card.is-editing{ outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+    outline-offset: 2px; }
+  .loan-card.is-editing::after{ opacity: .15; }
+  .loan-card.is-editing > *{ opacity: 1; filter: none; }
+  .loan-finish{ flex: 0 0 auto; }
+
+  /* ---------- a board that was only ever its form ------------------------- */
+  /* Savings had the form on one card and the accounts on the next, so the page
+     opened on a whole board of form. With the form in the drawer this card is
+     a header and nothing else, and a header alone is not a card. */
+  .card.is-form-host{ display: none; }
+
+  /* An active filter carries a dot drawn just outside its select. That was fine
+     in a table header, where the cell had padding to absorb it; in this row the
+     wrap is exactly the select’s width, so the dot landed 3px outside the
+     wrap’s own box - which is what the layout auditor calls ink past the edge.
+     The wrap carries the room now, so nothing paints outside itself. */
+  .loan-filters{ padding-right: 4px; }
+  /* The dot hangs at right:-3px, outside the wrap’s corner - which a table
+     header absorbed in its cell padding and this row has nowhere to put.
+     Padding did not help: the dot is anchored to the right EDGE, so it just
+     moved with it. Pulled inside instead, where it still reads as the marker
+     it is and paints within its own box. */
+  .loan-filters .th-filter-wrap.is-active{ padding-right: 8px; }
+  .loan-filters .th-filter-wrap.is-active::after{ right: 0; top: 50%; margin-top: -2.5px; }
+  .loan-filters .th-filter-wrap.is-sort::after{ content: none; }
 </style>
 </body>
 </html>
