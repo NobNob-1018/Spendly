@@ -8186,6 +8186,9 @@
     }
   };
 
+  // Read and cleared by the render that follows a settle, so the mark is played
+  // by exactly one render of exactly one card.
+  let justSettled = null;
   function renderLoans(dir){
     const cfg = LOAN_CONFIG[dir];
     const view = loanView[dir];
@@ -8282,6 +8285,11 @@
     const rows = paged.slice.map(l=>buildLoanRowHtml(l, cfg.dateField)).join("");
     // Record cards, not rows: no table, and the column header row goes with it.
     wrap.innerHTML = `${statusBar}<div class="loan-cards">${rows}</div>${paged.barHtml}`;
+    if (justSettled){
+      const fresh = wrap.querySelector(`.loan-card[data-id="${CSS.escape(justSettled)}"]`);
+      justSettled = null;
+      if (fresh) fresh.classList.add("is-just-settled");
+    }
     wireLoanHeaderFilters(wrap, dir);
 
     const clearBtn = wrap.querySelector(`#${cfg.prefix}-clear-filters`);
@@ -8416,6 +8424,10 @@
         // The same call the Status dropdown makes, so there is one money path, not two.
         applyLoanStatusChange(item, "repaid", dir);
         item.status = "repaid";
+        // Once, on this entry, on the next render only. Settling is rare and it
+        // is the good kind of rare; every later render of the same entry is an
+        // entry that was already settled and gets nothing.
+        justSettled = item.id;
         cfg.save();
         renderLoans(dir);
         renderSideUpcoming();
@@ -13855,6 +13867,15 @@
          the only thing that changes it is the width. The ceiling used to be
          twice the contents, which is how a card came to be drawn at double what
          it needed with the bottom half empty. */
+      /* Full width, two thirds, half, a third - the four the card menu offers.
+         The drag used to stop on any twelfth, so seven of its eleven stops were
+         widths with no name and no way back to them except another drag. */
+      const SNAP_SPANS = [4, 6, 8, 12];
+      function snapSpan(want){
+        let best = SNAP_SPANS[0], gap = Infinity;
+        SNAP_SPANS.forEach(n => { const d = Math.abs(n - want); if (d < gap){ gap = d; best = n; } });
+        return best;
+      }
       function setSpan(el, n){ el.style.setProperty("--span", String(n)); }
       // What the card is currently set to, which is what its row is made of -
       // spanOf answers what it WOULD be, and after a fill those differ.
@@ -13863,6 +13884,13 @@
       function rememberSpan(tab, el, n){
         remember(tab, el, { c: n === bornSpan(el) ? null : n });
       }
+      /* The stored rectangle has always had an r; nothing wrote it, because a
+         height a user set could be SHORTER than the contents and crop them.
+         A floor cannot: the card takes whichever is taller, what it needs or
+         what you asked for. */
+      const FLOOR_STEPS = [0, 8, 16];
+      function floorRows(tab, el){ return rectOf(tab, el).r || 0; }
+      function rememberFloor(tab, el, n){ remember(tab, el, { r: n > 0 ? n : null }); }
       // Its neighbour on the SAME line. Two cards that merely follow each other
       // in the DOM may be on different lines, and there is no seam between those.
       function lineMate(el){
@@ -13978,7 +14006,9 @@
         cards.forEach((el, i) => {
           const n = rowsForHeight(natural[i]);
           el.dataset.naturalRows = String(n);
-          setRows(el, n);
+          // Whichever is taller. A floor of 0 - which is every card until
+          // somebody drags a corner - leaves this exactly as it was.
+          setRows(el, Math.max(n, floorRows(tab, el)));
         });
         /* And check. The natural pass reports a card with nothing holding it,
            and the parts that size themselves against the card measure smaller
@@ -14003,7 +14033,7 @@
           if (over > 2){
             const n = rowsForHeight(el.scrollHeight);
             el.dataset.naturalRows = String(n);
-            setRows(el, n);
+            setRows(el, Math.max(n, floorRows(tab, el)));
           }
         });
         /* A lone card is DRAWN at the full width by flex-grow while its number
@@ -14052,7 +14082,8 @@
              preset sizes - every width you can stop on is one the layout
              already knew how to be. */
           pad.innerHTML =
-            '<div class="card-seam" title="Drag to set the width. Double-click to reset."></div>';
+            '<div class="card-seam" title="Drag to set the width. Double-click to reset."></div>' +
+            '<div class="card-corner" title="Drag down for a taller card. Double-click to fit the contents."></div>';
           host.appendChild(pad);
           placeHandles(host, el, pad);
         });
@@ -14187,7 +14218,24 @@
         // Dragging the seam, which is a different gesture from dragging the card
         // and must not start one: the card is draggable while arranging, so the
         // flag comes off for the duration and goes back on after.
+        /* The corner sets the floor. Down makes the card taller than it needs,
+           up gives the space back, and it can never go under the contents -
+           that is the one direction a set height was ever wrong in. */
+        let cornerDrag = null;
         host.addEventListener("pointerdown", ev => {
+          const corner = ev.target.closest(".card-corner");
+          if (corner && editing && ev.button === 0){
+            const pad = corner.closest(".card-handles");
+            const card = pad && (host.querySelector('[data-arrange-id="' + CSS.escape(pad.dataset.card) + '"]')
+                               || document.getElementById(pad.dataset.card));
+            if (!card) return;
+            ev.preventDefault(); ev.stopPropagation();
+            cornerDrag = { card, startY: ev.clientY, startRows: curRows(card),
+                           natural: +card.dataset.naturalRows || curRows(card) };
+            try { corner.setPointerCapture(ev.pointerId); } catch (e){}
+            document.body.classList.add("is-seam-resizing");
+            return;
+          }
           const seam = ev.target.closest(".card-seam");
           if (!seam || !editing || ev.button !== 0) return;
           const axis = "x";
@@ -14250,7 +14298,9 @@
           // before it on this line already take. Pixels to twelfths, rounded:
           // every width you can stop on is one the layout already knew how to be.
           const want = ((ev.clientX - hostLeft) / hostW * SPAN_OF) - beforeSpan;
-          let a = Math.round(want);
+          // The four the menu names, not all eleven twelfths: a size you can
+          // stop on should be one you could also have chosen by name.
+          let a = snapSpan(want);
           const minA = minSpanOf(left);
           if (!right){
             // Alone on its line: anything from its own floor to the whole row.
@@ -14272,6 +14322,46 @@
           readout(ev.clientX + 16, ev.clientY + 16,
             a + " \u00d7 " + (curRows(left)) + (right ? "   \u00b7   " + b + " \u00d7 " + curRows(right) : ""));
         });
+        window.addEventListener("pointermove", ev => {
+          if (!cornerDrag) return;
+          ev.preventDefault();
+          const { card, startY, startRows, natural } = cornerDrag;
+          // In rows, in fours, because a row is 12px and a card you can stop on
+          // every 12px is a card you can never put back where it was.
+          const step = 4;
+          const moved = Math.round((ev.clientY - startY) / (rowPitch * step)) * step;
+          const want = Math.max(natural, Math.min(ROWS_MAX, startRows + moved));
+          setRows(card, want);
+          cornerDrag.want = want;
+          placeAllHandles(host);
+          readout(ev.clientX + 16, ev.clientY + 16,
+            curSpan(card) + " \u00d7 " + want + (want === natural ? "   fits" : ""));
+        }, { passive: false });
+
+        function endCorner(){
+          if (!cornerDrag) return;
+          const { card, want, natural } = cornerDrag;
+          cornerDrag = null;
+          document.body.classList.remove("is-seam-resizing");
+          hideReadout();
+          if (want != null) rememberFloor(tab, card, want > natural ? want : 0);
+          applySpansAndSeams(host, tab);
+        }
+        window.addEventListener("pointerup", endCorner);
+        window.addEventListener("pointercancel", endCorner);
+        host.addEventListener("dblclick", ev => {
+          const corner = ev.target.closest(".card-corner");
+          if (!corner || !editing) return;
+          const pad = corner.closest(".card-handles");
+          const card = pad && (host.querySelector('[data-arrange-id="' + CSS.escape(pad.dataset.card) + '"]')
+                             || document.getElementById(pad.dataset.card));
+          if (!card) return;
+          ev.preventDefault(); ev.stopPropagation();
+          rememberFloor(tab, card, 0);
+          applySpansAndSeams(host, tab);
+          if (typeof showToast === "function") showToast("Height back to the contents.");
+        });
+
         function endSeam(ev){
           if (!seamDrag) return;
           const { left, right, wasDraggable, a, b } = seamDrag;
@@ -14451,10 +14541,15 @@
             row("up", null, "Up one", i <= 0) +
             row("down", null, "Down one", i < 0 || i >= ids.length - 1) +
             row("bottom", null, "To the bottom", i < 0 || i >= ids.length - 1) +
-            '<p class="card-menu-k">Size</p>' +
+            '<p class="card-menu-k">Width</p>' +
             widths.map(w => row("width", w[0], w[1], curSpan(card) === w[0])).join("") +
-            '<p class="card-menu-n">Width is yours. The height is whatever the ' +
-              'contents need at that width.</p>';
+            '<p class="card-menu-k">Height</p>' +
+            [[0, "Fit the contents"], [8, "Taller"], [16, "Tallest"]]
+              .map(h => row("floor", h[0], h[1],
+                (floorRows(tab, card) ? (floorRows(tab, card) - (+card.dataset.naturalRows || 0)) : 0) === h[0]))
+              .join("") +
+            '<p class="card-menu-n">A height is a floor, never a ceiling: the card ' +
+              'is never shorter than what is in it.</p>';
 
           document.body.appendChild(m);
           const r = btn.getBoundingClientRect();
@@ -14522,6 +14617,16 @@
             rememberSpan(tab, card, n);
             // The height is re-measured inside, against the new width.
             applySpansAndSeams(host, tab);
+          }
+          else if (act === "floor"){
+            const extra = +item.dataset.val || 0;
+            const natural = +card.dataset.naturalRows || rowsForHeight(card.scrollHeight);
+            rememberFloor(tab, card, extra ? natural + extra : 0);
+            applySpansAndSeams(host, tab);
+            if (typeof showToast === "function"){
+              showToast(extra ? "Height held at " + (natural + extra) + " rows."
+                              : "Height back to the contents.");
+            }
           }
           if (act === "top" || act === "up" || act === "down" || act === "bottom"){
             setTimeout(() => {
@@ -14962,6 +15067,54 @@
           };
         } catch (e){ editSnapshot = null; }
       }
+      /* In the middle, and it waits. A toast for this was a seven-second window
+         in the corner of the other side of the screen, for a minute of work. */
+      function askAboutLayout(where, back){
+        const old = document.getElementById("layout-ask");
+        if (old) old.remove();
+        const wrap = document.createElement("div");
+        wrap.id = "layout-ask";
+        wrap.className = "ask-scrim";
+        wrap.innerHTML =
+          '<div class="ask" role="alertdialog" aria-modal="true" ' +
+            'aria-labelledby="ask-t" aria-describedby="ask-d">' +
+            '<h2 class="ask-t" id="ask-t">Keep the new layout?</h2>' +
+            '<p class="ask-d" id="ask-d">You were arranging ' + escapeHtml(where) +
+              ' and moved to another destination. The changes are already in place.</p>' +
+            '<div class="ask-row">' +
+              '<button type="button" class="btn btn-ghost" data-ask="undo">Put it back</button>' +
+              '<button type="button" class="btn btn-primary" data-ask="keep">Keep it</button>' +
+            '</div>' +
+          '</div>';
+        document.body.appendChild(wrap);
+        /* A forced reflow, not requestAnimationFrame. rAF does not run while the
+           page is not being painted - a background tab, a hidden pane - and the
+           class that starts the transition would then never be added, leaving a
+           dialog at opacity 0 over a scrim you cannot see past. Reading
+           offsetWidth commits the starting styles synchronously, so the
+           transition has something to run from whatever the page is doing. */
+        void wrap.offsetWidth;
+        wrap.classList.add("is-on");
+        const close = () => { wrap.classList.remove("is-on");
+          setTimeout(() => wrap.remove(), 200); };
+        wrap.addEventListener("click", ev => {
+          const b = ev.target.closest("[data-ask]");
+          if (!b) return;
+          if (b.dataset.ask === "undo"){ editSnapshot = back; restoreEditSnapshot(); }
+          close();
+        });
+        // Escape keeps it, because keeping is what has already happened and a
+        // dialog that undoes your work when you press Escape is a trap.
+        const onKey = ev => {
+          if (ev.key !== "Escape") return;
+          ev.preventDefault(); close();
+          document.removeEventListener("keydown", onKey, true);
+        };
+        document.addEventListener("keydown", onKey, true);
+        const first = wrap.querySelector('[data-ask="keep"]');
+        if (first) first.focus();
+      }
+
       function restoreEditSnapshot(){
         if (!editSnapshot) return;
         pinned = editSnapshot.pinned;
@@ -15078,12 +15231,7 @@
           document.body.classList.remove("is-layout-editing");
           const back = editSnapshot;
           editSnapshot = null;
-          if (back && typeof showUndoToast === "function"){
-            showUndoToast("Layout kept — " + (NAMES[wasTab] || wasTab) + ".", () => {
-              editSnapshot = back;
-              restoreEditSnapshot();
-            });
-          }
+          if (back) askAboutLayout(NAMES[wasTab] || wasTab, back);
         }
         last = active.dataset.tab;
         closeBeside();       // a section of the page you just left is not this page
@@ -17981,6 +18129,227 @@
   .nav-item.is-too-big .nav-content-t{ text-decoration: line-through;
     text-decoration-color: var(--line-strong); }
   .nav-item.is-too-big .nav-pin{ opacity: .4; }
+
+  /* ---------- the settled card: one column for things you press ------------ */
+  /* space-between put Mark unpaid wherever the note happened to end, so it sat
+     in a different place on every card in the grid. The note takes the width
+     the fields take and the button lands under the pencil and the X. */
+  .loan-card.is-closed .row-action-bar{
+    justify-content: flex-start; flex-wrap: nowrap; align-items: center;
+    gap: var(--sp-5);
+  }
+  .loan-card.is-closed .loan-note-act{ order: 1; flex: 1 1 auto; justify-content: center; }
+  .loan-card.is-closed [data-action="unsettle"]{ order: 2; flex: 0 0 auto; }
+  /* The one control on a settled card is not part of the record behind the
+     mark: it comes forward with the stamp, and it is sharp. */
+  .loan-card.is-closed .row-action-bar{ position: relative; z-index: 4; filter: none; }
+  .loan-card.is-closed [data-action="unsettle"]{ filter: none; opacity: 1; }
+  .loan-card.is-closed:not(:hover) > [data-payment-for]{ filter: none; }
+  .loan-card.is-closed .loan-note-read{ filter: blur(.7px); }
+  .loan-card.is-closed:hover .loan-note-read,
+  .loan-card.is-closed:focus-within .loan-note-read,
+  .loan-card.is-closed.is-editing .loan-note-read{ filter: none; }
+
+  /* ---------- a list does not touch the board it sits in -------------------- */
+  /* Both of these are the last thing in their card, so the card's own padding
+     was the only thing between them and its border - and the pagination under
+     them had none at all. */
+  #savings-table-wrap,
+  #investments-table-wrap{ padding: var(--sp-4) 0 0; }
+  #savings-table-wrap .pagination-bar,
+  #investments-table-wrap .pagination-bar,
+  [id$="-table-wrap"] .pagination-bar{ padding-top: var(--sp-7); }
+  .savings-list, .inv-cards, .loan-cards{ padding-bottom: var(--sp-3); }
+
+  /* ---------- the page controls are how you move through forty-four loans --- */
+  .pagination-bar{ padding-top: var(--sp-7); gap: var(--sp-6); }
+  .pagination-info, .pagination-page{ font-size: var(--fs-2xs); }
+  .pagination-page{ font-weight: 700; color: var(--ink-soft); }
+  .pagination-controls{ gap: var(--sp-6); }
+  .pagination-controls .btn{
+    height: auto; min-height: 36px; padding: var(--sp-4) var(--sp-7);
+    font-size: var(--fs-2xs); font-weight: 700;
+  }
+
+  /* ---------- the way back ------------------------------------------------- */
+  /* It was 12px of dimmed text under the last destination, with a shortcut that
+     only showed while a modifier was held. It is the one control in the rail
+     that undoes a navigation, so it sits at the bottom where it can be found
+     without reading, and it says what the shortcut is. */
+  nav.tabs .rail-scroll{ display: flex; flex-direction: column; }
+  nav.tabs .nav-back{
+    margin-top: auto;
+    padding: var(--sp-6) var(--sp-6);
+    font-size: var(--fs-md); font-weight: 600; color: var(--ink-soft);
+    border-top: 1px solid var(--line);
+    position: sticky; bottom: 0; z-index: 2;
+    background: var(--surface);
+  }
+  nav.tabs .nav-back .nav-key{ opacity: 1; margin-left: auto; }
+  @media (hover: hover){
+    nav.tabs .nav-back:hover{ color: var(--ink); background: var(--hover); }
+    nav.tabs .nav-back:hover .nav-key{ color: var(--accent); border-color: var(--accent); }
+  }
+
+  /* ---------- the corner that sets the floor -------------------------------- */
+  /* Not a bar along the bottom. The one that used to be there lay across the
+     gutter a dragged card has to land in, and swallowed every drop that crossed
+     it. A corner is 18px and sits inside its own card. */
+  .card-corner{
+    position: absolute; right: -2px; bottom: -2px; width: 20px; height: 20px;
+    cursor: nwse-resize; pointer-events: auto; touch-action: none;
+  }
+  .card-corner::after{
+    content: ""; position: absolute; right: 5px; bottom: 5px;
+    width: 9px; height: 9px;
+    border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent);
+    border-bottom-right-radius: 2px;
+    opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .is-layout-editing .card-corner::after{ opacity: .45; }
+  @media (hover: hover){ .card-corner:hover::after{ opacity: 1; } }
+  body.is-seam-resizing .card-corner::after{ opacity: 1; }
+
+  /* ---------- a question in the middle -------------------------------------- */
+  .ask-scrim{
+    position: fixed; inset: 0; z-index: 2000;
+    display: grid; place-items: center;
+    background: var(--scrim-strong, rgb(0 0 0 / .55));
+    backdrop-filter: blur(3px);
+    opacity: 0; transition: opacity var(--dur-base) var(--ease-out);
+  }
+  .ask-scrim.is-on{ opacity: 1; }
+  .ask{
+    width: min(420px, 92vw); padding: var(--sp-9);
+    background: var(--surface); border: 1px solid var(--line-strong);
+    border-radius: var(--r-xl); box-shadow: var(--elev-4);
+    transform: translateY(8px) scale(.98);
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+  .ask-scrim.is-on .ask{ transform: none; }
+  .ask-t{ margin: 0 0 var(--sp-5); font-size: var(--fs-2xl); font-weight: 800; color: var(--ink); }
+  .ask-d{ margin: 0 0 var(--sp-8); font-size: var(--fs-2xs); color: var(--ink-dim); line-height: 1.5; }
+  .ask-row{ display: flex; justify-content: flex-end; gap: var(--sp-5); }
+  @media (prefers-reduced-motion: reduce){
+    .ask-scrim, .ask{ transition: none; }
+    .ask{ transform: none; }
+  }
+  :root[data-motion="reduced"] .ask-scrim,
+  :root[data-motion="reduced"] .ask{ transition: none; }
+
+  /* ====================================================================== */
+  /* MOTION PASS - against the animation catalog, which owns this layer.    */
+  /* ====================================================================== */
+
+  /* ---------- 1. tooltips sit in their own budget --------------------------- */
+  /* --dur-fast is 80ms, which is the press-feedback figure. A tooltip is
+     125-200ms; under that floor it does not appear, it pops - and these are on
+     the four icons of a row the eye travels along. */
+  .loan-payment-link[data-tip]::after,
+  .row-action[data-tip]::after{
+    transition: opacity 150ms var(--ease-out),
+                transform 150ms var(--ease-out),
+                visibility 150ms;
+  }
+
+  /* ---------- 2. the dialog takes the time a question takes ----------------- */
+  /* Modals are 200-500ms. Asymmetric on purpose: arriving is the deliberate
+     half - it is asking you something - and leaving is the answer landing. */
+  .ask-scrim{ transition: opacity 240ms var(--ease-out); }
+  .ask{ transition: transform 240ms var(--ease-out); }
+  .ask-scrim:not(.is-on){ transition-duration: 160ms; }
+  .ask-scrim:not(.is-on) .ask{ transition-duration: 160ms; }
+
+  /* ---------- 3. the handles stop animating a layout ------------------------ */
+  /* A 3x26px pill growing to 44px is a trivial layout and it is still a layout,
+     sixty times a second, under a pointer that rests there for as long as
+     anyone is arranging. scaleY is the same picture on the compositor. */
+  .card-seam::after,
+  .rail-resize::after{
+    height: 44px;
+    transform: translateY(-50%) scaleY(.59);
+    transform-origin: center;
+    transition: opacity var(--dur-fast) var(--ease-out),
+                transform var(--dur-base) var(--ease-out);
+  }
+  @media (hover: hover){
+    .card-seam:hover::after,
+    .rail-resize:hover::after{ transform: translateY(-50%) scaleY(1); }
+  }
+  .rail-resize:focus-visible::after{ transform: translateY(-50%) scaleY(1); }
+  body.is-seam-resizing .card-seam::after,
+  body.is-rail-resizing .rail-resize::after{ transform: translateY(-50%) scaleY(1); }
+
+  /* ---------- 4. a press answers ------------------------------------------- */
+  /* One element in the app had :active feedback. Every other pressable took the
+     click and showed nothing until its effect arrived. 0.97 and 160ms are the
+     catalog's figures.
+
+     NOT behind (hover: hover) and (pointer: fine), which is where I first put
+     it. That gate is about :HOVER - a tap fires a false hover that then sticks,
+     because a finger never leaves. :active has no such problem: it begins on
+     touchstart and ends on release, and on a touch screen it is the ONLY
+     feedback there is, because there is no hover to give any. Measured on this
+     machine, which reports maxTouchPoints: 10 and answers false to
+     (hover: hover), the gate meant the press did nothing at all - gated out of
+     existence on exactly the devices with nothing else. */
+  .btn, .row-action, .loan-payment-link, .nav-tool, .arrange-step,
+  .accent-row button, .range-tabs button, .th-filter, .list-per-page,
+  .pagination-controls .btn, .nav-restore, .card-menu-i{
+    transition: transform 160ms var(--ease-out),
+                background-color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
+  }
+  .btn:active, .row-action:active, .loan-payment-link:active,
+  .nav-tool:active, .arrange-step:active, .accent-row button:active,
+  .range-tabs button:active, .pagination-controls .btn:active,
+  .nav-restore:active, .card-menu-i:active{
+    transform: scale(.97);
+  }
+  /* A row is a wide target; 0.97 across 900px is a visible slide. */
+  .card-menu-i:active, .nav-restore:active{ transform: scale(.985); }
+
+  /* ---------- 5. the switch travels --------------------------------------- */
+  .pref-switch-thumb{
+    transition: transform 160ms var(--ease-out),
+                background-color 160ms var(--ease-out);
+  }
+  .pref-switch-track{ transition: background-color 160ms var(--ease-out),
+    border-color 160ms var(--ease-out); }
+
+  /* ---------- 6. the stamp presses on, once -------------------------------- */
+  /* The one rare, high-emotion moment in the app, and it arrived by simply
+     being there on the next render. It presses on: down from a size above its
+     own, over-rotated a little, settling. Once, on the entry that just changed.
+
+     A keyframe rather than a transition because it plays once and is never
+     interrupted - the card is rebuilt, not re-rendered, so there is no state to
+     retarget from. */
+  @keyframes stampPress{
+    0%   { opacity: 0; transform: translate(-50%, -50%) rotate(-14deg) scale(1.6); }
+    55%  { opacity: 1; transform: translate(-50%, -50%) rotate(-5deg) scale(.94); }
+    100% { opacity: 1; transform: translate(-50%, -50%) rotate(-7deg) scale(1); }
+  }
+  .loan-card.is-just-settled::after{
+    animation: stampPress 420ms var(--ease-out) both;
+  }
+  body.list-as-rows .loan-card.is-just-settled::after{
+    animation: stampPress 420ms var(--ease-out) both;
+  }
+
+  /* ---------- and none of it moves when asked not to ----------------------- */
+  @media (prefers-reduced-motion: reduce){
+    .loan-payment-link[data-tip]::after, .row-action[data-tip]::after,
+    .ask-scrim, .ask, .card-seam::after, .rail-resize::after,
+    .pref-switch-thumb, .pref-switch-track{ transition-duration: .01ms; }
+    .loan-card.is-just-settled::after{ animation: none; }
+    .btn:active, .row-action:active, .loan-payment-link:active,
+    .nav-tool:active, .arrange-step:active, .accent-row button:active,
+    .range-tabs button:active, .pagination-controls .btn:active,
+    .nav-restore:active, .card-menu-i:active{ transform: none; }
+  }
+  :root[data-motion="reduced"] .loan-card.is-just-settled::after{ animation: none; }
 </style>
 </body>
 </html>
