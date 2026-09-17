@@ -2652,6 +2652,7 @@
 
     <div class="bento">
       <div class="card bento-span-12" id="insights-card" style="display:none;">
+        <h3 class="dash-subhead">What stands out</h3>
         <div class="insights-strip" id="insights-strip"></div>
       </div>
 
@@ -2665,21 +2666,33 @@
       </div>
 
       <div class="card bento-span-5" id="summary-card">
+        <h3 class="dash-subhead">Last 7 days</h3>
         <div class="range-tabs" id="summary-toggle">
           <button class="active" data-summary="activity">Activity</button>
           <button data-summary="spending">Spending</button>
           <button data-summary="income">Income</button>
         </div>
-        <p class="sub" style="margin-top:12px; margin-bottom: 0;">Last 7 days</p>
         <div class="summary-stats" id="summary-content"></div>
       </div>
 
       <div class="card bento-span-7">
-        <h3 class="dash-subhead" id="recent-history-title">Recent activity</h3>
+        <div class="dash-subhead-row">
+          <h3 class="dash-subhead" id="recent-history-title">Recent activity</h3>
+          <label class="rows-pick">Show
+            <select id="recent-rows" aria-label="How many rows this card shows">
+              <option value="5">5</option>
+              <option value="8">8</option>
+              <option value="12">12</option>
+              <option value="20">20</option>
+              <option value="30">30</option>
+            </select>
+          </label>
+        </div>
         <div id="recent-history-list"></div>
       </div>
 
       <div class="card bento-span-5" id="recap-card">
+        <h3 class="dash-subhead">This month so far</h3>
         <div id="recap-body"></div>
       </div>
     </div>
@@ -3118,10 +3131,10 @@
   <section id="tab-settings" class="tab-panel" style="display:none;">
     <div class="range-tabs settings-nav" id="settings-nav">
       <button class="active" data-settings="appearance">Appearance</button>
-      <button data-settings="sync">Sync</button>
       <button data-settings="budgeting">Budgets</button>
       <button data-settings="trackers">Trackers</button>
       <button data-settings="backup">Backup</button>
+      <button data-settings="sync">Sync</button>
       <button data-settings="info">About</button>
     </div>
 
@@ -8307,7 +8320,10 @@
     wrap.querySelectorAll("[data-payment-for]").forEach(payRow=>{
       wirePaymentToggle(payRow);
       const id = payRow.dataset.paymentFor;
-      wireNotes(payRow, id, cfg.list, cfg.save, ()=>renderLoans(dir));
+      // The card, not the action bar: the note button moved to the head beside
+      // the pencil and the X, and a lookup scoped to payRow could no longer
+      // see it - so pressing it did nothing at all.
+      wireNotes(payRow.closest(".loan-card") || payRow, id, cfg.list, cfg.save, ()=>renderLoans(dir));
       /* The action bar lives in its own <tr data-payment-for>, not in the record row,
          so this is the scope that can actually see the button. */
       const settleBtn = payRow.querySelector('[data-action="settle"]');
@@ -9835,7 +9851,10 @@
     }
     if (titleEl) titleEl.textContent = titleLabel;
 
-    const rows = source.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+    // 8 was a number typed into a slice. It is a preference now, and the way to
+    // change it is on the card itself, while arranging.
+    const howMany = +pref("recentRows", 8) || 8;
+    const rows = source.sort((a, b) => b.date.localeCompare(a.date)).slice(0, howMany);
     if (!rows.length){ container.innerHTML = emptyStateHtml("list", emptyLabel, ""); return; }
 
     // Each row carries its size relative to the largest on screen, so the list
@@ -9853,6 +9872,18 @@
       '</div>').join("");
   }
 
+
+  {
+    const rowsSel = document.getElementById("recent-rows");
+    if (rowsSel){
+      rowsSel.value = String(+pref("recentRows", 8) || 8);
+      rowsSel.addEventListener("change", ()=>{
+        setUiPref("recentRows", +rowsSel.value);
+        renderRecentHistory();
+        showToast("Recent activity shows " + rowsSel.value + " rows.");
+      });
+    }
+  }
 
   function renderDashboardSummary(){
     renderInsights();
@@ -12841,7 +12872,15 @@
          leads, for the tabs where the one that leads is not already first in
          the markup. A tab missing here keeps the old rule: its first section. */
       const TAB_DEFAULTS = {
-        dashboard: { on: ["money-overview-card"],    first: "money-overview-card" },
+        /* The three cards that had no heading were invisible to sectionsOf, so
+           nothing ever hid them and nothing ever had to list them. Giving them
+           names made them sections - and a section that is not in this list
+           opens beside the page instead of standing on it, which would have
+           quietly emptied the Dashboard. They are named here because they were
+           always on the page; they just could not be taken off it before. */
+        dashboard: { on: ["money-overview-card", "insights-card", "summary-card",
+                          "blk-recent-activity", "recap-card"],
+                     first: "money-overview-card" },
         charts:    { on: ["blk-spending-over-time"], first: "blk-spending-over-time" },
         history:   { on: ["history-expense-card"],   first: "history-expense-card" },
         savings:   { on: ["blk-where-is-your-money-", "blk-your-accounts"] }
@@ -13448,6 +13487,9 @@
          are reading should not rearrange itself under the cursor. */
       let railMoveTo = null;
       let dragCard = null;
+      // Where the outline last was. The drop reads this rather than working
+      // the target out again, so what happens is what was shown.
+      let dropAt = null;
       /* ---- the seam between two cards on a line ---------------------------- */
       // Module scope on purpose: the rebuild has to be able to ask whether a
       // drag is live, and it runs before wireCardDrag's own declarations.
@@ -13831,11 +13873,24 @@
 
         // Where it ended up, because the eye follows the drop rather than the
         // result, and a card two screens down is a card you have to hunt for.
-        function sayWhere(id){
+        function sayWhere(id, wasOrder){
           setTimeout(() => {
-            const now = [...host.querySelectorAll("[data-arrange-id]")].map(x => x.dataset.arrangeId);
+            // The cards ON the page, not every card the tab has: the ones that
+            // open beside it are still in the DOM, hidden, and counting them
+            // said "moved to 1 of 9" on a page showing five.
+            const now = [...host.querySelectorAll("[data-arrange-id]")]
+              .filter(x => x.offsetParent !== null).map(x => x.dataset.arrangeId);
             const at = now.indexOf(id) + 1;
-            if (at && typeof showToast === "function") showToast("Moved to " + at + " of " + now.length + ".");
+            if (!at) return;
+            const msg = "Moved to " + at + " of " + now.length + ".";
+            // A drag is easy to start by accident and there is no other way
+            // back to an order you did not choose deliberately.
+            if (wasOrder && typeof showUndoToast === "function"){
+              showUndoToast(msg, () => {
+                order[tab] = wasOrder;
+                save(); signature = ""; buildContents(false);
+              });
+            } else if (typeof showToast === "function") showToast(msg);
           }, 80);
         }
 
@@ -14028,6 +14083,7 @@
           }
         });
         host.addEventListener("dragend", () => {
+          dropAt = null;
           hideGhost();
           host.querySelectorAll(".is-dragging").forEach(x => x.classList.remove("is-dragging"));
           host.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
@@ -14041,24 +14097,33 @@
           host.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
           if (over && over.dataset.arrangeId !== dragCard){
             over.classList.add("is-drop-before");
+            // What the outline is over IS the drop. Held here rather than
+            // worked out again on release, so the move that happens is the one
+            // that was shown.
+            dropAt = over.dataset.arrangeId;
             const me = host.querySelector('[data-arrange-id="' + CSS.escape(dragCard) + '"]');
             if (me) showGhost(me, over);
-          } else hideGhost();
+          } else { dropAt = null; hideGhost(); }
         });
         host.addEventListener("drop", ev => {
           if (!editing || !dragCard) return;
           ev.preventDefault();
-          const over = dropTargetAt(ev);
           const id = dragCard; dragCard = null;
+          const target = dropAt; dropAt = null;
           // Both, here, now: dragend may not arrive before the rebuild below
           // replaces the list, and then nothing clears it.
           hideGhost();
           host.querySelectorAll(".is-drop-before, .is-dragging")
             .forEach(x => x.classList.remove("is-drop-before", "is-dragging"));
-          if (railMoveTo){
-            railMoveTo(id, over && over.dataset.arrangeId !== id ? over.dataset.arrangeId : null);
-            sayWhere(id);
-          }
+          /* No outline, no move. dropTargetAt() returning nothing used to mean
+             "put it last", so a drag released over a gap - or over the seam, or
+             past the end of the row - quietly sent the card to the bottom of a
+             page you were only rearranging. */
+          if (!target || target === id) return;
+          if (!railMoveTo) return;
+          const wasOrder = (order[tab] || []).slice();
+          railMoveTo(id, target);
+          sayWhere(id, wasOrder);
         });
 
         /* The menu. Built when opened rather than with the tag, so what it
@@ -17277,11 +17342,13 @@
     .loan-card.is-closed > *:not(.loan-card-head){ transition: none; }
   }
 
-  /* An earlier pass hid every toggle-note on a settled entry until the pencil
-     was pressed, because back then it was an "Add note" button in the action
-     bar of a card you could no longer add to. In the cluster it is how you READ
-     the note, so it is always there. */
-  .loan-card.is-closed .loan-note-btn{ display: inline-flex; }
+  /* The note button waits for the pencil. The note itself is already on the
+     card - the slot below the figure shows it, or says there is not one - so
+     out of edit mode this button had nothing to offer that was not already
+     there. It is how you CHANGE the note, and changing is what the pencil is
+     for. */
+  .loan-card.is-closed .loan-note-btn{ display: none; }
+  .loan-card.is-closed.is-editing .loan-note-btn{ display: inline-flex; }
 
   /* ---------- appearance: accent ------------------------------------------- */
   /* One token, redefined. Everything downstream - buttons, chips, the rail mark,
@@ -17355,6 +17422,43 @@
      A cell that stacks two lines is just a cell with a block under a block. */
   td.pl-name{ display: table-cell; }
   td.pl-name .pl-sub{ display: block; margin-top: 1px; }
+
+  /* ---------- a card that says how long its list is ------------------------ */
+  .dash-subhead-row{
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--sp-5);
+  }
+  .dash-subhead-row .dash-subhead{ margin-bottom: 0; }
+  /* Only while arranging. It is a decision about the card, not about the money
+     in it, and it belongs with the other decisions about the card. */
+  .rows-pick{ display: none; }
+  body.is-layout-editing .rows-pick{
+    display: inline-flex; align-items: center; gap: var(--sp-4);
+    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim);
+  }
+  .rows-pick select{
+    width: auto; height: 26px; padding: 0 var(--sp-5);
+    background: var(--sunken); border: 1px solid var(--line);
+    border-radius: var(--r-sm); color: var(--ink);
+    font-size: var(--fs-2xs); font-weight: 700; text-transform: none;
+  }
+
+  /* ---------- editing a settled card ---------------------------------------- */
+  /* While you are editing it, the thing you are editing is what matters: the
+     mark drops behind everything and the record comes forward at the size an
+     ordinary card reads at. */
+  .loan-card.is-closed.is-editing::after,
+  .loan-card.is-closed.is-editing[data-repaid]::after{
+    z-index: 0; opacity: .22;
+  }
+  .loan-card.is-closed.is-editing > *{ position: relative; z-index: 1; }
+  .loan-card.is-closed.is-editing .loan-who{ font-size: inherit; }
+  .loan-card.is-closed.is-editing .loan-logged{ font-size: var(--fs-2xs); }
+  .loan-card.is-closed.is-editing .loan-amt{ font-size: var(--fs-2xl); }
+  /* The account is a select again while editing, so the chip that stood in for
+     it has nothing left to say. */
+  .loan-card.is-closed.is-editing .loan-chip.is-bank{ display: none; }
 </style>
 </body>
 </html>
