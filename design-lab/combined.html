@@ -12695,7 +12695,8 @@
             if (s.head) s.head.scrollIntoView({ block: "start", behavior: still() ? "auto" : "smooth" });
             return;
           }
-          s.tab = tab;
+          // No s.tab here: openBeside stamps it, so there is one place that
+          // decides it rather than one per caller.
           openBeside(s, secs.filter(x => !chosen.has(x.id)));
         });
 
@@ -13599,6 +13600,19 @@
 
         setBlock(sec.block, true);
         body.appendChild(sec.block);
+        /* Which page this section belongs to, stamped HERE rather than by
+           whoever called. The rail set it before calling and the peer strip
+           below did not - it hands over a section straight from the array it
+           captured when the drawer opened, and only the one originally clicked
+           had ever been stamped. buildContents puts the open section back into
+           the list guarded on besideNow.tab === tab, so an unstamped one failed
+           that test and dropped out of the rail entirely: picking a peer from
+           inside the drawer made its own entry disappear from the list on the
+           left, and the count fall by one.
+
+           A section can only be opened beside from the page it is on, so the
+           current tab is the answer on every path. */
+        sec.tab = currentTab();
         besideNow = sec;
 
         document.getElementById("rd-title").textContent = sec.head.textContent.trim();
