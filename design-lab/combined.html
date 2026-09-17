@@ -2810,7 +2810,33 @@
                 <input type="number" id="lg-day" min="1" max="31" placeholder="15">
               </label>
             </div>
-            <p class="hint is-help" style="margin-top:6px;">Recorded and shown on the entry. It does not post instalments for you yet.</p>
+            <p class="hint is-help" style="margin-top:6px;">The next one due is worked out from this and shown on the entry.</p>
+          </div>
+          <div class="fld">
+            <span class="fld-head">
+              <label class="fld-k" for="lg-interest-kind">Interest</label>
+              <span class="fld-opt">Optional</span>
+            </span>
+            <div class="monthly-row">
+              <select id="lg-interest-kind">
+                <option value="none">None</option>
+                <option value="flat">Flat, once</option>
+                <option value="monthly">Per month</option>
+              </select>
+              <label class="monthly-day">rate
+                <input type="number" id="lg-interest-rate" min="0" step="0.1" placeholder="0">
+                <span>%</span>
+              </label>
+            </div>
+            <p class="hint is-help" style="margin-top:6px;">Simple, never compounding. Shown beside the amount, never added to it.</p>
+          </div>
+          <div class="fld">
+            <span class="fld-head">
+              <label class="fld-k" for="lg-reference">Reference</label>
+              <span class="fld-opt">Optional</span>
+            </span>
+            <input type="text" id="lg-reference" placeholder="Transfer reference, or a link">
+            <p class="hint is-help" style="margin-top:6px;">Points at the record in your bank’s own app. Files are not stored here.</p>
           </div>
         </div>
         <div class="form-actions is-end">
@@ -2888,7 +2914,33 @@
                 <input type="number" id="lt-day" min="1" max="31" placeholder="15">
               </label>
             </div>
-            <p class="hint is-help" style="margin-top:6px;">Recorded and shown on the entry. It does not post instalments for you yet.</p>
+            <p class="hint is-help" style="margin-top:6px;">The next one due is worked out from this and shown on the entry.</p>
+          </div>
+          <div class="fld">
+            <span class="fld-head">
+              <label class="fld-k" for="lt-interest-kind">Interest</label>
+              <span class="fld-opt">Optional</span>
+            </span>
+            <div class="monthly-row">
+              <select id="lt-interest-kind">
+                <option value="none">None</option>
+                <option value="flat">Flat, once</option>
+                <option value="monthly">Per month</option>
+              </select>
+              <label class="monthly-day">rate
+                <input type="number" id="lt-interest-rate" min="0" step="0.1" placeholder="0">
+                <span>%</span>
+              </label>
+            </div>
+            <p class="hint is-help" style="margin-top:6px;">Simple, never compounding. Shown beside the amount, never added to it.</p>
+          </div>
+          <div class="fld">
+            <span class="fld-head">
+              <label class="fld-k" for="lt-reference">Reference</label>
+              <span class="fld-opt">Optional</span>
+            </span>
+            <input type="text" id="lt-reference" placeholder="Transfer reference, or a link">
+            <p class="hint is-help" style="margin-top:6px;">Points at the record in your bank’s own app. Files are not stored here.</p>
           </div>
         </div>
         <div class="form-actions is-end">
@@ -5664,7 +5716,48 @@
   // now" throughout the app (status changes, deletes, relinking all already work
   // this way), so a payment just mutates it down — everything else stays correct
   // without needing to know a payment ever happened.
-  function logLoanPayment(loan, paymentAmount, direction){
+  /* ---- what a loan knows about itself ---------------------------------- */
+  // The next time a monthly instalment falls due, or null. Counted forward from
+  // today rather than from the start date, because what you want to know is
+  // when the next one lands, not how many have passed.
+  function nextDueOf(loan){
+    if (!loan || !loan.repayMonthly || !loan.repayDay) return null;
+    if (loan.status !== "outstanding") return null;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const day = Math.max(1, Math.min(31, +loan.repayDay));
+    for (let ahead = 0; ahead <= 2; ahead++){
+      const y = today.getFullYear(), m = today.getMonth() + ahead;
+      // A day past the end of a short month lands on its last day, which is
+      // what "the 31st" means in February to everyone except a calendar.
+      const last = new Date(y, m + 1, 0).getDate();
+      const d = new Date(y, m, Math.min(day, last));
+      d.setHours(0,0,0,0);
+      if (d >= today) return toLocalISO(d);
+    }
+    return null;
+  }
+
+  // Simple, never compounding. Money lent between people is checked in
+  // someone’s head, and a figure they can reproduce is worth more than one
+  // that is technically richer.
+  function interestOf(loan){
+    if (!loan || !loan.interestKind || loan.interestKind === "none") return 0;
+    const rate = +loan.interestRate || 0;
+    if (rate <= 0) return 0;
+    const principal = +loan.originalAmount || +loan.amount || 0;
+    if (loan.interestKind === "flat") return round2(principal * rate / 100);
+    const from = loan.dateGiven || loan.dateTaken;
+    if (!from) return 0;
+    const start = new Date(from + "T00:00:00");
+    const now = new Date(); now.setHours(0,0,0,0);
+    const months = Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 +
+      (now.getMonth() - start.getMonth()));
+    return round2(principal * rate / 100 * months);
+  }
+
+  function paymentsOf(loan){ return Array.isArray(loan && loan.payments) ? loan.payments : []; }
+
+  function logLoanPayment(loan, paymentAmount, direction, meta){
     if (isNaN(paymentAmount) || paymentAmount <= 0){
       showToast("Enter a payment amount greater than 0.");
       return false;
@@ -5684,6 +5777,19 @@
         if (!result.ok) showToast(`Payment logged, but ${result.reason}.`);
       }
     }
+
+    // The ledger. Written here rather than by the caller, so every path that
+    // moves money against a loan leaves the same trace - there is one place
+    // that reduces the balance and it is this one.
+    if (!Array.isArray(loan.payments)) loan.payments = [];
+    loan.payments.unshift({
+      id: "pay_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+      date: todayISO(),
+      amount: round2(paymentAmount),
+      note: (meta && meta.note) || "",
+      entryId: (meta && meta.entryId) || null,
+      bank: loan.bank || null
+    });
 
     if (loan.amount <= 0.01){
       loan.amount = 0;
@@ -5718,6 +5824,8 @@
       saveExpenses(expenses);
     }
     renderQuickStats();
+    // Handed back so the loan can point at the row it just made.
+    return entry.id;
   }
 
   // Lets a loan's bank be changed after the fact — including loans that predate
@@ -6585,12 +6693,20 @@
     const horizon = new Date(today); horizon.setDate(horizon.getDate() + 30);
     const horizonStr = toLocalISO(horizon);
 
+    /* A one-off deadline and a monthly instalment are both "money expected on
+       a date", and this queue only knew about the first. A loan repaid monthly
+       had a deadline months away and showed nothing due, while an instalment
+       landed every month unannounced. */
+    const dueRow = (l, dir) => {
+      const next = nextDueOf(l);
+      if (next) return { deadline: next, amount: l.amount, dir, who: l.person, every: true };
+      if (l.deadline) return { deadline: l.deadline, amount: l.amount, dir, who: l.person };
+      return null;
+    };
     const items = [].concat(
-      loansGiven.filter(l => l.status === "outstanding" && l.deadline)
-        .map(l => ({ deadline: l.deadline, amount: l.amount, dir: "in", who: l.person })),
-      loansTaken.filter(l => l.status === "outstanding" && l.deadline)
-        .map(l => ({ deadline: l.deadline, amount: l.amount, dir: "out", who: l.person }))
-    ).filter(l => l.deadline <= horizonStr)
+      loansGiven.filter(l => l.status === "outstanding").map(l => dueRow(l, "in")),
+      loansTaken.filter(l => l.status === "outstanding").map(l => dueRow(l, "out"))
+    ).filter(l => l && l.deadline <= horizonStr)
      .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
     if (!items.length){
@@ -7539,7 +7655,11 @@
       bank: bank || null,
       notes: (document.getElementById("lg-notes").value || "").trim(),
       repayMonthly: !!document.getElementById("lg-monthly").checked,
-      repayDay: clampDay(document.getElementById("lg-day").value)
+      repayDay: clampDay(document.getElementById("lg-day").value),
+      interestKind: document.getElementById("lg-interest-kind").value || "none",
+      interestRate: parseFloat(document.getElementById("lg-interest-rate").value) || 0,
+      reference: (document.getElementById("lg-reference").value || "").trim(),
+      payments: []
     });
     saveLoansGiven(loansGiven);
     let withdrawResult = null;
@@ -7551,6 +7671,9 @@
     document.getElementById("lg-notes").value = "";
     document.getElementById("lg-monthly").checked = false;
     document.getElementById("lg-day").value = "";
+    document.getElementById("lg-interest-kind").value = "none";
+    document.getElementById("lg-interest-rate").value = "";
+    document.getElementById("lg-reference").value = "";
     renderLoansGiven();
     if (withdrawResult && !withdrawResult.ok){
       showToast(`Logged ${fmtMoney(amount)} lent to ${person}, but ${withdrawResult.reason}.`);
@@ -7709,10 +7832,23 @@
     const hasNote = !!(l.notes && l.notes.trim().length);
     const canPay = l.status === "outstanding";
     const bankOpts = BANK_OPTIONS.map(b=>`<option value="${escapeHtml(b)}" ${l.bank===b?"selected":""}>${escapeHtml(b)}</option>`).join("");
+    const nextDue = nextDueOf(l);
+    const interest = interestOf(l);
+    const paid = paymentsOf(l);
+    const trail = paid.length ? `
+        <div class="loan-payment-row collapsible-body is-collapsed" data-trail-panel>
+          <ol class="pay-trail">${paid.map(p => `<li>
+            <span class="pay-date">${fmtDate(p.date)}</span>
+            <span class="pay-amt num">${fmtMoney(p.amount)}</span>
+            ${p.note ? `<span class="pay-note">${escapeHtml(p.note)}</span>` : ""}
+            ${p.entryId ? `<span class="pay-link" title="Also recorded in History">in History</span>` : ""}
+          </li>`).join("")}</ol>
+        </div>` : "";
     const actionBar = `
         <div class="row-action-bar">
           ${canPay ? `<button class="loan-payment-link" data-action="toggle-payment">${ICON.in} Log a payment</button>` : ""}
           ${canPay ? `<button class="loan-payment-link is-settle" data-action="settle" title="Settle the whole ${fmtMoney(l.amount)}">${ICON.check} Mark fully paid</button>` : ""}
+          ${paid.length ? `<button class="loan-payment-link" data-action="toggle-trail" aria-expanded="false">${paid.length} payment${paid.length === 1 ? "" : "s"}</button>` : ""}
           <button class="loan-payment-link" data-action="toggle-note" aria-expanded="false">${hasNote ? "View note" : "Add note"}</button>
         </div>
         ${canPay ? `
@@ -7724,12 +7860,12 @@
         <div class="loan-payment-row collapsible-body is-collapsed" data-note-panel>
           <textarea data-field="notes" placeholder="Terms, reason, whatever is useful to remember." rows="2" style="flex:1; min-width:200px;">${escapeHtml(l.notes || "")}</textarea>
           <button class="btn btn-ghost btn-sm" data-action="save-note">Save note</button>
-        </div>`;
+        </div>${trail}`;
     // A workspace card: the person and the figure first, controls beneath.
     return `
       <div class="loan-card ${l.status === "outstanding" ? "is-open" : "is-closed"}" data-id="${l.id}">
         <div class="loan-card-head">
-          <span class="loan-who">${escapeHtml(l.person)}</span>
+          <button type="button" class="loan-who is-link" data-person="${escapeHtml(l.person)}" title="Everything with ${escapeHtml(l.person)}">${escapeHtml(l.person)}</button>
           <span class="status-pill ${l.status === "outstanding" ? "outstanding" : ""}">${l.status === "outstanding" ? "Outstanding" : "Repaid"}</span>
           ${canPay ? "" : `<button class="row-action loan-edit" data-action="unlock" title="Edit this settled entry" aria-label="Edit this settled entry">✎</button>`}
           <button class="row-action row-action-danger loan-remove" data-action="delete" title="Remove this entry" aria-label="Remove this entry">✕</button>
@@ -7740,7 +7876,11 @@
         </div>
         <div class="loan-meta-row">
           <span>${fmtDate(l[dateField])}</span>${deadlineCellHtml(l)}
-          ${l.repayMonthly ? `<span class="loan-chip" title="Repaid in monthly instalments">Monthly${l.repayDay ? " · " + ordinal(l.repayDay) : ""}</span>` : ""}
+          ${nextDue ? `<span class="loan-chip is-due" title="Next monthly instalment">Next ${fmtDate(nextDue)}</span>`
+            : l.repayMonthly ? `<span class="loan-chip" title="Repaid in monthly instalments">Monthly${l.repayDay ? " · " + ordinal(l.repayDay) : ""}</span>` : ""}
+          ${interest > 0 ? `<span class="loan-chip is-interest" title="${l.interestKind === "flat" ? "Flat" : "Per month"} at ${l.interestRate}%, simple">+${fmtMoney(interest)} interest</span>` : ""}
+          ${l.reference ? `<span class="loan-chip is-quiet" title="${escapeHtml(l.reference)}">Ref</span>` : ""}
+          ${paid.length ? `<span class="loan-chip is-quiet" title="${paid.length} payment${paid.length === 1 ? "" : "s"} recorded">${paid.length} paid</span>` : ""}
           ${l.notes && l.notes.trim() ? `<span class="loan-chip is-quiet" title="${escapeHtml(l.notes.trim())}">Note</span>` : ""}
         </div>
         <div class="loan-card-controls">
@@ -7926,6 +8066,15 @@
         renderLoans(dir);
         showToast(newBank ? `Linked to ${newBank}.` : "Account link removed.");
       });
+      // The payments trail, on any row that has one.
+      const trailBtn = row.querySelector('[data-action="toggle-trail"]');
+      if (trailBtn) trailBtn.addEventListener("click", ()=>{
+        const panel = row.querySelector("[data-trail-panel]");
+        if (!panel) return;
+        const open = panel.classList.toggle("is-collapsed");
+        trailBtn.setAttribute("aria-expanded", open ? "false" : "true");
+      });
+
       // Only on a settled row, which is the only row that renders it.
       const unlock = row.querySelector('[data-action="unlock"]');
       if (unlock) unlock.addEventListener("click", ()=>{
@@ -7987,8 +8136,11 @@
         const noteInput = payRow.querySelector('[data-field="payment-note"]');
         const item = cfg.list.find(x=>x.id===id);
         const amt = parseFloat(input.value);
-        if (!logLoanPayment(item, amt, dir)) return;
-        logLoanPaymentToHistory(item, amt, dir, noteInput.value.trim());
+        const note = noteInput.value.trim();
+        // The History row is written first so its id can go on the payment,
+        // which is what joins the loan to the ledger.
+        const entryId = logLoanPaymentToHistory(item, amt, dir, note);
+        if (!logLoanPayment(item, amt, dir, { note, entryId })) return;
         noteInput.value = "";
         cfg.save();
         renderLoans(dir);
@@ -8052,6 +8204,10 @@
     repaintLists();
   });
 
+  // Published so the person view can gather from both sides. Read-only there;
+  // every write still goes through the stores.
+  Object.defineProperty(window, "loansGiven", { get: () => loansGiven, configurable: true });
+  Object.defineProperty(window, "loansTaken", { get: () => loansTaken, configurable: true });
   function renderLoansGiven(){ renderLoans("given"); }
   function renderLoansTaken(){ renderLoans("taken"); }
 
@@ -8070,7 +8226,11 @@
       bank: bank || null,
       notes: (document.getElementById("lt-notes").value || "").trim(),
       repayMonthly: !!document.getElementById("lt-monthly").checked,
-      repayDay: clampDay(document.getElementById("lt-day").value)
+      repayDay: clampDay(document.getElementById("lt-day").value),
+      interestKind: document.getElementById("lt-interest-kind").value || "none",
+      interestRate: parseFloat(document.getElementById("lt-interest-rate").value) || 0,
+      reference: (document.getElementById("lt-reference").value || "").trim(),
+      payments: []
     });
     saveLoansTaken(loansTaken);
     if (bank){
@@ -8084,6 +8244,9 @@
     document.getElementById("lt-notes").value = "";
     document.getElementById("lt-monthly").checked = false;
     document.getElementById("lt-day").value = "";
+    document.getElementById("lt-interest-kind").value = "none";
+    document.getElementById("lt-interest-rate").value = "";
+    document.getElementById("lt-reference").value = "";
     renderLoansTaken();
     showToast(`Logged ${fmtMoney(amount)} borrowed from ${person}${bank ? ` · deposited to ${bank}` : ""}`);
   });
@@ -13908,6 +14071,58 @@
         if (first) setTimeout(() => first.focus(), 160);
       });
 
+      /* ---- everything with one person -------------------------------------
+         The same names recur - a sibling, a lender, an office loan - and they
+         were only ever visible one row at a time, scattered across two tabs
+         and nine pages. Pressing a name gathers them. */
+      const personPanel = document.createElement("div");
+      personPanel.id = "person-view";
+      personPanel.className = "person-view";
+      personPanel.hidden = true;
+      document.body.appendChild(personPanel);
+
+      function openPerson(name){
+        if (!name) return;
+        const given = (window.loansGiven || []).filter(l => l.person === name);
+        const taken = (window.loansTaken || []).filter(l => l.person === name);
+        const sum = list => list.filter(l => l.status === "outstanding")
+          .reduce((t, l) => t + (+l.amount || 0), 0);
+        const owedToYou = sum(given), youOwe = sum(taken);
+        const net = owedToYou - youOwe;
+        const rows = (list, dir) => list.map(l => {
+          const paid = Array.isArray(l.payments) ? l.payments.length : 0;
+          return '<li class="pv-row ' + (l.status === "outstanding" ? "" : "is-done") + '">' +
+            '<span class="pv-dir">' + (dir === "given" ? "You lent" : "You borrowed") + '</span>' +
+            '<span class="pv-amt num">' + fmtMoney(l.amount) + '</span>' +
+            '<span class="pv-when">' + fmtDate(l.dateGiven || l.dateTaken) + '</span>' +
+            (l.deadline ? '<span class="pv-due">due ' + fmtDate(l.deadline) + '</span>' : "") +
+            (paid ? '<span class="pv-paid">' + paid + ' payment' + (paid === 1 ? "" : "s") + '</span>' : "") +
+            '<span class="pv-state">' + (l.status === "outstanding" ? "Outstanding" : "Repaid") + '</span>' +
+          '</li>';
+        }).join("");
+        personPanel.innerHTML =
+          '<div class="pv-head">' +
+            '<p class="pv-net ' + (net >= 0 ? "is-in" : "is-out") + '">' +
+              (net === 0 ? "Settled between you"
+                : net > 0 ? escapeHtml(name) + " owes you " + fmtMoney(net)
+                          : "You owe " + escapeHtml(name) + " " + fmtMoney(-net)) +
+            '</p>' +
+            '<p class="pv-sub">' + fmtMoney(owedToYou) + ' out to them · ' +
+              fmtMoney(youOwe) + ' back the other way</p>' +
+          '</div>' +
+          (given.length ? '<h3 class="pv-k">Lent to them</h3><ul class="pv-list">' + rows(given, "given") + '</ul>' : "") +
+          (taken.length ? '<h3 class="pv-k">Borrowed from them</h3><ul class="pv-list">' + rows(taken, "taken") + '</ul>' : "") +
+          (given.length || taken.length ? "" : '<p class="hint">Nothing recorded with this person.</p>');
+        openPanelBeside(personPanel, name);
+      }
+
+      document.addEventListener("click", ev => {
+        const b = ev.target.closest && ev.target.closest("[data-person]");
+        if (!b) return;
+        ev.preventDefault();
+        openPerson(b.dataset.person);
+      });
+
       function putBack(){
         if (!besideNow) return;
         const home = homeOf.get(besideNow.block);
@@ -15432,6 +15647,55 @@
   @media (prefers-reduced-motion: reduce){
     .loan-card.is-closed::after{ transition: none; }
   }
+
+  /* ---------- a name you can open ----------------------------------------- */
+  .loan-who.is-link{
+    background: none; border: 0; padding: 0; margin: 0;
+    font: inherit; font-weight: 700; color: var(--ink);
+    text-align: left; cursor: pointer;
+  }
+  @media (hover: hover){
+    .loan-who.is-link:hover{ color: var(--accent); text-decoration: underline;
+      text-underline-offset: 3px; }
+  }
+  .loan-who.is-link:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- the chips carry their own meaning --------------------------- */
+  .loan-chip.is-due{ border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    color: var(--accent); }
+  .loan-chip.is-interest{ border-color: color-mix(in srgb, var(--warn) 50%, transparent);
+    color: var(--warn-note, var(--warn)); }
+
+  /* ---------- the payments trail ------------------------------------------ */
+  .pay-trail{ list-style: none; margin: 0; padding: 0; width: 100%;
+    display: flex; flex-direction: column; gap: var(--sp-3); }
+  .pay-trail li{ display: flex; align-items: baseline; gap: var(--sp-5);
+    font-size: var(--fs-2xs); color: var(--ink-dim); }
+  .pay-date{ flex: 0 0 auto; }
+  .pay-amt{ flex: 0 0 auto; font-weight: 700; color: var(--ink); }
+  .pay-note{ flex: 1 1 auto; min-width: 0; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+  .pay-link{ flex: 0 0 auto; font-size: var(--fs-3xs); color: var(--ink-faint); }
+
+  /* ---------- one person, both directions --------------------------------- */
+  .person-view{ padding: var(--sp-8); }
+  .pv-head{ margin-bottom: var(--sp-8); }
+  .pv-net{ margin: 0; font-size: var(--fs-xl); font-weight: 700; color: var(--ink); }
+  .pv-net.is-in{ color: var(--positive); }
+  .pv-net.is-out{ color: var(--negative); }
+  .pv-sub{ margin: var(--sp-3) 0 0; font-size: var(--fs-2xs); color: var(--ink-dim); }
+  .pv-k{ margin: var(--sp-8) 0 var(--sp-4); font-size: var(--fs-3xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--ink-dim); }
+  .pv-list{ list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: var(--sp-4); }
+  .pv-row{ display: flex; align-items: baseline; gap: var(--sp-5); flex-wrap: wrap;
+    padding: var(--sp-5) var(--sp-6); background: var(--raised);
+    border: 1px solid var(--line); border-radius: var(--r-md);
+    font-size: var(--fs-2xs); color: var(--ink-dim); }
+  .pv-row.is-done{ opacity: .6; }
+  .pv-dir{ flex: 0 0 auto; font-weight: 700; color: var(--ink-soft); }
+  .pv-amt{ flex: 0 0 auto; font-size: var(--fs-md); font-weight: 700; color: var(--ink); }
+  .pv-state{ margin-left: auto; flex: 0 0 auto; font-weight: 700; }
 </style>
 </body>
 </html>
