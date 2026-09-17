@@ -12763,36 +12763,11 @@
         el.dataset.minSpan = String(n);
         return n;
       }
-      /* Whatever else happens to a card, its title and the line under it
-         survive. Measured from the card's own header rather than assumed, since
-         the headers are not all the same height. */
-      function minRowsOf(el){
-        if (el.dataset.minRows) return +el.dataset.minRows;
-        const head = el.querySelector(":scope > .panel-head, :scope > h2, :scope > h3");
-        const h = (head ? head.getBoundingClientRect().height : 28) + 72;
-        const n = Math.max(ROWS_MIN, Math.min(14, rowsForHeight(h)));
-        el.dataset.minRows = String(n);
-        return n;
-      }
-      /* The rows this card's contents actually need, right now, at the width it
-         currently has. It cannot be a constant: narrowing a card makes its
-         contents taller. The card is unconstrained for one measurement and put
-         straight back - one forced layout per drag, not per frame. */
-      function fitRowsOf(el){
-        const host = el.parentElement;
-        if (!host) return ROWS_MIN;
-        host.classList.add("is-measuring");
-        const h = el.getBoundingClientRect().height;
-        host.classList.remove("is-measuring");
-        return Math.max(ROWS_MIN, rowsForHeight(h));
-      }
-
-      /* Twice what the content needs: enough to open a scrolling list right up,
-         not enough to leave a screenful of empty card. */
-      function maxRowsOf(el){
-        const nat = +el.dataset.naturalRows || 0;
-        return nat ? Math.max(16, Math.min(ROWS_MAX, nat * 2)) : ROWS_MAX;
-      }
+      /* No fitRowsOf and no maxRowsOf. A card's height is not a range with a
+         floor and a ceiling any more - it is one number, measured below, and
+         the only thing that changes it is the width. The ceiling used to be
+         twice the contents, which is how a card came to be drawn at double what
+         it needed with the bottom half empty. */
       function setSpan(el, n){ el.style.setProperty("--span", String(n)); }
       // What the card is currently set to, which is what its row is made of -
       // spanOf answers what it WOULD be, and after a fill those differ.
@@ -12878,29 +12853,27 @@
         const cards = cardsIn(host);
         calibrateRows(host);
         cards.forEach(el => {
-          el.querySelectorAll(":scope > .card-seam, :scope > .card-seam-v, :scope > .card-seam-c")
-            .forEach(x => x.remove());
+          // Handles used to live inside the card; this clears any a stale pass
+          // left there before they moved out into the overlay.
+          el.querySelectorAll(":scope > .card-seam").forEach(x => x.remove());
           setSpan(el, spanOf(tab, el));
         });
 
-        /* Heights. A card the user has sized keeps that size; one they have not
-           is measured, so an untouched page looks exactly as it did before there
-           were heights at all. The measuring pass costs one layout and is the
-           only way to know what a card actually wants. */
-        const needMeasuring = cards.filter(el => !(rectOf(tab, el).r >= ROWS_MIN));
-        if (needMeasuring.length){
-          host.classList.add("is-measuring");
-          const natural = needMeasuring.map(el => el.getBoundingClientRect().height);
-          host.classList.remove("is-measuring");
-          needMeasuring.forEach((el, i) => {
-            const n = rowsForHeight(natural[i]);
-            el.dataset.naturalRows = String(n);   // the ceiling is derived from this
-            setRows(el, n);
-          });
-        }
-        cards.forEach(el => {
-          const r = rectOf(tab, el).r;
-          if (r >= ROWS_MIN) setRows(el, r);
+        /* Heights. Every card, every pass, measured - not remembered. A height
+           the user set was the last thing that could put a card out of step with
+           its contents, in either direction: too short and it cropped, too tall
+           and it sat half empty. Deriving it from the contents at the width the
+           card actually has is the only rule with no wrong end.
+
+           One measuring pass for the whole grid rather than one per card: the
+           cost is a single forced layout either way. */
+        host.classList.add("is-measuring");
+        const natural = cards.map(el => el.getBoundingClientRect().height);
+        host.classList.remove("is-measuring");
+        cards.forEach((el, i) => {
+          const n = rowsForHeight(natural[i]);
+          el.dataset.naturalRows = String(n);
+          setRows(el, n);
         });
         /* And check. The natural pass reports a card with nothing holding it,
            and the parts that size themselves against the card measure smaller
@@ -12914,10 +12887,12 @@
         // it - so the edge gets a shade. Inset shadows are painted against the
         // border box, so it stays at the bottom edge instead of scrolling away.
         cards.forEach(el => el.classList.toggle("has-more", el.scrollHeight - el.clientHeight > 2));
-        /* Every card, including ones with a height you set. That height is a
-           minimum now rather than a fixed size, so a card whose contents have
-           grown since - a list that loaded, a month with more entries - grows
-           with them instead of hiding the difference behind a scrollbar. */
+        /* The corrective pass. Measuring a card with nothing holding it reports
+           the parts that size themselves AGAINST the card as smaller than they
+           will be once it is put back - measured at up to 105px short.
+           scrollHeight is the content's height in the box it actually got, so
+           one pass settles it. Nothing here can make a card taller than its
+           contents, only tall enough for them. */
         cards.forEach(el => {
           const over = el.scrollHeight - el.clientHeight;
           if (over > 2){
@@ -12954,13 +12929,13 @@
           pad.dataset.card = el.dataset.arrangeId || el.id || "";
           pad.classList.toggle("is-temporary", el.classList.contains("is-unpinned"));
           pad.setAttribute("aria-hidden", "true");
+          // Width only. There is no height handle because there is no height to
+          // set: it is the contents. And the one there used to be was a bar the
+          // full width of the card lying in the gutter below it, which is the
+          // space a dragged card has to land in.
           pad.innerHTML =
-            // The width handle needs something to its right to be worth
-            // dragging; the height handle is always worth it.
             (i < cards.length - 1
-              ? '<div class="card-seam" title="Drag to set the width. Double-click to reset."></div>' : "") +
-            '<div class="card-seam-v" title="Drag to set the height. Double-click to fit the contents."></div>' +
-            '<div class="card-seam-c" title="Drag to set both. Double-click to reset."></div>';
+              ? '<div class="card-seam" title="Drag to set the width. Double-click to reset."></div>' : "");
           host.appendChild(pad);
           placeHandles(host, el, pad);
         });
@@ -13062,10 +13037,9 @@
         // and must not start one: the card is draggable while arranging, so the
         // flag comes off for the duration and goes back on after.
         host.addEventListener("pointerdown", ev => {
-          const seam = ev.target.closest(".card-seam, .card-seam-v, .card-seam-c");
+          const seam = ev.target.closest(".card-seam");
           if (!seam || !editing || ev.button !== 0) return;
-          const axis = seam.classList.contains("card-seam-v") ? "y"
-                     : seam.classList.contains("card-seam-c") ? "xy" : "x";
+          const axis = "x";
           // Named on the overlay: the handles are no longer inside the card,
           // because a card that scrolls would take them with it.
           const pad = seam.closest(".card-handles");
@@ -13089,12 +13063,8 @@
             : 0;
           seamDrag = {
             left, right, total, beforeSpan, axis,
-            // Measured once, here, because it depends on the card's width and
-            // the width is not changing under a vertical drag.
-            fitRows: (axis === "y" || axis === "xy") ? fitRowsOf(left) : 0,
             hostLeft: hostBox.left,
             hostW: hostBox.width,
-            topY: leftBox.top,
             wasDraggable: left.draggable
           };
           left.draggable = false;
@@ -13124,25 +13094,7 @@
 
         window.addEventListener("pointermove", ev => {
           if (!seamDrag) return;
-          const { left, right, total, beforeSpan, hostLeft, hostW, axis, topY } = seamDrag;
-          if (axis === "y" || axis === "xy"){
-            // From the card's top edge to the pointer, in rows. The gap between
-            // rows counts toward the span, which is why the pitch is ROW + GAP.
-            const px = ev.clientY - topY;
-            // The floor is what the contents need, measured when the drag
-            // started. You can give a card room; you cannot take its figures
-            // away.
-            const floor = seamDrag.fitRows || minRowsOf(left);
-            const n = Math.max(floor, Math.min(maxRowsOf(left),
-              Math.round((px - rowOffset) / rowPitch)));
-            setRows(left, n);
-            seamDrag.r = n;
-            placeAllHandles(host);
-          }
-          if (axis === "y"){
-            readout(ev.clientX + 16, ev.clientY + 16, curSpan(left) + " \u00d7 " + curRows(left));
-            return;
-          }
+          const { left, right, total, beforeSpan, hostLeft, hostW, axis } = seamDrag;
           // Where the seam IS, in twelfths across the bento, less what the cards
           // before it on this line already take. Pixels to twelfths, rounded:
           // every width you can stop on is one the layout already knew how to be.
@@ -13172,7 +13124,6 @@
         function endSeam(ev){
           if (!seamDrag) return;
           const { left, right, wasDraggable, a, b } = seamDrag;
-          const seamRows = seamDrag.r;
           seamDrag = null;
           hideReadout();
           document.body.classList.remove("is-seam-resizing");
@@ -13180,14 +13131,9 @@
           if (a != null){
             rememberSpan(tab, left, a);
             if (right && b != null) rememberSpan(tab, right, b);
-            // A width change makes the old height the wrong answer, so unless
-            // this drag also set a height, the fit is worked out again.
-            if (seamRows == null){
-              remember(tab, left, { r: null });
-              if (right) remember(tab, right, { r: null });
-            }
           }
-          if (seamRows != null) remember(tab, left, { r: seamRows });
+          // No height is stored. applySpansAndSeams measures it against the
+          // width the card has just been given.
           // The rebuilds that were held off may have left the seams stale, and
           // which cards share a line has very likely just changed.
           applySpansAndSeams(host, tab);
@@ -13195,21 +13141,7 @@
         window.addEventListener("pointerup", endSeam);
         window.addEventListener("pointercancel", endSeam);
         host.addEventListener("dblclick", ev => {
-          const vert = ev.target.closest(".card-seam-v");
-          if (vert && editing){
-            // Back to the height the contents want, which is the useful reset
-            // for a dimension whose "default" was measured in the first place.
-            const vpad = vert.closest(".card-handles");
-            const card = vpad && (host.querySelector('[data-arrange-id="' + CSS.escape(vpad.dataset.card) + '"]')
-                              || document.getElementById(vpad.dataset.card));
-            if (!card) return;
-            ev.preventDefault();
-            remember(tab, card, { r: null });
-            applySpansAndSeams(host, tab);
-            if (typeof showToast === "function") showToast("Height back to fit.");
-            return;
-          }
-          const seam = ev.target.closest(".card-seam, .card-seam-c");
+          const seam = ev.target.closest(".card-seam");
           if (!seam || !editing) return;
           const wpad = seam.closest(".card-handles");
           const left = wpad && (host.querySelector('[data-arrange-id="' + CSS.escape(wpad.dataset.card) + '"]')
@@ -13255,6 +13187,30 @@
           if (g) g.classList.remove("is-on");
         }
 
+        /* Which card a drop at this point means. The gap between two cards
+           belongs to neither of them, and aiming at a gap is the natural way to
+           say "put it here" - so when the pointer is over no card the nearest
+           one is used instead. Without this every drop in a gutter resolved to
+           nobody and fell through to "move to the end", which is what made the
+           cards feel undraggable. */
+        function dropTargetAt(ev){
+          const direct = ev.target.closest && ev.target.closest("[data-arrange-id]");
+          if (direct && host.contains(direct)) return direct;
+          const x = ev.clientX, y = ev.clientY;
+          let best = null, bestD = Infinity;
+          host.querySelectorAll("[data-arrange-id]").forEach(el => {
+            const b = el.getBoundingClientRect();
+            if (!b.height) return;
+            const dx = x < b.left ? b.left - x : x > b.right ? x - b.right : 0;
+            const dy = y < b.top ? b.top - y : y > b.bottom ? y - b.bottom : 0;
+            const d = dx * dx + dy * dy;
+            if (d < bestD){ bestD = d; best = el; }
+          });
+          // Only if the pointer is actually near the grid. A drop out in the
+          // margin still means "the end", which is a real thing to want.
+          return bestD <= 140 * 140 ? best : null;
+        }
+
         host.addEventListener("dragstart", ev => {
           const card = ev.target.closest("[data-arrange-id]");
           if (!editing || !card){ ev.preventDefault(); return; }
@@ -13275,7 +13231,7 @@
           if (!editing || !dragCard) return;
           ev.preventDefault();
           if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
-          const over = ev.target.closest("[data-arrange-id]");
+          const over = dropTargetAt(ev);
           host.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
           if (over && over.dataset.arrangeId !== dragCard){
             over.classList.add("is-drop-before");
@@ -13286,7 +13242,7 @@
         host.addEventListener("drop", ev => {
           if (!editing || !dragCard) return;
           ev.preventDefault();
-          const over = ev.target.closest("[data-arrange-id]");
+          const over = dropTargetAt(ev);
           const id = dragCard; dragCard = null;
           // Both, here, now: dragend may not arrive before the rebuild below
           // replaces the list, and then nothing clears it.
@@ -13336,9 +13292,8 @@
             row("bottom", null, "To the bottom", i < 0 || i >= ids.length - 1) +
             '<p class="card-menu-k">Size</p>' +
             widths.map(w => row("width", w[0], w[1], curSpan(card) === w[0])).join("") +
-            '<p class="card-menu-n">The height follows the contents.</p>' +
-            '<p class="card-menu-k">Height</p>' +
-            row("fit", null, "Back to fitting", false);
+            '<p class="card-menu-n">Width is yours. The height is whatever the ' +
+              'contents need at that width.</p>';
 
           document.body.appendChild(m);
           const r = btn.getBoundingClientRect();
@@ -13404,12 +13359,7 @@
             const n = Math.max(minSpanOf(card), Math.min(SPAN_OF, +item.dataset.val));
             setSpan(card, n);
             rememberSpan(tab, card, n);
-            // The height came from the old width, so it is no longer the right
-            // answer. Dropping it lets the fit be worked out again.
-            remember(tab, card, { r: null });
-            applySpansAndSeams(host, tab);
-          } else if (act === "fit"){
-            remember(tab, card, { r: null });
+            // The height is re-measured inside, against the new width.
             applySpansAndSeams(host, tab);
           }
           if (act === "top" || act === "up" || act === "down" || act === "bottom"){
@@ -14210,18 +14160,43 @@
   nav.tabs .nav-pin{
     background: transparent; border: 1px solid var(--line-strong); color: var(--ink-dim);
   }
+  /* A tint, not a fill. Six saturated squares stacked in a 240px rail was the
+     loudest thing on the screen, and they report a state rather than offering
+     an action. */
   nav.tabs .nav-pin[aria-pressed="true"]{
-    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    color: var(--accent);
   }
   nav.tabs .nav-pin[aria-pressed="true"] svg path{ fill: currentColor; }
   nav.tabs .nav-pin[aria-pressed="false"] svg path{ fill: none; }
   @media (hover: hover){
     nav.tabs .nav-pin[aria-pressed="false"]:hover{ border-color: var(--accent); color: var(--accent); }
-    nav.tabs .nav-pin[aria-pressed="true"]:hover{ background: var(--accent-dark); border-color: var(--accent-dark); }
+    nav.tabs .nav-pin[aria-pressed="true"]:hover{
+      background: color-mix(in srgb, var(--accent) 28%, transparent);
+      border-color: var(--accent);
+    }
   }
   /* And the row it sits in carries the same fact, so the list reads as two
-     groups at a glance rather than six rows with a badge somewhere on them. */
-  nav.tabs .nav-content.is-chip.is-on{ box-shadow: inset 2px 0 0 var(--accent); }
+     groups at a glance rather than six rows with a badge somewhere on them.
+
+     It used to be an inset 2px bar the full height of the row. The chips sit a
+     pixel or two apart, so six of those merged into one ragged line running
+     down the list, broken at arbitrary points: it read as a bracket drawn badly
+     rather than as a mark belonging to each row. A short pill, centred, cannot
+     touch its neighbour and is unambiguous whatever the row's height - the
+     names wrap to two lines, so the rows are not all the same size. */
+  nav.tabs .nav-content.is-chip{ position: relative; margin-bottom: var(--sp-3); }
+  nav.tabs .nav-content.is-chip.is-on::before{
+    content: ""; position: absolute; left: 0; top: 50%;
+    width: 3px; height: 14px; margin-top: -7px;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  /* Full strength for the one you are actually on, and only that one. */
+  nav.tabs .nav-content.is-chip.is-here::before{
+    height: 20px; margin-top: -10px; background: var(--accent);
+  }
 
   /* ---------- the handle on an arrangeable card ---------------------------- */
   /* The old badge was a ::before carrying the words DRAG TO MOVE and no grip,
@@ -14451,33 +14426,10 @@
     opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
   }
   @media (hover: hover){ .card-seam:hover::after{ opacity: .85; } }
-  /* The bottom edge, and the corner that does both. Same idea as the right
-     edge: inside the card's own padding, invisible until reached for. */
-  .card-seam-v{
-    position: absolute; left: 0; right: 14px; bottom: 0; height: 14px;
-    z-index: 4; cursor: row-resize; touch-action: none;
-  }
-  .card-seam-v::after{
-    content: ""; position: absolute; left: 12px; right: 12px; bottom: 4px; height: 3px;
-    border-radius: var(--r-pill); background: var(--accent);
-    opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
-  }
-  .card-seam-c{
-    position: absolute; right: 0; bottom: 0; width: 16px; height: 16px;
-    z-index: 5; cursor: nwse-resize; touch-action: none;
-  }
-  .card-seam-c::after{
-    content: ""; position: absolute; right: 3px; bottom: 3px; width: 9px; height: 9px;
-    border-right: 3px solid var(--accent); border-bottom: 3px solid var(--accent);
-    border-bottom-right-radius: 4px;
-    opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
-  }
-  @media (hover: hover){
-    .card-seam-v:hover::after, .card-seam-c:hover::after{ opacity: .9; }
-  }
-  body.is-seam-resizing .card-seam-v::after,
-  body.is-seam-resizing .card-seam-c::after{ opacity: 1; }
-  .is-arrangeable .card-seam-v::after, .is-arrangeable .card-seam-c::after{ opacity: .3; }
+  /* There is no bottom edge and no corner. The height is the contents, so a
+     handle for it would be a control with nothing to change - and the one that
+     was here was a bar the full width of the card lying in the gutter below it,
+     which is the space a dragged card has to land in. */
 
   /* While arranging it shows without being reached for: that is the mode where
      you are looking for handles. */
@@ -14513,21 +14465,11 @@
     height: 26px; opacity: .22;
     transition: opacity var(--dur-fast) var(--ease-out), height var(--dur-fast) var(--ease-out);
   }
-  .card-seam-v::after{
-    left: 50%; right: auto; transform: translateX(-50%);
-    width: 26px; opacity: .22;
-    transition: opacity var(--dur-fast) var(--ease-out), width var(--dur-fast) var(--ease-out);
-  }
-  .card-seam-c::after{ opacity: .28; }
   @media (hover: hover){
     .card-seam:hover::after{ opacity: .95; height: 44px; }
-    .card-seam-v:hover::after{ opacity: .95; width: 44px; }
-    .card-seam-c:hover::after{ opacity: 1; }
   }
-  .is-arrangeable .card-seam::after,
-  .is-arrangeable .card-seam-v::after{ opacity: .5; }
+  .is-arrangeable .card-seam::after{ opacity: .5; }
   body.is-seam-resizing .card-seam::after{ opacity: 1; height: 44px; }
-  body.is-seam-resizing .card-seam-v::after{ opacity: 1; width: 44px; }
 
   /* The rail's edge says the same thing in the same shape. */
   .rail-resize::after{
@@ -14595,33 +14537,20 @@
   /* Having asked for them, you should not have to hunt. A 5px bar at full
      strength with a ring, so it reads on a pale card as well as a dark one. */
   .card-seam::after,
-  .card-seam-v::after,
   body.is-layout-editing .rail-resize::after{
     opacity: 1;
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg) 78%, transparent);
   }
   .card-seam::after{ width: 5px; height: 44px; right: 3px; }
-  .card-seam-v::after{ height: 5px; width: 44px; bottom: 3px; }
   body.is-layout-editing .rail-resize::after{ width: 5px; height: 44px; left: 1px; }
   @media (hover: hover){
     .card-seam:hover::after{ height: 64px; }
-    .card-seam-v:hover::after{ width: 64px; }
     body.is-layout-editing .rail-resize:hover::after{ height: 64px; }
   }
   body.is-seam-resizing .card-seam::after{ height: 64px; }
-  body.is-seam-resizing .card-seam-v::after{ width: 64px; }
 
-  /* The corner is a grip, not a hint: two strokes and a fill behind them. */
-  .card-seam-c::after{
-    opacity: 1; right: 4px; bottom: 4px; width: 11px; height: 11px;
-    border-right-width: 3px; border-bottom-width: 3px;
-    border-bottom-right-radius: 5px;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg) 78%, transparent);
-  }
-  /* The hit areas can be generous now that they only exist in the mode. */
+  /* The hit area can be generous now that it only exists in the mode. */
   .card-seam{ width: 18px; }
-  .card-seam-v{ height: 18px; right: 18px; }
-  .card-seam-c{ width: 22px; height: 22px; }
 
   /* ---------- the handle overlay ------------------------------------------ */
   /* Over the card, not in it. Nothing here takes a pointer except the handles
@@ -14645,25 +14574,18 @@
      not worth that. */
   /* The flare: a soft halo in the accent, so the bar reads as lit rather than
      drawn, and a brighter core under the hand. */
-  .card-handles .card-seam::after,
-  .card-handles .card-seam-v::after{
+  .card-handles .card-seam::after{
     background: linear-gradient(var(--accent), var(--accent-dark));
     box-shadow:
       0 0 0 2px color-mix(in srgb, var(--bg) 78%, transparent),
       0 0 10px color-mix(in srgb, var(--accent) 55%, transparent);
   }
   @media (hover: hover){
-    .card-handles .card-seam:hover::after,
-    .card-handles .card-seam-v:hover::after{
+    .card-handles .card-seam:hover::after{
       box-shadow:
         0 0 0 2px color-mix(in srgb, var(--bg) 78%, transparent),
         0 0 16px color-mix(in srgb, var(--accent) 85%, transparent);
     }
-  }
-  .card-handles .card-seam-c::after{
-    box-shadow:
-      0 0 0 2px color-mix(in srgb, var(--bg) 78%, transparent),
-      0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
   }
 
   /* ---------- a card that is only here while you arrange ------------------- */
@@ -14692,26 +14614,19 @@
   }
   /* Its handles are drawn back with it: you can still size a card that is not
      staying, it just should not be the loudest thing on the page. */
-  .card-handles.is-temporary .card-seam::after,
-  .card-handles.is-temporary .card-seam-v::after,
-  .card-handles.is-temporary .card-seam-c::after{ opacity: .55; }
+  .card-handles.is-temporary .card-seam::after{ opacity: .55; }
 
   /* ---------- the handles hang outside the card --------------------------- */
   /* In the gutter the grid already leaves: sixteen pixels of nothing between
      one card and the next, which is where a seam belongs. Inside the card a
      handle is always over something, and over a figure once the card scrolls. */
+  /* The width handle, in the vertical gutter between one card and the next:
+     20px wide and the card's own height. Nothing lies in the HORIZONTAL gutter
+     any more, which is where a dragged card has to land. */
   .card-handles .card-seam{
     right: -14px; width: 20px; top: 0; bottom: 0;
   }
   .card-handles .card-seam::after{ right: 8px; }
-  .card-handles .card-seam-v{
-    bottom: -14px; height: 20px; left: 0; right: 14px;
-  }
-  .card-handles .card-seam-v::after{ bottom: 8px; }
-  .card-handles .card-seam-c{
-    right: -14px; bottom: -14px; width: 22px; height: 22px;
-  }
-  .card-handles .card-seam-c::after{ right: 9px; bottom: 9px; }
 
   /* ---------- a card with more in it than it shows ------------------------ */
   /* Kept as a backstop rather than removed. Nothing should reach it now that a
