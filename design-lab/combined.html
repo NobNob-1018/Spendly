@@ -12774,6 +12774,19 @@
         el.dataset.minRows = String(n);
         return n;
       }
+      /* The rows this card's contents actually need, right now, at the width it
+         currently has. It cannot be a constant: narrowing a card makes its
+         contents taller. The card is unconstrained for one measurement and put
+         straight back - one forced layout per drag, not per frame. */
+      function fitRowsOf(el){
+        const host = el.parentElement;
+        if (!host) return ROWS_MIN;
+        host.classList.add("is-measuring");
+        const h = el.getBoundingClientRect().height;
+        host.classList.remove("is-measuring");
+        return Math.max(ROWS_MIN, rowsForHeight(h));
+      }
+
       /* Twice what the content needs: enough to open a scrolling list right up,
          not enough to leave a screenful of empty card. */
       function maxRowsOf(el){
@@ -12901,8 +12914,11 @@
         // it - so the edge gets a shade. Inset shadows are painted against the
         // border box, so it stays at the bottom edge instead of scrolling away.
         cards.forEach(el => el.classList.toggle("has-more", el.scrollHeight - el.clientHeight > 2));
+        /* Every card, including ones with a height you set. That height is a
+           minimum now rather than a fixed size, so a card whose contents have
+           grown since - a list that loaded, a month with more entries - grows
+           with them instead of hiding the difference behind a scrollbar. */
         cards.forEach(el => {
-          if (rectOf(tab, el).r >= ROWS_MIN) return;
           const over = el.scrollHeight - el.clientHeight;
           if (over > 2){
             const n = rowsForHeight(el.scrollHeight);
@@ -13073,6 +13089,9 @@
             : 0;
           seamDrag = {
             left, right, total, beforeSpan, axis,
+            // Measured once, here, because it depends on the card's width and
+            // the width is not changing under a vertical drag.
+            fitRows: (axis === "y" || axis === "xy") ? fitRowsOf(left) : 0,
             hostLeft: hostBox.left,
             hostW: hostBox.width,
             topY: leftBox.top,
@@ -13110,7 +13129,11 @@
             // From the card's top edge to the pointer, in rows. The gap between
             // rows counts toward the span, which is why the pitch is ROW + GAP.
             const px = ev.clientY - topY;
-            const n = Math.max(minRowsOf(left), Math.min(maxRowsOf(left),
+            // The floor is what the contents need, measured when the drag
+            // started. You can give a card room; you cannot take its figures
+            // away.
+            const floor = seamDrag.fitRows || minRowsOf(left);
+            const n = Math.max(floor, Math.min(maxRowsOf(left),
               Math.round((px - rowOffset) / rowPitch)));
             setRows(left, n);
             seamDrag.r = n;
@@ -13157,6 +13180,12 @@
           if (a != null){
             rememberSpan(tab, left, a);
             if (right && b != null) rememberSpan(tab, right, b);
+            // A width change makes the old height the wrong answer, so unless
+            // this drag also set a height, the fit is worked out again.
+            if (seamRows == null){
+              remember(tab, left, { r: null });
+              if (right) remember(tab, right, { r: null });
+            }
           }
           if (seamRows != null) remember(tab, left, { r: seamRows });
           // The rebuilds that were held off may have left the seams stale, and
@@ -13305,10 +13334,11 @@
             row("up", null, "Up one", i <= 0) +
             row("down", null, "Down one", i < 0 || i >= ids.length - 1) +
             row("bottom", null, "To the bottom", i < 0 || i >= ids.length - 1) +
-            '<p class="card-menu-k">Width</p>' +
+            '<p class="card-menu-k">Size</p>' +
             widths.map(w => row("width", w[0], w[1], curSpan(card) === w[0])).join("") +
+            '<p class="card-menu-n">The height follows the contents.</p>' +
             '<p class="card-menu-k">Height</p>' +
-            row("fit", null, "Fit the contents", false);
+            row("fit", null, "Back to fitting", false);
 
           document.body.appendChild(m);
           const r = btn.getBoundingClientRect();
@@ -13374,6 +13404,9 @@
             const n = Math.max(minSpanOf(card), Math.min(SPAN_OF, +item.dataset.val));
             setSpan(card, n);
             rememberSpan(tab, card, n);
+            // The height came from the old width, so it is no longer the right
+            // answer. Dropping it lets the fit be worked out again.
+            remember(tab, card, { r: null });
             applySpansAndSeams(host, tab);
           } else if (act === "fit"){
             remember(tab, card, { r: null });
@@ -14681,8 +14714,16 @@
   .card-handles .card-seam-c::after{ right: 9px; bottom: 9px; }
 
   /* ---------- a card with more in it than it shows ------------------------ */
+  /* Kept as a backstop rather than removed. Nothing should reach it now that a
+     card cannot be shorter than its contents, but content can grow between one
+     pass and the next, and a shaded edge is a better way to spend that moment
+     than a figure cut in half with no explanation. */
   .bento > .card.has-more{
     box-shadow: var(--elev-1), inset 0 -20px 16px -16px rgb(0 0 0 / .5);
+  }
+  .card-menu-n{
+    margin: var(--sp-2) var(--sp-4) var(--sp-3);
+    font-size: var(--fs-3xs); color: var(--ink-dim); max-width: 168px;
   }
 </style>
 </body>
