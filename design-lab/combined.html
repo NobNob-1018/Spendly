@@ -4110,8 +4110,16 @@
     if (PAGE_SIZES.indexOf(n) < 0) return 5;
     return n === 0 ? 1e9 : n;
   }
+  /* A phone is 375px wide. A grid of cards on it is one card per screen, which
+     is a list with more scrolling - so a list is what it opens as, until
+     somebody says otherwise. The pair of buttons in the toolbar still says
+     otherwise, and what it writes wins from then on. */
+  const PHONE_Q = "(max-width: 720px)";
+  const onPhone = () => !!(window.matchMedia && window.matchMedia(PHONE_Q).matches);
   function listLayout(){
-    return (uiPrefs && uiPrefs.listLayout) === "list" ? "list" : "cards";
+    const set = uiPrefs && uiPrefs.listLayout;
+    if (set === "list" || set === "cards") return set;
+    return onPhone() ? "list" : "cards";
   }
   let expensePage = 1;
   // History filters now live in the table headers (rebuilt each render), so their
@@ -9058,7 +9066,18 @@
     }
 
     const savingsTotal = savings.reduce((s,a)=>s+a.amount, 0);
-    const cardsList = savings.slice().sort((a,b)=>b.amount-a.amount).map(a=>{
+    /* Sorted by balance was one opinion about what matters, applied every
+       render. A saved order wins where there is one, and the rest fall in
+       behind it by balance - so an account added today lands somewhere
+       sensible rather than at the end of a list nobody asked for. */
+    const savedOrder = (uiPrefs && uiPrefs.savingsOrder) || [];
+    const rank = id => { const i = savedOrder.indexOf(id); return i < 0 ? Infinity : i; };
+    const ordered = savings.slice().sort((a, b) => {
+      const ra = rank(a.id), rb = rank(b.id);
+      if (ra !== rb) return ra - rb;
+      return b.amount - a.amount;
+    });
+    const cardsList = ordered.map(a=>{
       const netMonthly = netMonthlyInterest(a);
       const taxRate = a.taxRate != null ? a.taxRate : 20;
       const gross = grossMonthlyInterest(a);
@@ -9076,7 +9095,7 @@
       // A workspace card leads with the figure and its share, because the
       // comparison between accounts is the thing being looked at.
       return `
-        <div class="savings-account" data-id="${a.id}">
+        <div class="savings-account" data-id="${a.id}" draggable="true">
           <div class="sa-head">
             <span class="sa-name">${escapeHtml(a.provider)}</span>
             <button class="row-action row-action-danger" data-action="delete" title="Remove" aria-label="Remove">✕</button>
@@ -9113,6 +9132,54 @@
       });
     });
     if (typeof paintListControls === "function") paintListControls();
+
+    /* Drag one account over another and it takes that place. The order is a
+       view preference, so it lives in uiPrefs beside the page size and never
+       travels in a backup. */
+    (function wireAccountOrder(){
+      const list = wrap.querySelector(".savings-list");
+      if (!list) return;
+      let from = null;
+      list.addEventListener("dragstart", ev => {
+        const card = ev.target.closest(".savings-account");
+        if (!card){ ev.preventDefault(); return; }
+        from = card.dataset.id;
+        card.classList.add("is-dragging");
+        if (ev.dataTransfer){ ev.dataTransfer.effectAllowed = "move";
+          ev.dataTransfer.setData("text/plain", from); }
+      });
+      list.addEventListener("dragend", () => {
+        from = null;
+        list.querySelectorAll(".is-dragging, .is-drop-before")
+          .forEach(x => x.classList.remove("is-dragging", "is-drop-before"));
+      });
+      list.addEventListener("dragover", ev => {
+        if (!from) return;
+        ev.preventDefault();
+        const over = ev.target.closest(".savings-account");
+        list.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
+        if (over && over.dataset.id !== from) over.classList.add("is-drop-before");
+      });
+      list.addEventListener("drop", ev => {
+        if (!from) return;
+        ev.preventDefault();
+        const over = ev.target.closest(".savings-account");
+        const id = from; from = null;
+        list.querySelectorAll(".is-dragging, .is-drop-before")
+          .forEach(x => x.classList.remove("is-dragging", "is-drop-before"));
+        // The outline is the drop, here as on the bento: released over nothing,
+        // nothing happens.
+        if (!over || over.dataset.id === id) return;
+        const ids = [...list.querySelectorAll(".savings-account")].map(x => x.dataset.id);
+        const at = ids.indexOf(id);
+        if (at >= 0) ids.splice(at, 1);
+        const to = ids.indexOf(over.dataset.id);
+        ids.splice(to < 0 ? ids.length : to, 0, id);
+        setUiPref("savingsOrder", ids);
+        renderSavingsList();
+        if (typeof showToast === "function") showToast("Accounts reordered.");
+      });
+    })();
 
     wrap.querySelectorAll(".savings-account").forEach(card=>{
       const id = card.dataset.id;
@@ -11331,6 +11398,26 @@
   // filter/collapse state and is deliberately excluded from backups.
   applyDensity(pref("density", "comfortable"));
 
+  /* The layout preference has to be on the body from the first paint, not from
+     the first time a filter bar is built - paintListControls only runs on the
+     screens that HAVE one, so a phone opened on the Dashboard stayed in card
+     layout until it visited Loans. And it follows the screen while nobody has
+     stated a preference: turn a desktop window narrow and the lists follow. */
+  const applyListLayout = () =>
+    document.body.classList.toggle("list-as-rows", listLayout() === "list");
+  applyListLayout();
+  if (window.matchMedia){
+    const mq = window.matchMedia(PHONE_Q);
+    const onWidth = () => {
+      const set = uiPrefs && uiPrefs.listLayout;
+      if (set === "list" || set === "cards") return;   // a stated preference wins
+      applyListLayout();
+      if (typeof paintListControls === "function") paintListControls();
+    };
+    if (mq.addEventListener) mq.addEventListener("change", onWidth);
+    else if (mq.addListener) mq.addListener(onWidth);
+  }
+
   applySettingsGroup(pref("settingsGroup", "appearance"));
   applyLoansGroup(pref("loansGroup", "given"));
   document.querySelectorAll("#loans-nav button").forEach(btn=>{
@@ -13028,6 +13115,11 @@
       try{ listOpen = JSON.parse(localStorage.getItem(LIST_KEY) || "{}") || {}; }catch(e){ listOpen = {}; }
       // Which sections stay on the page, and what order everything is in. Both
       // are the reader's arrangement, so both outlive the session.
+      /* What a 375px screen is worth opening on. Everything else on that tab
+         still exists, still opens beside, and comes back the moment the screen
+         is wide enough - it is the DEFAULT that changes, not the tab. */
+      const PHONE_KEEP = { dashboard: ["money-overview-card", "blk-recent-activity"] };
+      const railPhone = () => !!(window.matchMedia && window.matchMedia("(max-width: 720px)").matches);
       let pinned = {};
       try{ pinned = JSON.parse(localStorage.getItem(PIN_KEY) || "{}") || {}; }catch(e){ pinned = {}; }
       // Sections the reader has taken out of the list entirely. Not everything
@@ -13228,7 +13320,14 @@
            that said it was not there. */
         const away = new Set(hiddenSecs[tab] || []);
         const here = secs.filter(x => !away.has(x.id));
-        const pool = here.length ? here : secs;
+        let pool = here.length ? here : secs;
+        // On a phone the pool narrows to what the screen can hold. Nothing is
+        // removed - the rest is one tap away in the list, and a wider screen
+        // gets all of it back without a setting.
+        if (railPhone() && PHONE_KEEP[tab]){
+          const fits = pool.filter(x => PHONE_KEEP[tab].indexOf(x.id) >= 0);
+          if (fits.length) return fits.map(x => x.id);
+        }
         const want = pinned[tab];
         if (want && want.length){
           const live = want.filter(id => pool.some(x => x.id === id));
@@ -13437,8 +13536,12 @@
               box.appendChild(gh);
             }
           }
+          // Greyed, not gone: it says this screen is too small for it, which is
+          // a different thing from it not being there.
+          const tooBig = railPhone() && PHONE_KEEP[tab] &&
+            PHONE_KEEP[tab].indexOf(s.id) < 0;
           const item = document.createElement("div");
-          item.className = "nav-item";
+          item.className = "nav-item" + (tooBig ? " is-too-big" : "");
 
           const b = document.createElement("button");
           b.type = "button";
@@ -13449,6 +13552,7 @@
           b.setAttribute("aria-pressed", on ? "true" : "false");
           if (beside) b.setAttribute("aria-current", "true");
           if (editing) b.title = "Use the card's menu, or Arrow Up and Down here, to reorder it";
+          if (tooBig) b.title = "More than this screen can hold — opens beside instead";
           b.innerHTML =
             '' +
             '<span class="nav-content-dot" aria-hidden="true"></span>' +
@@ -13934,27 +14038,21 @@
           // set: it is the contents. And the one there used to be was a bar the
           // full width of the card lying in the gutter below it, which is the
           // space a dragged card has to land in.
-          /* The next card has to be on the SAME ROW. "Not the last in the
-             list" is not the same test: the card at the end of a row has a
-             card after it, on the next line, and a handle that resizes this
-             one against that one is a handle for a gesture with no meaning -
-             drawn, at 1440, as four bars up to 836px tall standing in the
-             empty right-hand gutter. Tops within 4px is the same row; the
-             grid aligns them exactly, and the 4 is for subpixel. */
-          /* Two cards on one row OVERLAP vertically; two on different rows do
-             not touch at all, because the grid puts a gap between them. That is
-             the test. Matching their tops to within 4px was not: the pair on
-             the Dashboard's second row start at 700 and 706, and six pixels
-             took the handle away from every layout in the app. */
-          const next = cards[i + 1];
-          const a = el.getBoundingClientRect();
-          const b = next && next.getBoundingClientRect();
-          const sameRow = !!b &&
-            Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 8 &&
-            b.left > a.left;
+          /* EVERY card, including one that ends a row. I took the handle off
+             those on the evidence of bars standing in the empty right-hand
+             gutter - and those bars were the phantom pads, overlays that had
+             outlived their cards and kept their old coordinates, which is a
+             different bug with a different fix that is now in. The gate was a
+             fix for a cause that was not there, and on a stacked Dashboard
+             every card ends its row, so it removed the handle from all of them.
+
+             A card with nobody beside it has always been handled: the drag
+             snaps to whole twelfths, floors at minSpanOf() so a card cannot be
+             squeezed under what it needs, and stops at twelve. Those ARE the
+             preset sizes - every width you can stop on is one the layout
+             already knew how to be. */
           pad.innerHTML =
-            (sameRow
-              ? '<div class="card-seam" title="Drag to set the width. Double-click to reset."></div>' : "");
+            '<div class="card-seam" title="Drag to set the width. Double-click to reset."></div>';
           host.appendChild(pad);
           placeHandles(host, el, pad);
         });
@@ -14037,7 +14135,10 @@
           b.classList.remove("is-dragging", "is-drop-before");
           b.dataset.arrangeId = sec.id;
           b.classList.toggle("is-arrangeable", editing);
-          b.draggable = CARD_DRAG && !!editing;
+          // A tab with one arrangeable card has nothing to arrange it against,
+          // and `editing` is one flag for the whole app: turning Edit on from
+          // the Dashboard made the Savings accounts board draggable too.
+          b.draggable = CARD_DRAG && !!editing && cardsIn(host).length > 1;
           // Rebuilt every time rather than left in place: a tag from the last
           // pass would carry the last pass's position in its labels.
           // One card is not a position out of a count, and it has one width to
@@ -14848,6 +14949,27 @@
       // Assigned at mount; paintTools is called from buildContents, which can
       // run before that, so it is a binding that exists from here down.
       let tools = null;
+      // The layout as it was when Edit was pressed, so leaving can offer it
+      // back. Not a "save changes?" dialog: the changes are already written,
+      // and a dialog asking to keep what is kept is a dialog that lies.
+      let editSnapshot = null;
+      function takeEditSnapshot(){
+        try {
+          editSnapshot = {
+            pinned: JSON.parse(JSON.stringify(pinned)),
+            order: JSON.parse(JSON.stringify(order)),
+            hiddenSecs: JSON.parse(JSON.stringify(hiddenSecs))
+          };
+        } catch (e){ editSnapshot = null; }
+      }
+      function restoreEditSnapshot(){
+        if (!editSnapshot) return;
+        pinned = editSnapshot.pinned;
+        order = editSnapshot.order;
+        hiddenSecs = editSnapshot.hiddenSecs;
+        editSnapshot = null;
+        save(); signature = ""; buildContents(false);
+      }
       function paintTools(){
         if (!tools) return;
         const tab = currentTab();
@@ -14914,7 +15036,8 @@
           // Published, because the rail's own width control is a different
           // module and there should be one fact about this, not two.
           document.body.classList.toggle("is-layout-editing", editing);
-          if (editing) listOpen[tab] = true;
+          if (editing){ listOpen[tab] = true; takeEditSnapshot(); }
+          else editSnapshot = null;
           signature = ""; buildContents(false); paintTools();
           return;
         }
@@ -14946,9 +15069,26 @@
         if (!active || active.dataset.tab === last){ spy(); return; }
         if (ignoreNext) ignoreNext = false;
         else { trail.push(last); if (trail.length > 24) trail.shift(); }
+        /* Arranging is about the page you are on. Walking to another one ends
+           the session rather than carrying a mode across - and says what it
+           kept, because every change was written as you made it. */
+        if (editing){
+          const wasTab = last;
+          editing = false;
+          document.body.classList.remove("is-layout-editing");
+          const back = editSnapshot;
+          editSnapshot = null;
+          if (back && typeof showUndoToast === "function"){
+            showUndoToast("Layout kept — " + (NAMES[wasTab] || wasTab) + ".", () => {
+              editSnapshot = back;
+              restoreEditSnapshot();
+            });
+          }
+        }
         last = active.dataset.tab;
         closeBeside();       // a section of the page you just left is not this page
         paintBack();
+        if (typeof paintTools === "function") paintTools();
         signature = "";
         // Folds open only if this destination's list was left open, or was just
         // asked for by its caret. Arriving somewhere does not push a list at you.
@@ -17791,6 +17931,56 @@
     padding-bottom: var(--sp-5);
   }
   body.list-as-rows .loan-card.is-closed .row-action-bar{ margin-top: 0; }
+
+  /* ---------- an account you can pick up ----------------------------------- */
+  .savings-account[draggable="true"]{ cursor: grab; }
+  .savings-account.is-dragging{ opacity: .45; cursor: grabbing; }
+  .savings-account.is-drop-before{
+    box-shadow: inset 3px 0 0 0 var(--accent);
+  }
+  body.list-as-rows .savings-account.is-drop-before{
+    box-shadow: inset 0 3px 0 0 var(--accent);
+  }
+  /* An input inside a draggable card still has to take a pointer. */
+  .savings-account input,
+  .savings-account select,
+  .savings-account textarea,
+  .savings-account button{ cursor: auto; }
+  .savings-account button{ cursor: pointer; }
+
+  /* ---------- the accounts board is not cut off at the top ----------------- */
+  /* The first card sat against the board's own edge, which reads as a crop
+     rather than as the top of a list. */
+  .savings-list{ padding-top: var(--sp-4); }
+
+  /* ---------- the phone ---------------------------------------------------- */
+  /* Charts is four canvases and a sortable table. On 375px it is a screen you
+     pinch at, and every figure on it is somewhere else in the app as a number
+     you can read. */
+  @media (max-width: 720px){
+    nav.tabs button[data-tab="charts"]{ display: none; }
+  }
+
+  /* ---------- the two actions take opposite ends --------------------------- */
+  /* Add note is a quiet thing you do often; Mark unpaid changes what the entry
+     IS. They were sharing a corner. The note lines up under the fields, and the
+     one that changes the record is at the far end where it can be seen coming. */
+  .loan-card.is-closed .row-action-bar{ justify-content: space-between; }
+  .loan-card.is-closed .loan-note-act{ order: 1; }
+  .loan-card.is-closed [data-action="unsettle"]{ order: 2; }
+
+  /* ---------- and in a row they are not stacked on each other -------------- */
+  body.list-as-rows .loan-card.is-closed > [data-payment-for]{
+    display: flex; flex-direction: column; gap: var(--sp-6);
+  }
+
+  /* ---------- what this screen cannot hold --------------------------------- */
+  /* Greyed rather than gone: it is still in the list, it still opens beside,
+     and a wider screen gets it back without anyone changing a setting. */
+  .nav-item.is-too-big .nav-content{ opacity: .45; }
+  .nav-item.is-too-big .nav-content-t{ text-decoration: line-through;
+    text-decoration-color: var(--line-strong); }
+  .nav-item.is-too-big .nav-pin{ opacity: .4; }
 </style>
 </body>
 </html>
