@@ -2787,7 +2787,30 @@
               <label class="fld-k" for="lg-bank">Paying this out of a savings account?</label>
             </span>
             <select id="lg-bank"></select>
-            <p class="hint is-help" style="margin-top:6px;">If you pick one, this is withdrawn from there now, and put back automatically once marked Repaid.</p>
+            <p class="hint is-help" style="margin-top:6px;">If you pick one, this is withdrawn from there now, and put back automatically once marked Repaid.</p>          </div>
+          <div class="fld is-full">
+            <span class="fld-head">
+              <label class="fld-k" for="lg-notes">Notes</label>
+              <span class="fld-opt">Optional</span>
+            </span>
+            <textarea id="lg-notes" rows="2" placeholder="Terms, what it was for, anything worth remembering."></textarea>
+            <p class="hint is-help" style="margin-top:6px;">Written now, while you still remember it.</p>
+          </div>
+          <div class="fld is-full">
+            <span class="fld-head">
+              <label class="fld-k">Repaid in monthly instalments?</label>
+              <span class="fld-opt">Optional</span>
+            </span>
+            <div class="monthly-row">
+              <label class="monthly-on">
+                <input type="checkbox" id="lg-monthly">
+                <span>Yes, every month</span>
+              </label>
+              <label class="monthly-day">on day
+                <input type="number" id="lg-day" min="1" max="31" placeholder="15">
+              </label>
+            </div>
+            <p class="hint is-help" style="margin-top:6px;">Recorded and shown on the entry. It does not post instalments for you yet.</p>
           </div>
         </div>
         <div class="form-actions is-end">
@@ -2842,7 +2865,30 @@
               <label class="fld-k" for="lt-bank">Received this into a savings account?</label>
             </span>
             <select id="lt-bank"></select>
-            <p class="hint is-help" style="margin-top:6px;">If you pick one, this is deposited there now, and withdrawn automatically once marked Repaid.</p>
+            <p class="hint is-help" style="margin-top:6px;">If you pick one, this is deposited there now, and withdrawn automatically once marked Repaid.</p>          </div>
+          <div class="fld is-full">
+            <span class="fld-head">
+              <label class="fld-k" for="lt-notes">Notes</label>
+              <span class="fld-opt">Optional</span>
+            </span>
+            <textarea id="lt-notes" rows="2" placeholder="Terms, what it was for, anything worth remembering."></textarea>
+            <p class="hint is-help" style="margin-top:6px;">Written now, while you still remember it.</p>
+          </div>
+          <div class="fld is-full">
+            <span class="fld-head">
+              <label class="fld-k">Repaid in monthly instalments?</label>
+              <span class="fld-opt">Optional</span>
+            </span>
+            <div class="monthly-row">
+              <label class="monthly-on">
+                <input type="checkbox" id="lt-monthly">
+                <span>Yes, every month</span>
+              </label>
+              <label class="monthly-day">on day
+                <input type="number" id="lt-day" min="1" max="31" placeholder="15">
+              </label>
+            </div>
+            <p class="hint is-help" style="margin-top:6px;">Recorded and shown on the entry. It does not post instalments for you yet.</p>
           </div>
         </div>
         <div class="form-actions is-end">
@@ -7486,7 +7532,10 @@
       id: "lg_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
       person, amount: round2(amount),
       dateGiven: todayISO(), deadline: deadline || "", status: "outstanding",
-      bank: bank || null
+      bank: bank || null,
+      notes: (document.getElementById("lg-notes").value || "").trim(),
+      repayMonthly: !!document.getElementById("lg-monthly").checked,
+      repayDay: clampDay(document.getElementById("lg-day").value)
     });
     saveLoansGiven(loansGiven);
     let withdrawResult = null;
@@ -7495,6 +7544,9 @@
     document.getElementById("lg-amount").value = "";
     document.getElementById("lg-deadline").value = "";
     document.getElementById("lg-bank").value = "";
+    document.getElementById("lg-notes").value = "";
+    document.getElementById("lg-monthly").checked = false;
+    document.getElementById("lg-day").value = "";
     renderLoansGiven();
     if (withdrawResult && !withdrawResult.ok){
       showToast(`Logged ${fmtMoney(amount)} lent to ${person}, but ${withdrawResult.reason}.`);
@@ -7637,6 +7689,17 @@
   }
 
 
+  // A day of the month, or nothing. Out of range is not worth a toast - it is
+  // a typo, and the nearest real day is what was meant.
+  function clampDay(v){
+    const n = parseInt(v, 10);
+    if (!n || isNaN(n)) return null;
+    return Math.max(1, Math.min(31, n));
+  }
+  const ordinal = n => n + (n % 10 === 1 && n !== 11 ? "st"
+    : n % 10 === 2 && n !== 12 ? "nd"
+    : n % 10 === 3 && n !== 13 ? "rd" : "th");
+
   function buildLoanRowHtml(l, dateField){
     const showProgress = l.originalAmount != null && l.originalAmount > l.amount;
     const hasNote = !!(l.notes && l.notes.trim().length);
@@ -7664,12 +7727,17 @@
         <div class="loan-card-head">
           <span class="loan-who">${escapeHtml(l.person)}</span>
           <span class="status-pill ${l.status === "outstanding" ? "outstanding" : ""}">${l.status === "outstanding" ? "Outstanding" : "Repaid"}</span>
+          <button class="row-action row-action-danger loan-remove" data-action="delete" title="Remove this entry" aria-label="Remove this entry">✕</button>
         </div>
         <div class="loan-amt-row">
           <span class="loan-amt">${fmtMoneyRich(l.amount)}</span>
           ${showProgress ? `<span class="hint">of ${fmtMoney(l.originalAmount)}</span>` : ""}
         </div>
-        <div class="loan-meta-row"><span>${fmtDate(l[dateField])}</span>${deadlineCellHtml(l)}</div>
+        <div class="loan-meta-row">
+          <span>${fmtDate(l[dateField])}</span>${deadlineCellHtml(l)}
+          ${l.repayMonthly ? `<span class="loan-chip" title="Repaid in monthly instalments">Monthly${l.repayDay ? " · " + ordinal(l.repayDay) : ""}</span>` : ""}
+          ${l.notes && l.notes.trim() ? `<span class="loan-chip is-quiet" title="${escapeHtml(l.notes.trim())}">Note</span>` : ""}
+        </div>
         <div class="loan-card-controls">
           <select class="status-select" data-action="status">
             <option value="outstanding" ${l.status==="outstanding"?"selected":""}>Outstanding</option>
@@ -7677,7 +7745,6 @@
           </select>
           <select class="status-select" data-action="bank">
             <option value="">— No account —</option>${bankOpts}</select>
-          <button class="row-action row-action-danger" data-action="delete" title="Remove" aria-label="Remove">✕</button>
         </div>
         <div data-payment-for="${l.id}">${actionBar}</div>
       </div>`;
@@ -7983,7 +8050,10 @@
       id: "lt_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
       person, amount: round2(amount),
       dateTaken: todayISO(), deadline: deadline || "", status: "outstanding",
-      bank: bank || null
+      bank: bank || null,
+      notes: (document.getElementById("lt-notes").value || "").trim(),
+      repayMonthly: !!document.getElementById("lt-monthly").checked,
+      repayDay: clampDay(document.getElementById("lt-day").value)
     });
     saveLoansTaken(loansTaken);
     if (bank){
@@ -7994,6 +8064,9 @@
     document.getElementById("lt-amount").value = "";
     document.getElementById("lt-deadline").value = "";
     document.getElementById("lt-bank").value = "";
+    document.getElementById("lt-notes").value = "";
+    document.getElementById("lt-monthly").checked = false;
+    document.getElementById("lt-day").value = "";
     renderLoansTaken();
     showToast(`Logged ${fmtMoney(amount)} borrowed from ${person}${bank ? ` · deposited to ${bank}` : ""}`);
   });
@@ -15135,7 +15208,23 @@
   body.list-as-rows .loan-card > *{ margin: 0; }
   /* The name leads and takes the slack; the figures and controls sit at their
      natural width, so they line up down the page. */
-  body.list-as-rows .loan-card .loan-card-head{ flex: 1 1 200px; min-width: 0; }
+  /* The head stays one box: WHO this is - the name, its state, and the way to
+     remove it - as the row’s first column. I tried display:contents with order
+     so the remove could sit at the far end, and it cost more than it bought:
+     with that many items the row wrapped, and the pill and the remove dropped
+     onto a second line under every entry. A tidy first column beats a tidy
+     last item when the alternative is two lines per row. */
+  body.list-as-rows .loan-card-head{ flex: 0 0 260px; min-width: 0; }
+  body.list-as-rows .loan-card .loan-remove{ margin-left: auto; }
+  /* In a row the selects must not grow. Left at flex:1 1 130px they took the
+     width the actions needed, so the action bar wrapped to a second line on
+     some rows and not others - measured at 130px against 94px down the same
+     list, which reads as broken rather than as two sizes. Fixed widths keep
+     every row the same height and the columns aligned down the page. */
+  body.list-as-rows .loan-card-controls{ flex: 0 0 auto; flex-wrap: nowrap; }
+  body.list-as-rows .loan-card-controls .status-select{ flex: 0 0 auto; width: 116px; }
+  body.list-as-rows .loan-card .row-action-bar{ flex-wrap: nowrap; white-space: nowrap; }
+  body.list-as-rows .loan-meta-row{ flex-wrap: nowrap; }
   body.list-as-rows .loan-card .loan-amt-row,
   body.list-as-rows .loan-card .loan-meta-row,
   body.list-as-rows .loan-card .loan-card-controls{ flex: 0 0 auto; }
@@ -15171,6 +15260,95 @@
   .list-per-page{ width: auto; max-width: 90px; }
   @media (max-width: 720px){
     .list-controls{ margin-left: 0; width: 100%; }
+  }
+
+  /* ---------- an entry card, in the order you read it --------------------- */
+  /* WHO, HOW MUCH, WHEN, WHAT YOU CAN CHANGE, WHAT YOU CAN DO. It was five
+     blocks in source order, each free to wrap - which is how the delete ended
+     up alone on a line in the middle, beside two dropdowns it has nothing to
+     do with. */
+  .loan-card{ gap: var(--sp-4); }
+  .loan-card-head{ display: flex; align-items: center; gap: var(--sp-4); }
+  .loan-card-head .loan-who{
+    flex: 1 1 auto; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .loan-card-head .status-pill{ flex: 0 0 auto; }
+
+  /* Reachable, never in the reading path. It was the loudest thing in the
+     middle of the card; it is a quiet mark in the corner now that finds its
+     colour only when you go for it. */
+  .loan-remove{
+    flex: 0 0 auto; width: 26px; height: 26px; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid transparent;
+    border-radius: var(--r-sm); color: var(--ink-faint);
+    font-size: var(--fs-xs); line-height: 1; cursor: pointer;
+  }
+  @media (hover: hover){
+    .loan-remove:hover{ color: var(--negative); border-color: var(--line-strong); }
+  }
+  .loan-remove:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* When it happened, and anything true about the arrangement. */
+  .loan-meta-row{
+    display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap;
+    font-size: var(--fs-2xs); color: var(--ink-dim);
+  }
+  .loan-chip{
+    flex: 0 0 auto; padding: 1px var(--sp-4);
+    border: 1px solid var(--line); border-radius: var(--r-pill);
+    font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .loan-chip.is-quiet{ color: var(--ink-dim); border-style: dashed; cursor: help; }
+
+  /* The two things you can change, side by side. */
+  .loan-card-controls{ display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
+  .loan-card-controls .status-select{ flex: 1 1 130px; min-width: 0; }
+
+  /* ---------- the monthly arrangement, on the form ------------------------ */
+  .monthly-row{ display: flex; align-items: center; gap: var(--sp-6); flex-wrap: wrap; }
+  .monthly-on{ display: inline-flex; align-items: center; gap: var(--sp-4);
+    font-size: var(--fs-sm); color: var(--ink); cursor: pointer; }
+  .monthly-day{ display: inline-flex; align-items: center; gap: var(--sp-4);
+    font-size: var(--fs-sm); color: var(--ink-dim); }
+  .monthly-day input{ width: 78px; }
+  .fld-opt{ margin-left: auto; font-size: var(--fs-3xs); color: var(--ink-faint); }
+
+  /* ---------- a settled loan is stamped, not merely greyed ---------------- */
+  /* In the list a repaid row was the same row with a different pill: you had
+     to read it to know. It says so before you read it now, and softens behind
+     the stamp - 0.6px and a dim, because the point is to say "done" and not to
+     hide the figure. Reaching for the row brings it back sharp. */
+  body.list-as-rows .loan-card.is-closed{ position: relative; overflow: hidden; }
+  body.list-as-rows .loan-card.is-closed > *{
+    filter: blur(0.6px); opacity: .5;
+    transition: filter var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+  }
+  body.list-as-rows .loan-card.is-closed::after{
+    content: "Repaid";
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-8deg);
+    padding: 2px var(--sp-6);
+    border: 2px solid color-mix(in srgb, var(--positive) 70%, transparent);
+    border-radius: var(--r-sm);
+    font-size: var(--fs-md); font-weight: 800;
+    letter-spacing: var(--track-caps); text-transform: uppercase;
+    color: color-mix(in srgb, var(--positive) 85%, transparent);
+    background: color-mix(in srgb, var(--bg) 55%, transparent);
+    pointer-events: none; white-space: nowrap;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){
+    body.list-as-rows .loan-card.is-closed:hover > *{ filter: none; opacity: 1; }
+    body.list-as-rows .loan-card.is-closed:hover::after{ opacity: .22; }
+  }
+  body.list-as-rows .loan-card.is-closed:focus-within > *{ filter: none; opacity: 1; }
+  body.list-as-rows .loan-card.is-closed:focus-within::after{ opacity: .22; }
+  @media (prefers-reduced-motion: reduce){
+    body.list-as-rows .loan-card.is-closed > *,
+    body.list-as-rows .loan-card.is-closed::after{ transition: none; }
   }
 </style>
 </body>
