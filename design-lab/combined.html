@@ -14431,8 +14431,16 @@
     grid-row: span var(--rows);
     min-width: 0; min-height: 0;
     /* A row span is a real height, so content can be taller than its card. The
-       alternative to scrolling is painting over the card below. */
-    overflow: auto; overscroll-behavior: contain;
+       alternative to scrolling is painting over the card below.
+
+       No overscroll-behavior. It was "contain", which stops a scroll chaining
+       to the page - and Chrome applies that to a scroll container whether or
+       not it has any room to scroll, so every card swallowed the wheel while
+       having nothing of its own to move. It was there for a card that scrolls
+       reaching its end; a card can no longer be shorter than its contents, so
+       that state should not arise, and paying for it with the wheel over the
+       whole dashboard is the wrong way round. */
+    overflow: auto;
   }
   .bento-span-7{ --span: 7; }
   .bento-span-5{ --span: 5; }
@@ -14741,6 +14749,41 @@
     width: 3px; height: 16px; margin-top: -8px;
     border-radius: var(--r-pill);
     background: var(--accent);
+  }
+
+  /* ---------- the side panel names the section once ----------------------- */
+  /* It was naming it three times: this heading, the tab strip below it, and the
+     section's own header in the body - the same words stacked down a 113px bar.
+     The heading stays in the DOM because the drawer is aria-labelledby it, so
+     it is hidden the way anything else that exists only for a screen reader is.
+     Measured on "By tag": three copies became one. */
+  .rd-title{
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  /* A strip with one tab is not a choice. It appears when there is one to make. */
+  .rd-tabs:not(:has(> * + *)){ display: none; }
+  /* The bar loses a row, so it should not keep the gap that row sat in. */
+  .rd-bar{ padding-top: var(--sp-6); }
+
+  /* ---------- a toolbar bleeds only out of something it can bleed out of --- */
+  /* .panel-head.is-toolbar carries margin:-24px -24px, which is a full bleed:
+     the -24px is the padding of the card it sits at the top of, so the toolbar
+     reaches that card's edges and rounds its corners into them.
+
+     Counted across every tab, nine are on screen: six are in a .card with 24px
+     of padding and land exactly on its edge, and three are in a bare grid
+     column with no padding, where the same -24px walks the header out of its
+     column and 24px into the gutter. Two of those overhanging the same gap is
+     the break on Charts. So the bleed is scoped to what it was measured
+     against, and anywhere else the header lines up with its own column. */
+  .panel-head.is-toolbar{
+    margin: 0 0 var(--sp-7);
+    border-radius: var(--r-lg);
+  }
+  .card > .panel-head.is-toolbar{
+    margin: calc(var(--sp-9) * -1) calc(var(--sp-9) * -1) var(--sp-7);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
   }
 </style>
 </body>
