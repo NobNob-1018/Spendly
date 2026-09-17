@@ -3136,6 +3136,55 @@
       </div>
     </div>
 
+    <div data-settings-group="appearance" class="card">
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></span><span class="h-text">Edition</span></h2>
+        <p class="sub">Day, night, or whichever one this machine is set to. The moon in the top bar flips between the first two; this is where the third lives.</p>
+      </header>
+      <div class="range-tabs" id="edition-toggle" style="display:inline-flex;">
+        <button data-edition="light">Day</button>
+        <button data-edition="dark">Night</button>
+        <button data-edition="system">Match my system</button>
+      </div>
+    </div>
+
+    <div data-settings-group="appearance" class="card">
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.6-1.4-.3-.3-.5-.8-.5-1.3 0-1.1.9-2 2-2h1.6A4.5 4.5 0 0 0 21 9.8C21 6 17 3 12 3z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16.5" cy="10.5" r="1"/></svg></span><span class="h-text">Accent colour</span></h2>
+        <p class="sub">One colour runs through every button, chip, rail mark and chart line. All five keep their contrast in both editions.</p>
+      </header>
+      <div class="accent-row" id="accent-toggle">
+        <button type="button" data-accent="teal"   aria-label="Teal"><span class="accent-dot" style="background:#37c8b8"></span>Teal</button>
+        <button type="button" data-accent="indigo" aria-label="Indigo"><span class="accent-dot" style="background:#7c8cf8"></span>Indigo</button>
+        <button type="button" data-accent="amber"  aria-label="Amber"><span class="accent-dot" style="background:#e5a23c"></span>Amber</button>
+        <button type="button" data-accent="rose"   aria-label="Rose"><span class="accent-dot" style="background:#f0748c"></span>Rose</button>
+        <button type="button" data-accent="lime"   aria-label="Lime"><span class="accent-dot" style="background:#8cc63f"></span>Lime</button>
+      </div>
+    </div>
+
+    <div data-settings-group="appearance" class="card">
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M9 19h6"/></svg></span><span class="h-text">Text size</span></h2>
+        <p class="sub">Scales the type without scaling the layout, so a bigger figure does not mean a wider card. Browser zoom does both.</p>
+      </header>
+      <div class="range-tabs" id="textsize-toggle" style="display:inline-flex;">
+        <button data-textsize="standard">Standard</button>
+        <button data-textsize="large">Large</button>
+        <button data-textsize="xl">Larger</button>
+      </div>
+    </div>
+
+    <div data-settings-group="appearance" class="card">
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></span><span class="h-text">Motion</span></h2>
+        <p class="sub">Panels slide, figures count, marks fade. If this machine already asks for less motion Spendly honours that; this is how to ask for it anyway.</p>
+      </header>
+      <div class="range-tabs" id="motion-toggle" style="display:inline-flex;">
+        <button data-motion="full">Full</button>
+        <button data-motion="reduced">Reduced</button>
+      </div>
+    </div>
+
     <div data-settings-group="sync" class="card">
       <header class="panel-head is-toolbar">
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span><span class="h-text">Sync between devices</span></h2>
@@ -7947,7 +7996,7 @@
           ${!canPay ? `<button class="loan-payment-link is-unsettle" data-action="unsettle" data-tip="Mark unpaid — put this back to outstanding" aria-label="Mark unpaid">${ICON.undo}<span class="act-lbl">Mark unpaid</span></button>` : ""}
           ${canPay ? `<button class="loan-payment-link is-settle" data-action="settle" data-tip="Mark fully paid — the whole ${fmtMoney(l.amount)}" aria-label="Mark fully paid">${ICON.check}<span class="act-lbl">Mark fully paid</span></button>` : ""}
           ${paid.length ? `<button class="loan-payment-link" data-action="toggle-trail" aria-expanded="false" data-tip="${paid.length} payment${paid.length === 1 ? "" : "s"} recorded — open the trail" aria-label="${paid.length} payment${paid.length === 1 ? "" : "s"} recorded">${ICON.trail}<b class="act-n">${paid.length}</b><span class="act-lbl">payment${paid.length === 1 ? "" : "s"}</span></button>` : ""}
-          <button class="loan-payment-link" data-action="toggle-note" aria-expanded="false" data-tip="${hasNote ? "View note" : "Add note"}" aria-label="${hasNote ? "View note" : "Add note"}">${ICON.note}<span class="act-lbl">${hasNote ? "View note" : "Add note"}</span></button>
+          ${canPay ? `<button class="loan-payment-link" data-action="toggle-note" aria-expanded="false" data-tip="${hasNote ? "View note" : "Add note"}" aria-label="${hasNote ? "View note" : "Add note"}">${ICON.note}<span class="act-lbl">${hasNote ? "View note" : "Add note"}</span></button>` : ""}
         </div>
         ${canPay ? `
         <div class="loan-payment-row collapsible-body is-collapsed" data-payment-panel>
@@ -7969,8 +8018,11 @@
             <span class="loan-logged" title="Logged on this date">${fmtDate(l[dateField])}</span>
           </span>
           <span class="status-pill ${l.status === "outstanding" ? "outstanding" : ""}">${l.status === "outstanding" ? "Outstanding" : (l.repaidOn ? "Repaid " + fmtDate(l.repaidOn) : "Repaid")}</span>
-          ${canPay ? "" : `<button class="row-action loan-edit" data-action="unlock" aria-pressed="false" title="Edit this settled entry" aria-label="Edit this settled entry"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>`}
-          <button class="row-action row-action-danger loan-remove" data-action="delete" title="Remove this entry" aria-label="Remove this entry">✕</button>
+          <span class="loan-row-actions">
+            ${canPay ? "" : `<button class="row-action loan-edit" data-action="unlock" aria-pressed="false" data-tip="Edit this settled entry" aria-label="Edit this settled entry"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>`}
+            ${canPay ? "" : `<button class="row-action loan-note-btn" data-action="toggle-note" aria-expanded="false" data-tip="${hasNote ? "View note" : "Add note"}" aria-label="${hasNote ? "View note" : "Add note"}">${ICON.note}</button>`}
+            <button class="row-action row-action-danger loan-remove" data-action="delete" data-tip="Remove this entry" aria-label="Remove this entry">✕</button>
+          </span>
         </div>
         <div class="loan-amt-row">
           <span class="loan-amt">${fmtMoneyRich(l.amount)}</span>
@@ -11191,6 +11243,101 @@
       showToast(mode === "compact" ? "Compact spacing on." : "Comfortable spacing on.");
     });
   });
+
+  /* ---- the rest of Appearance ------------------------------------------
+     Each one is: put a data attribute on <html>, mark the button that is on,
+     remember the answer. The stylesheet does the rest - there is no second
+     definition of what "large" or "indigo" means living in here. */
+  const THEME_KEY = "spendly_theme_v1";
+
+  function applyEdition(mode){
+    const root = document.documentElement;
+    if (mode === "light" || mode === "dark") root.setAttribute("data-theme", mode);
+    else root.removeAttribute("data-theme");
+    markSegmented(document.querySelectorAll("#edition-toggle button"),
+      b => b.dataset.edition === mode);
+    document.querySelectorAll("#edition-toggle button").forEach(b =>
+      b.classList.toggle("active", b.dataset.edition === mode));
+    // Canvases hold the old ink until they are drawn again.
+    try { if (typeof renderCharts === "function") renderCharts(); } catch (e){}
+  }
+  function currentEdition(){
+    try {
+      const saved = localStorage.getItem(THEME_KEY);
+      if (saved === "light" || saved === "dark") return saved;
+    } catch (e){}
+    return "system";
+  }
+
+  function applyAccent(name){
+    document.documentElement.setAttribute("data-accent", name || "teal");
+    document.querySelectorAll("#accent-toggle button").forEach(b =>{
+      const on = b.dataset.accent === (name || "teal");
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    try { if (typeof renderCharts === "function") renderCharts(); } catch (e){}
+  }
+
+  function applyTextSize(size){
+    const v = (size === "large" || size === "xl") ? size : "standard";
+    document.documentElement.setAttribute("data-textsize", v);
+    markSegmented(document.querySelectorAll("#textsize-toggle button"),
+      b => b.dataset.textsize === v);
+    document.querySelectorAll("#textsize-toggle button").forEach(b =>
+      b.classList.toggle("active", b.dataset.textsize === v));
+  }
+
+  function applyMotion(mode){
+    const v = mode === "reduced" ? "reduced" : "full";
+    document.documentElement.setAttribute("data-motion", v);
+    markSegmented(document.querySelectorAll("#motion-toggle button"),
+      b => b.dataset.motion === v);
+    document.querySelectorAll("#motion-toggle button").forEach(b =>
+      b.classList.toggle("active", b.dataset.motion === v));
+  }
+
+  document.querySelectorAll("#edition-toggle button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const mode = btn.dataset.edition;
+      // The masthead moon writes this key too, and two places writing two
+      // different answers to the same question is how a setting starts lying.
+      try {
+        if (mode === "system") localStorage.removeItem(THEME_KEY);
+        else localStorage.setItem(THEME_KEY, mode);
+      } catch (e){}
+      applyEdition(mode);
+      showToast(mode === "system" ? "Following this machine."
+        : mode === "light" ? "Day edition." : "Night edition.");
+    });
+  });
+  document.querySelectorAll("#accent-toggle button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      applyAccent(btn.dataset.accent);
+      setUiPref("accent", btn.dataset.accent);
+      showToast("Accent: " + btn.dataset.accent + ".");
+    });
+  });
+  document.querySelectorAll("#textsize-toggle button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      applyTextSize(btn.dataset.textsize);
+      setUiPref("textSize", btn.dataset.textsize);
+      showToast(btn.dataset.textsize === "standard" ? "Standard text size."
+        : "Bigger text on.");
+    });
+  });
+  document.querySelectorAll("#motion-toggle button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      applyMotion(btn.dataset.motion);
+      setUiPref("motion", btn.dataset.motion);
+      showToast(btn.dataset.motion === "reduced" ? "Motion reduced." : "Motion on.");
+    });
+  });
+
+  applyEdition(currentEdition());
+  applyAccent(pref("accent", "teal"));
+  applyTextSize(pref("textSize", "standard"));
+  applyMotion(pref("motion", "full"));
   // lg-bank / lt-bank / inv-bank are covered by refreshAccountSelects above.
   populateInCurrencyOptions();
   populateCurrencyOptions();
@@ -13016,7 +13163,13 @@
         secs.length = 0; ordered.forEach(x => secs.push(x));
         // While arranging, everything is on the page: a card you cannot see is
         // a card you cannot drag.
-        const chosen = editing ? new Set(secs.map(x => x.id)) : new Set(glanceOf(tab, secs));
+        /* Arranging used to put EVERY card on the page - "a card you cannot see
+           is a card you cannot drag" - which meant pressing Edit filled the page
+           with cards you had deliberately sent to the side panel, and the
+           arrangement you were making was not the arrangement you would get.
+           What is pinned is what is shown, editing or not; the rail lists the
+           rest, and the pin in that list is how one comes back. */
+        const chosen = new Set(glanceOf(tab, secs));
         applyOrderToPage(secs);
         wireCardDrag(panel, secs, tab);
         // A section that is currently open beside the page is not in the page,
@@ -13639,7 +13792,13 @@
          What still moves a card: the four Move actions in its own menu, and
          Arrow Up/Down on its row in the rail. Pinning and unpinning are not
          part of this and keep working exactly as they did. */
-      const CARD_DRAG = false;
+      /* Back on. It was frozen because the drop target was wrong, not because
+         dragging was: the height seam owned a 1264px hit area sitting in the
+         gutter, so closest("[data-arrange-id]") found nothing there and every
+         drop that crossed it fell through to "move to the end". The handle went
+         and dropTargetAt() gained a nearest-card fallback in the same pass; the
+         switch is the only thing that stayed shut. */
+      const CARD_DRAG = true;
 
       function wireCardDrag(panel, secs, tab){
         const host = panel.querySelector(".bento") || panel;
@@ -16251,8 +16410,8 @@
   body.list-as-rows .loan-who     { grid-area: 1 / 1 / 2 / 2; }
   body.list-as-rows .loan-amt-row { grid-area: 1 / 2 / 2 / 3; }
   body.list-as-rows .loan-meta-row{ grid-area: 1 / 3 / 2 / 5; }
-  body.list-as-rows .loan-edit    { grid-area: 1 / 5 / 2 / 6; margin: 0; }
-  body.list-as-rows .loan-remove  { grid-area: 1 / 6 / 2 / 7; margin: 0; }
+  body.list-as-rows .loan-row-actions{ grid-area: 1 / 5 / 2 / 7; }
+  body.list-as-rows .loan-edit, body.list-as-rows .loan-remove{ margin: 0; }
   body.list-as-rows .loan-card-controls{ grid-area: 2 / 1 / 3 / 4; flex-wrap: nowrap; }
   body.list-as-rows .loan-card > div:last-child{ grid-area: 2 / 4 / 3 / 7; }
   /* Anything that opens out of that last cell - a payment field, a note, the
@@ -16330,8 +16489,7 @@
     body.list-as-rows .loan-meta-row{ grid-area: 1 / 3 / 2 / 4; }
     body.list-as-rows .loan-card-controls{ grid-area: 1 / 4 / 2 / 5; }
     body.list-as-rows .loan-card > div:last-child{ grid-area: 1 / 5 / 2 / 6; }
-    body.list-as-rows .loan-edit  { grid-area: 1 / 6 / 2 / 7; }
-    body.list-as-rows .loan-remove{ grid-area: 1 / 7 / 2 / 8; }
+    body.list-as-rows .loan-row-actions{ grid-area: 1 / 6 / 2 / 8; }
     body.list-as-rows .loan-card > div:last-child:has(.collapsible-body:not(.is-collapsed)),
     body.list-as-rows .loan-card > div:last-child:has(.loan-note-read){
       grid-area: 2 / 1 / 3 / 8;
@@ -16357,8 +16515,7 @@
   @container loanrow (max-width: 760px){
     body.list-as-rows .loan-card{ grid-template-columns: minmax(0, 1fr) auto auto; }
     body.list-as-rows .loan-who     { grid-area: 1 / 1 / 2 / 2; }
-    body.list-as-rows .loan-edit    { grid-area: 1 / 2 / 2 / 3; }
-    body.list-as-rows .loan-remove  { grid-area: 1 / 3 / 2 / 4; }
+    body.list-as-rows .loan-row-actions{ grid-area: 1 / 2 / 2 / 4; }
     body.list-as-rows .loan-amt-row { grid-area: 2 / 1 / 3 / 4; }
     body.list-as-rows .loan-meta-row{
       grid-area: 3 / 1 / 4 / 4; flex-wrap: wrap; overflow: visible;
@@ -17022,6 +17179,182 @@
   /* It leads the rail now, so it is spaced as a header rather than as a
      footnote under the last destination. */
   .nav-tools{ margin: 0 var(--sp-5) var(--sp-5); }
+
+  /* ---------- the three that act on the record ----------------------------- */
+  /* Pencil, note, X - edit it, annotate it, remove it. The note used to be in
+     the action bar, which put two of the three in one corner of a settled entry
+     and the other somewhere else entirely. */
+  .loan-row-actions{
+    display: inline-flex; align-items: center; gap: var(--sp-4);
+    margin-left: auto; flex: 0 0 auto;
+  }
+  body.list-as-rows .loan-row-actions{ justify-self: end; margin-left: 0; }
+  /* wireNotes rebuilds this button with its label inside, and in a 28px box a
+     label is not a thing that fits. */
+  .loan-note-btn{ position: relative; }
+  .loan-note-btn .act-lbl{
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .loan-note-btn svg{ width: 14px; height: 14px; }
+
+  /* The same tooltip the action bar has, because these are now the same kind of
+     button doing the same job. */
+  .row-action[data-tip]{ position: relative; }
+  .row-action[data-tip]::after{
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 6px); left: 50%;
+    transform: translateX(-50%) translateY(3px);
+    padding: var(--sp-3) var(--sp-5); border-radius: var(--r-sm);
+    background: var(--ink); color: var(--surface);
+    font-size: var(--fs-3xs); font-weight: 700;
+    white-space: nowrap; pointer-events: none; z-index: 6;
+    box-shadow: var(--elev-3);
+    opacity: 0; visibility: hidden;
+    transition: opacity var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out), visibility var(--dur-fast);
+  }
+  .row-action[data-tip]:focus-visible::after,
+  .row-action[data-tip]:active::after{
+    opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+  }
+  @media (hover: hover){
+    .row-action[data-tip]:hover::after{
+      opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .row-action[data-tip]::after{ transition: none; transform: translateX(-50%); }
+  }
+
+  /* ---------- the whole box answers, not just the glyph -------------------- */
+  @media (hover: hover) and (pointer: fine){
+    .row-action-danger:hover{
+      background: var(--negative); border-color: var(--negative);
+      color: var(--bg); opacity: 1;
+    }
+    .loan-remove:hover{
+      background: var(--negative); border-color: var(--negative); color: var(--bg);
+    }
+    .loan-edit:hover, .loan-note-btn:hover{
+      background: var(--accent); border-color: var(--accent); color: var(--bg);
+    }
+  }
+
+  /* ---------- mark unpaid stands apart ------------------------------------- */
+  /* It is the one action that changes what the entry IS, so it is not in a
+     cluster of things that edit, annotate and delete it. In a row it was 4px
+     under the X, which read as a fourth member of that cluster. */
+  .loan-card.is-closed .row-action-bar{ justify-content: flex-end; }
+  body.list-as-rows .loan-card.is-closed .row-action-bar{
+    justify-content: flex-end; margin-top: var(--sp-5);
+  }
+  body.list-as-rows .loan-card.is-closed .loan-payment-link{
+    padding: var(--sp-3) var(--sp-5);
+  }
+  body.list-as-rows .loan-card.is-closed .loan-payment-link .act-lbl{
+    position: static; width: auto; height: auto; clip-path: none;
+  }
+
+  /* ---------- settled is slightly out of focus ----------------------------- */
+  /* A record, not a form. It sharpens the moment you point at it, which is also
+     when the mark over it fades - so nothing is ever unreadable, it is just not
+     asking to be read. */
+  .loan-card.is-closed > *:not(.loan-card-head){
+    filter: blur(.7px);
+    transition: filter var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){
+    .loan-card.is-closed:hover > *{ filter: none; }
+  }
+  .loan-card.is-closed:focus-within > *,
+  .loan-card.is-closed.is-editing > *,
+  .loan-card.is-unlocked > *{ filter: none; }
+  /* The buttons are not part of the record and are never out of focus. */
+  .loan-card.is-closed .row-action-bar,
+  .loan-card.is-closed > [data-payment-for] > .collapsible-body{ filter: none; }
+  @media (prefers-reduced-motion: reduce){
+    .loan-card.is-closed > *:not(.loan-card-head){ transition: none; }
+  }
+
+  /* An earlier pass hid every toggle-note on a settled entry until the pencil
+     was pressed, because back then it was an "Add note" button in the action
+     bar of a card you could no longer add to. In the cluster it is how you READ
+     the note, so it is always there. */
+  .loan-card.is-closed .loan-note-btn{ display: inline-flex; }
+
+  /* ---------- appearance: accent ------------------------------------------- */
+  /* One token, redefined. Everything downstream - buttons, chips, the rail mark,
+     focus rings, the chart series - reads --accent, so this is the whole change.
+     Each pair is a lighter value for the night edition and a darker one for the
+     day, because the same hex cannot clear 4.5:1 on both grounds. */
+  :root[data-accent="indigo"]{ --accent: #8d9bff; }
+  :root[data-accent="amber"] { --accent: #edb051; }
+  :root[data-accent="rose"]  { --accent: #f58aa0; }
+  :root[data-accent="lime"]  { --accent: #a3d95a; }
+  :root[data-theme="light"][data-accent="indigo"]{ --accent: #4a57c8; }
+  :root[data-theme="light"][data-accent="amber"] { --accent: #8a5a0b; }
+  :root[data-theme="light"][data-accent="rose"]  { --accent: #b83a56; }
+  :root[data-theme="light"][data-accent="lime"]  { --accent: #4f7a14; }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"])[data-accent="indigo"]{ --accent: #4a57c8; }
+    :root:not([data-theme="dark"])[data-accent="amber"] { --accent: #8a5a0b; }
+    :root:not([data-theme="dark"])[data-accent="rose"]  { --accent: #b83a56; }
+    :root:not([data-theme="dark"])[data-accent="lime"]  { --accent: #4f7a14; }
+  }
+  .accent-row{ display: flex; flex-wrap: wrap; gap: var(--sp-5); }
+  .accent-row button{
+    display: inline-flex; align-items: center; gap: var(--sp-4);
+    padding: var(--sp-4) var(--sp-6);
+    background: var(--sunken); border: 1px solid var(--line);
+    border-radius: var(--r-md); color: var(--ink-soft);
+    font: inherit; font-size: var(--fs-2xs); font-weight: 700; cursor: pointer;
+  }
+  .accent-row button.active{ border-color: var(--accent); color: var(--ink); }
+  @media (hover: hover){ .accent-row button:hover{ border-color: var(--line-strong); color: var(--ink); } }
+  .accent-row button:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+  .accent-dot{ width: 14px; height: 14px; border-radius: 50%; flex: 0 0 auto;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / .25); }
+
+  /* ---------- appearance: text size ----------------------------------------- */
+  /* The scale, one step up and two. Only the type moves: spacing is its own set
+     of tokens, so a bigger figure does not also mean a wider card - which is the
+     difference between this and the browser zoom that was the alternative. */
+  :root[data-textsize="large"]{
+    --fs-3xs: 11px; --fs-2xs: 12px; --fs-xs: 13px; --fs-sm: 13px;
+    --fs-base: 15px; --fs-md: 15px; --fs-lg: 17px; --fs-xl: 18px;
+    --fs-2xl: 20px; --fs-3xl: 20px; --fs-4xl: 27px;
+  }
+  :root[data-textsize="xl"]{
+    --fs-3xs: 12px; --fs-2xs: 13px; --fs-xs: 14px; --fs-sm: 14px;
+    --fs-base: 16px; --fs-md: 16px; --fs-lg: 18px; --fs-xl: 20px;
+    --fs-2xl: 22px; --fs-3xl: 22px; --fs-4xl: 30px;
+  }
+
+  /* ---------- appearance: motion --------------------------------------------- */
+  /* The same thing prefers-reduced-motion does, asked for by hand. Scoped to
+     :root so it beats every component rule without !important on each one. */
+  :root[data-motion="reduced"] *,
+  :root[data-motion="reduced"] *::before,
+  :root[data-motion="reduced"] *::after{
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* ---------- a cell that is a flex box stops being a cell ----------------- */
+  /* .pl-name is a <td> with display:flex, which takes it out of the table
+     layout: the row is then sized by the OTHER cells - the 22px sparkline and
+     its padding, 40px - and this one just overflows. Measured at the Larger
+     text size: 44px of content in a 40px cell, with "3 months on file" hanging
+     9px below its own box and over the name above it. At the standard size it
+     spills 2px, which is under the sweep tolerance and is why this has been
+     sitting here unseen.
+
+     A cell that stacks two lines is just a cell with a block under a block. */
+  td.pl-name{ display: table-cell; }
+  td.pl-name .pl-sub{ display: block; margin-top: 1px; }
 </style>
 </body>
 </html>
