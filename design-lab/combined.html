@@ -3870,7 +3870,18 @@
   // Loans and investments get a smaller page: each of their rows carries a second
   // row of action buttons beneath it, so five of those take up roughly the same
   // vertical space as ten plain history rows.
-  const LOAN_PAGE_SIZE = 5;
+  /* Was a const 5, which turned 44 loans into "Page 1 of 9". A preference now:
+     5, 10, 25, 50 or everything. Kept as a function rather than a variable so
+     there is one place that reads it and no copy to go stale. */
+  const PAGE_SIZES = [5, 10, 25, 50, 0];   // 0 means all of them
+  function loanPageSize(){
+    const n = +(uiPrefs && uiPrefs.loanPageSize);
+    if (PAGE_SIZES.indexOf(n) < 0) return 5;
+    return n === 0 ? 1e9 : n;
+  }
+  function listLayout(){
+    return (uiPrefs && uiPrefs.listLayout) === "list" ? "list" : "cards";
+  }
   let expensePage = 1;
   // History filters now live in the table headers (rebuilt each render), so their
   // state is held here and persisted — matching how the loan tables work.
@@ -7788,7 +7799,7 @@
       return;
     }
     const sorted = sortLoans(visible, view.sort, cfg.dateField);
-    const paged = paginate(sorted, view.page, LOAN_PAGE_SIZE);
+    const paged = paginate(sorted, view.page, loanPageSize());
     view.page = paged.safePage;
     const rows = paged.slice.map(l=>buildLoanRowHtml(l, cfg.dateField)).join("");
     // Record cards, not rows: no table, and the column header row goes with it.
@@ -7903,6 +7914,60 @@
   }
 
   // Thin wrappers — the ~30 call sites elsewhere still refer to these by name.
+  /* One pair of controls, put into whichever filter bars are on the page. Built
+     rather than written into the markup three times, so there is one definition
+     of what they offer and what they mean. */
+  function paintListControls(){
+    document.querySelectorAll(".table-filter-bar").forEach(bar => {
+      if (bar.dataset.listControls) return;
+      bar.dataset.listControls = "1";
+      const holder = document.createElement("div");
+      holder.className = "list-controls";
+      holder.innerHTML =
+        '<span class="list-controls-k">View</span>' +
+        '<div class="seg" role="group" aria-label="How the list is laid out">' +
+          '<button type="button" data-layout="cards">Cards</button>' +
+          '<button type="button" data-layout="list">List</button>' +
+        '</div>' +
+        '<span class="list-controls-k">Per page</span>' +
+        '<select class="list-per-page" aria-label="How many to show per page">' +
+          PAGE_SIZES.map(n =>
+            '<option value="' + n + '">' + (n === 0 ? "All" : n) + '</option>').join("") +
+        '</select>';
+      bar.appendChild(holder);
+    });
+    // Painted from the preference every time, so every bar on the page agrees
+    // whichever one was used to change it.
+    const layout = listLayout();
+    document.querySelectorAll(".list-controls [data-layout]").forEach(b =>
+      b.classList.toggle("active", b.dataset.layout === layout));
+    const size = +(uiPrefs && uiPrefs.loanPageSize);
+    document.querySelectorAll(".list-per-page").forEach(sel => {
+      sel.value = String(PAGE_SIZES.indexOf(size) >= 0 ? size : 5);
+    });
+    document.body.classList.toggle("list-as-rows", layout === "list");
+  }
+
+  function repaintLists(){
+    if (typeof renderLoansGiven === "function") renderLoansGiven();
+    if (typeof renderLoansTaken === "function") renderLoansTaken();
+    if (typeof renderInvestments === "function") renderInvestments();
+    paintListControls();
+  }
+
+  document.addEventListener("click", ev => {
+    const b = ev.target.closest && ev.target.closest(".list-controls [data-layout]");
+    if (!b) return;
+    setUiPref("listLayout", b.dataset.layout);
+    repaintLists();
+  });
+  document.addEventListener("change", ev => {
+    const sel = ev.target.closest && ev.target.closest(".list-per-page");
+    if (!sel) return;
+    setUiPref("loanPageSize", +sel.value);
+    repaintLists();
+  });
+
   function renderLoansGiven(){ renderLoans("given"); }
   function renderLoansTaken(){ renderLoans("taken"); }
 
@@ -8196,7 +8261,7 @@
     }
 
     const sortedInv = investments.slice().sort((a,b)=>b.dateAdded.localeCompare(a.dateAdded));
-    const paged = paginate(sortedInv, investmentsPage, LOAN_PAGE_SIZE);
+    const paged = paginate(sortedInv, investmentsPage, loanPageSize());
     investmentsPage = paged.safePage;
 
     const rows = paged.slice.map(inv=>{
@@ -13674,6 +13739,85 @@
         document.getElementById("rd-close").focus();
       }
 
+      /* ---- logging is a task, not the page --------------------------------
+         Each of these three screens is read far more often than it is added to,
+         and the form was sitting above the list on every visit. It moves into
+         the drawer, opened from the section's own toolbar, and is put back
+         afterwards by the same code that puts a section back. */
+      const LOG_FORMS = [
+        { body: "loans-given-body", submit: "btn-add-loan-given",
+          probe: "lg-person", label: "Add a loan given", title: "Log a loan you gave" },
+        { body: "loans-taken-body", submit: "btn-add-loan-taken",
+          probe: "lt-person", label: "Add a loan taken", title: "Log a loan you took" },
+        { body: "investments-body", submit: "btn-add-investment",
+          probe: "inv-name", label: "Add an investment", title: "Log an investment" }
+      ];
+
+      function wireLogForms(){
+        LOG_FORMS.forEach(cfg => {
+          const body = document.getElementById(cfg.body);
+          if (!body || body.dataset.logWired) return;
+          const grid = body.querySelector(":scope > .form-grid");
+          const actions = body.querySelector(":scope > .form-actions");
+          if (!grid || !actions) return;
+          body.dataset.logWired = "1";
+
+          // One element to move, so openPanelBeside can put it back exactly.
+          const holder = document.createElement("div");
+          holder.className = "log-form";
+          holder.id = cfg.body + "-form";
+          body.insertBefore(holder, grid);
+          holder.appendChild(grid);
+          holder.appendChild(actions);
+
+          const head = body.parentElement &&
+            body.parentElement.querySelector(".panel-head.is-toolbar");
+          if (head){
+            const open = document.createElement("button");
+            open.type = "button";
+            open.className = "btn btn-primary btn-sm log-open";
+            open.dataset.openLog = cfg.body;
+            open.innerHTML =
+              '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" ' +
+                'stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/>' +
+                '<line x1="5" y1="12" x2="19" y2="12"/></svg>' + cfg.label;
+            // Before the collapse control, so the order reads: what this is,
+            // the thing you came to do, then the way to fold it away.
+            const last = head.lastElementChild;
+            if (last && last.tagName === "BUTTON") head.insertBefore(open, last);
+            else head.appendChild(open);
+          }
+
+          // Success and failure are told apart by asking the app, not by
+          // guessing: it clears this field when it has logged something, and
+          // returns early leaving it filled when it has not.
+          const submit = document.getElementById(cfg.submit);
+          if (submit) submit.addEventListener("click", () => {
+            setTimeout(() => {
+              const probe = document.getElementById(cfg.probe);
+              // closeBeside, not putBack: putBack only walks the element home
+              // and leaves the drawer standing open over the page behind it.
+              if (probe && !probe.value.trim() && besideNow &&
+                  besideNow.block === holder) closeBeside();
+            }, 60);
+          });
+        });
+      }
+
+      document.addEventListener("click", ev => {
+        const b = ev.target.closest && ev.target.closest("[data-open-log]");
+        if (!b) return;
+        const cfg = LOG_FORMS.find(x => x.body === b.dataset.openLog);
+        const holder = cfg && document.getElementById(cfg.body + "-form");
+        if (!holder) return;
+        ev.preventDefault();
+        openPanelBeside(holder, cfg.title);
+        // After openPanelBeside has taken the focus to its close button, so
+        // the caret lands in the first field rather than being moved off it.
+        const first = holder.querySelector("input, select, textarea");
+        if (first) setTimeout(() => first.focus(), 160);
+      });
+
       function putBack(){
         if (!besideNow) return;
         const home = homeOf.get(besideNow.block);
@@ -14030,6 +14174,19 @@
       paintBack();
       buildContents(false);
       renderPlaces();
+      wireLogForms();
+      // A render replaces .table-filter-bar, which is where the view and
+      // per-page controls live, so they are put back after each one. Wrapped
+      // here because both renderers exist by now and neither has to be edited.
+      if (typeof renderLoans === "function"){
+        const _loans = renderLoans;
+        renderLoans = function(dir){ _loans(dir); paintListControls(); };
+      }
+      if (typeof renderInvestments === "function"){
+        const _inv = renderInvestments;
+        renderInvestments = function(){ _inv(); paintListControls(); };
+      }
+      paintListControls();
     })();
 
 })();
@@ -14924,6 +15081,97 @@
      1px from the bar's border and 1px from the body under it. */
   .rd-bar{ padding-bottom: var(--sp-5); }
   .rd-tabs{ margin-bottom: 0; }
+
+  /* ---------- the number clears its own currency sign --------------------- */
+  /* .amount-wrap puts the glyph at left:12px, and the padding that kept the
+     digits off it was scoped to .form-grid.form-cols - so every amount field
+     outside that one grid, including the inline ones in every loan and
+     investment card, started its digits at 12px underneath a glyph occupying
+     12 to 20. Eight pixels of overlap on seventeen fields. The clearance
+     belongs to the wrap, which is what promises the prefix. */
+  .amount-wrap input{ padding-left: var(--sp-9); }
+
+  /* ---------- the log form is a task surface ------------------------------ */
+  /* Out of the page, into the drawer. It is still one form in one place in the
+     DOM - openPanelBeside moves this element and puts it back - so everything
+     wired to it by id keeps working. */
+  .log-form{ display: none; }
+  #rd-body .log-form{ display: block; }
+  #rd-body .log-form .form-actions{ margin-top: var(--sp-7); }
+
+  /* The one creating action on the screen, in the section's own toolbar. */
+  .panel-head.is-toolbar .log-open{
+    margin-left: auto; flex: 0 0 auto;
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+  }
+  .panel-head.is-toolbar .log-open svg{ width: 14px; height: 14px; flex: 0 0 auto; }
+  /* The toolbar already gives its trailing slot to .section-head-row; with a
+     button there too, only the first of them should be pushed right. */
+  .panel-head.is-toolbar .log-open ~ *{ margin-left: 0; }
+
+  /* ---------- one scroller on the page, not two --------------------------- */
+  /* The wrap capped itself at min(68vh, 680px) with overflow:auto, so a long
+     list scrolled inside a page that also scrolled - measured at 646px of box
+     around 741px of cards, with the pagination row stranded inside it. With no
+     cap the wrap always fits its contents, so there is no vertical room and
+     nothing to trap; overflow stays auto because a wide table still has to move
+     sideways and CSS will not let one axis be visible while the other scrolls. */
+  [id$="-table-wrap"]{ max-height: none; }
+
+  /* ---------- the list, as rows ------------------------------------------- */
+  /* The same cards, laid out one per line. One renderer, one set of actions -
+     a row is not a second rendering that can drift from the card. */
+  body.list-as-rows .loan-cards{
+    display: flex; flex-direction: column; gap: var(--sp-4);
+  }
+  /* The card is already a flex COLUMN, so the direction has to be turned as
+     well as the wrapper - setting display:flex alone left every field stacked
+     and centred, which is a taller card rather than a row. */
+  body.list-as-rows .loan-card{
+    flex-direction: row; flex-wrap: wrap; align-items: center;
+    gap: var(--sp-3) var(--sp-6);
+    padding: var(--sp-4) var(--sp-6);
+  }
+  body.list-as-rows .loan-card > *{ margin: 0; }
+  /* The name leads and takes the slack; the figures and controls sit at their
+     natural width, so they line up down the page. */
+  body.list-as-rows .loan-card .loan-card-head{ flex: 1 1 200px; min-width: 0; }
+  body.list-as-rows .loan-card .loan-amt-row,
+  body.list-as-rows .loan-card .loan-meta-row,
+  body.list-as-rows .loan-card .loan-card-controls{ flex: 0 0 auto; }
+  body.list-as-rows .loan-card .loan-meta-row{ flex-wrap: nowrap; }
+  /* The actions close the row. */
+  body.list-as-rows .loan-card > div:last-child{ flex: 0 0 auto; }
+  body.list-as-rows .loan-card .row-action-bar{
+    border-top: 0; padding-top: 0; margin: 0;
+  }
+
+  /* ---------- the controls ------------------------------------------------- */
+  .list-controls{
+    display: flex; align-items: center; gap: var(--sp-4);
+    margin-left: auto; flex: 0 0 auto;
+  }
+  .list-controls-k{
+    font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-dim);
+    text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap;
+  }
+  .list-controls .seg{
+    display: inline-flex; background: var(--sunken);
+    border: 1px solid var(--line); border-radius: var(--r-md); padding: 2px;
+  }
+  .list-controls .seg button{
+    padding: 3px var(--sp-5); border: 0; border-radius: var(--r-sm);
+    background: transparent; color: var(--ink-dim);
+    font: inherit; font-size: var(--fs-2xs); font-weight: 600; cursor: pointer;
+  }
+  .list-controls .seg button.active{ background: var(--accent); color: var(--on-accent); }
+  @media (hover: hover){
+    .list-controls .seg button:not(.active):hover{ color: var(--ink); }
+  }
+  .list-per-page{ width: auto; max-width: 90px; }
+  @media (max-width: 720px){
+    .list-controls{ margin-left: 0; width: 100%; }
+  }
 </style>
 </body>
 </html>
