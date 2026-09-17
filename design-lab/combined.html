@@ -2420,14 +2420,14 @@
 
   <header class="top">
     <div class="brand">
-      <!-- The mark IS #btn-sync: the same element the app binds to and paints
-           its syncing and error states onto, wearing the logo. -->
-      <button id="btn-sync" class="mark" type="button" title="Sync now" aria-label="Sync now">
-        <span class="mark-p" aria-hidden="true">₱</span>
-        <svg class="mark-sync" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg>
-      </button>
+      <!-- No mark. It was #btn-sync wearing the logo, so removing it removes the
+           header's sync shortcut and the syncing/error tint it carried; sync
+           itself lives in Settings > Sync, and the automatic loop never used
+           this button. -->
+      <!-- No "All places" label either: it named the state the app is in until
+           you choose a place, which is to say it named nothing. The figure and
+           its caret still open the picker. -->
       <button class="top-total" id="top-total" type="button" aria-expanded="false" aria-controls="places-drop">
-        <span class="top-total-k">All places</span>
         <span class="top-total-v num" id="top-total-v">₱0.00</span>
         <span class="top-total-caret" aria-hidden="true"></span>
       </button>
@@ -4897,7 +4897,11 @@
     b.title = message || (ghTok() ? "Sync now" : "Set up sync");
   }
 
-  document.getElementById("btn-sync").addEventListener("click", async ()=>{
+  // The header mark is gone, so this may bind to nothing. Guarded rather than
+  // deleted: the handler is what Settings' "Sync now" would do anyway, and an
+  // unguarded addEventListener on null throws and takes the script with it.
+  const syncBtn = document.getElementById("btn-sync");
+  if (syncBtn) syncBtn.addEventListener("click", async ()=>{
     // With no token this button cannot do its job, so it takes you to where the job
     // gets set up. A control that silently does nothing is worse than one that moves you.
     if (!ghTok()){
@@ -12129,8 +12133,21 @@
       const KEY = "spendly_rail_open_v1";
       const PLACES_KEY = "spendly_rail_places_v1";
       const LIST_KEY = "spendly_rail_lists_v1";
-      const PIN_KEY = "spendly_rail_pinned_v1";
-      const ORDER_KEY = "spendly_rail_order_v1";
+      // v2: a default only shows through when nothing is stored, and the old
+      // keys hold an arrangement made under the old defaults.
+      const PIN_KEY = "spendly_rail_pinned_v2";
+      const ORDER_KEY = "spendly_rail_order_v2";
+
+      /* What a tab opens with, named rather than inherited from source order.
+         `on` is what sits on the page; everything else opens beside. `first`
+         leads, for the tabs where the one that leads is not already first in
+         the markup. A tab missing here keeps the old rule: its first section. */
+      const TAB_DEFAULTS = {
+        dashboard: { on: ["money-overview-card"],    first: "money-overview-card" },
+        charts:    { on: ["cp-card"],                first: "cp-card" },
+        history:   { on: ["history-expense-card"],   first: "history-expense-card" },
+        savings:   { on: ["blk-where-is-your-money-", "blk-your-accounts"] }
+      };
       const HIDE_KEY = "spendly_rail_hidden_v1";
 
       let open = {};
@@ -12334,6 +12351,13 @@
           const live = want.filter(id => secs.some(x => x.id === id));
           if (live.length) return live;
         }
+        // Filtered against what this tab actually has, so a renamed or removed
+        // section leaves the tab with its first one rather than with nothing.
+        const def = TAB_DEFAULTS[tab];
+        if (def){
+          const live = def.on.filter(id => secs.some(x => x.id === id));
+          if (live.length) return live;
+        }
         return secs.length ? [secs[0].id] : [];
       }
 
@@ -12343,7 +12367,14 @@
       // back into it, and handing back the same array made that a self-erasure.
       function arrange(tab, secs){
         const want = order[tab];
-        if (!want || !want.length) return secs.slice();
+        if (!want || !want.length){
+          // No saved order: the tab's own default leads, and the rest keep the
+          // order they are written in.
+          const lead = TAB_DEFAULTS[tab] && TAB_DEFAULTS[tab].first;
+          if (!lead) return secs.slice();
+          const out = secs.filter(x => x.id === lead);
+          return out.length ? out.concat(secs.filter(x => x.id !== lead)) : secs.slice();
+        }
         const by = new Map(secs.map(x => [x.id, x]));
         const out = [];
         want.forEach(id => { if (by.has(id)){ out.push(by.get(id)); by.delete(id); } });
@@ -12485,7 +12516,7 @@
           b.dataset.sec = s.id;
           b.setAttribute("aria-pressed", on ? "true" : "false");
           if (beside) b.setAttribute("aria-current", "true");
-          if (editing) b.title = "Drag the card itself to reorder it";
+          if (editing) b.title = "Use the card's menu, or Arrow Up and Down here, to reorder it";
           b.innerHTML =
             '' +
             '<span class="nav-content-dot" aria-hidden="true"></span>' +
@@ -12966,17 +12997,12 @@
         });
       }
 
-      /* The handle. A grip so the card reads as draggable, and two buttons so
-         dragging is not the only way to move it. */
+      /* The tag. No grip: the card cannot be dragged, and a grip is an
+         instruction that would fail. Where it is, and a menu to move it. */
       function arrangeTag(at, of, staying, secId){
         const tag = document.createElement("div");
         tag.className = "arrange-tag" + (staying ? "" : " is-temporary");
         tag.innerHTML =
-          '<span class="arrange-grip" aria-hidden="true">' +
-            '<svg viewBox="0 0 10 16"><circle cx="3" cy="3" r="1.3"/><circle cx="7" cy="3" r="1.3"/>' +
-            '<circle cx="3" cy="8" r="1.3"/><circle cx="7" cy="8" r="1.3"/>' +
-            '<circle cx="3" cy="13" r="1.3"/><circle cx="7" cy="13" r="1.3"/></svg>' +
-          '</span>' +
           (staying
             ? '<span class="arrange-tag-t">' + at + '/' + of + '</span>'
             : '<span class="arrange-tag-t is-wide">Opens beside</span>' +
@@ -12994,6 +13020,15 @@
         return tag;
       }
 
+      /* Dragging a card to reorder it is switched off. Frozen rather than
+         deleted: every handler below is intact and this is the only thing
+         holding them shut, so it is one word to bring back.
+
+         What still moves a card: the four Move actions in its own menu, and
+         Arrow Up/Down on its row in the rail. Pinning and unpinning are not
+         part of this and keep working exactly as they did. */
+      const CARD_DRAG = false;
+
       function wireCardDrag(panel, secs, tab){
         const host = panel.querySelector(".bento") || panel;
         // The same set the rail's list groups by, so the two never disagree
@@ -13004,7 +13039,7 @@
           b.classList.remove("is-dragging", "is-drop-before");
           b.dataset.arrangeId = sec.id;
           b.classList.toggle("is-arrangeable", editing);
-          b.draggable = !!editing;
+          b.draggable = CARD_DRAG && !!editing;
           // Rebuilt every time rather than left in place: a tag from the last
           // pass would carry the last pass's position in its labels.
           const old = b.querySelector(".arrange-tag");
@@ -13213,7 +13248,7 @@
 
         host.addEventListener("dragstart", ev => {
           const card = ev.target.closest("[data-arrange-id]");
-          if (!editing || !card){ ev.preventDefault(); return; }
+          if (!CARD_DRAG || !editing || !card){ ev.preventDefault(); return; }
           dragCard = card.dataset.arrangeId;
           card.classList.add("is-dragging");
           if (ev.dataTransfer){
@@ -14212,8 +14247,9 @@
     cursor: grab;
   }
   .arrange-tag:active{ cursor: grabbing; }
-  .arrange-grip{ display: inline-flex; }
-  .arrange-grip svg{ width: 10px; height: 16px; fill: currentColor; opacity: .85; }
+  /* The tag has no grip to style: the card cannot be dragged. The rules were
+     removed rather than left behind - dead CSS in this file is exactly what the
+     wiring auditor exists to catch, and it caught these. */
   .arrange-tag-t{
     font-size: var(--fs-3xs); font-weight: 700;
     text-transform: uppercase; letter-spacing: var(--track-caps);
@@ -14640,6 +14676,22 @@
     margin: var(--sp-2) var(--sp-4) var(--sp-3);
     font-size: var(--fs-3xs); color: var(--ink-dim); max-width: 168px;
   }
+
+  /* ---------- nothing here is dragged any more ---------------------------- */
+  /* A grab cursor on something that cannot be grabbed is worse than no cursor:
+     it is a promise the page does not keep. The rows still reorder with Arrow
+     Up and Down, and the cards from their own menu. */
+  nav.tabs .nav-content.is-chip,
+  nav.tabs .nav-content.is-chip:active{ cursor: pointer; }
+  .arrange-tag, .arrange-tag:active{ cursor: default; }
+  .is-arrangeable{ cursor: default; }
+
+  /* ---------- the dot, on the same line as its own mark ------------------- */
+  /* .nav-content is align-items:start with a 6px top margin on the dot, so it
+     sits beside the first line of a name that wraps. A chip centres instead,
+     and there the same margin pushes the dot 3px below the mark and the text -
+     measured at exactly 3px on every row, whatever its height. */
+  nav.tabs .nav-content.is-chip .nav-content-dot{ margin-top: 0; }
 </style>
 </body>
 </html>
