@@ -17034,10 +17034,8 @@
     pointer-events: none; white-space: nowrap;
     transition: opacity var(--dur-fast) var(--ease-out);
   }
-  @media (hover: hover){
-    body.list-as-rows .loan-card.is-closed:hover > *{ filter: none; opacity: 1; }
-    body.list-as-rows .loan-card.is-closed:hover::after{ opacity: .22; }
-  }
+  body.list-as-rows .loan-card.is-closed:hover > *{ filter: none; opacity: 1; }
+  body.list-as-rows .loan-card.is-closed:hover::after{ opacity: .22; }
   body.list-as-rows .loan-card.is-closed:focus-within > *{ filter: none; opacity: 1; }
   body.list-as-rows .loan-card.is-closed:focus-within::after{ opacity: .22; }
   @media (prefers-reduced-motion: reduce){
@@ -17090,10 +17088,8 @@
      out of it unreadable. */
   .loan-card.is-closed > *:not(.loan-card-head){ opacity: .55; }
   .loan-card.is-closed .loan-card-head{ position: relative; z-index: 2; }
-  @media (hover: hover){
-    .loan-card.is-closed:hover > *{ opacity: 1; }
-    .loan-card.is-closed:hover::after{ opacity: .22; }
-  }
+  .loan-card.is-closed:hover > *{ opacity: 1; }
+  .loan-card.is-closed:hover::after{ opacity: .22; }
   .loan-card.is-closed:focus-within > *{ opacity: 1; }
   .loan-card.is-closed:focus-within::after{ opacity: .22; }
 
@@ -18237,9 +18233,12 @@
     filter: blur(.7px);
     transition: filter var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
   }
-  @media (hover: hover){
-    .loan-card.is-closed:hover > *{ filter: none; }
-  }
+  /* Ungated. The (hover: hover) gate is for hover EFFECTS that stick after a
+     tap, because a finger never leaves. What sticks here is a settled card
+     drawn sharp instead of softened, which is not a defect - and the gate was
+     removing "it sharpens the moment you point at it" outright on every machine
+     that reports no hover, this one included. */
+  .loan-card.is-closed:hover > *{ filter: none; }
   .loan-card.is-closed:focus-within > *,
   .loan-card.is-closed.is-editing > *,
   .loan-card.is-unlocked > *{ filter: none; }
@@ -18575,7 +18574,15 @@
      mark: it comes forward with the stamp, and it is sharp. */
   .loan-card.is-closed .row-action-bar{ position: relative; z-index: 4; filter: none; }
   .loan-card.is-closed [data-action="unsettle"]{ filter: none; opacity: 1; }
-  .loan-card.is-closed:not(:hover) > [data-payment-for]{ filter: none; }
+  /* NOT :not(:hover). Written that way, the wrapper is sharp only while the
+     card is NOT pointed at, and the rule meant to take over on hover is behind
+     @media (hover: hover) - which this machine answers false to, measured:
+     (hover: hover) false, (any-hover: hover) false, maxTouchPoints 10. So
+     pointing at the one control on the card was what blurred it: the exemption
+     dropped out, nothing replaced it, and the wrapper took the record's
+     blur(.7px), which the button inherits whatever it says about its own
+     filter. The wrapper is not part of the record at any time. */
+  .loan-card.is-closed > [data-payment-for]{ filter: none; }
   .loan-card.is-closed .loan-note-read{ filter: blur(.7px); }
   .loan-card.is-closed:hover .loan-note-read,
   .loan-card.is-closed:focus-within .loan-note-read,
