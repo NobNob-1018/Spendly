@@ -3515,7 +3515,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18g";
+  const APP_BUILD = "2026-09-18h";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -5283,11 +5283,14 @@
     // The views and comparisons this surface added are commands too; leaving them
     // out would mean the command list knows less about the app than the app does.
     return [
+      /* Straight to the form. These used to press the + to get there, and the +
+         opens a menu now - a command that says "Add an expense" and then asks
+         you what you are adding is a command that did not do what it said. */
       { label: "Add an expense", keys: "add expense spend new entry log",
-        run: () => { closeSearchOverlay(); const b = document.getElementById("btn-fab-add"); if (b) b.click();
+        run: () => { closeSearchOverlay(); openAddSurface();
                      const m = document.querySelector('#entry-mode-toggle button[data-mode="expense"]'); if (m) m.click(); } },
       { label: "Add income or a payslip", keys: "add income salary payslip earn new",
-        run: () => { closeSearchOverlay(); const b = document.getElementById("btn-fab-add"); if (b) b.click();
+        run: () => { closeSearchOverlay(); openAddSurface();
                      const m = document.querySelector('#entry-mode-toggle button[data-mode="income"]'); if (m) m.click(); } },
       { label: "Go to Dashboard", keys: "dashboard home overview total money", run: go("dashboard") },
       { label: "Go to Charts", keys: "charts graph trends spending chart", run: go("charts") },
@@ -5481,12 +5484,21 @@
   function applyEntryMode(mode){
     entryMode = mode;
     const copy = ENTRY_MODE_COPY[mode];
-    document.getElementById("add-card-title").textContent = copy.cardTitle;
-    document.getElementById("add-card-sub").textContent = copy.cardSub;
-    document.getElementById("in-desc-label").textContent = copy.descLabel;
-    document.getElementById("in-desc").placeholder = copy.descPlaceholder;
-    document.getElementById("in-recurring-label").textContent = copy.recurringLabel;
-    document.getElementById("btn-add-entry").textContent = copy.buttonLabel;
+    /* Through a helper that skips what is not there. This threw on every call -
+       #btn-add-entry has not existed since the redesign renamed the submit
+       button to #btn-add - and it threw TWO LINES ABOVE renderCategoryOptions(),
+       so the toggle marked itself active, the panel read as Income, and the
+       category select still held Bills / Transport / Shopping / Food / Other.
+       Income was being filed under expense categories. A missing label is worth
+       a stale word, not the category list. */
+    const say = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    say("add-card-title", copy.cardTitle);
+    say("add-card-sub", copy.cardSub);
+    say("in-desc-label", copy.descLabel);
+    const desc = document.getElementById("in-desc");
+    if (desc) desc.placeholder = copy.descPlaceholder;
+    say("in-recurring-label", copy.recurringLabel);
+    say("btn-add", copy.buttonLabel);
     const panel = document.getElementById("tab-add");
     if (panel) panel.dataset.mode = mode;
     renderCategoryOptions();
@@ -6209,7 +6221,7 @@
         cta: "Set a budget", go: () => activateTab("settings") },
       { done: expenses.length > 0 || incomes.length > 0, title: "Log your first entry",
         sub: "An expense or a payslip. Trends, outliers and the forecast all start from here.",
-        cta: "Add an entry", go: () => { const b = document.getElementById("btn-fab-add"); if (b) b.click(); } }
+        cta: "Add an entry", go: () => openAddSurface() }
     ];
     const doneCount = steps.filter(s => s.done).length;
     el.style.display = (doneCount < steps.length && !dismissed) ? "" : "none";
@@ -12231,7 +12243,7 @@
           drill.className = "drill";
           drill.innerHTML = '<div class="drill-panel" role="dialog" aria-modal="true"><div class="drill-head"></div><div class="drill-body"></div></div>';
           document.body.appendChild(drill);
-          drill.addEventListener("pointerdown", e => { if (e.target === drill) closeDrill(); });
+          drill.addEventListener("click", e => { if (e.target === drill) closeDrill(); });   // see the entry sheet
           document.addEventListener("keydown", e => {
             if (e.key === "Escape" && drill.classList.contains("show")) closeDrill();
           });
@@ -15454,30 +15466,124 @@
         if (openLog(b.dataset.openLog)) ev.preventDefault();
       });
 
-      /* ---- the + in the corner adds what the screen is about -------------
-         It always opened the expense form, wherever you were, so pressing it
-         on Loans offered to log an expense - and every board carried its own
-         Add button to make up for that, in a header with no room for one. */
-      function screenAdds(){
-        const nav = document.querySelector('nav.tabs button[data-tab][aria-current="page"]');
-        const tab = nav ? nav.dataset.tab : "";
-        if (tab === "savings") return "savings-form-card";
-        if (tab !== "loans") return null;   // an entry, as before
-        const g = document.querySelector("#loans-nav button.active");
-        const which = g ? g.dataset.loans : "given";
-        return which === "taken" ? "loans-taken-body"
-             : which === "invest" ? "investments-body"
-             : "loans-given-body";
+      /* ---- the + asks what you are adding --------------------------------
+         It opened the expense form wherever you were, which was wrong on Loans.
+         Reading the screen instead made it silently mean "new investment" on
+         the Investments board, with nothing on the button saying so. A control
+         that means six different things depending on where you are standing is
+         a control you have to think about before pressing, so it offers the six
+         and you get what you picked, from anywhere. */
+      function entryForm(mode){
+        openAddSurface();
+        const m = document.querySelector('#entry-mode-toggle button[data-mode="' + mode + '"]');
+        if (m) m.click();
       }
-      /* Capture, because the button already has two handlers of its own that
-         would open the entry form underneath this one. */
+      /* There is no Interest category - the automatic monthly posting writes an
+         income entry as "Other Income" described "Interest - account (month)".
+         This opens that same shape rather than inventing a second home for the
+         one thing, so a month logged by hand reads like a month posted. */
+      function interestForm(){
+        entryForm("income");
+        /* Switching the form to income rebuilds the category select, and it does
+           not finish before a single timeout fires - measured, the value was set
+           and then thrown away, leaving the field blank. Tried until it sticks,
+           bounded, rather than guessing at a delay long enough to be safe. */
+        let tries = 0;
+        const setCat = () => {
+          const cat = document.getElementById("in-category");
+          if (cat && [...cat.options].some(o => o.value === "Other Income")){
+            cat.value = "Other Income";
+            if (cat.value === "Other Income") return;
+          }
+          if (++tries < 6) setTimeout(setCat, 70);
+        };
+        setTimeout(setCat, 60);
+        setTimeout(() => {
+          const desc = document.getElementById("in-desc");
+          if (desc && !desc.value.trim()){
+            desc.value = "Interest \u2014 ";
+            desc.focus();
+            try { desc.setSelectionRange(desc.value.length, desc.value.length); } catch(e){}
+          }
+        }, 90);
+      }
+
+      const ADD_MENU = [
+        { label: "Expense", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 4v11\"/><path d=\"M8 11l4 4 4-4\"/><path d=\"M4 20h16\"/></svg>',
+          run: () => entryForm("expense") },
+        { label: "Income", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 20V9\"/><path d=\"M8 13l4-4 4 4\"/><path d=\"M4 4h16\"/></svg>',
+          run: () => entryForm("income") },
+        { label: "Loan you gave", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14\"/><path d=\"M13 6l6 6-6 6\"/></svg>',
+          run: () => openLog("loans-given-body") },
+        { label: "Loan you took", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M19 12H5\"/><path d=\"M11 6l-6 6 6 6\"/></svg>',
+          run: () => openLog("loans-taken-body") },
+        { label: "Investment", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 17l6-6 4 4 8-8\"/><path d=\"M17 7h4v4\"/></svg>',
+          run: () => openLog("investments-body") },
+        { label: "Interest", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M19 5L5 19\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"2.5\"/><circle cx=\"16.5\" cy=\"16.5\" r=\"2.5\"/></svg>',
+          run: interestForm }
+      ];
+
+      let addMenu = null;
+      function buildMenu(){
+        if (addMenu) return addMenu;
+        addMenu = document.createElement("div");
+        addMenu.className = "add-menu";
+        addMenu.id = "add-menu";
+        addMenu.innerHTML =
+          '<div class="add-menu-scrim"></div>' +
+          '<div class="add-menu-card" role="menu" aria-label="What are you adding?">' +
+            ADD_MENU.map((x, i) =>
+              '<button type="button" role="menuitem" class="add-menu-item" data-add="' + i +
+                '" style="--i:' + i + '">' + x.icon + '<span>' + x.label + '</span></button>'
+            ).join("") +
+          '</div>';
+        document.body.appendChild(addMenu);
+        /* Click, not pointerdown - the scrim has to still be here when the tap
+           resolves or it lands on the page behind it. */
+        addMenu.addEventListener("click", ev => {
+          if (ev.target.classList.contains("add-menu-scrim")){ closeMenu(); return; }
+          const b = ev.target.closest("[data-add]");
+          if (!b) return;
+          const item = ADD_MENU[+b.dataset.add];
+          closeMenu();
+          if (item) item.run();
+        });
+        document.addEventListener("keydown", ev => {
+          if (!addMenu || !addMenu.classList.contains("show")) return;
+          if (ev.key === "Escape"){ ev.preventDefault(); ev.stopPropagation(); closeMenu(); return; }
+          if (ev.key !== "ArrowDown" && ev.key !== "ArrowUp") return;
+          ev.preventDefault();
+          const items = [...addMenu.querySelectorAll(".add-menu-item")];
+          const at = items.indexOf(document.activeElement);
+          const next = ev.key === "ArrowDown" ? at + 1 : at - 1;
+          items[(next + items.length) % items.length].focus();
+        }, true);
+        return addMenu;
+      }
+      function openMenu(){
+        buildMenu();
+        addMenu.classList.add("show");
+        document.body.classList.add("add-menu-open");
+        lockPage(true);
+        const fab = document.getElementById("btn-fab-add");
+        if (fab) fab.setAttribute("aria-expanded", "true");
+        const first = addMenu.querySelector(".add-menu-item");
+        if (first) first.focus();
+      }
+      function closeMenu(){
+        if (!addMenu || !addMenu.classList.contains("show")) return;
+        addMenu.classList.remove("show");
+        document.body.classList.remove("add-menu-open");
+        lockPage(false);
+        const fab = document.getElementById("btn-fab-add");
+        if (fab){ fab.setAttribute("aria-expanded", "false"); fab.focus(); }
+      }
+      /* Capture, because the button already carries two handlers that would
+         open the entry form underneath this one. */
       document.addEventListener("click", ev => {
         if (!ev.target.closest || !ev.target.closest("#btn-fab-add")) return;
-        const body = screenAdds();
-        if (!body) return;
-        if (!document.getElementById(body + "-form")) return;   // not wired yet
         ev.preventDefault(); ev.stopPropagation();
-        openLog(body);
+        if (addMenu && addMenu.classList.contains("show")) closeMenu(); else openMenu();
       }, true);
 
       /* ---- everything with one person -------------------------------------
@@ -16347,7 +16453,12 @@
           '</div>';
         document.body.appendChild(sheet);
 
-        sheet.addEventListener("pointerdown", e => { if (e.target === sheet) close(); });
+        /* CLICK, not pointerdown. Closing on pointerdown takes the scrim out of
+           the page before the tap resolves, and the tap then lands on whatever
+           row was underneath - closing one entry and opening another in one
+           gesture. On click the scrim is still the topmost element, so it is
+           the target and nothing below it is reached. */
+        sheet.addEventListener("click", e => { if (e.target === sheet) close(); });
         sheet.querySelector(".sheet-close").addEventListener("click", close);
         sheet.querySelector(".sheet-edit").addEventListener("click", () => {
           editing = !editing;
@@ -16556,6 +16667,9 @@
         // would free the page while another overlay is still in front.
         if (!sheet.classList.contains("show")) return;
         lockPage(false);
+        /* A touch screen still synthesises a click after the gesture that closed
+           this, and by then there is no scrim left to absorb it. */
+        notAClickUntil = Date.now() + 400;
         giveBack();
         sheet.classList.remove("show");
         watch(false);
@@ -16934,7 +17048,7 @@
             '<div class="drill-body"></div>' +
           '</div>';
         document.body.appendChild(sheet);
-        sheet.addEventListener("pointerdown", e => { if (e.target === sheet) close(); });
+        sheet.addEventListener("click", e => { if (e.target === sheet) close(); });   // see the entry sheet
         sheet.querySelector(".fs-done").addEventListener("click", close);
         document.addEventListener("keydown", e => {
           if (e.key === "Escape" && sheet.classList.contains("show")){ e.preventDefault(); close(); }
@@ -21080,6 +21194,63 @@ if ("serviceWorker" in navigator &&
     }
     #tab-history tbody tr > .note-cell input{ display: none; }
     #tab-history tbody tr > .note-cell::after{ content: attr(data-note); }
+  }
+
+  /* ---------- the + asks what you are adding ------------------------------ */
+  .add-menu{ display: none; position: fixed; inset: 0; z-index: 9994; }
+  .add-menu.show{ display: block; }
+  .add-menu-scrim{ position: absolute; inset: 0; background: rgb(4 7 12 / .5); }
+  /* Anchored to the button it came out of: same right edge, just above it. */
+  .add-menu-card{
+    position: absolute; right: var(--sp-7);
+    bottom: calc(54px + var(--sp-7) + var(--sp-5));
+    min-width: 212px; padding: var(--sp-3);
+    display: flex; flex-direction: column; gap: 2px;
+    background: var(--surface); border: 1px solid var(--line-strong);
+    border-radius: var(--r-lg);
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / .50),
+      0 8px 18px rgb(0 0 0 / .34),
+      0 24px 56px rgb(0 0 0 / .50);
+  }
+  @media (max-width: 1000px){
+    /* The button keeps right: var(--sp-7) at every width - only its bottom
+       moves - so the card that comes out of it keeps that edge too. */
+    .add-menu-card{ bottom: calc(64px + var(--sp-6) + 54px + var(--sp-5)); }
+  }
+  .add-menu-item{
+    display: flex; align-items: center; gap: var(--sp-5);
+    min-height: 44px; padding: 0 var(--sp-5);
+    background: transparent; border: 0; border-radius: var(--r-md);
+    color: var(--ink); font: inherit; font-size: var(--fs-sm); font-weight: 600;
+    text-align: left; cursor: pointer;
+  }
+  .add-menu-item svg{ width: 17px; height: 17px; flex: 0 0 auto; color: var(--ink-dim); }
+  @media (hover: hover){ .add-menu-item:hover{ background: var(--raised); } }
+  .add-menu-item:active{ background: var(--raised); }
+  .add-menu-item:focus-visible{ outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* The button stays above its own scrim, lit, because pressing it again is
+     how you change your mind - and it turns into the way out rather than
+     becoming a second control. */
+  body.add-menu-open #btn-fab-add{ z-index: 9995; }
+  #btn-fab-add svg{ transition: transform var(--dur-base) var(--ease-out); }
+  body.add-menu-open #btn-fab-add svg{ transform: rotate(45deg); }
+
+  /* Out of the button it came from: 22ms apart over six items is 110ms of
+     lead-in, which a menu you summoned deliberately can afford. `backwards` so
+     they are not drawn before their turn. */
+  .add-menu.show .add-menu-card{ animation: add-menu-in var(--dur-fast) var(--ease-out); }
+  .add-menu.show .add-menu-item{
+    animation: add-menu-item var(--dur-base) var(--ease-out) backwards;
+    animation-delay: calc(var(--i) * 22ms);
+  }
+  @keyframes add-menu-in{ from{ opacity: 0; } }
+  @keyframes add-menu-item{ from{ opacity: 0; transform: translateY(8px); } }
+  @media (prefers-reduced-motion: reduce){
+    .add-menu.show .add-menu-card,
+    .add-menu.show .add-menu-item{ animation: none; }
+    #btn-fab-add svg{ transition: none; }
   }
 </style>
 </body>
