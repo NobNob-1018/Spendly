@@ -13849,9 +13849,23 @@
          the drop shadow - and every pass that walked its children was counting
          those as cards. Eighteen of them, for six cards. One definition, used
          everywhere, so that cannot happen again. */
+      /* A card is a child of the bento that the bento did not draw itself.
+
+         This used to be a list of what a card is NOT - not a handle overlay,
+         not the drag ghost - and a list like that is wrong the moment anything
+         new is added to the grid. It was: the resize preview is neither of
+         those, so it counted as a card, took a handle overlay of its own with
+         an empty name, had --span and --rows written onto it, joined the rows
+         Tidy levels, and could be handed back by lineMate() as the card beside
+         another one - which is a seam drag resizing an invisible box while
+         nothing on the screen moves.
+
+         So the chrome says what it is, once, where it is created, and both this
+         and lineMate() ask that. */
+      const isChrome = k => k.hasAttribute("data-bento-chrome") ||
+        k.classList.contains("card-handles") || k.classList.contains("card-ghost");
       const cardsIn = host => [...host.children].filter(k =>
-        !k.classList.contains("card-handles") &&
-        !k.classList.contains("card-ghost") &&
+        !isChrome(k) &&
         k.getBoundingClientRect().height > 0);
 
       /* What a card needs, from what it holds. Cached on the element because it
@@ -13873,7 +13887,13 @@
         return worst;
       }
       function minSpanOf(el){
-        if (el.dataset.minSpan) return +el.dataset.minSpan;
+        /* Keyed to the WIDTH it was measured at, not to the element alone. A
+           floor is a number of twelfths, and a twelfth of an 878px grid is not
+           a twelfth of an 1118px one - so a floor of 4 taken at a 1440px window
+           let a card sit 8px inside its own contents at 1200. */
+        const gridW = el.parentElement ? Math.round(el.parentElement.getBoundingClientRect().width) : 0;
+        if (el.dataset.minSpan && Math.abs((+el.dataset.minSpanAt || 0) - gridW) <= 8)
+          return +el.dataset.minSpan;
         /* The guess, which is now only a lower bound. It reads what a card
            holds and infers how narrow it can be, which works until a card holds
            something the list does not name. */
@@ -13911,6 +13931,7 @@
         } catch (e){}
 
         el.dataset.minSpan = String(n);
+        el.dataset.minSpanAt = String(gridW);
         return n;
       }
       /* No fitRowsOf and no maxRowsOf. A card's height is not a range with a
@@ -13949,8 +13970,13 @@
         // page right now at zero height, in DOM order, between two that are - so
         // the immediate next sibling is routinely not the card beside this one,
         // and stopping at it hid every real pair.
+        // Past anything the bento drew rather than laid out, too. The overlays
+        // and the preview are children of the grid with real heights, and they
+        // are appended AFTER every card - so the last card on the page had one
+        // of them as its next sibling.
         let next = el.nextElementSibling;
-        while (next && next.getBoundingClientRect().height < 1) next = next.nextElementSibling;
+        while (next && (isChrome(next) || next.getBoundingClientRect().height < 1))
+          next = next.nextElementSibling;
         if (!next) return null;
         const a = el.getBoundingClientRect(), b = next.getBoundingClientRect();
         return Math.abs(a.top - b.top) < 2 ? next : null;
@@ -14067,12 +14093,28 @@
           refill = setTimeout(() => { if (!seamDrag) applySpansAndSeams(host, tab, true); }, 450);
         }
         const cards = cardsIn(host);
+        /* The corrective pass re-asks every floor. The first pass runs the
+           moment the cards are placed, and a card whose contents arrive after
+           that - a strip of chips, a chart, a list - is measured while it is
+           still nearly empty, which reports a floor far lower than the one it
+           will need. Measured: insights-card cached a floor of 4 at an 878px
+           grid and then spilled 8px at 4, because at the moment it was asked
+           there was nothing in it to spill. */
+        if (again) cards.forEach(el => {
+          delete el.dataset.minSpan;
+          delete el.dataset.minSpanAt;
+        });
         calibrateRows(host);
         cards.forEach(el => {
           // Handles used to live inside the card; this clears any a stale pass
           // left there before they moved out into the overlay.
           el.querySelectorAll(":scope > .card-seam").forEach(x => x.remove());
-          setSpan(el, spanOf(tab, el));
+          /* The stored width is what was asked for; the floor is what the card
+             needs at the width it is being drawn at NOW, and the card takes
+             whichever is larger. Without this, a page arranged at 1440 kept the
+             widths it was given when the window narrowed, and a card chosen at
+             four twelfths was drawn 8px inside its own contents at 1200. */
+          setSpan(el, Math.max(spanOf(tab, el), minSpanOf(el)));
         });
 
         /* Heights. Every card, every pass, measured - not remembered. A height
@@ -14144,6 +14186,7 @@
         if (editing) cards.forEach((el, i) => {
           const pad = document.createElement("div");
           pad.className = "card-handles";
+          pad.dataset.bentoChrome = "1";
           pad.dataset.card = el.dataset.arrangeId || el.id || "";
           pad.classList.toggle("is-temporary", el.classList.contains("is-unpinned"));
           pad.setAttribute("aria-hidden", "true");
@@ -14190,6 +14233,8 @@
       function placeAllHandles(host){
         if (!host) return;
         host.querySelectorAll(":scope > .card-handles").forEach(pad => {
+          // A pad whose name is empty belongs to nothing and never will.
+          if (!pad.dataset.card){ pad.remove(); return; }
           const card = host.querySelector('[data-arrange-id="' + CSS.escape(pad.dataset.card) + '"]')
                     || document.getElementById(pad.dataset.card);
           if (card && card.getBoundingClientRect().height > 0) placeHandles(host, card, pad);
@@ -14349,6 +14394,10 @@
             ? Math.round((right.getBoundingClientRect().right - leftBox.left) * px)
             : 0;
           seamDrag = {
+            // Which grid this drag belongs to. seamDrag is module scope and the
+            // handler that reads it is registered once per host, so without
+            // this one drag ran in every tab panel at once.
+            host,
             left, right, total, beforeSpan, axis,
             hostLeft: hostBox.left,
             hostW: hostBox.width,
@@ -14388,11 +14437,19 @@
         /* The width being asked for, drawn where the card will be. Only while
            the ask is bigger than the row can hold - up to that point the card
            itself is the preview, because it is being resized live. */
+        // Removed when it is done, not parked. It fades out by losing a class
+        // and would keep its inline geometry - and an absolutely positioned box
+        // counts towards its container's scrollable overflow whether or not you
+        // can see it. Left over from a resize done at 1440, it held a 1200px
+        // window open to 1406.
+        let previewGone = null;
         function seamPreview(){
+          clearTimeout(previewGone);
           let p = host.querySelector(":scope > .seam-preview");
           if (!p){
             p = document.createElement("div");
             p.className = "seam-preview";
+            p.dataset.bentoChrome = "1";
             p.setAttribute("aria-hidden", "true");
             host.appendChild(p);
           }
@@ -14414,11 +14471,18 @@
         }
         function hideSeamPreview(){
           const p = host.querySelector(":scope > .seam-preview");
-          if (p) p.classList.remove("is-on");
+          if (!p) return;
+          p.classList.remove("is-on");
+          // After the fade, and cancelled if it is asked for again first.
+          clearTimeout(previewGone);
+          previewGone = setTimeout(() => {
+            const q = host.querySelector(":scope > .seam-preview");
+            if (q && !q.classList.contains("is-on")) q.remove();
+          }, 260);
         }
 
         window.addEventListener("pointermove", ev => {
-          if (!seamDrag) return;
+          if (!seamDrag || seamDrag.host !== host) return;
           const { left, right, total, beforeSpan, hostLeft, hostW, axis } = seamDrag;
           // Where the seam IS, in twelfths across the bento, less what the cards
           // before it on this line already take. Pixels to twelfths, rounded:
@@ -14513,7 +14577,7 @@
         });
 
         function endSeam(ev){
-          if (!seamDrag) return;
+          if (!seamDrag || seamDrag.host !== host) return;
           const { left, right, wasDraggable, a, b, push } = seamDrag;
           seamDrag = null;
           hideReadout();
@@ -14565,6 +14629,7 @@
           if (!g){
             g = document.createElement("div");
             g.className = "card-ghost";
+            g.dataset.bentoChrome = "1";
             g.setAttribute("aria-hidden", "true");
             host.appendChild(g);
           }
@@ -18679,6 +18744,35 @@
   }
   @media (prefers-reduced-motion: reduce){
     .seam-preview, .is-arrangeable.is-being-pushed{ transition: none; }
+  }
+
+  /* ---------- room for the chip, made where it cannot be argued with ------- */
+  /* There is a rule above that keeps 95px clear by margin, and it has not
+     worked since the headings moved into header.panel-head: the header is
+     pulled out to the card's edge by a later margin-right of -24px, and that is
+     the rule that wins. Measured, the subtitle ran 61px under the chip.
+
+     Padding, inside the header, where the negative margin has no opinion. The
+     subtitle is flex: 1 1 200px with overflow hidden, so it gives. */
+  .is-arrangeable > header.panel-head{ padding-right: 72px; }
+  /* Below 720 the chip loses its words and needs less. */
+  @media (max-width: 720px){
+    .is-arrangeable > header.panel-head{ padding-right: 44px; }
+  }
+
+  /* ---------- a control that is on, legibly -------------------------------- */
+  /* The 18% accent tint I gave this state measured 4.03 against 4.5 in the day
+     edition - rgb(12,111,102) on rgb(193,215,219), on an 11px bold label.
+     Filled instead, which is the pairing the rest of the app uses for a control
+     that is switched on, and which reads as on at a glance. */
+  nav.tabs .nav-tool[aria-pressed="true"]{
+    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  }
+  @media (hover: hover){
+    nav.tabs .nav-tool[aria-pressed="true"]:hover{
+      background: var(--accent-dark, var(--accent)); border-color: var(--accent-dark, var(--accent));
+      color: var(--on-accent);
+    }
   }
 </style>
 </body>

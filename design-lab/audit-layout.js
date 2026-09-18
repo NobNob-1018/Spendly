@@ -15,6 +15,9 @@
  *   collapsed  a grid whose every track computed to ~0
  *   overflow   an element whose BOX is outside the parent that should contain it
  *   bleed      an element whose INK is wider than its own box, with nothing
+ *              - except the bento's own furniture, which hangs in the gutter
+ *              on purpose and carries data-bento-chrome to say so; that is
+ *              forgiven only when nothing else is outside the box
  *              downstream to clip or scroll it — a rect can sit perfectly
  *              inside its parent while the glyphs run out of the column
  *   sticky     a sticky element with a NON-ZERO offset inside a scroll
@@ -175,6 +178,21 @@
     }
     if (contained) return;
     if (bleedExplained(el, bleed)) return;
+    /* The bento's own furniture hangs in the gutter on purpose - the resize
+       handles are placed outside the cards so there is no scrollbar to dodge
+       and nothing underneath them to cover - and it says so in the DOM. The
+       excess is forgiven ONLY when nothing but that furniture is outside the
+       box: a real element bleeding still reports. */
+    if (el.querySelector('[data-bento-chrome]')){
+      const box = el.getBoundingClientRect();
+      let worst = 0;
+      el.querySelectorAll('*').forEach(k => {
+        if (k.closest('[data-bento-chrome]')) return;
+        const b = k.getBoundingClientRect();
+        if (b.width && b.right - box.right > worst) worst = b.right - box.right;
+      });
+      if (worst <= 1) return;
+    }
     out.bleed.push(name(el) + ' paints ' + bleed + 'px past its own box (' +
       el.scrollWidth + ' into ' + el.clientWidth + ')');
   });
