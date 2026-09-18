@@ -9209,8 +9209,9 @@
          and in a row, where the head is display:contents and a grip would
          auto-place into whatever grid track was free, the name does. */
       let drag = null;
-      const clear = () => list.querySelectorAll(".is-dragging, .is-drop-before")
-        .forEach(x => x.classList.remove("is-dragging", "is-drop-before"));
+      const clear = () => list.querySelectorAll(".is-dragging, .is-drop-before, .is-drop-after, .is-drop-stacked")
+        .forEach(x => x.classList.remove("is-dragging", "is-drop-before",
+                                         "is-drop-after", "is-drop-stacked"));
 
       // A captured pointer sends its events to the grip whatever it is over, so
       // what is underneath has to be asked for directly.
@@ -9218,6 +9219,36 @@
         const el = document.elementFromPoint(x, y);
         const c = el && el.closest ? el.closest(".savings-account") : null;
         return c && list.contains(c) ? c : null;
+      };
+
+      // The dashboard's three parts, minus the resize: the card in hand fades,
+      // the edge it will land against is marked in the gutter, and a ghost
+      // shows the space it will take.
+      const ghost = () => {
+        let g = list.querySelector(":scope > .account-ghost");
+        if (!g){
+          g = document.createElement("div");
+          g.className = "account-ghost";
+          g.setAttribute("aria-hidden", "true");
+          list.appendChild(g);
+        }
+        return g;
+      };
+      const hideGhost = () => {
+        const g = list.querySelector(":scope > .account-ghost");
+        if (g) g.remove();
+      };
+      const showGhost = (card, over, after, stacked) => {
+        const g = ghost();
+        const lb = list.getBoundingClientRect();
+        const ob = over.getBoundingClientRect(), mine = card.getBoundingClientRect();
+        const gap = parseFloat(getComputedStyle(list).gap) || 16;
+        let left = ob.left - lb.left, top = ob.top - lb.top;
+        if (after && stacked) top = ob.bottom - lb.top + gap;
+        else if (after) left = ob.right - lb.left + gap;
+        g.style.left = left + "px"; g.style.top = top + "px";
+        g.style.width = mine.width + "px"; g.style.height = mine.height + "px";
+        g.classList.add("is-on");
       };
 
       const onMove = ev => {
@@ -9231,9 +9262,23 @@
         }
         ev.preventDefault();
         const over = cardUnder(ev.clientX, ev.clientY);
-        list.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
+        list.querySelectorAll(".is-drop-before, .is-drop-after, .is-drop-stacked")
+          .forEach(x => x.classList.remove("is-drop-before", "is-drop-after", "is-drop-stacked"));
         drag.over = (over && over.dataset.id !== drag.id) ? over : null;
-        if (drag.over) drag.over.classList.add("is-drop-before");
+        if (!drag.over){ drag.after = false; hideGhost(); return; }
+        /* WHICH EDGE, from direction of travel - the same rule as the bento,
+           for the same reason: dropping a card on the neighbour to its right
+           has to mean "past it", not "in front of it", or the gesture does
+           nothing. */
+        const seq = [...list.querySelectorAll(".savings-account")].map(x => x.dataset.id);
+        const iMe = seq.indexOf(drag.id), iOver = seq.indexOf(drag.over.dataset.id);
+        drag.after = iMe >= 0 && iOver >= 0 && iMe < iOver;
+        // A card with the row to itself has neighbours above and below it.
+        const ob = drag.over.getBoundingClientRect();
+        const stacked = ob.width > list.clientWidth - 24;
+        drag.over.classList.add(drag.after ? "is-drop-after" : "is-drop-before");
+        if (stacked) drag.over.classList.add("is-drop-stacked");
+        showGhost(drag.card, drag.over, drag.after, stacked);
       };
 
       const onEnd = ev => {
@@ -9244,6 +9289,7 @@
         window.removeEventListener("pointercancel", onEnd);
         try { d.grip.releasePointerCapture(d.pointerId); } catch (e){}
         document.body.classList.remove("is-account-dragging");
+        hideGhost();
         clear();
         // Moved nowhere, or released over nothing: nothing happens.
         if (!d.moved || !d.over) return;
@@ -9256,8 +9302,9 @@
         const ids = [...list.querySelectorAll(".savings-account")].map(x => x.dataset.id);
         const was = ids.slice();
         const at = ids.indexOf(d.id);
-        const overAt = ids.indexOf(d.over.dataset.id);
-        const after = at >= 0 && overAt >= 0 && at < overAt;
+        // The side the MARKER showed, not one worked out again on release, so
+        // what happens is what was drawn.
+        const after = !!d.after;
         if (at >= 0) ids.splice(at, 1);
         let toAt = ids.indexOf(d.over.dataset.id);
         if (toAt < 0) toAt = ids.length; else if (after) toAt += 1;
@@ -19226,6 +19273,71 @@
      thirteen .th-filter chips, nor the wrapper the empty state renders into.
      The filter bar is in a collapsible above the board and the empty state
      already draws on --raised. Both rules matched nothing, so both are gone. */
+
+  /* ---------- a wrap holding cards is not a frame -------------------------- */
+  /* [id$="-table-wrap"] exists to frame a TABLE and give it somewhere to
+     scroll. Holding a grid of cards it draws a second edge one pixel outside
+     them - measured, the board at 288..1406 and the wrap at 329..1365 with the
+     cards at 330..1364, both boxes the same colour - which is the left and
+     right borders reading as one line with the cards. It keeps the scrolling
+     and loses the box. */
+  #savings-table-wrap:has(.savings-list),
+  [id$="-table-wrap"]:has(.loan-cards),
+  [id$="-table-wrap"]:has(.inv-grid){
+    background: transparent; border: 0; border-radius: 0; padding: 0;
+  }
+
+  /* ---------- the drag says what the dashboard's says ---------------------- */
+  .savings-list{ position: relative; }
+  .account-ghost{
+    position: absolute; z-index: 3; pointer-events: none;
+    border-radius: var(--r-md);
+    border: 2px dashed var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .account-ghost.is-on{ opacity: 1; }
+  /* The marker is in the gutter, on the edge it will land against - not a
+     hairline inside the card, which reads as "this one is selected". */
+  .savings-account.is-drop-before,
+  .savings-account.is-drop-after{ box-shadow: none; position: relative; }
+  .savings-account.is-drop-before::after,
+  .savings-account.is-drop-after::after{
+    content: ""; position: absolute; top: 0; bottom: 0; width: 3px;
+    border-radius: var(--r-pill); background: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
+    z-index: 4; pointer-events: none;
+  }
+  .savings-account.is-drop-before::after{ left: -9px; }
+  .savings-account.is-drop-after::after{ right: -9px; }
+  .savings-account.is-drop-stacked::after{
+    left: 0; right: 0; width: auto; height: 3px; top: auto; bottom: auto;
+  }
+  .savings-account.is-drop-before.is-drop-stacked::after{ top: -9px; }
+  .savings-account.is-drop-after.is-drop-stacked::after{ bottom: -9px; }
+  .savings-account.is-dragging{ opacity: .4; }
+  @media (prefers-reduced-motion: reduce){ .account-ghost{ transition: none; } }
+
+  /* ---------- a card that fits the screen ---------------------------------- */
+  /* 489px on a 900px window with the first row starting at 260, so one row
+     filled the screen and the second was always below the fold. It was three
+     field rows and a tier rule stacked, each a label over a full-width input,
+     on 10px gaps. Rate and Tax are two small numbers and go side by side; so do
+     the two halves of the tier rule. */
+  .savings-account{ gap: var(--sp-3); padding: var(--sp-6); }
+  .savings-account .sa-fields{
+    display: grid; gap: var(--sp-3) var(--sp-5);
+    grid-template-columns: 1fr 1fr;
+  }
+  .savings-account .sa-fields > .sa-field:first-child{ grid-column: 1 / -1; }
+  .savings-account .sa-field label{ margin-bottom: 2px; }
+  .savings-account .sa-tier{
+    display: grid; gap: var(--sp-3) var(--sp-5);
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+  /* The share bar is a rule under the figure, not a block of its own. */
+  .savings-account .sa-share{ margin: 0; }
 </style>
 </body>
 </html>
