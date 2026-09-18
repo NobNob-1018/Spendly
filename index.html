@@ -3527,7 +3527,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18";
+  const APP_BUILD = "2026-09-18b";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4983,6 +4983,35 @@
     if (!window.matchMedia("(pointer: coarse)").matches) return;
     let x0 = 0, y0 = 0, t0 = 0, tracking = false, decided = false, horizontal = false, panel = null;
     const app = document.querySelector(".app") || document.body;
+    /* What is on the other side. The panel sliding says the gesture was heard;
+       it does not say where it goes, and on a five-tab row that is the thing
+       worth knowing before you commit. Silent at the ends, where the existing
+       resistance already says there is nothing there. */
+    function tabLabel(name){
+      const b = document.querySelector('nav.tabs button[data-tab="' + name + '"]');
+      if (!b) return name;
+      const l = b.querySelector(".tab-label");
+      return (l ? l.textContent : b.textContent).trim().replace(/\s+/g, " ");
+    }
+    function peek(dir){
+      let el = document.getElementById("swipe-peek");
+      const names = visibleTabNames();
+      const i = names.indexOf(currentTabName());
+      const next = i < 0 ? null : names[i + dir];
+      if (!next){ if (el) el.classList.remove("is-on"); return; }
+      if (!el){
+        el = document.createElement("div");
+        el.id = "swipe-peek";
+        el.setAttribute("aria-hidden", "true");
+        document.body.appendChild(el);
+      }
+      el.textContent = dir > 0 ? tabLabel(next) + "  \u203a" : "\u2039  " + tabLabel(next);
+      el.classList.add("is-on");
+    }
+    function hidePeek(){
+      const el = document.getElementById("swipe-peek");
+      if (el) el.classList.remove("is-on");
+    }
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     const openPanel = ()=> [...document.querySelectorAll(".tab-panel")].find(p=>p.style.display !== "none");
     function letGo(el){
@@ -5007,13 +5036,31 @@
       if (e.touches.length !== 1) return;
       const x = e.touches[0].clientX;
       if (x <= EDGE || x >= window.innerWidth - EDGE){ tracking = false; return; }
-      // Never steal a gesture from something that scrolls sideways itself, or from
-      // a control being operated.
+      /* Never steal a gesture from something that scrolls sideways itself, or
+         from a control that uses horizontal movement. Both of those were drawn
+         far too wide and between them they killed the swipe outright on two
+         tabs - measured across a grid of points on a 390px screen, savings and
+         loans accepted a swipe at 0% of the screen.
+
+         A BUTTON is not such a control. It does not care about horizontal
+         movement and its click will not fire if the finger travels, so there is
+         nothing to take from it - and 41 of 128 points on Loans are over one,
+         because the screen is made of cards with buttons on them. A text field,
+         a select and a native picker do care, and they keep the gesture. */
       const t = e.target;
-      if (t.closest("input, select, textarea, button, a, .search-panel")) { tracking = false; return; }
+      if (t.closest("input, textarea, select, .search-panel")) { tracking = false; return; }
+      /* And a box only steals a sideways gesture if it can actually scroll
+         sideways. overflow-x: visible cannot, whatever its scrollWidth says -
+         and on these cards scrollWidth is 8px over clientWidth from a tooltip
+         positioned off the right edge and translated back, which is the same
+         incidental overflow the layout auditor had to learn to ignore. A real
+         sideways scroller is over by much more than a rounding error. */
       let el = t;
       while (el && el !== app){
-        if (el.scrollWidth > el.clientWidth + 4){ tracking = false; return; }
+        const ox = getComputedStyle(el).overflowX;
+        if ((ox === "auto" || ox === "scroll") && el.scrollWidth > el.clientWidth + 24){
+          tracking = false; return;
+        }
         el = el.parentElement;
       }
       x0 = x; y0 = e.touches[0].clientY; t0 = Date.now();
@@ -5032,10 +5079,11 @@
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;   // too early to tell
         decided = true;
         horizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
-        if (!horizontal){ tracking = false; letGo(panel); panel = null; return; }
+        if (!horizontal){ tracking = false; letGo(panel); panel = null; hidePeek(); return; }
       }
       if (!horizontal) return;
       e.preventDefault();
+      peek(dx < 0 ? 1 : -1);
       if (reduce.matches) return;      // no travel for people who asked for less motion
       const names = visibleTabNames();
       const i = names.indexOf(currentTabName());
@@ -5044,6 +5092,7 @@
     }, { passive: false });
 
     app.addEventListener("touchend", (e)=>{
+      hidePeek();
       if (!tracking) return;
       tracking = false;
       const leaving = panel; panel = null;
@@ -19228,6 +19277,153 @@ if ("serviceWorker" in navigator &&
   }
   /* The share bar is a rule under the figure, not a block of its own. */
   .savings-account .sa-share{ margin: 0; }
+
+  /* ====================================================================== */
+  /* MOBILE NAVIGATION. Nothing in this block applies above 1000px.         */
+  /* ====================================================================== */
+  @media (max-width: 1000px){
+    /* THE TAB BAR IS A ROW AGAIN. The rail redesign put the buttons inside
+       .rail-scroll, which is a column, and the rule that makes nav.tabs a 64px
+       bar at the bottom of the screen never reached them. Measured: nav.tabs
+       390x64 with overflow hidden, .rail-scroll 390x410 as a column, and six
+       390x82 buttons all at left 0 - one visible, five clipped. That is where
+       Loans and Settings went. */
+    nav.tabs .rail-scroll{
+      flex-direction: row; align-items: stretch; justify-content: space-around;
+      width: 100%; height: 100%; min-height: 0;
+      padding: 0; gap: 0; overflow: visible;
+    }
+    /* The bar is 64px and all of it is the bar. The 16px of top padding above
+       is there to space the first item away from the top of a SIDEBAR, and on
+       a bottom bar it just pushed the labels into the home indicator: measured,
+       the rail was 47px of the 64 and the labels ended 10px off the screen. */
+    nav.tabs{
+      padding: 0 0 env(safe-area-inset-bottom, 0px);
+      height: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+    nav.tabs button[data-tab]{
+      flex: 1 1 0; width: auto; min-width: 0; height: 100%;
+      /* 12px each side is a sidebar row's padding. On a fifth of a 390px screen
+         it leaves 54px for a label that wants 70, which is where "Loans & I"
+         came from. */
+      padding: var(--sp-4) 2px; gap: 3px;
+      justify-content: center; border-radius: 0;
+    }
+    /* A bottom bar is five destinations and nothing else. These belong to a
+       sidebar: the way back, the keyboard hints, the disclosure carets, the
+       per-tab contents and the layout tools. */
+    nav.tabs .nav-back,
+    nav.tabs .nav-tools,
+    nav.tabs .rail-places,
+    nav.tabs .nav-contents,
+    nav.tabs .nav-contents-fold,
+    nav.tabs .rail-fold,
+    nav.tabs .rail-resize,
+    nav.tabs .nav-key,
+    nav.tabs .nav-caret{ display: none !important; }
+    /* The label under the glyph, small enough that five fit a 390px screen. */
+    nav.tabs button[data-tab] .tab-label{
+      font-size: 9px; line-height: 1.15; max-width: 100%;
+      letter-spacing: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    nav.tabs button[data-tab] .tab-icon svg{ width: 19px; height: 19px; }
+    /* The page has to clear the bar, or the last row sits under it. */
+    .app{ padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 24px); }
+  }
+
+  /* ---------- what is on the other side of the swipe ----------------------- */
+  #swipe-peek{
+    position: fixed; z-index: 1200; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 12px);
+    transform: translateX(-50%) translateY(-6px);
+    padding: var(--sp-4) var(--sp-7); border-radius: var(--r-pill);
+    background: var(--raised); border: 1px solid var(--line-strong);
+    box-shadow: var(--elev-3);
+    color: var(--ink); font-size: var(--fs-2xs); font-weight: 700;
+    white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity var(--dur-fast) var(--ease-out),
+                            transform var(--dur-fast) var(--ease-out);
+  }
+  #swipe-peek.is-on{ opacity: 1; transform: translateX(-50%) translateY(0); }
+  @media (prefers-reduced-motion: reduce){ #swipe-peek{ transition: none; } }
+
+  /* ====================================================================== */
+  /* HISTORY ON A PHONE. Nothing in this block applies above 720px.         */
+  /* ====================================================================== */
+  @media (max-width: 720px){
+    /* A seven-column table in a 308px window: 768px wide, 462px of sideways
+       scroll, two drags to read one entry. And the wrap was a real horizontal
+       scroller, so it was also one of the two things the tab swipe refused to
+       steal from - fixing this fixes that. */
+    #tab-history [id$="-table-wrap"]{
+      overflow-x: visible; overflow-y: visible;
+      border: 0; background: transparent; padding: 0;
+    }
+    #tab-history table,
+    #tab-history thead,
+    #tab-history tbody,
+    #tab-history tr,
+    #tab-history td{ display: block; width: auto; }
+    /* The header row is what a table needs and a card does not. Every cell
+       already carries a data-label, so nothing is lost by dropping it. */
+    #tab-history thead{ display: none; }
+
+    /* Each entry is a card. */
+    #tab-history tbody tr{
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: var(--sp-2) var(--sp-5);
+      align-items: center;
+      margin: 0 0 var(--sp-5);
+      padding: var(--sp-6);
+      background: var(--raised);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+    }
+    /* A table row is pinned to --row-h, 40px, and so is every cell in it. Three
+       lines of card cannot live in 40px: the second and third were drawn
+       underneath the row that follows. */
+    #tab-history tbody tr{ height: auto; }
+    #tab-history tbody tr > td{
+      height: auto; min-height: 0;
+      border: 0; padding: 0; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* Three lines of what is actually read: what it was and how much, then
+       when and which category, then the tags and the two things you can do. */
+    #tab-history tbody tr > .cell-select{ grid-area: 1 / 1 / 4 / 2; align-self: start; }
+    #tab-history tbody tr > td[data-label="Description"]{
+      grid-area: 1 / 2 / 2 / 3; font-weight: 700; font-size: var(--fs-base);
+    }
+    #tab-history tbody tr > td[data-label="Amount"],
+    #tab-history tbody tr > td.num{
+      grid-area: 1 / 3 / 2 / 4; text-align: right; font-weight: 800;
+      font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+    #tab-history tbody tr > td[data-label="Date"]{
+      grid-area: 2 / 2 / 3 / 3; font-size: var(--fs-2xs); color: var(--ink-dim);
+    }
+    #tab-history tbody tr > td[data-label="Category"]{
+      grid-area: 2 / 3 / 3 / 4; font-size: var(--fs-2xs); text-align: right;
+    }
+    #tab-history tbody tr > .tags-cell{ grid-area: 3 / 2 / 4 / 3; }
+    #tab-history tbody tr > .cell-actions{
+      grid-area: 3 / 3 / 4 / 4; display: flex; justify-content: flex-end; gap: var(--sp-4);
+    }
+
+    /* The controls inside a cell were sized for a table column. */
+    #tab-history tbody tr td input,
+    #tab-history tbody tr td select{ width: 100%; min-width: 0; max-width: 100%; }
+    #tab-history tbody tr td.num input{ text-align: right; }
+
+    /* A table draws its own separators; a list of cards does not need them. */
+    #tab-history tbody tr + tr{ border-top: 1px solid var(--line); }
+    #tab-history table{ border-collapse: separate; border-spacing: 0; }
+
+    /* The pagination bar was sized to sit under a wide table. */
+    #tab-history .pagination-bar{ flex-wrap: wrap; gap: var(--sp-4); }
+  }
 </style>
 </body>
 </html>
