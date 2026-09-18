@@ -364,7 +364,7 @@
   tbody tr:has(input[type=checkbox]:checked) .amount-cur{ color: var(--ink-soft); }
   .cell-select, .row-select{ width:32px; }
   .cell-actions{ width:1%; white-space:nowrap; text-align:right; }
-  .tags-cell{ width:12%; }
+  .note-cell{ width:12%; }
   .amount-cell{ display:flex; align-items:center; justify-content:flex-end; gap:2px; width:116px; margin-left:auto; }
   .amount-cur{ color: var(--ink-dim); font-size:.9em; }
   .amount-wrap{ position:relative; }
@@ -1436,23 +1436,6 @@
   .cp-in-v{ font-variant-numeric: tabular-nums; font-weight:600; white-space:nowrap; }
 
 
-  /* ---------- tag breakdown --------------------------------------------------------- */
-  .tg-list{ display:flex; flex-direction:column; margin: var(--sp-6) 0; }
-  .tg-row{ display:grid; grid-template-columns: minmax(96px, 1fr) minmax(80px, 2fr) auto auto;
-    grid-template-areas: "name rail total cats" "meta meta meta meta";
-    align-items:center; gap: var(--sp-3) var(--sp-5); padding: var(--sp-5) 0;
-    border-bottom:1px solid var(--line); cursor:pointer; }
-  .tg-row:last-child{ border-bottom:0; }
-  @media (hover: hover){ .tg-row:hover .tg-name{ color: var(--accent); } }
-  .tg-name{ grid-area: name; font-size: var(--fs-2xs); font-weight:600;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .tg-rail{ grid-area: rail; position:relative; height:7px; background: var(--line); border-radius:4px; }
-  .tg-rail i{ position:absolute; inset:0 auto 0 0; background: var(--accent); border-radius:4px; opacity:.85; }
-  .tg-total{ grid-area: total; font-size: var(--fs-2xs); font-weight:700;
-    font-variant-numeric: tabular-nums; white-space:nowrap; }
-  .tg-cats{ grid-area: cats; display:flex; gap:3px; }
-  .tg-dot{ width:7px; height:7px; border-radius:50%; display:block; }
-  .tg-meta{ grid-area: meta; font-size: var(--fs-3xs); color: var(--ink-faint); }
 
 
   /* ---------- chrome that has to leave the flow ----------------------------- */
@@ -2542,7 +2525,7 @@
             </div>
           </div>
 
-      <button type="button" class="add-more-toggle" id="btn-toggle-more-options">+ More — currency, tags, recurring</button>
+      <button type="button" class="add-more-toggle" id="btn-toggle-more-options">+ More — currency, note, recurring</button>
       <div id="add-more-options" class="collapsible-body is-collapsed">
         <div class="more-grid">
           <div class="fld">
@@ -2554,9 +2537,9 @@
           </div>
           <div class="fld is-full">
             <span class="fld-head">
-              <label class="fld-k" for="in-tags">Tags</label>
+              <label class="fld-k" for="in-note">Note</label>
             </span>
-            <input type="text" id="in-tags" placeholder="reimbursable, trip:Japan, tax-deductible">
+            <input type="text" id="in-note" placeholder="anything worth remembering about this one">
             <span class="fld-help">Comma separated. Tags cut across categories — “work trip”, “reimbursable”, “gift”.</span>
           </div>
         </div>
@@ -2600,10 +2583,10 @@
     <div class="card is-board" id="history-expense-card">
       <header class="panel-head is-toolbar">
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg></span><span class="h-text">All expenses</span></h2>
-        <p class="sub">Click any field to fix the date, category, description, tags, or amount.</p>
+        <p class="sub">Click any field to fix the date, category, description, note, or amount.</p>
       </header>
       <div class="history-toolbar">
-        <input type="text" id="filter-search" placeholder="Search description or tags...">
+        <input type="text" id="filter-search" placeholder="Search description or notes...">
         <select id="exp-range-filter" aria-label="Filter by date range"></select>
         <input type="date" id="filter-expense-from" style="display:none; width:auto;">
         <input type="date" id="filter-expense-to" style="display:none; width:auto;">
@@ -2623,10 +2606,10 @@
     <div class="card is-board" id="history-income-card" style="display:none;">
       <header class="panel-head is-toolbar">
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span><span class="h-text">All income</span></h2>
-        <p class="sub">Click any field to fix the date, category, source, tags, or amount.</p>
+        <p class="sub">Click any field to fix the date, category, source, note, or amount.</p>
       </header>
       <div class="history-toolbar">
-        <input type="text" id="filter-income-search" placeholder="Search source or tags...">
+        <input type="text" id="filter-income-search" placeholder="Search source or notes...">
         <select id="inc-range-filter" aria-label="Filter by date range"></select>
         <input type="date" id="filter-income-from" style="display:none; width:auto;">
         <input type="date" id="filter-income-to" style="display:none; width:auto;">
@@ -2784,9 +2767,8 @@
             <div class="loan-summary is-headline" id="loans-given-summary"></div>
           </header>
         </div>
-        <button class="btn btn-ghost btn-sm" id="btn-toggle-loans-given">▾ Collapse</button>
       </div>
-      <div id="loans-given-body">
+      <div id="loans-given-body" class="collapsible-body">
         <div class="form-grid form-cols">
           <div class="fld">
             <span class="fld-head">
@@ -2887,9 +2869,8 @@
             <div class="loan-summary is-headline" id="loans-taken-summary"></div>
           </header>
         </div>
-        <button class="btn btn-ghost btn-sm" id="btn-toggle-loans-taken">▾ Collapse</button>
       </div>
-      <div id="loans-taken-body">
+      <div id="loans-taken-body" class="collapsible-body">
         <div class="form-grid form-cols">
           <div class="fld">
             <span class="fld-head">
@@ -2990,9 +2971,8 @@
             <div class="loan-summary is-headline" id="investments-summary"></div>
           </header>
         </div>
-        <button class="btn btn-ghost btn-sm" id="btn-toggle-investments">▾ Collapse</button>
       </div>
-      <div id="investments-body">
+      <div id="investments-body" class="collapsible-body">
         <div class="form-grid form-cols">
           <div class="fld">
             <span class="fld-head">
@@ -3316,7 +3296,6 @@
             <p class="sub">Set a monthly limit per category and see how this month is tracking.</p>
           </header>
         </div>
-        <button class="btn btn-ghost btn-sm" id="btn-toggle-budgets">▾ Collapse</button>
       </div>
       <div id="budget-list"></div>
     </div>
@@ -3536,7 +3515,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18e";
+  const APP_BUILD = "2026-09-18f";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -5363,13 +5342,13 @@
                        meta: "Press to run", amount: "", action: c.run, isCommand: true });
     });
     expenses.forEach(e => {
-      if (hit(e.description, query) || hit(e.category, query) || (Array.isArray(e.tags) ? e.tags : []).some(t => hit(t, query)))
+      if (hit(e.description, query) || hit(e.category, query) || hit(noteOf(e), query))
         results.push({ group: "Expenses", icon: ICON.out, type: "Expense", label: e.description,
                        meta: fmtDate(e.date) + " \u00B7 " + e.category, amount: fmtMoney(e.amount),
                        tone: "out", cat: e.category, action: () => jumpToHistoryMode("expense") });
     });
     incomes.forEach(i => {
-      if (hit(i.description, query) || hit(i.category, query) || (Array.isArray(i.tags) ? i.tags : []).some(t => hit(t, query)))
+      if (hit(i.description, query) || hit(i.category, query) || hit(noteOf(i), query))
         results.push({ group: "Income", icon: ICON.in, type: "Income", label: i.description,
                        meta: fmtDate(i.date) + " \u00B7 " + i.category, amount: fmtMoney(i.amount),
                        tone: "in", cat: i.category, action: () => jumpToHistoryMode("income") });
@@ -5681,8 +5660,15 @@
   document.getElementById("in-amount").addEventListener("keydown", (e)=>{ if(e.key === "Enter") handleAddEntry(); });
   document.getElementById("in-desc").addEventListener("keydown", (e)=>{ if(e.key === "Enter") handleAddEntry(); });
 
-  function parseTags(raw){
-    return raw.split(",").map(t=>t.trim()).filter(Boolean);
+  /* An entry's note. Tags were a second axis beside the category and were
+     never used as one, so the field is a note now - and a record written
+     before that reads its old tags back as the note's text. There is no
+     migration pass: nothing is rewritten until the note itself is edited, so
+     no record is touched and nothing is lost. */
+  function noteOf(rec){
+    if (rec && typeof rec.notes === "string") return rec.notes;
+    if (rec && Array.isArray(rec.tags)) return rec.tags.filter(Boolean).join(", ");
+    return "";
   }
 
   function addExpense(){
@@ -5690,7 +5676,7 @@
     const enteredAmount = parseFloat(document.getElementById("in-amount").value);
     const currencyCode = document.getElementById("in-currency").value || "PHP";
     const category = document.getElementById("in-category").value || "Other";
-    const tags = parseTags(document.getElementById("in-tags").value);
+    const note = document.getElementById("in-note").value.trim();
     const bank = document.getElementById("in-bank").value;
     const isRecurring = document.getElementById("in-recurring").checked;
     const recurringDay = parseInt(document.getElementById("in-recurring-day").value, 10);
@@ -5712,7 +5698,7 @@
       description: desc,
       amount: round2(amount),
       category: category,
-      tags: tags,
+      notes: note,
       date: todayISO(),
       bank: bank || null,
       originalAmount, originalCurrency
@@ -5743,7 +5729,7 @@
     categoryChosenByHand = false;   // the next entry gets guessed again
     document.getElementById("in-currency").value = "PHP";
     document.getElementById("in-currency-preview").style.display = "none";
-    document.getElementById("in-tags").value = "";
+    document.getElementById("in-note").value = "";
     // Pre-answered rather than blank: this is a required field on the quickest path,
     // and the app already knows which account you used last.
     document.getElementById("in-bank").value = lastUsedAccount();
@@ -6115,7 +6101,7 @@
     const enteredAmount = parseFloat(document.getElementById("in-amount").value);
     const currencyCode = document.getElementById("in-currency").value || "PHP";
     const category = document.getElementById("in-category").value || "Salary";
-    const tags = parseTags(document.getElementById("in-tags").value);
+    const note = document.getElementById("in-note").value.trim();
     const bank = document.getElementById("in-bank").value;
     const isRecurring = document.getElementById("in-recurring").checked;
     const recurringDay = parseInt(document.getElementById("in-recurring-day").value, 10);
@@ -6133,7 +6119,7 @@
       description: desc,
       amount: round2(amount),
       category: category,
-      tags: tags,
+      notes: note,
       date: todayISO(),
       bank: bank || null,
       originalAmount, originalCurrency
@@ -6166,7 +6152,7 @@
     categoryChosenByHand = false;   // the next entry gets guessed again
     document.getElementById("in-currency").value = "PHP";
     document.getElementById("in-currency-preview").style.display = "none";
-    document.getElementById("in-tags").value = "";
+    document.getElementById("in-note").value = "";
     // Pre-answered rather than blank: this is a required field on the quickest path,
     // and the app already knows which account you used last.
     document.getElementById("in-bank").value = lastUsedAccount();
@@ -6369,7 +6355,6 @@
           category: "Other Income",
           date: toLocalISO(postDate),
           bank: acct.provider,
-          tags: ["interest"],
           originalAmount: null,
           originalCurrency: null,
           notes: ""
@@ -7082,9 +7067,9 @@
     document.getElementById("in-desc").value = entry.description;
     document.getElementById("in-amount").value = entry.amount;
     document.getElementById("in-category").value = entry.category;
-    document.getElementById("in-tags").value = (entry.tags || []).join(", ");
+    document.getElementById("in-note").value = noteOf(entry);
     if (entry.bank) document.getElementById("in-bank").value = entry.bank;
-    if ((entry.tags || []).length){
+    if (noteOf(entry)){
       document.getElementById("add-more-options").classList.remove("is-collapsed");
       document.getElementById("btn-toggle-more-options").textContent = "− Hide extra options";
     }
@@ -7195,7 +7180,7 @@
     if (filterCat) list = list.filter(e=>e.category === filterCat);
     if (search) list = list.filter(e=>
       hit(e.description, search) ||
-      (e.tags || []).some(t=>t.toLowerCase().includes(search))
+      hit(noteOf(e), search)
     );
     list = filterByDateRange(list, rangeVal, fromVal, toVal);
     /* Counted AFTER the other filters, because the number the strip prints has
@@ -7231,7 +7216,7 @@
             <th><span class="sr-only">Select</span><input type="checkbox" id="expense-select-all" ${checked ? "checked" : ""}></th>
             ${buildSortableTh("exp-s-date", "Date", "date", expenseSort)}
             ${buildSortableTh("exp-s-desc", "Description", "description", expenseSort)}
-            <th>Tags</th>
+            <th>Note</th>
             <th class="th-dual">${buildThFilter("exp-f-cat", "Category", categories, expenseCat, "Filter by category")}<button class="th-sort th-sort-cat${expenseSort.key === "category" ? " active" : ""}" id="exp-s-cat" title="Sort by category" aria-label="Sort by category">${expenseSort.key === "category" ? (expenseSort.dir === "asc" ? "\u25B2" : "\u25BC") : "\u21C5"}</button></th>
             ${buildSortableTh("exp-s-amount", "Amount", "amount", expenseSort)}
             <th>Actions</th>
@@ -7297,7 +7282,7 @@
           <td class="cell-select" data-label=""><input type="checkbox" class="row-select" ${selectedExpenseIds.has(e.id) ? "checked" : ""}></td>
           <td data-label="Date" data-short="${escapeHtml(fmtDate(e.date))}"><input type="date" value="${e.date}" data-field="date" style="width:150px;"></td>
           <td data-label="Description"><input type="text" value="${escapeHtml(e.description)}" data-field="description"></td>
-          <td class="tags-cell" data-label="Tags"><input type="text" value="${escapeHtml((e.tags||[]).join(", "))}" data-field="tags" placeholder="—"></td>
+          <td class="note-cell" data-label="Note"><input type="text" value="${escapeHtml(noteOf(e))}" data-field="notes" placeholder="—"></td>
           <td data-label="Category"><select class="status-select" data-field="category">${catOptions}</select></td>
           <td class="num" data-label="Amount" data-short="${escapeHtml(fmtMoney(e.amount))}"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(e.amount)}" data-field="amount" data-money="1"></div>${e.originalCurrency ? `<div class="hint">${e.originalAmount} ${e.originalCurrency}</div>` : ""}</td>
           <td class="cell-actions" data-label=""  style="white-space:nowrap;">
@@ -7393,8 +7378,8 @@
           } else if (field === "category"){
             if (input.value !== item.category) learnCorrection(item.description, input.value);
             item.category = input.value;
-          } else if (field === "tags"){
-            item.tags = parseTags(input.value);
+          } else if (field === "notes"){
+            item.notes = input.value.trim();
           } else {
             item[field] = input.value;
           }
@@ -7565,7 +7550,7 @@
     if (filterCat) list = list.filter(i=>i.category === filterCat);
     if (search) list = list.filter(i=>
       hit(i.description, search) ||
-      (i.tags || []).some(t=>t.toLowerCase().includes(search))
+      hit(noteOf(i), search)
     );
     list = filterByDateRange(list, rangeVal, fromVal, toVal);
     const incArchivedHidden = showArchived ? 0 : list.filter(isArchived).length;
@@ -7591,7 +7576,7 @@
             <th><span class="sr-only">Select</span><input type="checkbox" id="income-select-all" ${checked ? "checked" : ""}></th>
             ${buildSortableTh("inc-s-date", "Date", "date", incomeSort)}
             ${buildSortableTh("inc-s-desc", "Source", "description", incomeSort)}
-            <th>Tags</th>
+            <th>Note</th>
             <th>${buildThFilter("inc-f-cat", "Category", INCOME_CATEGORIES, incomeCat, "Filter by category")}</th>
             ${buildSortableTh("inc-s-amount", "Amount", "amount", incomeSort)}
             <th>Actions</th>
@@ -7632,7 +7617,7 @@
           <td class="cell-select" data-label=""><input type="checkbox" class="row-select" ${selectedIncomeIds.has(i.id) ? "checked" : ""}></td>
           <td data-label="Date" data-short="${escapeHtml(fmtDate(i.date))}"><input type="date" value="${i.date}" data-field="date" style="width:150px;"></td>
           <td data-label="Description"><input type="text" value="${escapeHtml(i.description)}" data-field="description"></td>
-          <td class="tags-cell" data-label="Tags"><input type="text" value="${escapeHtml((i.tags||[]).join(", "))}" data-field="tags" placeholder="—"></td>
+          <td class="note-cell" data-label="Note"><input type="text" value="${escapeHtml(noteOf(i))}" data-field="notes" placeholder="—"></td>
           <td data-label="Category"><select class="status-select" data-field="category">${catOptions}</select></td>
           <td class="num" data-label="Amount" data-short="${escapeHtml(fmtMoney(i.amount))}"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(i.amount)}" data-field="amount" data-money="1"></div>${i.originalCurrency ? `<div class="hint">${i.originalAmount} ${i.originalCurrency}</div>` : ""}</td>
           <td class="cell-actions" data-label=""  style="white-space:nowrap;">
@@ -7708,8 +7693,8 @@
                 if (!result.ok) showToast(`Saved, but ${result.reason}.`);
               }
             }
-          } else if (field === "tags"){
-            item.tags = parseTags(input.value);
+          } else if (field === "notes"){
+            item.notes = input.value.trim();
           } else {
             item[field] = input.value;
           }
@@ -7841,7 +7826,7 @@
 
   // Which column the table is ordered by is a property of the whole column, so the
   // column is what carries the mark. Both history tables share this order:
-  // 1 select, 2 date, 3 description/source, 4 tags, 5 category, 6 amount, 7 actions.
+  // 1 select, 2 date, 3 description/source, 4 note, 5 category, 6 amount, 7 actions.
   const SORT_COL_INDEX = { date: 2, description: 3, amount: 6 };
   function sortColClass(sort){
     const idx = SORT_COL_INDEX[sort && sort.key];
@@ -8088,6 +8073,31 @@
     '</div>';
   }
 
+  /* One button in place of four controls, with the number of them that are
+     actually narrowing the list on it - a filter you cannot see is a filter you
+     forget you set. Built beside the View/Per page block so the bar reads:
+     when, then what, then how it is shown. */
+  function paintFiltersButton(bar){
+    const group = bar.querySelector(".loan-filters");
+    let btn = bar.querySelector(".filters-open");
+    if (!btn){
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn btn-outline btn-sm filters-open";
+      btn.setAttribute("data-open-filters", "1");
+      btn.setAttribute("aria-haspopup", "dialog");
+      const controls = bar.querySelector(".list-controls");
+      if (controls) bar.insertBefore(btn, controls); else bar.appendChild(btn);
+    }
+    const n = group ? group.querySelectorAll(".th-filter-wrap.is-active").length : 0;
+    btn.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" ' +
+        'stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/>' +
+        '<line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="17" x2="14" y2="17"/></svg>' +
+      'Filters' + (n ? '<span class="lf-count">' + n + '</span>' : "");
+    btn.setAttribute("aria-label", n ? "Filters, " + n + " active" : "Filters");
+  }
+
   function wireLoanHeaderFilters(wrap, dir){
     const cfg = LOAN_CONFIG[dir];
     const view = loanView[dir];
@@ -8104,6 +8114,17 @@
       const el = holder.firstElementChild;
       const controls = bar.querySelector(".list-controls");
       if (el){ if (controls) bar.insertBefore(el, controls); else bar.appendChild(el); }
+      if (el){
+        /* Read out loud only in the sheet, where each control is on a line of
+           its own and the option text alone ("Anyone") is not a label. In the
+           bar they stay unlabelled, which is what fits there. */
+        const named = ["Who", "Account", "State"];
+        [...el.querySelectorAll(".th-filter-wrap:not(.is-sort)")]
+          .forEach((w, i) => { w.dataset.lf = named[i] || ""; });
+        const sortWrap = el.querySelector(".th-filter-wrap.is-sort");
+        if (sortWrap) sortWrap.dataset.lf = "Order";
+        paintFiltersButton(bar);
+      }
     }
 
     // The sort control is one select rather than clickable column headers,
@@ -8788,7 +8809,7 @@
     const btn = document.getElementById("btn-toggle-more-options");
     const isHidden = panel.classList.contains("is-collapsed");
     panel.classList.toggle("is-collapsed", !isHidden);
-    btn.textContent = isHidden ? "− Hide extra options" : "+ More options — currency, account, tags, recurring";
+    btn.textContent = isHidden ? "− Hide extra options" : "+ More options — currency, account, note, recurring";
   });
 
   // Investments can have money movement at two points: buying withdraws the
@@ -8882,49 +8903,7 @@
     return { netProceeds, profitAmount, profitPercent };
   }
 
-  // Shared collapse/expand wiring — used for Loans Given, Loans Taken, and
-  // Investments, so there's one place controlling this behavior instead of three
-  // near-identical copies that could drift apart.
-  // Remembers how the user left each section. The `defaultCollapsed` value only
-  // applies on the very first visit — after that, their own last choice wins.
-  function setupCollapseToggle(buttonId, bodyId, defaultCollapsed){
-    const btn = document.getElementById(buttonId);
-    const body = document.getElementById(bodyId);
-    if (!btn || !body) return;
-    body.classList.add("collapsible-body");
-    const prefKey = "collapsed:" + bodyId;
-    let collapsed = uiPrefs[prefKey] !== undefined ? uiPrefs[prefKey] : defaultCollapsed;
-    const countInside = () => body.querySelectorAll("tbody tr[data-id], [data-id].savings-account, .bg-card, .recurring-item").length;
-    const paint = () => {
-      const n = countInside();
-      btn.innerHTML = '<span class="ct-chev" aria-hidden="true">' + (collapsed ? "\u25B8" : "\u25BE") + '</span>' +
-        (collapsed ? "Expand" : "Collapse") +
-        (n ? '<span class="ct-count">' + n + '</span>' : "");
-      btn.setAttribute("aria-expanded", String(!collapsed));
-    };
-    body.classList.toggle("is-collapsed", collapsed);
-    if (!body.id) body.id = bodyId;
-    btn.setAttribute("aria-controls", bodyId);
-    paint();
-    btn.addEventListener("click", () => {
-      collapsed = !collapsed;
-      body.classList.toggle("is-collapsed", collapsed);
-      paint();
-      setUiPref(prefKey, collapsed);
-    });
-    setTimeout(paint, 0);
-  }
 
-  // Defaults below apply only on first visit — all of these now start collapsed
-  // so the app opens compact, and stay however the user last left them.
-  /* Collapsed only when there is nothing inside. A section holding two outstanding
-     loans used to present as an empty screen with a disclosure widget on it, which
-     is the opposite of what "who owes me money" needs to answer. An explicit choice
-     you have made before still wins over this. */
-  setupCollapseToggle("btn-toggle-investments", "investments-body", investments.length === 0);
-  setupCollapseToggle("btn-toggle-loans-given", "loans-given-body", loansGiven.length === 0);
-  setupCollapseToggle("btn-toggle-loans-taken", "loans-taken-body", loansTaken.length === 0);
-  setupCollapseToggle("btn-toggle-budgets", "budget-list", Object.keys(budgets).length === 0);
 
   function renderInvestments(){
     const wrap = document.getElementById("investments-table-wrap");
@@ -11120,13 +11099,13 @@
     let out = `Spendly export,${new Date().toLocaleString()}\n\n`;
 
     out += csvSection("EXPENSES",
-      ["Date","Description","Category","Tags","Amount (PHP)","Original amount","Original currency","Account"],
-      expenses.map(e=>[e.date, e.description, e.category, (e.tags||[]).join(" | "), e.amount,
+      ["Date","Description","Category","Note","Amount (PHP)","Original amount","Original currency","Account"],
+      expenses.map(e=>[e.date, e.description, e.category, noteOf(e), e.amount,
                        e.originalAmount ?? "", e.originalCurrency ?? "", e.bank ?? ""]));
 
     out += csvSection("INCOME",
-      ["Date","Source","Category","Tags","Amount (PHP)","Original amount","Original currency","Account"],
-      incomes.map(i=>[i.date, i.description, i.category, (i.tags||[]).join(" | "), i.amount,
+      ["Date","Source","Category","Note","Amount (PHP)","Original amount","Original currency","Account"],
+      incomes.map(i=>[i.date, i.description, i.category, noteOf(i), i.amount,
                       i.originalAmount ?? "", i.originalCurrency ?? "", i.bank ?? ""]));
 
     out += csvSection("SAVINGS ACCOUNTS",
@@ -11377,6 +11356,7 @@
           category: item.category || "Other Income",
           date: item.date,
           tags: Array.isArray(item.tags) ? item.tags : [],
+          notes: typeof item.notes === "string" ? item.notes : undefined,
           bank: item.bank || null
         }));
       });
@@ -11394,6 +11374,7 @@
         category: item.category || guessCategory(item.description),
         date: item.date,
         tags: Array.isArray(item.tags) ? item.tags : [],
+        notes: typeof item.notes === "string" ? item.notes : undefined,
         bank: item.bank || null
       }));
       if (item.category && !categories.includes(item.category)) categories.push(item.category);
@@ -12283,7 +12264,7 @@
         const amount = parseFloat(rawAmt);
         const picked = (el("in-category") || {}).value || "";
         const bank = (el("in-bank") || {}).value || "";
-        const tags = ((el("in-tags") || {}).value || "").split(",").map(t => t.trim()).filter(Boolean);
+        const note = ((el("in-note") || {}).value || "").trim();
 
         // The category the record will actually get: whatever the select says,
         // falling back to the same guess the save path makes from the words.
@@ -12304,7 +12285,7 @@
         box.querySelector(".epc-date").textContent =
           (recurring && dayPick ? "Every month on day " + dayPick + " · " : "")
           + "Dated " + fmtDate(todayISO())
-          + (tags.length ? " · " + tags.map(t => "#" + t).join(" ") : "");
+          + (note ? " · " + note : "");
       }
 
       /* One delegated listener rather than one per field: the Add panel rebuilds
@@ -12314,7 +12295,7 @@
         document.addEventListener(evt, (e) => {
           const t = e.target;
           if (!t || !t.id) return;
-          if (/^in-(desc|amount|category|bank|tags|recurring|recurring-day)$/.test(t.id)) paint();
+          if (/^in-(desc|amount|category|bank|note|recurring|recurring-day)$/.test(t.id)) paint();
         }, true);
       });
 
@@ -13039,114 +13020,6 @@
     })();
 
 
-    /* ======================================================================
-       TAG BREAKDOWN — /ui workspace, round six
-
-       Tags have been enterable since the beginning and have never been shown
-       anywhere except as text on a row. They are the one dimension in this data
-       that cuts across categories — "work trip" touches Transport, Food and
-       Bills at once — and no panel could see across it.
-
-       This ranks them, says how many categories each one spans, and reports
-       what share of spending carries no tag at all, because a breakdown that
-       quietly omits the untagged majority is a breakdown of nothing.
-       ====================================================================== */
-    (function workspaceTagBreakdown(){
-      "use strict";
-
-      const money = n => fmtMoney(round2(n));
-      const tagsOf = x => Array.isArray(x.tags) ? x.tags.filter(t => String(t).trim()) : [];
-
-      function build(){
-        const rows = expenses.slice();
-        const total = round2(rows.reduce((t, e) => t + e.amount, 0));
-        const tagged = rows.filter(e => tagsOf(e).length);
-        const untagged = round2(rows.filter(e => !tagsOf(e).length).reduce((t, e) => t + e.amount, 0));
-
-        if (!tagged.length){
-          return '<p class="hint">Nothing is tagged yet. A tag cuts across categories — ' +
-                 '“work trip” can cover Transport, Food and Bills at once — which is the one ' +
-                 'thing a category cannot do. Add one in the Tags field when you enter something.</p>';
-        }
-
-        // An entry with three tags is counted once under each. The totals
-        // therefore overlap, and the panel says so rather than presenting a
-        // column that does not add to anything.
-        const byTag = {};
-        tagged.forEach(e => {
-          tagsOf(e).forEach(t => {
-            const k = String(t).trim().toLowerCase();
-            const b = byTag[k] || (byTag[k] = { label: String(t).trim(), n: 0, total: 0, cats: {}, last: e.date });
-            b.n++; b.total = round2(b.total + e.amount);
-            b.cats[e.category] = (b.cats[e.category] || 0) + 1;
-            if (e.date > b.last) b.last = e.date;
-          });
-        });
-        const list = Object.keys(byTag).map(k => byTag[k]).sort((a, b) => b.total - a.total);
-        const peak = list[0].total || 1;
-        const taggedTotal = round2(tagged.reduce((t, e) => t + e.amount, 0));
-
-        const head =
-          '<div class="fig-row">' +
-            '<div class="fig-cell"><span class="fig-k">Tags in use</span><span class="fig-v">' + list.length +
-              '</span><span class="fig-sub">across ' + tagged.length + ' entries</span></div>' +
-            '<div class="fig-cell"><span class="fig-k">Tagged spending</span><span class="fig-v">' + money(taggedTotal) +
-              '</span><span class="fig-sub">' + Math.round((taggedTotal / (total || 1)) * 100) + '% of everything</span></div>' +
-            '<div class="fig-cell"><span class="fig-k">Untagged</span><span class="fig-v">' + money(untagged) +
-              '</span><span class="fig-sub">' + (rows.length - tagged.length) + ' entries carry no tag</span></div>' +
-          '</div>';
-
-        const table = '<div class="tg-list">' + list.slice(0, 14).map(b => {
-          const cats = Object.keys(b.cats).sort((x, y) => b.cats[y] - b.cats[x]);
-          return '<div class="tg-row" data-tag="' + escapeHtml(b.label) + '">' +
-            '<span class="tg-name">#' + escapeHtml(b.label) + '</span>' +
-            '<span class="tg-rail"><i style="width:' + Math.round((b.total / peak) * 100) + '%"></i></span>' +
-            '<span class="tg-total">' + money(b.total) + '</span>' +
-            '<span class="tg-meta">' + b.n + ' entr' + (b.n === 1 ? "y" : "ies") + ' · ' +
-              (cats.length === 1 ? 'only ' + escapeHtml(cats[0])
-                                 : 'across ' + cats.length + ' categories: ' + cats.slice(0, 3).map(escapeHtml).join(", ")) +
-              ' · last ' + fmtDate(b.last) + '</span>' +
-            '<span class="tg-cats">' + cats.slice(0, 6).map(c =>
-              '<i class="tg-dot" style="background:' + colorFor(c) + '" title="' + escapeHtml(c) + '"></i>').join("") + '</span>' +
-          '</div>';
-        }).join("") + '</div>';
-
-        const note = '<p class="hint">An entry with more than one tag is counted under each of them, so these ' +
-          'totals overlap and are not meant to add up to the figure above. Following a tag puts it into the ' +
-          'history search.' + (list.length > 14 ? ' Showing the 14 largest of ' + list.length + '.' : '') + '</p>';
-
-        return head + table + note;
-      }
-
-      function mount(){
-        const panel = document.getElementById("tab-history");
-        if (!panel || document.getElementById("tg-card")) return;
-        const card = document.createElement("div");
-        card.className = "card is-board";
-        card.id = "tg-card";
-        card.innerHTML =
-          '<header class="panel-head is-toolbar">' +
-            '<h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11V4h7l10 10-7 7L3 11z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg></span><span class="h-text">By tag</span></h2>' +
-            '<p class="sub">The one dimension that cuts across categories, and the only one nothing has ever shown.</p>' +
-          '</header><div id="tg-body"></div>';
-        panel.appendChild(card);
-        const body = document.getElementById("tg-body");
-        body.innerHTML = build();
-        body.addEventListener("click", ev => {
-          const row = ev.target.closest("[data-tag]");
-          if (!row) return;
-          const search = document.getElementById("filter-search");
-          if (!search) return;
-          search.value = row.dataset.tag;
-          search.dispatchEvent(new Event("input", { bubbles: true }));
-          search.scrollIntoView({ block: "center" });
-          showToast("Showing everything tagged " + row.dataset.tag + ".");
-        });
-      }
-
-      mount();
-      document.addEventListener("click", () => setTimeout(mount, 200), true);
-    })();
 
     /* ======================================================================
        THE RAIL — combined, round two.
@@ -15416,12 +15289,14 @@
          and the form was sitting above the list on every visit. It moves into
          the drawer, opened from the section's own toolbar, and is put back
          afterwards by the same code that puts a section back. */
+      /* fromFab: the + in the corner opens this one, so it needs no button of
+         its own in a header with no room for one. */
       const LOG_FORMS = [
-        { body: "loans-given-body", submit: "btn-add-loan-given",
+        { body: "loans-given-body", submit: "btn-add-loan-given", fromFab: true,
           probe: "lg-person", label: "Add a loan given", title: "Log a loan you gave" },
-        { body: "loans-taken-body", submit: "btn-add-loan-taken",
+        { body: "loans-taken-body", submit: "btn-add-loan-taken", fromFab: true,
           probe: "lt-person", label: "Add a loan taken", title: "Log a loan you took" },
-        { body: "investments-body", submit: "btn-add-investment",
+        { body: "investments-body", submit: "btn-add-investment", fromFab: true,
           probe: "inv-name", label: "Add an investment", title: "Log an investment" },
         { body: "savings-form-card", submit: "btn-add-savings",
           probe: "sv-amount", label: "Add an account", title: "Add a savings account",
@@ -15458,7 +15333,7 @@
           const headHost = cfg.headIn ? document.getElementById(cfg.headIn)
             : (body.parentElement || body);
           const head = headHost && headHost.querySelector(".panel-head.is-toolbar");
-          if (head){
+          if (head && !cfg.fromFab){
             const open = document.createElement("button");
             open.type = "button";
             open.className = "btn btn-primary btn-sm log-open";
@@ -15493,13 +15368,10 @@
         });
       }
 
-      document.addEventListener("click", ev => {
-        const b = ev.target.closest && ev.target.closest("[data-open-log]");
-        if (!b) return;
-        const cfg = LOG_FORMS.find(x => x.body === b.dataset.openLog);
+      function openLog(bodyId){
+        const cfg = LOG_FORMS.find(x => x.body === bodyId);
         const holder = cfg && document.getElementById(cfg.body + "-form");
-        if (!holder) return;
-        ev.preventDefault();
+        if (!holder) return false;
         // Same machinery, different presentation: a short form you finish and
         // leave belongs in front of the page, not beside it. The drawer wears
         // a class rather than there being a second drawer to keep in step.
@@ -15508,7 +15380,39 @@
         // the caret lands in the first field rather than being moved off it.
         const first = holder.querySelector("input, select, textarea");
         if (first) setTimeout(() => first.focus(), 160);
+        return true;
+      }
+      document.addEventListener("click", ev => {
+        const b = ev.target.closest && ev.target.closest("[data-open-log]");
+        if (!b) return;
+        if (openLog(b.dataset.openLog)) ev.preventDefault();
       });
+
+      /* ---- the + in the corner adds what the screen is about -------------
+         It always opened the expense form, wherever you were, so pressing it
+         on Loans offered to log an expense - and every board carried its own
+         Add button to make up for that, in a header with no room for one. */
+      function screenAdds(){
+        const nav = document.querySelector('nav.tabs button[data-tab][aria-current="page"]');
+        const tab = nav ? nav.dataset.tab : "";
+        if (tab === "savings") return "savings-form-card";
+        if (tab !== "loans") return null;   // an entry, as before
+        const g = document.querySelector("#loans-nav button.active");
+        const which = g ? g.dataset.loans : "given";
+        return which === "taken" ? "loans-taken-body"
+             : which === "invest" ? "investments-body"
+             : "loans-given-body";
+      }
+      /* Capture, because the button already has two handlers of its own that
+         would open the entry form underneath this one. */
+      document.addEventListener("click", ev => {
+        if (!ev.target.closest || !ev.target.closest("#btn-fab-add")) return;
+        const body = screenAdds();
+        if (!body) return;
+        if (!document.getElementById(body + "-form")) return;   // not wired yet
+        ev.preventDefault(); ev.stopPropagation();
+        openLog(body);
+      }, true);
 
       /* ---- everything with one person -------------------------------------
          The same names recur - a sibling, a lender, an office loan - and they
@@ -16220,6 +16124,17 @@
       /* The figure is what the sheet was opened to see, so it stops being a
          clause in a sentence of small grey text. It comes back on its own and
          is set large; what is true about it comes back beside it, small. */
+      /* The row already says this - "19d overdue", "43d left" - in a chip whose
+         data-band the stylesheet colours. The sheet that opens from the row was
+         saying nothing about it. */
+      function urgencyOf(row){
+        const note = row.querySelector(".deadline-note");
+        if (!note) return null;
+        const band = note.getAttribute("data-band");
+        if (!band || band === "far") return null;
+        return { band: band, text: note.textContent.trim().replace(/\s+/g, " ") };
+      }
+
       function headOf(row){
         if (row.matches(HIST_SEL)){
           const amt = row.querySelector("td.num");
@@ -16325,7 +16240,7 @@
         row.querySelectorAll(".loan-chip:not(.is-bank)").forEach(c =>
           push("Also", c.textContent.trim().replace(/\s+/g, " ")));
 
-        const note = row.querySelector('textarea[data-field="notes"], textarea[data-note-field="notes"]');
+        const note = row.querySelector('textarea[data-field="notes"], textarea[data-note-field="notes"], input[data-field="notes"]');
         const read = txt(row, ".loan-note-read");
         /* A history entry has no note field at all, and "Note -" under every
            one of them is a row of nothing. */
@@ -16353,6 +16268,7 @@
                 '<h2 class="drill-title" id="item-sheet-title"></h2>' +
                 '<p class="sheet-figure"></p>' +
                 '<p class="drill-sub"></p>' +
+                '<span class="sheet-urgency"></span>' +
               '</div>' +
               '<div class="sheet-head-acts">' +
                 '<button type="button" class="row-action sheet-edit" aria-pressed="false" title="Edit" aria-label="Edit">' +
@@ -16428,11 +16344,14 @@
       function buildRead(body, row){
         const dl = document.createElement("dl");
         dl.className = "sheet-facts";
+        const late = urgencyOf(row);
         describe(row).forEach(f => {
           const dt = document.createElement("dt");
           dt.textContent = f.k;
           const dd = document.createElement("dd");
           dd.textContent = f.v;
+          // The one fact the band is about.
+          if (late && f.k === "Due") dd.dataset.band = late.band;
           dl.appendChild(dt); dl.appendChild(dd);
         });
         body.appendChild(dl);
@@ -16539,6 +16458,10 @@
         const head = headOf(row);
         sheet.querySelector(".sheet-figure").textContent = head.fig || "";
         sheet.querySelector(".drill-sub").textContent = head.cap || "";
+        const late = urgencyOf(row);
+        const headEl = sheet.querySelector(".drill-head");
+        if (late) headEl.dataset.urgency = late.band; else headEl.removeAttribute("data-urgency");
+        sheet.querySelector(".sheet-urgency").textContent = late ? late.text : "";
         const body = sheet.querySelector(".drill-body");
         body.innerHTML = "";
         if (editing) buildEdit(body, row); else buildRead(body, row);
@@ -16881,7 +16804,7 @@
       });
 
       /* ---------- and the card stops giving the wrong instruction --------- */
-      /* "Click any field to fix the date, category, description, tags, or
+      /* "Click any field to fix the date, category, description, note, or
          amount" stopped being true on a phone the moment the fields left the
          row. Set as text rather than drawn with a pseudo-element, so a screen
          reader is told the same thing the screen says. */
@@ -16898,6 +16821,134 @@
       sayHow();
       if (PHONE.addEventListener) PHONE.addEventListener("change", sayHow);
       else if (PHONE.addListener) PHONE.addListener(sayHow);
+    })();
+
+    /* ======================================================================
+       THE FILTERS, BEHIND ONE BUTTON
+
+       Four controls across the top of a 390px board, wrapping onto two lines,
+       under a header that already used 149px. They go behind one button and
+       come up from the bottom when it is pressed.
+
+       It BORROWS them rather than rebuilding them - the same rule the entry
+       sheet follows - and because these four are rebuilt on every render of
+       the list, it re-takes whatever is in the bar now rather than holding a
+       node that has since been replaced.
+
+       Up from the bottom, where the entry sheet is centred: a filter panel is
+       a control surface you pull up, adjust and push away, and the list stays
+       visible above it. That difference is the point.
+       ====================================================================== */
+    (function filterSheet(){
+      "use strict";
+
+      const WIDE = window.matchMedia("(min-width: 1001px)");
+      let sheet = null, bar = null, watcher = null, returnTo = null;
+
+      function build(){
+        if (sheet) return sheet;
+        sheet = document.createElement("div");
+        sheet.className = "drill filter-sheet";
+        sheet.id = "filter-sheet";
+        sheet.innerHTML =
+          '<div class="drill-panel" role="dialog" aria-modal="true" aria-labelledby="filter-sheet-title">' +
+            '<div class="drill-head">' +
+              '<div class="sheet-head-text">' +
+                '<p class="drill-kicker">Narrow this list</p>' +
+                '<h2 class="drill-title" id="filter-sheet-title">Filters</h2>' +
+                '<p class="drill-sub"></p>' +
+              '</div>' +
+              '<button type="button" class="btn btn-ghost btn-sm fs-done">Done</button>' +
+            '</div>' +
+            '<div class="drill-body"></div>' +
+          '</div>';
+        document.body.appendChild(sheet);
+        sheet.addEventListener("pointerdown", e => { if (e.target === sheet) close(); });
+        sheet.querySelector(".fs-done").addEventListener("click", close);
+        document.addEventListener("keydown", e => {
+          if (e.key === "Escape" && sheet.classList.contains("show")){ e.preventDefault(); close(); }
+        });
+        return sheet;
+      }
+
+      /* Whatever is in the bar NOW. Changing a filter re-renders the list,
+         which rebuilds these, so the one the sheet took a moment ago is not
+         the one the page is using. */
+      function take(){
+        if (!bar || !sheet) return;
+        const live = bar.querySelector(".loan-filters");
+        if (!live) return;
+        const body = sheet.querySelector(".drill-body");
+        [...body.querySelectorAll(".loan-filters")].forEach(old => { if (old !== live) old.remove(); });
+        if (live.parentNode !== body) body.appendChild(live);
+        say();
+      }
+      function giveBack(){
+        if (!bar || !sheet) return;
+        const held = sheet.querySelector(".drill-body .loan-filters");
+        if (!held) return;
+        const controls = bar.querySelector(".list-controls");
+        if (controls) bar.insertBefore(held, controls); else bar.appendChild(held);
+      }
+
+      /* Every change has an answer in the same frame, and it says which way it
+         went. Read off the list itself rather than recounted here, so it cannot
+         disagree with what is on the page. */
+      let lastCount = null;
+      function say(){
+        const wrap = bar && bar.parentElement &&
+          bar.parentElement.querySelector('[id$="-table-wrap"]');
+        const info = wrap && wrap.querySelector(".pagination-info");
+        const cards = wrap ? wrap.querySelectorAll(".loan-card, .inv-card").length : 0;
+        const total = info ? (String(info.textContent).match(/of\s+(\d+)/) || [])[1] : null;
+        const n = total ? +total : cards;
+        const sub = sheet.querySelector(".drill-sub");
+        let word = "";
+        if (lastCount !== null && n !== lastCount) word = n > lastCount ? " \u00b7 wider" : " \u00b7 tighter";
+        lastCount = n;
+        sub.textContent = n + (n === 1 ? " entry" : " entries") + word;
+      }
+
+      function watch(on){
+        if (!on){ if (watcher) watcher.disconnect(); watcher = null; return; }
+        if (watcher || !bar) return;
+        watcher = new MutationObserver(() => { take(); });
+        watcher.observe(bar, { childList: true });
+      }
+
+      function open(btn){
+        build();
+        bar = btn.closest(".table-filter-bar");
+        if (!bar) return;
+        returnTo = btn;
+        lastCount = null;
+        take();
+        sheet.classList.add("show");
+        watch(true);
+        sheet.querySelector(".fs-done").focus();
+      }
+      function close(){
+        if (!sheet) return;
+        watch(false);
+        giveBack();
+        sheet.classList.remove("show");
+        if (bar && typeof paintFiltersButton === "function") paintFiltersButton(bar);
+        if (returnTo && document.contains(returnTo)) returnTo.focus();
+        returnTo = null; bar = null;
+      }
+
+      document.addEventListener("click", ev => {
+        const btn = ev.target.closest && ev.target.closest("[data-open-filters]");
+        if (!btn) return;
+        ev.preventDefault();
+        open(btn);
+      });
+
+      /* Widen the window past the point where the bar has room for them and
+         the sheet has no business holding them. */
+      const onWide = () => { if (WIDE.matches && sheet && sheet.classList.contains("show")) close(); };
+      if (WIDE.addEventListener) WIDE.addEventListener("change", onWide);
+      else if (WIDE.addListener) WIDE.addListener(onWide);
     })();
 
 })();
@@ -20331,7 +20382,7 @@ if ("serviceWorker" in navigator &&
 
     /* Not on a row: the tags, the two buttons, and the checkbox until it is
        asked for. */
-    #tab-history tbody tr > .tags-cell,
+    #tab-history tbody tr > .note-cell,
     #tab-history tbody tr > .cell-actions,
     #tab-history tbody tr > .cell-select{ display: none; }
 
@@ -20401,27 +20452,6 @@ if ("serviceWorker" in navigator &&
     display: block !important;
   }
 
-  /* ====================================================================== */
-  /* THE TAG BREAKDOWN ON A PHONE. Nothing here applies above 720px.        */
-  /* ====================================================================== */
-  @media (max-width: 720px){
-    /* Four columns whose minimums add up to 319px in a 308px box: 96 for the
-       name, 80 for the rail, then the total and the dots at their own width,
-       plus 30 of gap. Every row hung 11px out of the card. Those floors are
-       right on a desktop card and impossible here, so the row becomes three
-       lines instead. */
-    .tg-row{
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas:
-        "name  total"
-        "rail  rail"
-        "meta  cats";
-      gap: var(--sp-3) var(--sp-4);
-      align-items: center;
-    }
-    .tg-meta{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .tg-cats{ justify-content: flex-end; }
-  }
 
   /* ======================================================================== */
   /* A LIST IS AN INDEX, NOT A SMALLER CARD                                   */
@@ -20549,7 +20579,7 @@ if ("serviceWorker" in navigator &&
   body.list-as-rows .inv-card::after{ grid-area: 1 / 3 / 2 / 4; justify-self: end; }
   body.list-as-rows .loan-card .loan-row-actions{ justify-content: flex-end; }
 
-  /* Hover is gated the way .tg-row:hover above it is gated - this machine
+  /* Hover is gated the way tbody tr:hover is gated - this machine
      answers false to (hover: hover), and a row that stays lit after a tap is
      worse than a row that never lights. Press feedback is not gated, because
      press is the thing a finger does. */
@@ -20790,6 +20820,117 @@ if ("serviceWorker" in navigator &&
     .bulk-bar > button[id^="btn-bulk-delete"]{ flex: 1 1 auto; }
     .bulk-bar > button[id^="btn-bulk-clear"]{ flex: 0 0 auto; margin-left: auto; }
   }
+
+  /* ---------- four filters behind one button ------------------------------ */
+  .filters-open{ display: none; align-items: center; gap: var(--sp-3); }
+  .filters-open svg{ width: 15px; height: 15px; flex: 0 0 auto; }
+  .lf-count{
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px; margin-left: 2px;
+    border-radius: var(--r-pill);
+    background: var(--accent); color: var(--on-accent);
+    font-size: var(--fs-3xs); font-weight: 800; font-variant-numeric: tabular-nums;
+  }
+  /* Below 1001px the four controls are behind the button; above it they are
+     four controls in a row, which is what they should be when there is room. */
+  @media (max-width: 1000px){
+    .table-filter-bar > .loan-filters{ display: none; }
+    .filters-open{ display: inline-flex; }
+  }
+
+  /* The panel it opens. Same language as the entry sheet, docked rather than
+     centred, because this is a control surface and the list it narrows should
+     stay visible above it. */
+  .filter-sheet{ background: var(--scrim-strong); backdrop-filter: blur(3px); align-items: flex-end; padding: 0; }
+  .filter-sheet .drill-panel{
+    width: 100%; max-width: 560px; max-height: 80vh;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+  }
+  .filter-sheet .drill-body{ padding-bottom: calc(var(--sp-8) + env(safe-area-inset-bottom, 0px)); }
+  /* In here they are a column of labelled controls, not a wrapping row. */
+  .filter-sheet .loan-filters{ display: block; }
+  .filter-sheet .loan-filters > .list-controls-k{ display: none; }
+  .filter-sheet .th-filter-wrap{
+    display: block; width: 100%; max-width: none;
+    padding: var(--sp-5) 0; border-bottom: 1px solid var(--line);
+  }
+  .filter-sheet .th-filter-wrap:last-child{ border-bottom: 0; }
+  .filter-sheet .th-filter-wrap::before{
+    content: attr(data-lf); display: block; margin-bottom: var(--sp-3);
+    font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-dim);
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  .filter-sheet .th-filter{ width: 100% !important; max-width: none !important; }
+  /* It rises from the edge it is docked to. */
+  .filter-sheet.show{ animation: sheet-in var(--dur-base) var(--ease-out); }
+  .filter-sheet.show .drill-panel{ animation: sheet-dock var(--dur-slow) var(--ease-out); }
+  @keyframes sheet-dock{ from{ transform: translateY(100%); } }
+  @media (prefers-reduced-motion: reduce){
+    .filter-sheet.show,
+    .filter-sheet.show .drill-panel{ animation: none; }
+  }
+
+  /* ---------- the sheet is an object, not a sticker ----------------------- */
+  /* Three stops rather than one. --elev-4 is a single 44px blur at .48, which
+     under a large rectangle reads as a smudge; a contact shadow, a mid lift and
+     a broad ambient read as something resting above the page. */
+  .item-sheet .drill-panel,
+  .filter-sheet .drill-panel{
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / .50),
+      0 8px 18px rgb(0 0 0 / .34),
+      0 28px 64px rgb(0 0 0 / .52);
+  }
+  /* TWO PLANES: the head is near, the body recedes. surface over sunken, not
+     surface over raised - those two are the same white in day mode and would
+     separate nothing there. */
+  .item-sheet .drill-head{
+    background: var(--surface);
+    /* How light falls on a lifted edge. Night only: a white hairline on a white
+       panel says nothing, and a light interface gets its depth from the shadow. */
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .07);
+  }
+  .item-sheet .drill-body{ background: var(--sunken); }
+  :root[data-theme="light"] .item-sheet .drill-head{ box-shadow: none; }
+
+  /* A hairline between who this is and how much it is. The obvious move was to
+     box the figure and give it its own ground; that tips the head from
+     considered into fussy, and this does the same separating work. */
+  .sheet-figure{
+    padding-top: var(--sp-5);
+    border-top: 1px solid var(--line);
+  }
+
+  /* ---------- and it says when something is late -------------------------- */
+  /* The band the row already carries, brought to the sheet that opens from it:
+     a rail across the top of the panel, the chip repeated beside the title, and
+     the one fact it is about printed in the same colour. The FIGURE stays
+     neutral - what is wrong with a late loan is the lateness, and colouring
+     both the amount and the date leaves neither meaning anything. */
+  .item-sheet .drill-head[data-urgency]{ box-shadow: inset 0 3px 0 var(--band); }
+  .item-sheet .drill-head[data-urgency="overdue"]{ --band: var(--negative); }
+  .item-sheet .drill-head[data-urgency="today"],
+  .item-sheet .drill-head[data-urgency="week"]{ --band: var(--warn); }
+
+  .sheet-urgency{
+    display: inline-flex; align-items: center;
+    margin-top: var(--sp-4); padding: 2px var(--sp-4);
+    border-radius: var(--r-pill);
+    font-size: var(--fs-3xs); font-weight: 800;
+    letter-spacing: var(--track-caps); text-transform: uppercase;
+  }
+  .sheet-urgency:empty{ display: none; }
+  /* The same two pairings the deadline chip on the row already uses. */
+  [data-urgency="overdue"] .sheet-urgency{
+    background: rgb(228 105 92 / .18); color: var(--negative-note);
+  }
+  [data-urgency="today"] .sheet-urgency,
+  [data-urgency="week"] .sheet-urgency{
+    background: rgb(233 162 78 / .18); color: var(--warn);
+  }
+  .sheet-facts dd[data-band="overdue"]{ color: var(--negative-note); font-weight: 700; }
+  .sheet-facts dd[data-band="today"],
+  .sheet-facts dd[data-band="week"]{ color: var(--warn); font-weight: 700; }
 </style>
 </body>
 </html>
