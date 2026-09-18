@@ -465,8 +465,32 @@
   .range-tabs button{ display:inline-flex; align-items:center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-6); background:transparent; border:0; border-radius: var(--r-sm); color: var(--ink-dim); font:inherit; font-size: var(--fs-3xs); font-weight:700; cursor:pointer; white-space:nowrap; }
   .range-tabs button.active{ background: var(--accent); color: var(--on-accent); }
   .range-tabs button svg{ width:14px; height:14px; }
-  .settings-nav{ max-width:100%; overflow-x:auto; scrollbar-width:none; }
+  /* nowrap, because .range-tabs sets flex-wrap:wrap and this sets overflow-x:
+     auto - so it wrapped onto a second line before it could ever scroll, and
+     six labels became a 75px wall above the thing you came for. One line that
+     scrolls, with the trailing edge faded so it visibly continues rather than
+     looking like the end of the list. */
+  .settings-nav{
+    max-width:100%; overflow-x:auto; overflow-y:hidden;
+    scrollbar-width:none; flex-wrap:nowrap;
+  }
   .settings-nav::-webkit-scrollbar{ display:none; }
+  .settings-nav > button{ flex:0 0 auto; }
+  /* Only on the side that has more. A permanent fade over a row that fits says
+     nothing, and a fade on the right when you have already scrolled to the end
+     says something untrue. */
+  .settings-nav.fade-end{
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+            mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+  .settings-nav.fade-start{
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+            mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+  }
+  .settings-nav.fade-start.fade-end{
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+            mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+  }
   #density-toggle button{ flex-direction:column; gap:0; line-height:1.15; }
   #density-toggle button small{ font-size:9px; opacity:.6; text-transform:uppercase; }
   #btn-global-search, #btn-sync, button.ico{ width:32px; height:32px; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--line); border-radius: var(--r-md); color: var(--ink-soft); cursor:pointer; }
@@ -688,38 +712,6 @@
   .loan-card-controls{ display:flex; align-items:center; gap: var(--sp-5); flex-wrap:wrap; }
   .loan-card-controls .status-select{ flex:1; min-width:110px; }
 
-
-  /* ---------- saved views ---------------------------------------------------- */
-  .views-bar{
-    display: flex; align-items: center; gap: var(--sp-5);
-    flex-wrap: wrap; margin-bottom: var(--sp-6);
-    padding: var(--sp-5) var(--sp-6);
-    background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-md);
-  }
-  .views-label{
-    font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-dim);
-    text-transform: uppercase; letter-spacing: var(--track-caps);
-  }
-  .views-empty{ font-size: var(--fs-3xs); color: var(--ink-dim); }
-  .view-chip{
-    display: inline-flex; align-items: stretch;
-    border: 1px solid var(--line); border-radius: var(--r-pill); overflow: hidden;
-    background: var(--raised);
-  }
-  .view-apply{
-    background: transparent; border: 0; cursor: pointer;
-    padding: var(--sp-3) var(--sp-5);
-    color: var(--ink); font: inherit; font-size: var(--fs-3xs); font-weight: 600;
-    max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .view-apply:hover{ background: var(--accent-light); color: var(--accent); }
-  .view-del{
-    background: transparent; border: 0; border-left: 1px solid var(--line);
-    cursor: pointer; padding: 0 var(--sp-4);
-    color: var(--ink-dim); font: inherit; font-size: var(--fs-sm); line-height: 1;
-  }
-  .view-del:hover{ color: var(--negative); }
-  .views-save{ margin-left: auto; }
 
   /* ---------- compare -------------------------------------------------------- */
   .cmp-head, .cmp-row{
@@ -3612,7 +3604,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18h";
+  const APP_BUILD = "2026-09-18i";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4060,6 +4052,21 @@
     setUiPref("loansGroup", group);
   }
 
+  /* The fade is a promise that there is more along the row, so it is only made
+     when there is. Re-checked on resize, because a rotation changes the answer. */
+  function markScrollableNavs(){
+    document.querySelectorAll(".settings-nav").forEach(nav => {
+      const more = nav.scrollWidth - nav.clientWidth;
+      nav.classList.toggle("fade-start", more > 4 && nav.scrollLeft > 4);
+      nav.classList.toggle("fade-end", more > 4 && nav.scrollLeft < more - 4);
+      if (!nav.dataset.fadeWired){
+        nav.dataset.fadeWired = "1";
+        nav.addEventListener("scroll", markScrollableNavs, { passive: true });
+      }
+    });
+  }
+  window.addEventListener("resize", markScrollableNavs);
+
   function applySettingsGroup(group){
 
     const panel = document.getElementById("tab-settings");
@@ -4072,6 +4079,10 @@
     });
     document.querySelectorAll("#settings-nav button").forEach(b=>
       b.classList.toggle("active", b.dataset.settings === group));
+    markScrollableNavs();
+    /* The group you are in has to be visible in a row that scrolls. */
+    const on = document.querySelector('#settings-nav button.active');
+    if (on && on.scrollIntoView) on.scrollIntoView({ block: "nearest", inline: "nearest" });
     markSegmented(document.querySelectorAll("#settings-nav button"), b=>b.dataset.settings === group);
     if (group === "sync" && typeof renderSyncPanel === "function") renderSyncPanel();
     setUiPref("settingsGroup", group);
@@ -5398,9 +5409,7 @@
       { label: "Compare two periods", keys: "compare period versus vs against month",
         run: () => { closeSearchOverlay(); activateTab("charts");
                      const b = document.getElementById("btn-compare"); if (b) b.click(); } },
-      { label: "Save this view", keys: "view save preset filters saved",
-        run: () => { closeSearchOverlay(); activateTab("history");
-                     const b = document.getElementById("btn-save-view"); if (b) b.click(); } },
+
       { label: "Set a budget", keys: "budget limit cap monthly category",
         run: () => { closeSearchOverlay(); activateTab("settings");
                      const b = document.querySelector('#settings-nav [data-settings="budgeting"]'); if (b) b.click(); } },
@@ -12134,101 +12143,6 @@
     (function workspaceFeatures(){
       "use strict";
 
-      const VIEWS_KEY = "savedViews";
-      const readViews = () => {
-        try { return JSON.parse((uiPrefs && uiPrefs[VIEWS_KEY]) || "[]"); }
-        catch (e) { return []; }
-      };
-      const writeViews = v => setUiPref(VIEWS_KEY, JSON.stringify(v));
-
-      /* ---------- 1. saved views ------------------------------------------
-         A filter set you spent a minute assembling is work. Making the user
-         rebuild it each session is the same as throwing that work away.
-         Captures only what the History screen actually filters on. */
-      function currentView(){
-        const g = id => { const el = document.getElementById(id); return el ? el.value : ""; };
-        return {
-          cat: g("exp-f-cat"),
-          range: g("exp-range-filter"),
-          search: g("filter-search"),
-          from: g("exp-from"),
-          to: g("exp-to")
-        };
-      }
-      function describeView(v){
-        const bits = [];
-        if (v.cat) bits.push(v.cat);
-        if (v.range && v.range !== "all") bits.push(v.range);
-        if (v.search) bits.push('"' + v.search + '"');
-        return bits.length ? bits.join(" · ") : "Everything";
-      }
-      function applyView(v){
-        const set = (id, val) => {
-          const el = document.getElementById(id);
-          if (!el) return;
-          el.value = val || "";
-          el.dispatchEvent(new Event("change", { bubbles: true }));
-        };
-        set("exp-range-filter", v.range);
-        set("exp-f-cat", v.cat);
-        set("exp-from", v.from);
-        set("exp-to", v.to);
-        const s = document.getElementById("filter-search");
-        if (s){ s.value = v.search || ""; s.dispatchEvent(new Event("input", { bubbles: true })); }
-      }
-
-      function renderViewBar(){
-        const host = document.getElementById("history-table-wrap");
-        if (!host || !host.parentElement) return;
-        let bar = host.parentElement.querySelector(".views-bar");
-        if (!bar){
-          bar = document.createElement("div");
-          bar.className = "views-bar";
-          host.insertAdjacentElement("beforebegin", bar);
-        }
-        const views = readViews();
-        bar.innerHTML =
-          '<span class="views-label">Views</span>'
-          + (views.length
-              ? views.map((v, i) =>
-                  '<span class="view-chip" data-i="' + i + '">'
-                  + '<button class="view-apply" data-i="' + i + '" title="' + escapeHtml(describeView(v)) + '">'
-                  + escapeHtml(v.name) + '</button>'
-                  + '<button class="view-del" data-del="' + i + '" aria-label="Delete this view">×</button>'
-                  + '</span>').join("")
-              : '<span class="views-empty">None saved yet — filter the table, then save it.</span>')
-          + '<button class="btn btn-outline btn-sm views-save" type="button">Save this view</button>';
-
-        bar.querySelectorAll(".view-apply").forEach(b => {
-          b.addEventListener("click", () => {
-            const v = readViews()[Number(b.dataset.i)];
-            if (v){ applyView(v); showToast('Applied "' + v.name + '".'); }
-          });
-        });
-        bar.querySelectorAll(".view-del").forEach(b => {
-          b.addEventListener("click", () => {
-            const all = readViews();
-            const gone = all.splice(Number(b.dataset.del), 1)[0];
-            writeViews(all);
-            renderViewBar();
-            if (gone) showUndoToast('Deleted "' + gone.name + '".', () => {
-              const back = readViews(); back.push(gone); writeViews(back); renderViewBar();
-            });
-          });
-        });
-        bar.querySelector(".views-save").addEventListener("click", () => {
-          const v = currentView();
-          const suggested = describeView(v);
-          const name = window.prompt("Name this view", suggested === "Everything" ? "All expenses" : suggested);
-          if (!name) return;
-          const all = readViews();
-          all.push(Object.assign({ name: name.slice(0, 40) }, v));
-          writeViews(all);
-          renderViewBar();
-          showToast('Saved "' + name + '".');
-        });
-      }
-
       /* ---------- 2. compare against the previous period -------------------
          A number on its own is not an observation. The comparison is what makes
          it one, so the workspace states it rather than leaving the reader to
@@ -12411,7 +12325,7 @@
         });
       }
 
-      function mountAll(){ renderViewBar(); mountCompare(); wireDrill(); }
+      function mountAll(){ mountCompare(); wireDrill(); }
       mountAll();
       document.addEventListener("click", () => setTimeout(mountAll, 180), true);
     })();
@@ -15575,36 +15489,6 @@
         const m = document.querySelector('#entry-mode-toggle button[data-mode="' + mode + '"]');
         if (m) m.click();
       }
-      /* There is no Interest category - the automatic monthly posting writes an
-         income entry as "Other Income" described "Interest - account (month)".
-         This opens that same shape rather than inventing a second home for the
-         one thing, so a month logged by hand reads like a month posted. */
-      function interestForm(){
-        entryForm("income");
-        /* Switching the form to income rebuilds the category select, and it does
-           not finish before a single timeout fires - measured, the value was set
-           and then thrown away, leaving the field blank. Tried until it sticks,
-           bounded, rather than guessing at a delay long enough to be safe. */
-        let tries = 0;
-        const setCat = () => {
-          const cat = document.getElementById("in-category");
-          if (cat && [...cat.options].some(o => o.value === "Other Income")){
-            cat.value = "Other Income";
-            if (cat.value === "Other Income") return;
-          }
-          if (++tries < 6) setTimeout(setCat, 70);
-        };
-        setTimeout(setCat, 60);
-        setTimeout(() => {
-          const desc = document.getElementById("in-desc");
-          if (desc && !desc.value.trim()){
-            desc.value = "Interest \u2014 ";
-            desc.focus();
-            try { desc.setSelectionRange(desc.value.length, desc.value.length); } catch(e){}
-          }
-        }, 90);
-      }
-
       const ADD_MENU = [
         { label: "Expense", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 4v11\"/><path d=\"M8 11l4 4 4-4\"/><path d=\"M4 20h16\"/></svg>',
           run: () => entryForm("expense") },
@@ -15615,9 +15499,7 @@
         { label: "Loan you took", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M19 12H5\"/><path d=\"M11 6l-6 6 6 6\"/></svg>',
           run: () => openLog("loans-taken-body") },
         { label: "Investment", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 17l6-6 4 4 8-8\"/><path d=\"M17 7h4v4\"/></svg>',
-          run: () => openLog("investments-body") },
-        { label: "Interest", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M19 5L5 19\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"2.5\"/><circle cx=\"16.5\" cy=\"16.5\" r=\"2.5\"/></svg>',
-          run: interestForm }
+          run: () => openLog("investments-body") }
       ];
 
       let addMenu = null;
@@ -19749,7 +19631,31 @@
   .pref-row > .accent-row,
   .pref-row > .pref-switch{ flex: 0 0 auto; }
   @media (max-width: 760px){
-    .pref-row{ flex-direction: column; align-items: flex-start; gap: var(--sp-5); }
+    /* NOT a column. Turning every row on its side is what made one setting
+       131-168px on a phone against 72 on a desktop - the label, its sentence,
+       and then the control adrift underneath. It stays a row and WRAPS: a
+       control that will not fit beside a 180px label takes the next line by
+       itself, and space-between leaves it at the start of that line. Nothing
+       here decides which controls are wide; they find out for themselves. */
+    .pref-row{ flex-wrap: wrap; gap: var(--sp-4) var(--sp-6); }
+    .pref-k{ flex: 1 1 180px; }
+    /* 56px is the two-line list row every platform uses, and it is above the
+       44pt minimum for the control sitting in it. */
+    .pref-rows > .pref-row{ min-height: 56px; align-items: center; }
+
+    /* TWO ROW SHAPES, NOT SEVEN WIDTHS. A control on a line of its own should
+       own the line: measured, the seven segmented controls sat at seven natural
+       widths - 230px, 198, 176 - with seven ragged ends down one card. Full
+       width costs no height, the control was already 40px, and each option
+       becomes a third of the row to hit rather than a word. */
+    .pref-row > .range-tabs{ flex: 1 0 100%; }
+    .pref-row > .range-tabs button{ flex: 1 1 0; justify-content: center; min-width: 0; }
+    /* Five swatches, so 3 + 2 by arrangement rather than by whatever fits. */
+    .pref-row > .accent-row{
+      flex: 1 0 100%;
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .pref-row > .accent-row button{ justify-content: center; min-width: 0; }
   }
 
   /* ---------- a yes/no question looks like a switch ------------------------ */
