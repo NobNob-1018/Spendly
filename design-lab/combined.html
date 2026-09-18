@@ -3611,7 +3611,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18j";
+  const APP_BUILD = "2026-09-18k";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -7191,20 +7191,19 @@
      used to switch to the Add tab has to go through the same door, or it lands
      on a panel that is no longer in the layout - measured at 0px wide, with the
      focus in a field nobody can see. */
+  /* Assigned by the drawer as soon as it exists. This used to open the form by
+     PRESSING THE + - fine while the + was the way in, fatal once it became a
+     menu: the menu's capture listener on document runs first and stops the
+     event, so a click from code reached the menu and nothing else. Pressing
+     "Expense" closed the menu, came here, and reopened it. Every caller died
+     with it - Copy into a new entry, the empty-state button, two palette
+     commands - while loans and investments were fine because they call openLog
+     directly. A button is how a PERSON asks for something; code asks for the
+     thing. */
+  let openEntryPanel = null;
   function openAddSurface(){
-    const fab = document.getElementById("btn-fab-add");
-    const panel = document.getElementById("tab-add");
-    if (fab && panel){
-      // "+" is a toggle: pressing it while the form is already open would close
-      // the thing that was just asked for. The panel being INSIDE the drawer is
-      // not the test - closing returns it home asynchronously enough that the
-      // check read stale either way. body.beside-open is what close() clears.
-      const open = document.body.classList.contains("beside-open") &&
-                   (document.getElementById("rd-title") || {}).textContent === "Add an entry";
-      if (!open) fab.click();
-      return;
-    }
-    activateTab("add");
+    if (openEntryPanel){ openEntryPanel(); return; }
+    activateTab("add");   // before the drawer exists, and on any build without it
   }
 
   function duplicateIntoAddForm(entry, mode){
@@ -16155,19 +16154,19 @@
          It used to switch the whole app to the Add screen, so writing down one
          expense cost you the page you were reading. */
       (function addBeside(){
-        const fab = document.getElementById("btn-fab-add");
         const panel = document.getElementById("tab-add");
-        if (!fab || !panel) return;
-        fab.addEventListener("click", e => {
-          e.preventDefault();
-          e.stopPropagation();
-          // Pressing it again closes what it opened, rather than reopening the
-          // thing already in front of you.
-          if (besideNow && besideNow.block === panel){ closeBeside(); return; }
+        if (!panel) return;
+        /* Published rather than bound to the button. The + opens the menu now,
+           and its listener stops the event before this element ever sees it -
+           so a handler here would be unreachable, and anything calling
+           fab.click() to get here would summon the menu instead. */
+        openEntryPanel = () => {
+          // Asking for it twice must not close the thing that was just asked for.
+          if (besideNow && besideNow.block === panel) return;
           openPanelBeside(panel, "Add an entry");
           const d = document.getElementById("in-desc");
           if (d) setTimeout(() => d.focus(), 80);
-        }, true);
+        };
       })();
 
       paintBack();
