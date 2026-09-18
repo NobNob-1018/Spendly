@@ -3515,7 +3515,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18f";
+  const APP_BUILD = "2026-09-18g";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4870,6 +4870,28 @@
   // trap and focus restoration, a keyboard user tabs straight out of an "open" modal
   // into the page behind it and never gets sent back where they started.
   let dialogRestoreFocus = null;
+
+  /* While something is in front, the page behind it holds still. Taps were
+     already absorbed by the scrim; scrolling was not - measured, the page went
+     0 -> 400 under an open sheet. COUNTED, because two overlays can be open at
+     once and the first to close must not unlock for both. */
+  let pageLocks = 0, lockedAt = 0;
+  function lockPage(on){
+    const was = pageLocks;
+    pageLocks = Math.max(0, pageLocks + (on ? 1 : -1));
+    if (was === 0 && pageLocks === 1){
+      /* Remembered, because a fixed body starts at the top: without this,
+         closing a sheet drops the page back to the first row. */
+      lockedAt = window.scrollY || document.documentElement.scrollTop || 0;
+      document.documentElement.classList.add("is-locked");
+      document.body.style.top = (-lockedAt) + "px";
+    } else if (was > 0 && pageLocks === 0){
+      document.documentElement.classList.remove("is-locked");
+      document.body.style.top = "";
+      window.scrollTo(0, lockedAt);
+    }
+  }
+
   function trapDialogFocus(overlay){
     const sel = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
     const onKey = (e)=>{
@@ -7167,6 +7189,21 @@
     });
   })();
 
+  /* "Today" and "Yesterday" are what a person calls those two days, and a date
+     is what they call the rest. todayISO is the app's own local-time helper -
+     not toISOString, which is a day out on this side of UTC. */
+  function dayLabel(iso){
+    const today = todayISO();
+    if (iso === today) return "Today";
+    const d = new Date(today + "T00:00:00");
+    d.setDate(d.getDate() - 1);
+    const yest = d.getFullYear() + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0");
+    if (iso === yest) return "Yesterday";
+    return fmtDate(iso);
+  }
+
   function renderHistory(){
 
     const wrap = document.getElementById("history-table-wrap");
@@ -7261,8 +7298,21 @@
     if (groupByCat) pageList.forEach(e=>{ catTotals[e.category] = round2((catTotals[e.category] || 0) + e.amount); });
     const catMax = Math.max.apply(null, Object.keys(catTotals).map(k=>catTotals[k]).concat([1]));
 
+    /* Bands by day, on the same rule the category bands follow: only when the
+       list is in that order, or the heading restates itself every row. */
+    const groupByDay = expenseSort && expenseSort.key === "date";
+    const dayTotals = {};
+    if (groupByDay) pageList.forEach(e=>{ dayTotals[e.date] = round2((dayTotals[e.date] || 0) + e.amount); });
+    let lastDay = null;
+
     const rows = pageList.map(e=>{
       let head = "";
+      let dayAttrs = "";
+      if (groupByDay && e.date !== lastDay){
+        lastDay = e.date;
+        dayAttrs = ' data-day="' + escapeHtml(dayLabel(e.date)) + '"' +
+                   ' data-day-total="' + escapeHtml(fmtMoney(dayTotals[e.date] || 0)) + '"';
+      }
       if (groupByCat && e.category !== lastCat){
         lastCat = e.category;
         const t = catTotals[e.category] || 0;
@@ -7272,19 +7322,19 @@
           <span class="cat-head-total">${fmtMoney(t)}</span>
         </td></tr>`;
       }
-      return head + rowFor(e);
+      return head + rowFor(e, dayAttrs);
     }).join("");
 
-    function rowFor(e){
+    function rowFor(e, dayAttrs){
       const catOptions = categories.map(c=>`<option value="${escapeHtml(c)}" ${c===e.category?"selected":""}>${escapeHtml(c)}</option>`).join("");
       return `
-        <tr data-id="${e.id}" data-kind="expense"${e.archived ? ' data-archived="1"' : ""} style="--cat:${colorFor(e.category)}" class="${selectedExpenseIds.has(e.id) ? "is-selected" : ""}">
+        <tr data-id="${e.id}" data-kind="expense"${e.archived ? ' data-archived="1"' : ""}${dayAttrs || ""} style="--cat:${colorFor(e.category)}" class="${selectedExpenseIds.has(e.id) ? "is-selected" : ""}">
           <td class="cell-select" data-label=""><input type="checkbox" class="row-select" ${selectedExpenseIds.has(e.id) ? "checked" : ""}></td>
           <td data-label="Date" data-short="${escapeHtml(fmtDate(e.date))}"><input type="date" value="${e.date}" data-field="date" style="width:150px;"></td>
           <td data-label="Description"><input type="text" value="${escapeHtml(e.description)}" data-field="description"></td>
-          <td class="note-cell" data-label="Note"><input type="text" value="${escapeHtml(noteOf(e))}" data-field="notes" placeholder="—"></td>
+          <td class="note-cell" data-label="Note" data-note="${escapeHtml(noteOf(e))}"><input type="text" value="${escapeHtml(noteOf(e))}" data-field="notes" placeholder="—"></td>
           <td data-label="Category"><select class="status-select" data-field="category">${catOptions}</select></td>
-          <td class="num" data-label="Amount" data-short="${escapeHtml(fmtMoney(e.amount))}"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(e.amount)}" data-field="amount" data-money="1"></div>${e.originalCurrency ? `<div class="hint">${e.originalAmount} ${e.originalCurrency}</div>` : ""}</td>
+          <td class="num" data-label="Amount" data-short="${escapeHtml(fmtMoney(e.amount))}"><span class="hist-amt" aria-hidden="true">${fmtMoneyRich(e.amount)}</span><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(e.amount)}" data-field="amount" data-money="1"></div>${e.originalCurrency ? `<div class="hint">${e.originalAmount} ${e.originalCurrency}</div>` : ""}</td>
           <td class="cell-actions" data-label=""  style="white-space:nowrap;">
             <button class="row-action" data-action="duplicate" aria-label="Copy into a new entry" title="Copy into a new entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="row-action row-action-danger" data-action="delete" aria-label="Remove this entry" title="Remove this entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
@@ -7294,7 +7344,7 @@
 
     wrap.innerHTML = `
       ${expStatusBar}
-      <table${sortColClass(expenseSort)}>
+      <table${sortColClass(expenseSort)}${groupByDay ? ' data-grouped="day"' : ""}>
         <thead>${expHeaderRowHtml(allVisibleSelected)}</thead>
         <tbody>${rows}</tbody>
       </table>
@@ -7610,16 +7660,27 @@
     const visibleIds = pageList.map(i=>i.id);
     const allVisibleSelected = visibleIds.every(id=>selectedIncomeIds.has(id));
 
+    const groupByDay = incomeSort && incomeSort.key === "date";
+    const dayTotals = {};
+    if (groupByDay) pageList.forEach(i=>{ dayTotals[i.date] = round2((dayTotals[i.date] || 0) + i.amount); });
+    let lastDay = null;
+
     const rows = pageList.map(i=>{
+      let dayAttrs = "";
+      if (groupByDay && i.date !== lastDay){
+        lastDay = i.date;
+        dayAttrs = ' data-day="' + escapeHtml(dayLabel(i.date)) + '"' +
+                   ' data-day-total="' + escapeHtml(fmtMoney(dayTotals[i.date] || 0)) + '"';
+      }
       const catOptions = INCOME_CATEGORIES.map(c=>`<option value="${escapeHtml(c)}" ${c===i.category?"selected":""}>${escapeHtml(c)}</option>`).join("");
       return `
-        <tr data-id="${i.id}" data-kind="income"${i.archived ? ' data-archived="1"' : ""} style="--cat:${colorFor(i.category)}" class="${selectedIncomeIds.has(i.id) ? "is-selected" : ""}">
+        <tr data-id="${i.id}" data-kind="income"${i.archived ? ' data-archived="1"' : ""}${dayAttrs} style="--cat:${colorFor(i.category)}" class="${selectedIncomeIds.has(i.id) ? "is-selected" : ""}">
           <td class="cell-select" data-label=""><input type="checkbox" class="row-select" ${selectedIncomeIds.has(i.id) ? "checked" : ""}></td>
           <td data-label="Date" data-short="${escapeHtml(fmtDate(i.date))}"><input type="date" value="${i.date}" data-field="date" style="width:150px;"></td>
           <td data-label="Description"><input type="text" value="${escapeHtml(i.description)}" data-field="description"></td>
-          <td class="note-cell" data-label="Note"><input type="text" value="${escapeHtml(noteOf(i))}" data-field="notes" placeholder="—"></td>
+          <td class="note-cell" data-label="Note" data-note="${escapeHtml(noteOf(i))}"><input type="text" value="${escapeHtml(noteOf(i))}" data-field="notes" placeholder="—"></td>
           <td data-label="Category"><select class="status-select" data-field="category">${catOptions}</select></td>
-          <td class="num" data-label="Amount" data-short="${escapeHtml(fmtMoney(i.amount))}"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(i.amount)}" data-field="amount" data-money="1"></div>${i.originalCurrency ? `<div class="hint">${i.originalAmount} ${i.originalCurrency}</div>` : ""}</td>
+          <td class="num" data-label="Amount" data-short="${escapeHtml(fmtMoney(i.amount))}"><span class="hist-amt" aria-hidden="true">${fmtMoneyRich(i.amount)}</span><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(i.amount)}" data-field="amount" data-money="1"></div>${i.originalCurrency ? `<div class="hint">${i.originalAmount} ${i.originalCurrency}</div>` : ""}</td>
           <td class="cell-actions" data-label=""  style="white-space:nowrap;">
             <button class="row-action" data-action="duplicate" aria-label="Copy into a new entry" title="Copy into a new entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="row-action row-action-danger" data-action="delete" aria-label="Remove this entry" title="Remove this entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
@@ -7629,7 +7690,7 @@
 
     wrap.innerHTML = `
       ${incStatusBar}
-      <table${sortColClass(incomeSort)}>
+      <table${sortColClass(incomeSort)}${groupByDay ? ' data-grouped="day"' : ""}>
         <thead>${incHeaderRowHtml(allVisibleSelected)}</thead>
         <tbody>${rows}</tbody>
       </table>
@@ -12214,8 +12275,13 @@
           </table>
           ${rows.length > 80 ? `<p class="drill-more">Showing the 80 most recent of ${rows.length}.</p>` : ""}`;
         drill.classList.add("show");
+        lockPage(true);
       }
-      function closeDrill(){ if (drill) drill.classList.remove("show"); }
+      function closeDrill(){
+        if (!drill || !drill.classList.contains("show")) return;
+        drill.classList.remove("show");
+        lockPage(false);
+      }
 
       /* Anything that names a category becomes a way into it. */
       function wireDrill(){
@@ -16480,11 +16546,16 @@
         editing = false;
         paint();
         sheet.classList.add("show");
+        lockPage(true);
         watch(true);
         sheet.querySelector(".sheet-close").focus();
       }
       function close(){
         if (!sheet) return;
+        // Guarded: Escape and Close both land here, and an unbalanced unlock
+        // would free the page while another overlay is still in front.
+        if (!sheet.classList.contains("show")) return;
+        lockPage(false);
         giveBack();
         sheet.classList.remove("show");
         watch(false);
@@ -16924,11 +16995,14 @@
         lastCount = null;
         take();
         sheet.classList.add("show");
+        lockPage(true);
         watch(true);
         sheet.querySelector(".fs-done").focus();
       }
       function close(){
         if (!sheet) return;
+        if (!sheet.classList.contains("show")) return;
+        lockPage(false);
         watch(false);
         giveBack();
         sheet.classList.remove("show");
@@ -20090,13 +20164,26 @@ if ("serviceWorker" in navigator &&
     .sa-grip:hover{ opacity: 1; color: var(--accent); }
   }
   .savings-account.is-dragging .sa-grip{ cursor: grabbing; }
-  /* The head is display:contents in a row, so its children are grid items with
-     their own cells - a grip there lands in whatever track happens to be free.
-     The row is picked up by its name instead, and the grip returns below 900px
-     where the head is a flex box again. */
-  body.list-as-rows .sa-grip{ display: none; }
-  @media (max-width: 900px){
-    body.list-as-rows .sa-grip{ display: block; }
+  /* THE GRIP LEAVES THE FLOW IN A ROW. .sa-head is display:contents there, so
+     its children are grid items that land in whatever track happens to be free
+     - which put the grip UNDER the name on a phone, and was the reason it was
+     hidden altogether above 900px. Out of the flow it has one place at every
+     width: the left edge, centred against the whole height of the row.
+
+     And it stops being a 10x16 target. That is 160 square pixels against a 44pt
+     minimum, which is why a reorder that works perfectly under a mouse does not
+     happen under a thumb. The mark stays 10x16; the thing you press is 28x44. */
+  body.list-as-rows .savings-account{ position: relative; padding-left: 38px; }
+  body.list-as-rows .sa-grip{
+    display: flex; align-items: center; justify-content: center;
+    position: absolute; left: 3px; top: 50%; transform: translateY(-50%);
+    width: 28px; height: 44px; margin: 0;
+    background-image: none;
+  }
+  body.list-as-rows .sa-grip::before{
+    content: ""; display: block; width: 10px; height: 16px;
+    background-image: radial-gradient(currentColor 1px, transparent 1px);
+    background-size: 4px 4px; background-position: 0 2px;
   }
   /* The name is a grab in both views, and says so where it is the only one. */
   body.list-as-rows .sa-name{ cursor: grab; }
@@ -20376,9 +20463,12 @@ if ("serviceWorker" in navigator &&
        a right-aligned field, which lines up beautifully in a narrow column and
        on a 140px row cell leaves the P at one end and the digits at the other.
        An input cannot be sized to its value in CSS, so the cell prints the
-       figure fmtMoney made and the field goes to the sheet. */
+       figure and the field goes to the sheet - and it prints it the way every
+       other figure in this file is printed, with the sign and the cents
+       dropped back so the pesos read first. A flat string beside a savings row
+       that does this is most of what "out of place" meant. */
     #tab-history tbody tr > td.num .amount-cell{ display: none; }
-    #tab-history tbody tr > td.num::after{ content: attr(data-short); }
+    #tab-history tbody tr > td.num .hist-amt{ display: inline; }
 
     /* Not on a row: the tags, the two buttons, and the checkbox until it is
        asked for. */
@@ -20931,6 +21021,66 @@ if ("serviceWorker" in navigator &&
   .sheet-facts dd[data-band="overdue"]{ color: var(--negative-note); font-weight: 700; }
   .sheet-facts dd[data-band="today"],
   .sheet-facts dd[data-band="week"]{ color: var(--warn); font-weight: 700; }
+
+  /* ---------- while something is in front, the page holds still ----------- */
+  /* The body leaves the flow and is pinned at the offset it was at. Asking the
+     root not to scroll was not enough - measured, a wheel over the scrim still
+     took the page from 0 to 283 with html and body both computing
+     overflow-y: hidden, while the same two declarations with !important held it
+     still. Something outranks them that I could not find; this does not depend
+     on winning that argument, and it is also the form that works on iOS. */
+  html.is-locked{ overflow: hidden; }
+  html.is-locked body{
+    position: fixed; left: 0; right: 0; width: 100%;
+    overflow: hidden;
+  }
+  /* And reaching the end of a panel's own scroll does not carry on into the
+     page underneath it. */
+  .drill-body, .rail-drawer, .search-panel{ overscroll-behavior: contain; }
+
+  /* ---------- history reads like the rest of the app ---------------------- */
+  /* The table shows the editable field; the row shows the figure. */
+  .hist-amt{ display: none; }
+  .hist-amt .cur-sym{ color: var(--ink-dim); font-size: .7em; }
+  .hist-amt .cur-cents{ color: var(--ink-soft); font-size: .7em; }
+
+  @media (max-width: 720px){
+    /* A DAY IS A HEADING, not a word repeated down the right-hand edge. Drawn
+       from the first row of each day rather than as a table row of its own, so
+       that nothing selecting "#tab-history tbody tr" - the tap target, the long
+       press, the swipe, the sheet - has to learn to skip it. */
+    #tab-history tbody tr[data-day]{ position: relative; margin-top: 42px; }
+    #tab-history tbody tr[data-day]:first-child{ margin-top: 26px; }
+    #tab-history tbody tr[data-day]::before,
+    #tab-history tbody tr[data-day]::after{
+      position: absolute; top: -27px;
+      font-size: var(--fs-3xs); letter-spacing: var(--track-caps);
+      text-transform: uppercase; white-space: nowrap;
+    }
+    #tab-history tbody tr[data-day]::before{
+      content: attr(data-day); left: var(--sp-2);
+      font-weight: 800; color: var(--ink-soft);
+    }
+    /* What the day cost. The heading earns its line by answering a question
+       the list could not: a day of entries with no sum is a day you add up. */
+    #tab-history tbody tr[data-day]::after{
+      content: attr(data-day-total); right: var(--sp-2);
+      font-weight: 700; color: var(--ink-dim);
+      font-variant-numeric: tabular-nums; letter-spacing: 0; text-transform: none;
+    }
+
+    /* Once the day is a heading the rows stop repeating it, and the corner it
+       leaves goes to the note - which had nowhere to show on a phone at all.
+       Only when there is one. */
+    #tab-history table[data-grouped="day"] tbody tr > td[data-label="Date"]{ display: none; }
+    #tab-history table[data-grouped="day"] tbody tr > .note-cell:not([data-note=""]){
+      display: block; grid-area: 2 / 3 / 3 / 4;
+      text-align: right; font-size: var(--fs-2xs); color: var(--ink-faint);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #tab-history tbody tr > .note-cell input{ display: none; }
+    #tab-history tbody tr > .note-cell::after{ content: attr(data-note); }
+  }
 </style>
 </body>
 </html>
