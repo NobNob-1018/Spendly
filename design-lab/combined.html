@@ -19186,8 +19186,46 @@
      as a card sitting ON the container rather than in it. The board is the
      thing that says these belong together, so it has to be visible around
      them. Savings, loans and investments all use .is-board. */
-  .card.is-board{ padding: var(--sp-11); }
-  @media (max-width: 720px){ .card.is-board{ padding: var(--sp-7); } }
+  /* ONLY the boards that hold cards. .is-board is on thirteen panels across
+     every tab - charts, tables, the category manager - and widening all of them
+     is a change nobody asked for that eats the room a table needs. Three hold
+     cards: the accounts list, the two loan lists, and investments. */
+  .card.is-board:has(.savings-list),
+  .card.is-board:has(.loan-cards),
+  .card.is-board:has(.inv-grid){ padding: var(--sp-11); }
+  @media (max-width: 720px){
+    .card.is-board:has(.savings-list),
+    .card.is-board:has(.loan-cards),
+    .card.is-board:has(.inv-grid){ padding: var(--sp-7); }
+  }
+
+  /* ---------- the board is a tray, not another card ----------------------- */
+  /* Measured in the day edition: .card.is-board and .savings-account inside it
+     were both rgb(255,255,255) with the same rgba(15,23,38,.12) border - the
+     container and its contents the same colour, separated by a hairline. At
+     night it is #141922 against #1B212C, seven units of luminance apart. More
+     padding could not fix that and did not; what was missing was a difference
+     in tone.
+
+     Sunken, with the cards raised in it. It still separates from the page in
+     both editions - darker than --bg in the day, lighter at night - which is
+     what a tray does in each. */
+  /* And the tray, on the same three. Painting all thirteen took a 10px warning
+     label on Charts from passing to 4.14 against 4.5 in the day edition -
+     rgb(192,57,43) on rgb(232,222,227) - because its own 12% red tint blends
+     against whatever is behind it, and behind it was no longer white. */
+  .card.is-board:has(.savings-list),
+  .card.is-board:has(.loan-cards),
+  .card.is-board:has(.inv-grid){
+    background: var(--sunken);
+    border-color: var(--line-strong);
+  }
+  /* NOTHING ELSE. I wrote two more rules here - one lifting the filter controls
+     off the new tray, one for the empty state - and checked before keeping
+     them: .card.is-board contains neither the filter bar, nor any of the
+     thirteen .th-filter chips, nor the wrapper the empty state renders into.
+     The filter bar is in a collapsible above the board and the empty state
+     already draws on --raised. Both rules matched nothing, so both are gone. */
 </style>
 </body>
 </html>
