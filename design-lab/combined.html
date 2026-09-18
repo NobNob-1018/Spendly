@@ -13869,6 +13869,12 @@
       // Module scope on purpose: the rebuild has to be able to ask whether a
       // drag is live, and it runs before wireCardDrag's own declarations.
       let seamDrag = null;
+      // The height drag, for the same reason and it is the same reason: the
+      // rebuild has to know it is happening. It did not, and re-measured the
+      // card out from under the drag every 450ms. Each carries the grid it
+      // belongs to, because a module-scope drag read by a handler registered
+      // once per host is how one seam drag came to run in six tab panels.
+      let cornerDrag = null;
       const SPAN_KEY = "spendly_card_spans_v1";
       let spans = {};
       try { spans = JSON.parse(localStorage.getItem(SPAN_KEY) || "{}") || {}; } catch (e){ spans = {}; }
@@ -14179,10 +14185,17 @@
          scheduling another, so it is exactly one, not a loop. */
       let refill = null;
       function applySpansAndSeams(host, tab, again){
-        if (!host || seamDrag) return;   // never while a drag is live
+        // Never while a drag is live - EITHER drag. The width was guarded from
+        // the day this existed; the height was not, so the 450ms follow-up pass
+        // below re-measured the card and put it back to its contents while the
+        // pointer was still down. Traced: 14 rows, dragged to 18, back to 14
+        // after 700ms of holding still, and again on the next hold.
+        if (!host || seamDrag || cornerDrag) return;
         if (!again){
           clearTimeout(refill);
-          refill = setTimeout(() => { if (!seamDrag) applySpansAndSeams(host, tab, true); }, 450);
+          refill = setTimeout(() => {
+            if (!seamDrag && !cornerDrag) applySpansAndSeams(host, tab, true);
+          }, 450);
         }
         const cards = cardsIn(host);
         /* The corrective pass re-asks every floor. The first pass runs the
@@ -14452,7 +14465,6 @@
         /* The corner sets the floor. Down makes the card taller than it needs,
            up gives the space back, and it can never go under the contents -
            that is the one direction a set height was ever wrong in. */
-        let cornerDrag = null;
         host.addEventListener("pointerdown", ev => {
           // The corner and the foot are the same gesture. The corner is where a
           // hand goes for both axes, the foot is where it goes for height, and
@@ -14464,8 +14476,17 @@
                                || document.getElementById(pad.dataset.card));
             if (!card) return;
             ev.preventDefault(); ev.stopPropagation();
-            cornerDrag = { card, startY: ev.clientY, startRows: curRows(card),
-                           natural: +card.dataset.naturalRows || curRows(card) };
+            const box = card.getBoundingClientRect();
+            cornerDrag = {
+              host, card,
+              // Where the card starts, and how far the pointer went down from
+              // its bottom edge. The height is then read from where the pointer
+              // IS - the way the width is - so the edge stays under the hand
+              // instead of falling behind it as the card grows.
+              topY: box.top,
+              grab: box.bottom - ev.clientY,
+              natural: +card.dataset.naturalRows || curRows(card)
+            };
             try { corner.setPointerCapture(ev.pointerId); } catch (e){}
             document.body.classList.add("is-seam-resizing");
             return;
@@ -14638,14 +14659,26 @@
                            : "   \u00b7   " + b + " \u00d7 " + curRows(right)));
         });
         window.addEventListener("pointermove", ev => {
-          if (!cornerDrag) return;
+          if (!cornerDrag || cornerDrag.host !== host) return;
           ev.preventDefault();
-          const { card, startY, startRows, natural } = cornerDrag;
-          // In rows, in fours, because a row is 12px and a card you can stop on
-          // every 12px is a card you can never put back where it was.
-          const step = 4;
-          const moved = Math.round((ev.clientY - startY) / (rowPitch * step)) * step;
-          const want = Math.max(natural, Math.min(ROWS_MAX, startRows + moved));
+          const { card, topY, grab, natural } = cornerDrag;
+          /* From where the pointer IS, not from how far it has come. A delta
+             from the point of grab leaves the edge behind as the card grows,
+             because the card's bottom moves and the point of grab does not -
+             and that is the difference in feel against the width drag, which
+             reads clientX into twelfths on every move.
+
+             Two rows to a stop, not four. A row is 12px on a 16px gap, so four
+             rows is 112px of travel for one stop - about one stop per gesture.
+             Two is 56px, and every value it can stop on is still one the menu
+             can name and a double-click can undo. */
+          const step = 2;
+          /* The plain quotient, not rowsForHeight(): that one ceils, and
+             ceiling and then rounding to a step biases every stop upward by up
+             to a row and a half. Measured, the edge trailed the pointer by 49px
+             on a 56px step; rounding once puts the worst case at half of one. */
+          const raw = (ev.clientY + grab - topY - rowOffset) / rowPitch;
+          const want = Math.max(natural, Math.min(ROWS_MAX, Math.round(raw / step) * step));
           setRows(card, want);
           cornerDrag.want = want;
           placeAllHandles(host);
@@ -14654,7 +14687,7 @@
         }, { passive: false });
 
         function endCorner(){
-          if (!cornerDrag) return;
+          if (!cornerDrag || cornerDrag.host !== host) return;
           const { card, want, natural } = cornerDrag;
           cornerDrag = null;
           document.body.classList.remove("is-seam-resizing");
@@ -19026,6 +19059,18 @@
     body.list-as-rows .loan-card.is-closed > [data-payment-for]:has(.loan-note-read){
       grid-area: 4 / 1 / 5 / 4;
     }
+  }
+
+  /* ---------- the one control sits at the foot of the card ---------------- */
+  /* Measured on a card that fits its contents, the button already ends 17px
+     from the bottom, which is the padding. But settled cards share a row and
+     stretch to the tallest of them, and all of that slack was landing UNDER the
+     button - so on any card but the tallest it floated in the middle. The
+     wrapper takes the slack and the button is pushed past it, which puts the
+     empty space between the note and the control rather than below both. */
+  body:not(.list-as-rows) .loan-card.is-closed > [data-payment-for]{ flex: 1 1 auto; }
+  body:not(.list-as-rows) .loan-card.is-closed .row-action-bar{
+    margin-top: auto; padding-top: var(--sp-7);
   }
 </style>
 </body>
