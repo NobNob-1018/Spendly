@@ -13769,6 +13769,10 @@
       // Where the outline last was. The drop reads this rather than working
       // the target out again, so what happens is what was shown.
       let dropAt = null;
+      // And which half of it the pointer was in. Without a side, a drop on the
+      // card to your right resolved to "insert before that card", which is
+      // where the dragged card already was.
+      let dropAfter = false;
       /* ---- the seam between two cards on a line ---------------------------- */
       // Module scope on purpose: the rebuild has to be able to ask whether a
       // drag is live, and it runs before wireCardDrag's own declarations.
@@ -13853,12 +13857,59 @@
       /* What a card needs, from what it holds. Cached on the element because it
          cannot change without the card being rebuilt, and asking the DOM this
          on every pointermove would be asking it sixty times a second. */
+      /* What spills out of a box that is not allowed to scroll. A table inside
+         its own scroller is doing its job; a figure drawn outside its column is
+         the collision this is looking for. */
+      function spillOf(root){
+        let worst = 0;
+        const walk = k => {
+          if (getComputedStyle(k).overflowX === "visible"){
+            const o = k.scrollWidth - k.clientWidth;
+            if (o > worst) worst = o;
+          }
+          for (const c of k.children) walk(c);
+        };
+        walk(root);
+        return worst;
+      }
       function minSpanOf(el){
         if (el.dataset.minSpan) return +el.dataset.minSpan;
+        /* The guess, which is now only a lower bound. It reads what a card
+           holds and infers how narrow it can be, which works until a card holds
+           something the list does not name. */
         let n = 3;
         if (el.querySelector("table")) n = 5;             // headers wrap into each other
         else if (el.querySelector("canvas")) n = 4;       // axis labels collide
         else if (el.querySelector(".kpi")) n = 4;         // two figures to a line, not one
+
+        /* And then the card is ASKED, at the widths a drag can stop on.
+           "This month against last" is a four-column comparison built out of
+           divs, so it matched none of the three above and got the bare 3 - and
+           at 3 its figures were drawn 66px outside their column, which is the
+           cards-collide report. Probed: 37px of spill at 4, clean at 6.
+
+           Once per card, cached on the element, because it cannot change
+           without the card being rebuilt - and this is a forced layout per
+           width, on a gesture that runs sixty times a second. Skipped, and NOT
+           cached, for a card that is not on the screen: there is nothing to
+           measure, and the guess will do until there is. */
+        try {
+          if (el.getBoundingClientRect().height <= 0) return n;
+          const had = el.style.getPropertyValue("--span");
+          let fit = 0;
+          for (const sp of SNAP_SPANS){
+            if (sp < n) continue;
+            el.style.setProperty("--span", String(sp));
+            void el.offsetWidth;
+            if (spillOf(el) <= 2){ fit = sp; break; }   // 2px is sub-pixel noise
+          }
+          // Nothing fit: the card needs the whole row, and that IS its floor.
+          if (!fit) fit = SPAN_OF;
+          if (had) el.style.setProperty("--span", had); else el.style.removeProperty("--span");
+          void el.offsetWidth;
+          if (fit > n) n = fit;
+        } catch (e){}
+
         el.dataset.minSpan = String(n);
         return n;
       }
@@ -14196,6 +14247,11 @@
         // result, and a card two screens down is a card you have to hunt for.
         function sayWhere(id, wasOrder){
           setTimeout(() => {
+            /* Nothing moved, nothing to say. One drop legitimately lands where
+               the card already is - the near half of the neighbour it is
+               already in front of - and announcing "Moved to 3 of 6" with an
+               undo under it is the app reporting work it did not do. */
+            if (wasOrder && (order[tab] || []).join() === wasOrder.join()) return;
             // The cards ON the page, not every card the tab has: the ones that
             // open beside it are still in the DOM, hidden, and counting them
             // said "moved to 1 of 9" on a page showing five.
@@ -14412,13 +14468,18 @@
           }
           return g;
         }
-        function showGhost(card, target){
+        function showGhost(card, target, after, stacked){
           const g = ghost();
           const hostBox = host.getBoundingClientRect();
           const box = (target || card).getBoundingClientRect();
           const mine = card.getBoundingClientRect();
-          g.style.left = (box.left - hostBox.left) + "px";
-          g.style.top = (box.top - hostBox.top) + "px";
+          // Past the target when the drop is on its far side, so the preview is
+          // where the card will be rather than where the pointer is.
+          let left = box.left - hostBox.left, top = box.top - hostBox.top;
+          if (after && stacked) top = box.bottom - hostBox.top + 8;
+          else if (after) left = box.right - hostBox.left + 8;
+          g.style.left = left + "px";
+          g.style.top = top + "px";
           g.style.width = mine.width + "px";
           g.style.height = mine.height + "px";
           g.classList.add("is-on");
@@ -14463,10 +14524,11 @@
           }
         });
         host.addEventListener("dragend", () => {
-          dropAt = null;
+          dropAt = null; dropAfter = false;
           hideGhost();
           host.querySelectorAll(".is-dragging").forEach(x => x.classList.remove("is-dragging"));
-          host.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
+          host.querySelectorAll(".is-drop-before, .is-drop-after, .is-drop-stacked")
+            .forEach(x => x.classList.remove("is-drop-before", "is-drop-after", "is-drop-stacked"));
           dragCard = null;
         });
         host.addEventListener("dragover", ev => {
@@ -14474,35 +14536,63 @@
           ev.preventDefault();
           if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
           const over = dropTargetAt(ev);
-          host.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
+          host.querySelectorAll(".is-drop-before, .is-drop-after, .is-drop-stacked")
+            .forEach(x => x.classList.remove("is-drop-before", "is-drop-after", "is-drop-stacked"));
           if (over && over.dataset.arrangeId !== dragCard){
-            over.classList.add("is-drop-before");
+            /* WHICH SIDE of it. A card with the row to itself has neighbours
+               above and below, so the question is which half vertically; a card
+               sharing a row has them left and right. Without this, every drop
+               meant "insert before", and dropping onto the card on your right
+               put the dragged card back exactly where it already was - the
+               gesture did nothing while the toast still announced a move. */
+            const ob = over.getBoundingClientRect();
+            const stacked = ob.width > host.clientWidth - 24;
+            dropAfter = stacked ? ev.clientY > ob.top + ob.height / 2
+                                : ev.clientX > ob.left + ob.width / 2;
+            over.classList.add(dropAfter ? "is-drop-after" : "is-drop-before");
+            if (stacked) over.classList.add("is-drop-stacked");
             // What the outline is over IS the drop. Held here rather than
             // worked out again on release, so the move that happens is the one
             // that was shown.
             dropAt = over.dataset.arrangeId;
             const me = host.querySelector('[data-arrange-id="' + CSS.escape(dragCard) + '"]');
-            if (me) showGhost(me, over);
+            if (me) showGhost(me, over, dropAfter, stacked);
           } else { dropAt = null; hideGhost(); }
         });
         host.addEventListener("drop", ev => {
           if (!editing || !dragCard) return;
           ev.preventDefault();
           const id = dragCard; dragCard = null;
-          const target = dropAt; dropAt = null;
+          const target = dropAt, after = dropAfter;
+          dropAt = null; dropAfter = false;
           // Both, here, now: dragend may not arrive before the rebuild below
           // replaces the list, and then nothing clears it.
           hideGhost();
-          host.querySelectorAll(".is-drop-before, .is-dragging")
-            .forEach(x => x.classList.remove("is-drop-before", "is-dragging"));
+          host.querySelectorAll(".is-drop-before, .is-drop-after, .is-drop-stacked, .is-dragging")
+            .forEach(x => x.classList.remove("is-drop-before", "is-drop-after",
+                                             "is-drop-stacked", "is-dragging"));
           /* No outline, no move. dropTargetAt() returning nothing used to mean
              "put it last", so a drag released over a gap - or over the seam, or
              past the end of the row - quietly sent the card to the bottom of a
              page you were only rearranging. */
           if (!target || target === id) return;
           if (!railMoveTo) return;
+          /* railMoveTo inserts BEFORE the id it is given, so landing on the far
+             side of the target means naming whatever follows it - and null,
+             meaning the end, when nothing does. The dragged card is left out of
+             that reckoning because the move removes it first. */
+          let beforeId = target;
+          if (after){
+            const seq = [...host.querySelectorAll("[data-arrange-id]")]
+              .filter(x => x.getBoundingClientRect().height > 0)
+              .map(x => x.dataset.arrangeId)
+              .filter(x => x !== id);
+            const at = seq.indexOf(target);
+            beforeId = at < 0 ? null : (seq[at + 1] || null);
+          }
+          if (beforeId === id) return;
           const wasOrder = (order[tab] || []).slice();
-          railMoveTo(id, target);
+          railMoveTo(id, beforeId);
           sayWhere(id, wasOrder);
         });
 
@@ -15151,8 +15241,13 @@
       function paintBack(){
         const to = trail[trail.length - 1];
         back.hidden = !to;
+        // The name is wrapped rather than written loose between the arrow and
+        // the key. A bare text node is an anonymous flex item: no min-width: 0,
+        // no ellipsis, and no shrinking - so a long destination pushed the
+        // keyboard hint 11px off the end of its own button.
         if (to) back.innerHTML =
-          '<span aria-hidden="true">←</span> Back to ' + escapeHtml(NAMES[to] || to) +
+          '<span aria-hidden="true">←</span>' +
+          '<span class="nav-back-t">Back to ' + escapeHtml(NAMES[to] || to) + '</span>' +
           '<kbd class="nav-key">alt ←</kbd>';
       }
       function goBack(){
@@ -15859,15 +15954,28 @@
   }
   .arrange-step:focus-visible{ outline: 2px solid var(--on-accent); outline-offset: -2px; }
 
-  /* Where it will land, in the gap above the card, rather than a hairline
-     inside its top edge that reads as "this one is selected". */
-  .is-arrangeable.is-drop-before{ box-shadow: none; position: relative; }
-  .is-arrangeable.is-drop-before::before{
-    content: ""; position: absolute; left: 0; right: 0; top: -7px; height: 3px;
+  /* Where it will land: in the gutter, against the EDGE it will land on,
+     rather than a hairline inside the top edge that reads as "this one is
+     selected" - and reads as the wrong edge entirely when the card you are
+     dropping past is beside you rather than above you. */
+  .is-arrangeable.is-drop-before,
+  .is-arrangeable.is-drop-after{ box-shadow: none; position: relative; }
+  .is-arrangeable.is-drop-before::before,
+  .is-arrangeable.is-drop-after::before{
+    content: ""; position: absolute; top: 0; bottom: 0; width: 3px;
     border-radius: var(--r-pill); background: var(--accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
     z-index: 4;
   }
+  .is-arrangeable.is-drop-before::before{ left: -7px; }
+  .is-arrangeable.is-drop-after::before{ right: -7px; }
+  /* A card with the row to itself has neighbours above and below it, not
+     beside it, so the bar lies down. */
+  .is-arrangeable.is-drop-stacked::before{
+    left: 0; right: 0; width: auto; height: 3px; top: auto; bottom: auto;
+  }
+  .is-arrangeable.is-drop-before.is-drop-stacked::before{ top: -7px; }
+  .is-arrangeable.is-drop-after.is-drop-stacked::before{ bottom: -7px; }
   .is-arrangeable.is-dragging .arrange-tag{ opacity: 0; }
 
   /* Small screens: the words go, the grip and the two buttons stay. */
@@ -18350,6 +18458,78 @@
     .nav-restore:active, .card-menu-i:active{ transform: none; }
   }
   :root[data-motion="reduced"] .loan-card.is-just-settled::after{ animation: none; }
+
+  /* ---------- a height handle you can find --------------------------------- */
+  /* It worked from the day it went in - dragged, it took a card from 19 rows to
+     23 and kept it there - and it was a 9px chevron at 45% opacity, which is a
+     thing you find by accident or not at all. "Still no height adjustments" was
+     a report about seeing it, not about it working. */
+  .card-corner{ width: 32px; height: 32px; right: -6px; bottom: -6px; }
+  .card-corner::after{
+    right: 7px; bottom: 7px; width: 15px; height: 15px;
+    border-right-width: 3px; border-bottom-width: 3px;
+    border-bottom-right-radius: 3px;
+  }
+  /* A second chevron inside the first, so it reads as a grip rather than as a
+     stray line the card happens to end with. */
+  .card-corner::before{
+    content: ""; position: absolute; right: 7px; bottom: 7px;
+    width: 7px; height: 7px;
+    border-right: 3px solid var(--accent); border-bottom: 3px solid var(--accent);
+    border-bottom-right-radius: 2px;
+    opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .is-layout-editing .card-corner::after{ opacity: .85; }
+  .is-layout-editing .card-corner::before{ opacity: .5; }
+  @media (hover: hover){
+    .card-corner:hover::after,
+    .card-corner:hover::before{ opacity: 1; }
+  }
+  body.is-seam-resizing .card-corner::after,
+  body.is-seam-resizing .card-corner::before{ opacity: 1; }
+
+  /* ---------- the layout bar is read, not squinted at ----------------------- */
+  /* Not a size problem, or not only one. Both buttons still carry the styling
+     they had as loose controls in the rail header, from before this bar existed
+     - nav.tabs .nav-tidy and nav.tabs .nav-edit, at (0,2,1) - and .nav-tool,
+     at (0,1,0), loses to both. Its surface, its border and its filled pressed
+     state have been dead on these two since the day they moved in here, which
+     is why the bar reads as two pieces of 10px grey text styled differently
+     from each other. Measured: padding 0px 6px, font-size 10px.
+
+     Restated where it wins, and a size up while it is there. */
+  nav.tabs .nav-tools{ gap: var(--sp-5); padding: var(--sp-5) var(--sp-6); }
+  nav.tabs .nav-tools-k{ font-size: var(--fs-2xs); }
+  nav.tabs .nav-tool{
+    flex: 0 0 auto; width: auto; height: auto; min-height: 0;
+    margin: 0; padding: var(--sp-3) var(--sp-6);
+    background: var(--raised); border: 1px solid var(--line);
+    border-radius: var(--r-sm); color: var(--ink-soft);
+    font: inherit; font-size: var(--fs-2xs); font-weight: 700;
+    text-transform: none; letter-spacing: 0; text-decoration: none;
+    white-space: nowrap; cursor: pointer;
+  }
+  @media (hover: hover){
+    nav.tabs .nav-tool:hover{
+      color: var(--ink); border-color: var(--line-strong); background: var(--hover);
+    }
+  }
+  nav.tabs .nav-tool:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+  /* While it is on, the control that turns it off is the loudest thing here. */
+  nav.tabs .nav-tool[aria-pressed="true"]{
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    border-color: var(--accent); color: var(--accent);
+  }
+
+  /* ---------- and the name is what gives -------------------------------- */
+  /* Measured at 1440 in the day edition: kbd.nav-key ended 11px past
+     button.nav-back. The key is meant to be always visible, so the name is the
+     only thing that can shrink - and it could not, because it was loose text. */
+  nav.tabs .nav-back .nav-back-t{
+    flex: 1 1 auto; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  nav.tabs .nav-back{ overflow: hidden; }
 </style>
 </body>
 </html>

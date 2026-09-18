@@ -22,6 +22,12 @@
  *              applied against a container, which parks it on the content.
  *              top:0 inside a container is correct and is not reported.
  *   clipped    text cut off with no ellipsis
+ *   hscroll    a CARD that has to scroll sideways to hold its own contents.
+ *              Separate from overflow because overflow stops at the first
+ *              ancestor that can scroll, and a bento card is overflow:auto as
+ *              a safety net rather than as an intended scroller - so every
+ *              collision inside one was invisible here. Measured: a 3000px box
+ *              planted in a 629px card reported zero on all six checks.
  *
  * Every rect is clipped to its nearest scrolling ancestor first — without that,
  * a bounded table reports every scrolled-out row as overlapping whatever sits
@@ -43,7 +49,7 @@
  * is recognised and skipped now.
  */
 (function(){
-  const out = { overlaps: [], collapsed: [], overflow: [], bleed: [], sticky: [], clipped: [] };
+  const out = { overlaps: [], collapsed: [], overflow: [], bleed: [], sticky: [], clipped: [], hscroll: [] };
   const name = el => el.tagName.toLowerCase() +
     (el.id ? '#' + el.id : (el.className && typeof el.className === 'string' && el.className.trim()
       ? '.' + el.className.trim().split(/\s+/)[0] : ''));
@@ -213,12 +219,33 @@
         (el.scrollWidth - el.clientWidth) + 'px');
   });
 
+  // ---- a card that has to scroll sideways --------------------------------
+  /* The overflow check above returns as soon as a parent can scroll, which is
+     correct for a scroller and blind for a card. Proved by planting a 3000px
+     box inside a 629px card: scrollWidth 3048 against clientWidth 629, and all
+     six counts came back zero. "This month against last" was drawn 66px
+     outside its own column at a width the layout allowed, and nothing here
+     said so. */
+  document.querySelectorAll('[data-arrange-id], .loan-card').forEach(el => {
+    if (!shown(el)) return;
+    /* ONLY overflow-x:auto - the safety net that got used. 'scroll' is a box
+       that means to scroll, and 'visible' is a box that never will: measured,
+       a .loan-card reports scrollWidth 23px over clientWidth because its
+       remove button's tooltip is absolutely positioned 93px to the right and
+       translated back, and a transform does not shrink the scrollable overflow
+       area. Nothing scrolls, nothing is clipped, and setting scrollLeft to 50
+       leaves it at 0. Flagging that is calling geometry a defect. */
+    if (getComputedStyle(el).overflowX !== 'auto') return;
+    const by = el.scrollWidth - el.clientWidth;
+    if (by > 2) out.hscroll.push(name(el) + ' needs ' + by + 'px it does not have');
+  });
+
   // Built from the keys of the collector rather than named one at a time, so adding a
   // check to the top of this file cannot silently fail to reach the caller —
   // which is what happened when the bleed check was added and the hand-written return
   // below it was not.
   const dedupe = a => [...new Set(a)];
-  const LIMIT = { overlaps: 10, collapsed: 6, overflow: 8, bleed: 8, sticky: 6, clipped: 6 };
+  const LIMIT = { overlaps: 10, collapsed: 6, overflow: 8, bleed: 8, sticky: 6, clipped: 6, hscroll: 8 };
   const report = { counts: {} };
   Object.keys(out).forEach(k => {
     const list = dedupe(out[k]);
