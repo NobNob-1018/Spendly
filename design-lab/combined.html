@@ -9238,16 +9238,19 @@
         const g = list.querySelector(":scope > .account-ghost");
         if (g) g.remove();
       };
-      const showGhost = (card, over, after, stacked) => {
+      /* On the slot the card will LAND in, not next to the card it is over.
+         Those are the same thing only while the dragged card comes from later
+         in the list; coming from earlier, taking it out shifts everything left
+         by one, so "after the target" IS the target's own slot. Drawn against
+         the target it was a slot out on every rightward drag. */
+      const showGhost = (card, slotCard) => {
         const g = ghost();
         const lb = list.getBoundingClientRect();
-        const ob = over.getBoundingClientRect(), mine = card.getBoundingClientRect();
-        const gap = parseFloat(getComputedStyle(list).gap) || 16;
-        let left = ob.left - lb.left, top = ob.top - lb.top;
-        if (after && stacked) top = ob.bottom - lb.top + gap;
-        else if (after) left = ob.right - lb.left + gap;
-        g.style.left = left + "px"; g.style.top = top + "px";
-        g.style.width = mine.width + "px"; g.style.height = mine.height + "px";
+        const sb = slotCard.getBoundingClientRect(), mine = card.getBoundingClientRect();
+        g.style.left = (sb.left - lb.left) + "px";
+        g.style.top = (sb.top - lb.top) + "px";
+        g.style.width = mine.width + "px";
+        g.style.height = mine.height + "px";
         g.classList.add("is-on");
       };
 
@@ -9265,20 +9268,31 @@
         list.querySelectorAll(".is-drop-before, .is-drop-after, .is-drop-stacked")
           .forEach(x => x.classList.remove("is-drop-before", "is-drop-after", "is-drop-stacked"));
         drag.over = (over && over.dataset.id !== drag.id) ? over : null;
-        if (!drag.over){ drag.after = false; hideGhost(); return; }
-        /* WHICH EDGE, from direction of travel - the same rule as the bento,
-           for the same reason: dropping a card on the neighbour to its right
-           has to mean "past it", not "in front of it", or the gesture does
-           nothing. */
-        const seq = [...list.querySelectorAll(".savings-account")].map(x => x.dataset.id);
-        const iMe = seq.indexOf(drag.id), iOver = seq.indexOf(drag.over.dataset.id);
-        drag.after = iMe >= 0 && iOver >= 0 && iMe < iOver;
-        // A card with the row to itself has neighbours above and below it.
-        const ob = drag.over.getBoundingClientRect();
-        const stacked = ob.width > list.clientWidth - 24;
-        drag.over.classList.add(drag.after ? "is-drop-after" : "is-drop-before");
-        if (stacked) drag.over.classList.add("is-drop-stacked");
-        showGhost(drag.card, drag.over, drag.after, stacked);
+        if (!drag.over){ drag.toAt = -1; hideGhost(); return; }
+        /* THE ANSWER, worked out once. Direction of travel says which side of
+           the target it lands on - the same rule as the bento, for the same
+           reason: dropping a card on the neighbour to its right has to mean
+           "past it" or the gesture does nothing - and then the landing INDEX is
+           worked out from the list with the dragged card already taken out of
+           it, because that is what the drop will do. Everything below is drawn
+           from that one number, so the preview cannot disagree with the result. */
+        const seq = [...list.querySelectorAll(".savings-account")];
+        const ids = seq.map(x => x.dataset.id);
+        const iMe = ids.indexOf(drag.id), iOver = ids.indexOf(drag.over.dataset.id);
+        const after = iMe >= 0 && iOver >= 0 && iMe < iOver;
+        const rest = ids.filter(x => x !== drag.id);
+        let toAt = rest.indexOf(drag.over.dataset.id);
+        if (toAt < 0) toAt = rest.length; else if (after) toAt += 1;
+        drag.toAt = toAt;
+        // The card standing in that slot now is where the ghost goes, and its
+        // leading edge is where the bar goes. toAt can never reach seq.length:
+        // rest is one shorter, so indexOf + 1 tops out at seq.length - 1.
+        const slotCard = seq[Math.min(toAt, seq.length - 1)];
+        const sb = slotCard.getBoundingClientRect();
+        const stacked = sb.width > list.clientWidth - 24;
+        slotCard.classList.add("is-drop-before");
+        if (stacked) slotCard.classList.add("is-drop-stacked");
+        showGhost(drag.card, slotCard);
       };
 
       const onEnd = ev => {
@@ -9292,7 +9306,7 @@
         hideGhost();
         clear();
         // Moved nowhere, or released over nothing: nothing happens.
-        if (!d.moved || !d.over) return;
+        if (!d.moved || !d.over || d.toAt < 0) return;
         /* DIRECTION OF TRAVEL, not "insert before". The splice puts the card in
            front of the one it was dropped on, so dropping a card on the
            neighbour to its right put it back exactly where it started - and the
@@ -9302,12 +9316,10 @@
         const ids = [...list.querySelectorAll(".savings-account")].map(x => x.dataset.id);
         const was = ids.slice();
         const at = ids.indexOf(d.id);
-        // The side the MARKER showed, not one worked out again on release, so
-        // what happens is what was drawn.
-        const after = !!d.after;
         if (at >= 0) ids.splice(at, 1);
-        let toAt = ids.indexOf(d.over.dataset.id);
-        if (toAt < 0) toAt = ids.length; else if (after) toAt += 1;
+        // The index the GHOST was standing on, not one worked out again here.
+        // What happens is what was drawn.
+        const toAt = Math.max(0, Math.min(ids.length, d.toAt));
         ids.splice(toAt, 0, d.id);
         // Nothing moved, nothing to say.
         if (was.join() === ids.join()) return;
@@ -9324,7 +9336,7 @@
         ev.preventDefault();
         clear();
         drag = { id: card.dataset.id, card, grip, pointerId: ev.pointerId,
-                 x: ev.clientX, y: ev.clientY, moved: false, over: null };
+                 x: ev.clientX, y: ev.clientY, moved: false, over: null, toAt: -1 };
         try { grip.setPointerCapture(ev.pointerId); } catch (e){}
         // Only for the length of the gesture: a pair of window listeners per
         // render is a pair per render that never goes away.
@@ -19299,22 +19311,20 @@
   .account-ghost.is-on{ opacity: 1; }
   /* The marker is in the gutter, on the edge it will land against - not a
      hairline inside the card, which reads as "this one is selected". */
-  .savings-account.is-drop-before,
-  .savings-account.is-drop-after{ box-shadow: none; position: relative; }
-  .savings-account.is-drop-before::after,
-  .savings-account.is-drop-after::after{
-    content: ""; position: absolute; top: 0; bottom: 0; width: 3px;
+  /* One edge, because a landing slot only has one: the side the card arrives
+     at. There was an "after" variant here and nothing sets that class any more
+     now the marker sits on the slot rather than on the card being passed. */
+  .savings-account.is-drop-before{ box-shadow: none; position: relative; }
+  .savings-account.is-drop-before::after{
+    content: ""; position: absolute; top: 0; bottom: 0; left: -9px; width: 3px;
     border-radius: var(--r-pill); background: var(--accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
     z-index: 4; pointer-events: none;
   }
-  .savings-account.is-drop-before::after{ left: -9px; }
-  .savings-account.is-drop-after::after{ right: -9px; }
-  .savings-account.is-drop-stacked::after{
-    left: 0; right: 0; width: auto; height: 3px; top: auto; bottom: auto;
+  /* A card with the row to itself is approached from above, not from the side. */
+  .savings-account.is-drop-before.is-drop-stacked::after{
+    left: 0; right: 0; width: auto; height: 3px; top: -9px; bottom: auto;
   }
-  .savings-account.is-drop-before.is-drop-stacked::after{ top: -9px; }
-  .savings-account.is-drop-after.is-drop-stacked::after{ bottom: -9px; }
   .savings-account.is-dragging{ opacity: .4; }
   @media (prefers-reduced-motion: reduce){ .account-ghost{ transition: none; } }
 
