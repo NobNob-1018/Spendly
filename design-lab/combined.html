@@ -13677,7 +13677,7 @@
             const host = panel && (panel.querySelector(".bento") || panel);
             const moved = tidyBento(host, tab);
             if (typeof showToast === "function"){
-              showToast(moved ? "Tidied - " + moved + " row" + (moved === 1 ? "" : "s") + " closed up."
+              showToast(moved ? "Tidied - " + moved + " card" + (moved === 1 ? "" : "s") + " filled out."
                               : "No gaps to close.");
             }
             return;
@@ -14015,7 +14015,39 @@
           widened++;
         });
         if (widened) applySpansAndSeams(host, tab);
-        return widened;
+
+        /* And the heights. The widths above close the gap at the END of a line;
+           this closes the one UNDER a card - two side by side whose contents
+           differ, leaving the shorter one with dead space below it until the
+           next row starts.
+
+           Only here, and deliberately. Growing a card is the one direction that
+           cannot hide anything, so there is no way for this to break a card,
+           and it happens on a button somebody pressed rather than on a drag
+           somebody might not have meant. A double-click on any corner puts that
+           card back to its own contents.
+
+           Re-measured, because the widths just changed and which cards share a
+           line very likely changed with them. */
+        let levelled = 0;
+        const lines = new Map();
+        cardsIn(host).forEach(el => {
+          const top = Math.round(el.getBoundingClientRect().top);
+          if (!lines.has(top)) lines.set(top, []);
+          lines.get(top).push(el);
+        });
+        lines.forEach(line => {
+          if (line.length < 2) return;
+          const tall = line.reduce((n, el) => Math.max(n, curRows(el)), 0);
+          line.forEach(el => {
+            if (curRows(el) >= tall) return;
+            setRows(el, tall);
+            rememberFloor(tab, el, tall);
+            levelled++;
+          });
+        });
+        if (levelled) applySpansAndSeams(host, tab);
+        return widened + levelled;
       }
 
       /* Every card on the page that has a card after it, arranging or not. The
@@ -14346,6 +14378,44 @@
           const r = document.getElementById("size-readout");
           if (r) r.classList.remove("is-on");
         }
+        // What the card is called, for the readout. Its own heading, because
+        // that is what the person dragging is looking at.
+        function shortName(el){
+          const h = el.querySelector("h2, h3");
+          const t = h ? h.textContent.trim() : "";
+          return t ? (t.length > 22 ? t.slice(0, 21) + "\u2026" : t) : "the next card";
+        }
+        /* The width being asked for, drawn where the card will be. Only while
+           the ask is bigger than the row can hold - up to that point the card
+           itself is the preview, because it is being resized live. */
+        function seamPreview(){
+          let p = host.querySelector(":scope > .seam-preview");
+          if (!p){
+            p = document.createElement("div");
+            p.className = "seam-preview";
+            p.setAttribute("aria-hidden", "true");
+            host.appendChild(p);
+          }
+          return p;
+        }
+        function showSeamPreview(card, span){
+          const p = seamPreview();
+          const hostBox = host.getBoundingClientRect();
+          const box = card.getBoundingClientRect();
+          // From the grid itself rather than from a formula: twelve columns and
+          // eleven gaps, and the gap is a token that can change.
+          const gap = parseFloat(getComputedStyle(host).columnGap) || 16;
+          const col = (hostBox.width - 11 * gap) / SPAN_OF;
+          p.style.left = (box.left - hostBox.left) + "px";
+          p.style.top = (box.top - hostBox.top) + "px";
+          p.style.width = (span * col + (span - 1) * gap) + "px";
+          p.style.height = box.height + "px";
+          p.classList.add("is-on");
+        }
+        function hideSeamPreview(){
+          const p = host.querySelector(":scope > .seam-preview");
+          if (p) p.classList.remove("is-on");
+        }
 
         window.addEventListener("pointermove", ev => {
           if (!seamDrag) return;
@@ -14366,17 +14436,41 @@
             placeAllHandles(host);
             return;
           }
-          // Both floors have to hold, so neither card can be squeezed under
-          // what it needs by the other one growing.
+          /* The neighbour's floor still holds - it is never squeezed under what
+             it needs - but it is no longer a wall this card stops at. Enforcing
+             both floors DURING the drag meant that once the card beside it was
+             at its own floor there was nowhere left to go, and widening did
+             nothing at all: two cards at 6 and 6, and a frozen seam.
+
+             Past the width where they both fit, the layout is left exactly as
+             it is - a card jumping to the next row under the pointer is the
+             page rearranging itself while you are still deciding - and the
+             width being asked for is drawn as a shadow instead, with the
+             neighbour dimmed to say it is the one that will move. Released, the
+             width is committed and the neighbour goes to the next row. */
           const minB = minSpanOf(right);
-          a = Math.max(minA, Math.min(total - minB, a));
-          let b = total - a;
-          setSpan(left, a);
-          setSpan(right, b);
+          const fits = total - minB;            // widest with the pair still side by side
+          a = Math.max(minA, Math.min(SPAN_OF, a));
+          let b;
+          if (a <= fits){
+            b = total - a;
+            setSpan(left, a); setSpan(right, b);
+            seamDrag.push = false;
+            hideSeamPreview();
+            right.classList.remove("is-being-pushed");
+          } else {
+            b = minB;
+            setSpan(left, fits); setSpan(right, b);
+            seamDrag.push = true;
+            showSeamPreview(left, a);
+            right.classList.add("is-being-pushed");
+          }
           seamDrag.a = a; seamDrag.b = b;
           placeAllHandles(host);
           readout(ev.clientX + 16, ev.clientY + 16,
-            a + " \u00d7 " + (curRows(left)) + (right ? "   \u00b7   " + b + " \u00d7 " + curRows(right) : ""));
+            a + " \u00d7 " + (curRows(left)) +
+            (seamDrag.push ? "   \u00b7   pushes " + shortName(right) + " down"
+                           : "   \u00b7   " + b + " \u00d7 " + curRows(right)));
         });
         window.addEventListener("pointermove", ev => {
           if (!cornerDrag) return;
@@ -14420,14 +14514,22 @@
 
         function endSeam(ev){
           if (!seamDrag) return;
-          const { left, right, wasDraggable, a, b } = seamDrag;
+          const { left, right, wasDraggable, a, b, push } = seamDrag;
           seamDrag = null;
           hideReadout();
+          hideSeamPreview();
           document.body.classList.remove("is-seam-resizing");
+          if (right) right.classList.remove("is-being-pushed");
           left.draggable = wasDraggable;
           if (a != null){
+            // The width asked for, not the width the row could hold while the
+            // pointer was still down. The neighbour keeps its own floor and the
+            // grid takes it to the next row, which is the push, now that the
+            // person asking for it has let go.
             rememberSpan(tab, left, a);
             if (right && b != null) rememberSpan(tab, right, b);
+            if (push && typeof showToast === "function")
+              showToast(shortName(right) + " moved down to make room.");
           }
           // No height is stored. applySpansAndSeams measures it against the
           // width the card has just been given.
@@ -14495,12 +14597,23 @@
            one is used instead. Without this every drop in a gutter resolved to
            nobody and fell through to "move to the end", which is what made the
            cards feel undraggable. */
+        // The cards on the page, left to right, top to bottom. Both the side of
+        // a drop and the id to insert before are worked out from this, so they
+        // cannot disagree about what the order is.
+        function laidOut(){
+          return [...host.querySelectorAll("[data-arrange-id]")]
+            .filter(x => x.getBoundingClientRect().height > 0)
+            .map(x => x.dataset.arrangeId);
+        }
         function dropTargetAt(ev){
           const direct = ev.target.closest && ev.target.closest("[data-arrange-id]");
-          if (direct && host.contains(direct)) return direct;
+          if (direct && host.contains(direct) && direct.dataset.arrangeId !== dragCard) return direct;
           const x = ev.clientX, y = ev.clientY;
           let best = null, bestD = Infinity;
           host.querySelectorAll("[data-arrange-id]").forEach(el => {
+            // Not the card in hand. It is nought pixels from the pointer, so it
+            // won every nearest-card search and the drop resolved to no move.
+            if (el.dataset.arrangeId === dragCard) return;
             const b = el.getBoundingClientRect();
             if (!b.height) return;
             const dx = x < b.left ? b.left - x : x > b.right ? x - b.right : 0;
@@ -14518,6 +14631,11 @@
           if (!CARD_DRAG || !editing || !card){ ev.preventDefault(); return; }
           dragCard = card.dataset.arrangeId;
           card.classList.add("is-dragging");
+          // The handle overlay is at z-index 6 with pointer-events:auto on the
+          // seam and the corner, and both of those lie in the gutter a card has
+          // to be dragged across - so ev.target during the crossing was a
+          // handle, not a card.
+          host.classList.add("is-card-dragging");
           if (ev.dataTransfer){
             ev.dataTransfer.effectAllowed = "move";
             ev.dataTransfer.setData("text/plain", dragCard);
@@ -14525,6 +14643,7 @@
         });
         host.addEventListener("dragend", () => {
           dropAt = null; dropAfter = false;
+          host.classList.remove("is-card-dragging");
           hideGhost();
           host.querySelectorAll(".is-dragging").forEach(x => x.classList.remove("is-dragging"));
           host.querySelectorAll(".is-drop-before, .is-drop-after, .is-drop-stacked")
@@ -14539,16 +14658,23 @@
           host.querySelectorAll(".is-drop-before, .is-drop-after, .is-drop-stacked")
             .forEach(x => x.classList.remove("is-drop-before", "is-drop-after", "is-drop-stacked"));
           if (over && over.dataset.arrangeId !== dragCard){
-            /* WHICH SIDE of it. A card with the row to itself has neighbours
-               above and below, so the question is which half vertically; a card
-               sharing a row has them left and right. Without this, every drop
-               meant "insert before", and dropping onto the card on your right
-               put the dragged card back exactly where it already was - the
-               gesture did nothing while the toast still announced a move. */
+            /* WHICH SIDE of it, from the DIRECTION OF TRAVEL rather than from
+               which half of the target the pointer is in. The half rule is the
+               right rule for a list of small rows and the wrong one for a bento
+               of 950px cards: dragging the left card rightward, the pointer
+               enters the target at its left edge and stays in its near half for
+               most of the gesture - and the near half says "insert before this
+               one", which is where the card already was. Over a card that comes
+               later means land after it; over one that comes earlier means land
+               before it. Either way the order changes, which is what putting a
+               card down on another one means. */
             const ob = over.getBoundingClientRect();
             const stacked = ob.width > host.clientWidth - 24;
-            dropAfter = stacked ? ev.clientY > ob.top + ob.height / 2
-                                : ev.clientX > ob.left + ob.width / 2;
+            const seq = laidOut();
+            const iMe = seq.indexOf(dragCard), iOver = seq.indexOf(over.dataset.arrangeId);
+            dropAfter = (iMe >= 0 && iOver >= 0) ? iMe < iOver
+              : (stacked ? ev.clientY > ob.top + ob.height / 2
+                         : ev.clientX > ob.left + ob.width / 2);
             over.classList.add(dropAfter ? "is-drop-after" : "is-drop-before");
             if (stacked) over.classList.add("is-drop-stacked");
             // What the outline is over IS the drop. Held here rather than
@@ -14565,6 +14691,7 @@
           const id = dragCard; dragCard = null;
           const target = dropAt, after = dropAfter;
           dropAt = null; dropAfter = false;
+          host.classList.remove("is-card-dragging");
           // Both, here, now: dragend may not arrive before the rebuild below
           // replaces the list, and then nothing clears it.
           hideGhost();
@@ -14583,10 +14710,7 @@
              that reckoning because the move removes it first. */
           let beforeId = target;
           if (after){
-            const seq = [...host.querySelectorAll("[data-arrange-id]")]
-              .filter(x => x.getBoundingClientRect().height > 0)
-              .map(x => x.dataset.arrangeId)
-              .filter(x => x !== id);
+            const seq = laidOut().filter(x => x !== id);
             const at = seq.indexOf(target);
             beforeId = at < 0 ? null : (seq[at + 1] || null);
           }
@@ -15295,7 +15419,7 @@
           if (!host) return;
           const moved = tidyBento(host, tab);
           if (typeof showToast === "function"){
-            showToast(moved ? "Tidied - " + moved + " row" + (moved === 1 ? "" : "s") + " closed up."
+            showToast(moved ? "Tidied - " + moved + " card" + (moved === 1 ? "" : "s") + " filled out."
                             : "No gaps to close.");
           }
         }
@@ -18530,6 +18654,32 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   nav.tabs .nav-back{ overflow: hidden; }
+
+  /* ---------- a card in the air has the gutter to itself ------------------- */
+  /* The seam and the corner are pointer-events:auto at z-index 6, and both sit
+     in the gutter a dragged card has to cross - so what the pointer was over
+     mid-gesture was a handle rather than a card. */
+  .is-card-dragging .card-handles > *{ pointer-events: none; }
+
+  /* ---------- the width being asked for ------------------------------------ */
+  /* Drawn only past the point where the pair still fits side by side. Up to
+     there the card itself is the preview, because it is resizing live. */
+  .seam-preview{
+    position: absolute; z-index: 4; pointer-events: none;
+    border-radius: var(--r-lg);
+    border: 2px dashed var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .seam-preview.is-on{ opacity: 1; }
+  /* And the card that will move says so, rather than moving. */
+  .is-arrangeable.is-being-pushed{
+    opacity: .45;
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  @media (prefers-reduced-motion: reduce){
+    .seam-preview, .is-arrangeable.is-being-pushed{ transition: none; }
+  }
 </style>
 </body>
 </html>
