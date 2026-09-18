@@ -3624,7 +3624,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18b";
+  const APP_BUILD = "2026-09-18c";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4980,7 +4980,13 @@
     // overlay would be stranded over the whole app with nothing left to dismiss it.
     setTimeout(finish, 400);
   }
-  document.getElementById("btn-global-search").addEventListener("click", openSearchOverlay);
+  /* Delegated, not bound to the node. Bound directly it stopped working: the
+     masthead is rebuilt, the button you can press is not the button this ran
+     against, and the tap did nothing at all. Watched through a MutationObserver
+     on the overlay's class, "show" never went on once. */
+  document.addEventListener("click", e => {
+    if (e.target.closest && e.target.closest("#btn-global-search")) openSearchOverlay();
+  });
   document.getElementById("btn-close-search").addEventListener("click", closeSearchOverlay);
   document.getElementById("search-overlay").addEventListener("click", (e)=>{
     if (e.target.id === "search-overlay") closeSearchOverlay();
@@ -5519,16 +5525,31 @@
   });
 
   /* ---------- History tab: Expense / Income mode ---------- */
+  /* The panel says which of the two it is showing and the stylesheet does the
+     rest. Nothing here touches the cards themselves, because the rail does and
+     it wins. */
+  function setHistoryMode(mode){
+    const panel = document.getElementById("tab-history");
+    if (panel) panel.dataset.historyMode = mode === "income" ? "income" : "expense";
+  }
   document.querySelectorAll("#history-mode-toggle button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       document.querySelectorAll("#history-mode-toggle button").forEach(b=>b.classList.remove("active"));
       btn.classList.add("active");
       markSegmented(document.querySelectorAll("#history-mode-toggle button"), b=>b === btn);
       historyMode = btn.dataset.mode;
-      document.getElementById("history-expense-card").style.display = historyMode === "income" ? "none" : "";
-      document.getElementById("history-income-card").style.display = historyMode === "income" ? "" : "none";
+      /* ONE attribute, and a rule decides. Writing style.display here put this
+         in a race with the rail, which owns what is on a page, writes the same
+         inline display plus the hidden attribute, and runs after: measured
+         through one press, every write was undone in the same frame and the
+         income card ended up hidden by the thing meant to show it. The rule
+         that reads this attribute carries !important, which beats both. */
+      setHistoryMode(historyMode);
     });
   });
+
+  // And at boot, so the first paint agrees with the button already marked on.
+  setHistoryMode(historyMode);
 
   /* ---------- Category dropdowns ---------- */
   function renderCategoryOptions(){
@@ -16032,10 +16053,15 @@
         input.addEventListener("keydown", e => {
           if (e.key === "Escape"){ e.stopPropagation(); input.value = ""; hide(); input.blur(); }
         });
-        // A click anywhere else is a dismissal; a click inside the results is not.
+        // A click anywhere else is a dismissal; a click inside the results is
+        // not - and neither is a click on the button that OPENS it. This
+        // listener is registered long after the one that opens the overlay, so
+        // without that last clause the same tap opened it and then dismissed it
+        // as an outside click.
         document.addEventListener("click", e => {
           if (!overlay.classList.contains("show")) return;
           if (wrap.contains(e.target) || overlay.contains(e.target)) return;
+          if (e.target.closest && e.target.closest("#btn-global-search")) return;
           hide();
         });
         // The results run an action and then the app moves; the bar gets out of
@@ -16057,8 +16083,19 @@
           input.focus(); input.select();
         }, true);
 
+        /* The icon focuses the bar - but only where there IS a bar. This is a
+           capture listener with stopPropagation, so without the guard it takes
+           the click before the app sees it and the full-screen overlay never
+           opens; and below 1001px the field it focuses is display:none, so
+           focusing it does nothing either. Measured on a 390px screen: the
+           handler ran, nothing threw, "show" was never added to
+           #search-overlay, and the search quietly rendered three results into
+           a hidden panel.
+
+           Same guard, same reason, as the "/" handler above it. */
         const icon = document.getElementById("btn-global-search");
         if (icon) icon.addEventListener("click", e => {
+          if (input.offsetParent === null) return;   // no bar here: it is the overlay's click
           e.preventDefault(); e.stopPropagation(); input.focus();
         }, true);
       })();
@@ -19543,6 +19580,45 @@
 
     /* The pagination bar was sized to sit under a wide table. */
     #tab-history .pagination-bar{ flex-wrap: wrap; gap: var(--sp-4); }
+  }
+
+  /* ---------- History shows one of its two lists ---------------------------- */
+  /* The mode used to set style.display on these two cards, and lost: the rail
+     owns [data-rail-block], writes the same inline display and the hidden
+     attribute from its own record, and runs after. Measured through one press
+     of Income, all of the toggle's writes were reverted inside a frame.
+
+     !important on both halves, because the losing side has to beat an inline
+     display AND a hidden attribute. */
+  #tab-history[data-history-mode="expense"] #history-income-card,
+  #tab-history[data-history-mode="income"] #history-expense-card{
+    display: none !important;
+  }
+  #tab-history[data-history-mode="expense"] #history-expense-card,
+  #tab-history[data-history-mode="income"] #history-income-card{
+    display: block !important;
+  }
+
+  /* ====================================================================== */
+  /* THE TAG BREAKDOWN ON A PHONE. Nothing here applies above 720px.        */
+  /* ====================================================================== */
+  @media (max-width: 720px){
+    /* Four columns whose minimums add up to 319px in a 308px box: 96 for the
+       name, 80 for the rail, then the total and the dots at their own width,
+       plus 30 of gap. Every row hung 11px out of the card. Those floors are
+       right on a desktop card and impossible here, so the row becomes three
+       lines instead. */
+    .tg-row{
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "name  total"
+        "rail  rail"
+        "meta  cats";
+      gap: var(--sp-3) var(--sp-4);
+      align-items: center;
+    }
+    .tg-meta{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tg-cats{ justify-content: flex-end; }
   }
 </style>
 </body>
