@@ -9151,7 +9151,7 @@
       // A workspace card leads with the figure and its share, because the
       // comparison between accounts is the thing being looked at.
       return `
-        <div class="savings-account" data-id="${a.id}" draggable="true">
+        <div class="savings-account" data-id="${a.id}">
           <div class="sa-head">
             <span class="sa-grip" aria-hidden="true" title="Drag to reorder"></span>
             <span class="sa-name">${escapeHtml(a.provider)}</span>
@@ -9196,72 +9196,94 @@
     (function wireAccountOrder(){
       const list = wrap.querySelector(".savings-list");
       if (!list) return;
-      let from = null;
-      /* Almost all of a savings card is <input>, and pressing an input focuses
-         it and starts a text selection rather than a drag - so a card that is
-         draggable everywhere is a card you cannot pick up anywhere you would
-         naturally press. Only the grip picks it up, and in a row - where the
-         head is display:contents and a grip would auto-place into whatever grid
-         track was free - the name does.
+      /* POINTER events, not native drag-and-drop. Three goes at this with
+         dragstart/dragover/drop all measured as working against synthetic
+         DragEvents and none of them moved a card in the real browser - because
+         native DnD does not start from touch at all, it cancels the pointer
+         sequence when it does start, and it cannot be driven from the pane I
+         test in. The bento's seam and corner have worked from the first try,
+         and they are pointer events with setPointerCapture. So is this now.
 
-         The `draggable` ATTRIBUTE is never touched. Toggling it on pointerdown
-         and off again was the first attempt, and it aborted every drag it
-         allowed: starting a native drag cancels the pointer sequence, the
-         browser fires pointercancel at that moment, and the handler listening
-         for it set draggable back to false on the element being dragged - so
-         dragstart fired, .is-dragging went on, the session died, and dragend
-         never came to take the class off. Three cards left dark, one per
-         attempt.
+         Almost all of a savings card is <input>, and pressing an input focuses
+         it rather than picking the card up, so only the grip starts a drag -
+         and in a row, where the head is display:contents and a grip would
+         auto-place into whatever grid track was free, the name does. */
+      let drag = null;
+      const clear = () => list.querySelectorAll(".is-dragging, .is-drop-before")
+        .forEach(x => x.classList.remove("is-dragging", "is-drop-before"));
 
-         Where the press landed is remembered instead, and dragstart decides.
-         preventDefault() there cancels cleanly, before any class is added, and
-         a stale value can only ever allow a drag - never abort one. */
-      let grabbed = false;
-      list.addEventListener("pointerdown", ev => {
-        grabbed = !!ev.target.closest(".sa-grip, .sa-name");
-        // Anything left dark by an aborted drag heals here rather than staying
-        // dark until the next render.
-        list.querySelectorAll(".is-dragging, .is-drop-before")
-          .forEach(x => x.classList.remove("is-dragging", "is-drop-before"));
-      });
-      list.addEventListener("dragstart", ev => {
-        const card = ev.target.closest(".savings-account");
-        if (!card || !grabbed){ ev.preventDefault(); return; }
-        from = card.dataset.id;
-        card.classList.add("is-dragging");
-        if (ev.dataTransfer){ ev.dataTransfer.effectAllowed = "move";
-          ev.dataTransfer.setData("text/plain", from); }
-      });
-      list.addEventListener("dragend", () => {
-        from = null; grabbed = false;
-        list.querySelectorAll(".is-dragging, .is-drop-before")
-          .forEach(x => x.classList.remove("is-dragging", "is-drop-before"));
-      });
-      list.addEventListener("dragover", ev => {
-        if (!from) return;
+      // A captured pointer sends its events to the grip whatever it is over, so
+      // what is underneath has to be asked for directly.
+      const cardUnder = (x, y) => {
+        const el = document.elementFromPoint(x, y);
+        const c = el && el.closest ? el.closest(".savings-account") : null;
+        return c && list.contains(c) ? c : null;
+      };
+
+      const onMove = ev => {
+        if (!drag || ev.pointerId !== drag.pointerId) return;
+        if (!drag.moved){
+          // Five pixels, so a click on the grip is still a click.
+          if (Math.abs(ev.clientX - drag.x) + Math.abs(ev.clientY - drag.y) < 5) return;
+          drag.moved = true;
+          drag.card.classList.add("is-dragging");
+          document.body.classList.add("is-account-dragging");
+        }
         ev.preventDefault();
-        const over = ev.target.closest(".savings-account");
+        const over = cardUnder(ev.clientX, ev.clientY);
         list.querySelectorAll(".is-drop-before").forEach(x => x.classList.remove("is-drop-before"));
-        if (over && over.dataset.id !== from) over.classList.add("is-drop-before");
-      });
-      list.addEventListener("drop", ev => {
-        if (!from) return;
-        ev.preventDefault();
-        const over = ev.target.closest(".savings-account");
-        const id = from; from = null; grabbed = false;
-        list.querySelectorAll(".is-dragging, .is-drop-before")
-          .forEach(x => x.classList.remove("is-dragging", "is-drop-before"));
-        // The outline is the drop, here as on the bento: released over nothing,
-        // nothing happens.
-        if (!over || over.dataset.id === id) return;
+        drag.over = (over && over.dataset.id !== drag.id) ? over : null;
+        if (drag.over) drag.over.classList.add("is-drop-before");
+      };
+
+      const onEnd = ev => {
+        if (!drag || (ev && ev.pointerId != null && ev.pointerId !== drag.pointerId)) return;
+        const d = drag; drag = null;
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onEnd);
+        window.removeEventListener("pointercancel", onEnd);
+        try { d.grip.releasePointerCapture(d.pointerId); } catch (e){}
+        document.body.classList.remove("is-account-dragging");
+        clear();
+        // Moved nowhere, or released over nothing: nothing happens.
+        if (!d.moved || !d.over) return;
+        /* DIRECTION OF TRAVEL, not "insert before". The splice puts the card in
+           front of the one it was dropped on, so dropping a card on the
+           neighbour to its right put it back exactly where it started - and the
+           toast said it had moved, because it never looked. The bento had the
+           same bug and the same answer: onto a card that comes later means land
+           after it, onto one that comes earlier means land before it. */
         const ids = [...list.querySelectorAll(".savings-account")].map(x => x.dataset.id);
-        const at = ids.indexOf(id);
+        const was = ids.slice();
+        const at = ids.indexOf(d.id);
+        const overAt = ids.indexOf(d.over.dataset.id);
+        const after = at >= 0 && overAt >= 0 && at < overAt;
         if (at >= 0) ids.splice(at, 1);
-        const to = ids.indexOf(over.dataset.id);
-        ids.splice(to < 0 ? ids.length : to, 0, id);
+        let toAt = ids.indexOf(d.over.dataset.id);
+        if (toAt < 0) toAt = ids.length; else if (after) toAt += 1;
+        ids.splice(toAt, 0, d.id);
+        // Nothing moved, nothing to say.
+        if (was.join() === ids.join()) return;
         setUiPref("savingsOrder", ids);
         renderSavingsList();
         if (typeof showToast === "function") showToast("Accounts reordered.");
+      };
+
+      list.addEventListener("pointerdown", ev => {
+        if (ev.button !== 0) return;
+        const grip = ev.target.closest(".sa-grip, .sa-name");
+        const card = ev.target.closest(".savings-account");
+        if (!grip || !card || !list.contains(card)) return;
+        ev.preventDefault();
+        clear();
+        drag = { id: card.dataset.id, card, grip, pointerId: ev.pointerId,
+                 x: ev.clientX, y: ev.clientY, moved: false, over: null };
+        try { grip.setPointerCapture(ev.pointerId); } catch (e){}
+        // Only for the length of the gesture: a pair of window listeners per
+        // render is a pair per render that never goes away.
+        window.addEventListener("pointermove", onMove, { passive: false });
+        window.addEventListener("pointerup", onEnd);
+        window.addEventListener("pointercancel", onEnd);
       });
     })();
 
@@ -19151,6 +19173,21 @@
      item and centred itself. It takes the free space now, which is what
      space-between was doing for it by accident. */
   .savings-account .sa-head .sa-name{ flex: 1 1 auto; min-width: 0; text-align: left; }
+
+  /* ---------- picking an account up is a pointer gesture ------------------- */
+  /* No text selection anywhere while one is in the air, and no page panning
+     when the gesture is a finger. */
+  body.is-account-dragging{ user-select: none; -webkit-user-select: none; cursor: grabbing; }
+  .sa-grip{ touch-action: none; }
+  body.list-as-rows .sa-name{ touch-action: none; }
+
+  /* ---------- the board is bigger than the cards in it --------------------- */
+  /* 24px of padding put the first card 26px inside a 1118px board, which reads
+     as a card sitting ON the container rather than in it. The board is the
+     thing that says these belong together, so it has to be visible around
+     them. Savings, loans and investments all use .is-board. */
+  .card.is-board{ padding: var(--sp-11); }
+  @media (max-width: 720px){ .card.is-board{ padding: var(--sp-7); } }
 </style>
 </body>
 </html>
