@@ -28,7 +28,16 @@ if (od !== cd) bad++;
 //    or from script, so both of those count as definitions.
 const defs = new Set([...s.matchAll(/(--[\w-]+)\s*:/g)].map(m => m[1]));
 [...s.matchAll(/setProperty\(\s*["'](--[\w-]+)/g)].forEach(m => defs.add(m[1]));
-const missing = [...new Set([...s.matchAll(/var\((--[\w-]+)/g)].map(m => m[1]))].filter(u => !defs.has(u));
+// A var() that carries a FALLBACK has a defined outcome whatever happens to the
+// token - var(--w,100%) is a width of 100% when nothing sets --w - so it is not
+// an undefined variable. What this check is for is a BARE var(--x) whose token
+// was renamed or deleted out from under it, and that is still caught. The old
+// file had no fallback form anywhere, which is why this only surfaced when the
+// redesign became the app.
+const bare = [...new Set([...s.matchAll(/var\((--[\w-]+)\s*([,)])/g)]
+  .filter(m => m[2] === ")")
+  .map(m => m[1]))];
+const missing = bare.filter(u => !defs.has(u));
 console.log("  css vars: " + defs.size + " defined, " + missing.length + " undefined" +
             (missing.length ? " -> " + missing.join(", ") : ""));
 if (missing.length) bad++;
@@ -44,7 +53,11 @@ console.log("  malformed var() concat: " + concat + " | circular tokens: " + cir
 if (concat || circular || emptied) bad++;
 
 // 4. Money invariant: every mutation must go through round2().
-const js = (s.match(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/) || [, ""])[1];
+// EVERY inline script, not the first one. The first used to be the app; in the
+// redesign it is a 541-byte bootstrap that sets the edition before the first
+// paint, and reading only that reported 0 movers in a file that has 42.
+const js = [...s.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)]
+  .map(m => m[1]).join("\n");
 const deposits = (js.match(/depositToSavings\(/g) || []).length;
 const withdraws = (js.match(/withdrawFromSavings\(/g) || []).length;
 console.log("  money movers: depositToSavings " + deposits + " / withdrawFromSavings " + withdraws);
