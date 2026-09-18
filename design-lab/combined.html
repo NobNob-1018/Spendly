@@ -9151,8 +9151,9 @@
       // A workspace card leads with the figure and its share, because the
       // comparison between accounts is the thing being looked at.
       return `
-        <div class="savings-account" data-id="${a.id}" draggable="true">
+        <div class="savings-account" data-id="${a.id}" draggable="false">
           <div class="sa-head">
+            <span class="sa-grip" aria-hidden="true" title="Drag to reorder"></span>
             <span class="sa-name">${escapeHtml(a.provider)}</span>
             <button class="row-action row-action-danger" data-action="delete" title="Remove" aria-label="Remove">✕</button>
           </div>
@@ -9196,6 +9197,25 @@
       const list = wrap.querySelector(".savings-list");
       if (!list) return;
       let from = null;
+      /* Almost all of a savings card is <input>, and pressing an input focuses
+         it and starts a text selection rather than a drag - so a card that is
+         draggable everywhere is a card you cannot pick up anywhere you would
+         naturally press. It is draggable="false" until the pointer goes down on
+         the grip, and false again the moment the gesture ends.
+
+         In a row the head is display:contents and a grip would auto-place into
+         whatever grid track was free, so there the name is the grab. */
+      const arm = ev => {
+        const hold = ev.target.closest(".sa-grip, .sa-name");
+        const card = ev.target.closest(".savings-account");
+        if (!card) return;
+        card.draggable = !!hold;
+      };
+      list.addEventListener("pointerdown", arm);
+      const disarm = () => list.querySelectorAll('.savings-account[draggable="true"]')
+        .forEach(c => { c.draggable = false; });
+      list.addEventListener("pointerup", disarm);
+      window.addEventListener("pointercancel", disarm);
       list.addEventListener("dragstart", ev => {
         const card = ev.target.closest(".savings-account");
         if (!card){ ev.preventDefault(); return; }
@@ -9206,6 +9226,7 @@
       });
       list.addEventListener("dragend", () => {
         from = null;
+        disarm();
         list.querySelectorAll(".is-dragging, .is-drop-before")
           .forEach(x => x.classList.remove("is-dragging", "is-drop-before"));
       });
@@ -19079,6 +19100,46 @@
   body:not(.list-as-rows) .loan-card.is-closed .row-action-bar{
     margin-top: auto; padding-top: var(--sp-7);
   }
+
+  /* ---------- an account you can actually pick up -------------------------- */
+  /* The card was draggable over its whole surface, and almost all of that
+     surface is <input> - which focuses and selects on press rather than
+     dragging. So the card could only be picked up by its title or by the gaps
+     between its fields, and nothing said so. One grip, in the head, and it is
+     the only thing that starts a drag. */
+  .sa-grip{
+    flex: 0 0 auto; align-self: center;
+    width: 10px; height: 16px; margin-right: var(--sp-1);
+    background-image: radial-gradient(currentColor 1px, transparent 1px);
+    background-size: 4px 4px; background-position: 0 2px;
+    color: var(--ink-dim); opacity: .55;
+    cursor: grab; touch-action: none;
+    transition: opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){
+    .savings-account:hover .sa-grip{ opacity: .9; }
+    .sa-grip:hover{ opacity: 1; color: var(--accent); }
+  }
+  .savings-account.is-dragging .sa-grip{ cursor: grabbing; }
+  /* The head is display:contents in a row, so its children are grid items with
+     their own cells - a grip there lands in whatever track happens to be free.
+     The row is picked up by its name instead, and the grip returns below 900px
+     where the head is a flex box again. */
+  body.list-as-rows .sa-grip{ display: none; }
+  @media (max-width: 900px){
+    body.list-as-rows .sa-grip{ display: block; }
+  }
+  /* The name is a grab in both views, and says so where it is the only one. */
+  body.list-as-rows .sa-name{ cursor: grab; }
+  body.list-as-rows .savings-account.is-dragging .sa-name{ cursor: grabbing; }
+  @media (prefers-reduced-motion: reduce){ .sa-grip{ transition: none; } }
+
+  /* ---------- and the name still leads the head --------------------------- */
+  /* .sa-head is space-between, which held the name left and the ✕ right while
+     there were two of them. With a grip in front the name became the middle
+     item and centred itself. It takes the free space now, which is what
+     space-between was doing for it by accident. */
+  .savings-account .sa-head .sa-name{ flex: 1 1 auto; min-width: 0; text-align: left; }
 </style>
 </body>
 </html>
