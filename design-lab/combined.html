@@ -473,6 +473,13 @@
   .settings-nav{
     max-width:100%; overflow-x:auto; overflow-y:hidden;
     scrollbar-width:none; flex-wrap:nowrap;
+    /* SIDEWAYS IS MINE, UP AND DOWN IS THE PAGE'S. A vertical drag that starts
+       inside a horizontal scroll container is not reliably chained out to the
+       page, and this row sits at the top of the screen - exactly where a thumb
+       starts a downward drag. The gesture was swallowed and the page sprang
+       back to the top. Invisible under a mouse: a wheel over the same screen
+       scrolled and stayed put. */
+    touch-action: pan-x;
   }
   .settings-nav::-webkit-scrollbar{ display:none; }
   .settings-nav > button{ flex:0 0 auto; }
@@ -3604,7 +3611,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18i";
+  const APP_BUILD = "2026-09-18j";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -15960,7 +15967,12 @@
           '</div>' +
 
           (lines.length
-            ? '<div class="av-lines">' + lines.map(l =>
+            /* Newest first, like every other list here - what you open an
+               account to see is what just happened. The balances are still
+               worked backwards from what it holds now, so each line still shows
+               what the account held once that line had happened; only the order
+               they are read in changes. */
+            ? '<div class="av-lines">' + lines.slice().reverse().map(l =>
                 '<div class="av-line is-' + (l.amt >= 0 ? "in" : "out") + '">' +
                   '<span class="av-date">' + escapeHtml(fmtDate(l.date)) + '</span>' +
                   '<span class="av-node" aria-hidden="true"></span>' +
@@ -21190,7 +21202,12 @@
        that nothing selecting "#tab-history tbody tr" - the tap target, the long
        press, the swipe, the sheet - has to learn to skip it. */
     #tab-history tbody tr[data-day]{ position: relative; margin-top: 42px; }
-    #tab-history tbody tr[data-day]:first-child{ margin-top: 26px; }
+    /* 27 of this is the lift - the heading is painted that far above its row -
+       so 26 left it one pixel INSIDE the control above it: measured, the date
+       filter ended at 323 and "TODAY" started at 322. 52 leaves 25px of air,
+       and the first heading wants a little more than the 15 between groups
+       because what is above it is a control rather than another row. */
+    #tab-history tbody tr[data-day]:first-child{ margin-top: 52px; }
     #tab-history tbody tr[data-day]::before,
     #tab-history tbody tr[data-day]::after{
       position: absolute; top: -27px;
