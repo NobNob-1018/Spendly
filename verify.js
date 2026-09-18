@@ -16,10 +16,26 @@ let bad = 0;
   catch (e) { bad++; console.error("  script @line " + line + ": PARSE ERROR -> " + e.message); }
 });
 
-const css = (s.match(/<style>([\s\S]*?)<\/style>/) || [, ""])[1];
-const ob = (css.match(/{/g) || []).length, cb = (css.match(/}/g) || []).length;
-console.log("  CSS braces " + ob + "/" + cb + " " + (ob === cb ? "balanced" : "UNBALANCED"));
+// EVERY style block, not the first one. This read `s.match(/<style>...</style>/)`
+// - one match, non-greedy, so it stopped at the first </style> - and the file has
+// had two blocks since the redesign became the app: the original sheet at line 38
+// and the redesign layer at 16499. The second one holds the whole /ui layer and
+// everything added to it since, and it was never brace-checked. The count gave it
+// away: 1228 before a change that added forty rules, and 1228 after.
+const blocks = [...s.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]);
+let ob = 0, cb = 0;
+blocks.forEach((css, i) => {
+  const o = (css.match(/{/g) || []).length, c = (css.match(/}/g) || []).length;
+  ob += o; cb += c;
+  if (o !== c) console.error("  style block " + (i + 1) + ": " + o + "/" + c + " UNBALANCED");
+});
+console.log("  CSS braces " + ob + "/" + cb + " across " + blocks.length +
+            " block" + (blocks.length === 1 ? "" : "s") + " " +
+            (ob === cb ? "balanced" : "UNBALANCED"));
 if (ob !== cb) bad++;
+// The token-damage checks below read this, and they were looking at the first
+// block only for the same reason. All of it, now.
+const css = blocks.join("\n");
 const od = (s.match(/<div\b/g) || []).length, cd = (s.match(/<\/div>/g) || []).length;
 console.log("  divs " + od + "/" + cd + " " + (od === cd ? "balanced" : "UNBALANCED"));
 if (od !== cd) bad++;

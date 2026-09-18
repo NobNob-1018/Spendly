@@ -3527,7 +3527,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18c";
+  const APP_BUILD = "2026-09-18d";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -16040,6 +16040,466 @@
       paintListControls();
     })();
 
+    /* ======================================================================
+       THE ROW IS THE INDEX; THE SHEET IS THE RECORD
+
+       A list row shows what you scan by. Everything else opens here: every
+       field of the record, read-only, and a pencil that turns the sheet into
+       the editor.
+
+       The editor does not rebuild the controls. It BORROWS the row's own and
+       puts them back afterwards. Rebuilding them would mean a second copy of
+       every write path, and one of those paths moves money - the loan status
+       select runs applyLoanStatusChange, which debits or credits the linked
+       account, and balance-audit.js counts the movers across this file to keep
+       that honest. Borrowing keeps one path, already written and already
+       audited.
+       ====================================================================== */
+    (function itemSheet(){
+      "use strict";
+
+      const ROW_SEL = ".loan-card, .savings-account, .inv-card";
+
+      /* The three lists name their controls three ways - loans put the meaning
+         in data-action, investments in data-field, savings notes in
+         data-note-field - so every query here covers all three. Written for the
+         loan row alone, the sheet offered an investment no way to change its
+         kind or its account and a savings account no note at all, and nothing
+         threw: the selectors just matched nothing. */
+      const CTL_SEL = "input[data-field], select[data-action], select[data-field], " +
+                      "textarea[data-field], textarea[data-note-field]";
+      const pick = (row, name, value) =>
+        row.querySelector('[data-action="' + value + '"]') ||
+        row.querySelector('[data-field="' + value + '"]');
+
+      const LABEL = {
+        status: "Status", bank: "Account", category: "Kind",
+        deadline: "Deadline", notes: "Note", name: "Name",
+        amount: "Amount", rate: "Rate", taxRate: "Tax",
+        autoInterest: "Post interest automatically",
+        projectedPrice: "Projected price", actualSoldPrice: "Sold for",
+        feePercent: "Fee",
+        tierCap: "Tier up to", tierOverRate: "Rate above the tier"
+      };
+      const pretty = k => LABEL[k] ||
+        String(k || "Field").replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase());
+
+      const txt = (root, sel) => {
+        const e = root && root.querySelector(sel);
+        return e ? e.textContent.trim().replace(/\s+/g, " ") : "";
+      };
+      const chosen = sel => (sel && sel.options[sel.selectedIndex])
+        ? sel.options[sel.selectedIndex].text.trim() : "";
+
+      /* What a field is dressed in says what kind of number it holds: a
+         currency mark in front of it is money, a per-cent sign after it is a
+         rate. One place decides, because the read view has to say it the same
+         way wherever on the row the field happens to sit. */
+      function shownValue(input){
+        if (!input.value) return "\u2014";
+        const box = input.parentElement;
+        const lead  = (box && box.classList.contains("amount-wrap")) ? txt(box, "span") : "";
+        const trail = (box && box.classList.contains("sa-inline"))   ? txt(box, "span") : "";
+        const n = parseFloat(input.value);
+        if (lead && isFinite(n)) return fmtMoney(n);
+        return lead + input.value + trail;
+      }
+
+      function kickerOf(row){
+        if (row.classList.contains("savings-account")) return "Savings account";
+        if (row.classList.contains("inv-card")) return "Investment";
+        return row.closest("#loans-taken-table-wrap") ? "Money you borrowed" : "Money you lent";
+      }
+      function titleOf(row){
+        if (row.classList.contains("savings-account")) return txt(row, ".sa-name");
+        if (row.classList.contains("inv-card")){
+          const n = row.querySelector(".inv-title-input");
+          return (n && n.value.trim()) || "Investment";
+        }
+        return txt(row, ".loan-who");
+      }
+      function subOf(row){
+        if (row.classList.contains("savings-account")){
+          const share = txt(row, ".sv-metric-share");
+          return txt(row, ".sv-metric-value") + (share ? " \u00b7 " + share + " of savings" : "");
+        }
+        if (row.classList.contains("inv-card")) return txt(row, ".pl-figure");
+        const st = row.querySelector('select[data-action="status"]');
+        return txt(row, ".loan-amt") + (chosen(st) ? " \u00b7 " + chosen(st) : "");
+      }
+
+      /* Every fact on the record, read off the row itself rather than out of
+         storage - so the sheet cannot disagree with what the app just drew. */
+      function describe(row){
+        const out = [];
+        const said = new Set();
+        /* The first way a fact is said wins. The balance is on the row as a
+           formatted figure and again in the field that edits it, so without
+           this the sheet read "Balance P39,501.00" and then "Balance P39501". */
+        const push = (k, v) => {
+          k = (k || "").trim();
+          v = (v == null ? "" : String(v)).trim();
+          if (!v || (k && said.has(k))) return;
+          if (k) said.add(k);
+          out.push({ k: k, v: v });
+        };
+
+        push("Amount", txt(row, ".loan-amt"));
+        push("Balance", txt(row, ".sv-metric-value"));
+        push("Share of savings", txt(row, ".sv-metric-share"));
+
+        const st = pick(row, "action", "status");
+        push("Status", st ? chosen(st) : txt(row, ".status-pill"));
+        push("Logged", txt(row, ".loan-logged"));
+
+        const kind = pick(row, "field", "category");
+        if (kind) push("Kind", chosen(kind));
+
+        const stand = row.querySelector(".inv-standing-row");
+        if (stand){
+          const pct = txt(stand, ".inv-standing-pct");
+          push(txt(stand, ".inv-standing-label") || "Standing",
+               txt(stand, ".pl-figure") + (pct ? " \u00b7 " + pct : ""));
+        }
+
+        row.querySelectorAll(".sv-kpi").forEach(k =>
+          push(txt(k, ".label"), txt(k, ".value")));
+
+        /* A field carries its own label, its own currency mark and, where it is
+           a rate, its own per-cent sign. All three are read, so "0.0625" comes
+           back as a rate and not as a number. */
+        row.querySelectorAll(".sa-field").forEach(f => {
+          const input = f.querySelector("input");
+          if (!input) return;
+          /* An investment's projected TOTAL and its projected PRICE both wear
+             the label "Projected", and only one of them can have it. */
+          const named = input.getAttribute("data-field") === "projectedPrice"
+            ? "Projected price" : txt(f, "label");
+          push(named, shownValue(input));
+        });
+
+        /* And everything named that is NOT in one of those blocks. A savings
+           tier is a sentence - "Up to [P100000] then [1.5]%" - made of two bare
+           inputs, so walking .sa-field alone showed the tier in the editor and
+           nowhere in the facts. A field the app lets you change and never shows
+           you is worse than one it does not offer. */
+        row.querySelectorAll("input[data-field]").forEach(input => {
+          if (input.closest(".sa-field")) return;         // already said, with its own label
+          if (input.type === "checkbox" || input.type === "radio") return;
+          const f = input.getAttribute("data-field");
+          // These four have a line of their own, below or above.
+          if (f === "name" || f === "notes" || f === "deadline" || f === "payment") return;
+          push(pretty(f), shownValue(input));
+        });
+
+        const dl = row.querySelector('input[data-field="deadline"]');
+        if (dl) push("Deadline", dl.value ? fmtDate(dl.value) : "None set");
+        const band = txt(row, ".deadline-note");
+        if (band) push("Due", band);
+
+        const bank = pick(row, "action", "bank");
+        if (bank) push("Account", chosen(bank));
+
+        const auto = row.querySelector('input[data-field="autoInterest"]');
+        if (auto) push("Post interest automatically", auto.checked ? "Yes" : "No");
+
+        row.querySelectorAll(".loan-chip:not(.is-bank)").forEach(c =>
+          push("Also", c.textContent.trim().replace(/\s+/g, " ")));
+
+        const note = row.querySelector('textarea[data-field="notes"], textarea[data-note-field="notes"]');
+        const read = txt(row, ".loan-note-read");
+        push("Note", (note && note.value.trim()) ||
+                     (read && !/^No note/i.test(read) ? read : "") || "\u2014");
+        return out;
+      }
+
+      /* ---------- the overlay ---------------------------------------------- */
+      let sheet = null, openRow = null, openId = "", editing = false;
+      let borrowed = [], returnFocusTo = null, watcher = null, settle = 0;
+
+      function build(){
+        if (sheet) return sheet;
+        sheet = document.createElement("div");
+        sheet.className = "drill item-sheet";
+        sheet.id = "item-sheet";
+        sheet.innerHTML =
+          '<div class="drill-panel" role="dialog" aria-modal="true" aria-labelledby="item-sheet-title">' +
+            '<div class="drill-head">' +
+              '<div class="sheet-head-text">' +
+                '<p class="drill-kicker"></p>' +
+                '<h2 class="drill-title" id="item-sheet-title"></h2>' +
+                '<p class="drill-sub"></p>' +
+              '</div>' +
+              '<div class="sheet-head-acts">' +
+                '<button type="button" class="row-action sheet-edit" aria-pressed="false" title="Edit" aria-label="Edit">' +
+                  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>' +
+                '</button>' +
+                '<button type="button" class="btn btn-ghost btn-sm sheet-close">Close</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="drill-body"></div>' +
+          '</div>';
+        document.body.appendChild(sheet);
+
+        sheet.addEventListener("pointerdown", e => { if (e.target === sheet) close(); });
+        sheet.querySelector(".sheet-close").addEventListener("click", close);
+        sheet.querySelector(".sheet-edit").addEventListener("click", () => {
+          editing = !editing;
+          paint();
+        });
+        document.addEventListener("keydown", e => {
+          if (!sheet.classList.contains("show")) return;
+          if (e.key === "Escape"){ e.preventDefault(); close(); return; }
+          if (e.key !== "Tab") return;
+          /* A modal that lets Tab walk out of it is a modal over a page you
+             cannot see and can still reach. */
+          const stops = [...sheet.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+            .filter(el => el.offsetParent !== null && !el.disabled);
+          if (!stops.length) return;
+          const first = stops[0], last = stops[stops.length - 1];
+          if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+        });
+        return sheet;
+      }
+
+      /* ---------- borrowing, and giving back -------------------------------- */
+      function borrow(node){
+        borrowed.push({
+          node: node,
+          parent: node.parentNode,
+          next: node.nextSibling,
+          wasCollapsed: node.classList.contains("is-collapsed")
+        });
+        node.classList.add("sheet-ctl");
+        node.classList.remove("is-collapsed");
+        return node;
+      }
+      function giveBack(){
+        borrowed.slice().reverse().forEach(b => {
+          b.node.classList.remove("sheet-ctl");
+          if (b.wasCollapsed) b.node.classList.add("is-collapsed");
+          /* Only if the place it came from is still on the page. After a
+             re-render it is not, and the node goes with the old row. */
+          if (!b.parent || !document.contains(b.parent)) return;
+          const at = (b.next && b.next.parentNode === b.parent) ? b.next : null;
+          b.parent.insertBefore(b.node, at);
+        });
+        borrowed = [];
+      }
+
+      function labelFor(ctl){
+        return ctl.getAttribute("aria-label") ||
+               pretty(ctl.getAttribute("data-field") ||
+                      ctl.getAttribute("data-action") ||
+                      ctl.getAttribute("data-note-field"));
+      }
+
+      function buildRead(body, row){
+        const dl = document.createElement("dl");
+        dl.className = "sheet-facts";
+        describe(row).forEach(f => {
+          const dt = document.createElement("dt");
+          dt.textContent = f.k;
+          const dd = document.createElement("dd");
+          dd.textContent = f.v;
+          dl.appendChild(dt); dl.appendChild(dd);
+        });
+        body.appendChild(dl);
+      }
+
+      function buildEdit(body, row){
+        /* A settled loan hands its controls out disabled and keeps one button
+           that enables them. Without this the sheet opens on a row of fields
+           that cannot be typed in. */
+        const unlock = row.querySelector('[data-action="unlock"]');
+        if (unlock && !row.classList.contains("is-editing")) unlock.click();
+
+        const units = [];
+        const add = (node, label) => {
+          if (!node) return;
+          if (units.some(u => u.node === node || u.node.contains(node))) return;
+          units.push({ node: node, label: label });
+        };
+        /* closest() walks up without a ceiling, and this row is inside things
+           that match the same selectors - the loans card sits in the very
+           .collapsible-body its Collapse button opens. Unguarded, the first
+           control returned that wrapper and the sheet borrowed the entire
+           panel, list and filter bar included: one field, 196 controls. A unit
+           is part of the record, so it has to be inside the row. */
+        const within = (node, sel) => {
+          const found = node.closest(sel);
+          return (found && row.contains(found) && found !== row) ? found : null;
+        };
+        row.querySelectorAll(CTL_SEL)
+          .forEach(ctl => {
+            /* A field block carries its own label and its own currency mark, so
+               it travels whole; a note panel travels whole because the button
+               that saves it looks for the textarea inside it. */
+            const field = within(ctl, ".sa-field");
+            if (field){ add(field, null); return; }
+            const panel = within(ctl, ".collapsible-body");
+            if (panel){
+              add(panel, panel.hasAttribute("data-payment-panel") ? "Log a payment" : "Note");
+              return;
+            }
+            add(ctl, labelFor(ctl));
+          });
+
+        units.forEach(u => {
+          const box = document.createElement("div");
+          box.className = "sheet-field";
+          if (u.label){
+            const k = document.createElement("span");
+            k.className = "sheet-field-k";
+            k.textContent = u.label;
+            box.appendChild(k);
+          }
+          box.appendChild(borrow(u.node));
+          body.appendChild(box);
+        });
+
+        const foot = document.createElement("div");
+        foot.className = "sheet-foot";
+        const bar = row.querySelector(".row-action-bar");
+        if (bar) foot.appendChild(borrow(bar));
+        const del = row.querySelector(".row-action-danger");
+        if (del) foot.appendChild(borrow(del));
+        if (foot.children.length) body.appendChild(foot);
+
+        if (!units.length && !foot.children.length){
+          const p = document.createElement("p");
+          p.className = "hint";
+          p.textContent = "There is nothing on this one to change.";
+          body.appendChild(p);
+        }
+      }
+
+      function paint(){
+        const row = openRow;
+        if (!row) return;
+        giveBack();
+        sheet.querySelector(".drill-kicker").textContent = kickerOf(row);
+        sheet.querySelector(".drill-title").textContent = titleOf(row) || "Entry";
+        sheet.querySelector(".drill-sub").textContent = subOf(row);
+        const body = sheet.querySelector(".drill-body");
+        body.innerHTML = "";
+        if (editing) buildEdit(body, row); else buildRead(body, row);
+        const pencil = sheet.querySelector(".sheet-edit");
+        pencil.setAttribute("aria-pressed", editing ? "true" : "false");
+        pencil.title = editing ? "Done" : "Edit";
+        pencil.setAttribute("aria-label", pencil.title);
+        sheet.classList.toggle("is-editing", editing);
+      }
+
+      function open(row){
+        build();
+        returnFocusTo = document.activeElement;
+        openRow = row;
+        openId = row.dataset.id || "";
+        editing = false;
+        paint();
+        sheet.classList.add("show");
+        watch(true);
+        sheet.querySelector(".sheet-close").focus();
+      }
+      function close(){
+        if (!sheet) return;
+        giveBack();
+        sheet.classList.remove("show");
+        watch(false);
+        openRow = null; openId = ""; editing = false;
+        if (returnFocusTo && document.contains(returnFocusTo)) returnFocusTo.focus();
+        returnFocusTo = null;
+      }
+
+      /* ---------- the list is rebuilt under it ------------------------------ */
+      /* Anything acted on re-renders its whole list, which throws away the row
+         the sheet borrowed from. Re-open against the fresh row with the same
+         id; if there is no longer one, it was deleted, and a record that does
+         not exist has no details to show. */
+      function watch(on){
+        if (!on){ if (watcher) watcher.disconnect(); watcher = null; return; }
+        if (watcher) return;
+        watcher = new MutationObserver(() => {
+          clearTimeout(settle);
+          settle = setTimeout(() => {
+            if (!sheet || !sheet.classList.contains("show")) return;
+            if (openRow && document.contains(openRow)) return;
+            const fresh = openId
+              ? document.querySelector(ROW_SEL.split(", ")
+                  .map(sel => sel + '[data-id="' + openId.replace(/"/g, '\\"') + '"]')
+                  .join(", "))
+              : null;
+            if (!fresh){ close(); return; }
+            borrowed = [];
+            openRow = fresh;
+            paint();
+          }, 90);
+        });
+        watcher.observe(document.body, { childList: true, subtree: true });
+      }
+
+      /* ---------- what counts as opening a row ------------------------------ */
+      /* A drag is not a tap. The savings list reorders by pointer, and a drag
+         that ends where it started still fires a click - so a pointer that
+         travelled is remembered and the next click is not a row press. */
+      let downAt = null, notAClickUntil = 0;
+      document.addEventListener("pointerdown", e => {
+        downAt = { x: e.clientX, y: e.clientY };
+      }, true);
+      document.addEventListener("pointerup", e => {
+        if (!downAt) return;
+        const travelled = Math.abs(e.clientX - downAt.x) + Math.abs(e.clientY - downAt.y);
+        if (travelled > 6) notAClickUntil = Date.now() + 250;
+        downAt = null;
+      }, true);
+
+      document.addEventListener("click", ev => {
+        if (!document.body.classList.contains("list-as-rows")) return;
+        if (sheet && sheet.contains(ev.target)) return;
+        if (Date.now() < notAClickUntil) return;
+        const t = ev.target;
+        if (!t.closest) return;
+        const row = t.closest(ROW_SEL);
+        if (!row) return;
+        /* Whatever is still interactive on the row is itself, not the row. */
+        if (t.closest("input, select, textarea, button, a, label, .sa-grip")) return;
+        open(row);
+      });
+
+      document.addEventListener("keydown", ev => {
+        if (ev.key !== "Enter" && ev.key !== " ") return;
+        if (!document.body.classList.contains("list-as-rows")) return;
+        const row = document.activeElement;
+        if (!row || !row.matches || !row.matches(ROW_SEL)) return;
+        ev.preventDefault();
+        open(row);
+      });
+
+      /* A row is a way in only while the list is a list. */
+      function syncRows(){
+        const on = document.body.classList.contains("list-as-rows");
+        document.querySelectorAll(ROW_SEL).forEach(row => {
+          if (on){
+            if (row.getAttribute("tabindex") === null){
+              row.setAttribute("tabindex", "0");
+              row.setAttribute("aria-haspopup", "dialog");
+            }
+          } else if (row.getAttribute("aria-haspopup") === "dialog"){
+            row.removeAttribute("tabindex");
+            row.removeAttribute("aria-haspopup");
+          }
+        });
+        if (!on && sheet && sheet.classList.contains("show")) close();
+      }
+      syncRows();
+      /* The same shape the drill-down above uses to catch its own re-renders:
+         after anything is clicked, look again. */
+      document.addEventListener("click", () => setTimeout(syncRows, 180), true);
+    })();
+
 })();
 
 /* The whole point of the service worker: the copy on your phone updates itself.
@@ -19500,6 +19960,272 @@ if ("serviceWorker" in navigator &&
     .tg-meta{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tg-cats{ justify-content: flex-end; }
   }
+
+  /* ======================================================================== */
+  /* A LIST IS AN INDEX, NOT A SMALLER CARD                                   */
+  /* ======================================================================== */
+  /* Measured in List at 1440: a loan row 143px, a savings row 188px, and an
+     investment card 380px because List had no rule for .inv-card at all. Every
+     field and every control, just narrower - the card with the gaps squeezed
+     out rather than a second view of it.
+
+     A card is the working surface. A list is an index: what you scan by, one
+     line each, and the record one tap away in the sheet. Nothing is lost -
+     everything hidden here is in that sheet, editable.
+
+     This block mostly SUBTRACTS. The row grids above are already argued for,
+     down to why the amount column reserves 184px; hiding what sat on line two
+     leaves the same grid with one line in it. */
+
+  /* ---------- 1. what a row stops carrying --------------------------------- */
+  body.list-as-rows .loan-card .loan-card-controls,
+  body.list-as-rows .loan-card > div:last-child,
+  /* A settled row addresses that same block by attribute and sets it to
+     display: block, which is one class more than "the last div" - so it has to
+     be named the same way to be turned off. */
+  body.list-as-rows .loan-card.is-closed > [data-payment-for],
+  body.list-as-rows .loan-card.is-closed > [data-payment-for]:has(.loan-note-read),
+  body.list-as-rows .loan-card .deadline-cell input,
+  body.list-as-rows .loan-card .loan-chip.is-bank,
+  body.list-as-rows .loan-card .loan-row-actions > button,
+  body.list-as-rows .savings-account .sv-kpis,
+  body.list-as-rows .savings-account .sa-share,
+  body.list-as-rows .savings-account .sa-fields,
+  body.list-as-rows .savings-account .sa-tier,
+  body.list-as-rows .savings-account .sa-auto,
+  body.list-as-rows .savings-account > .row-action-bar,
+  body.list-as-rows .savings-account > .collapsible-body,
+  body.list-as-rows .savings-account .sa-head > .row-action,
+  body.list-as-rows .inv-card > select.status-select,
+  body.list-as-rows .inv-card .inv-fields,
+  body.list-as-rows .inv-card > .row-action-bar,
+  body.list-as-rows .inv-card > .collapsible-body,
+  body.list-as-rows .inv-card .inv-card-head > button{ display: none; }
+
+  /* The deadline INPUT goes; the band chip beside it stays, because "in 5 days"
+     is the one thing about an outstanding loan you scan a list for. */
+
+  /* ---------- 2. one line, because line two is gone ------------------------ */
+  /* The loan grid declares two 34px rows explicitly, so emptying the second one
+     is not enough - an unoccupied explicit row is still 34px of row. */
+  body.list-as-rows .loan-card,
+  body.list-as-rows .loan-card.is-closed{
+    grid-template-rows: 34px;
+    row-gap: 0;
+    padding-top: var(--sp-4); padding-bottom: var(--sp-4);
+  }
+  /* The meta column gives back the half it was holding for the actions, and the
+     status pill takes it. */
+  body.list-as-rows .loan-card .loan-meta-row{ grid-area: 1 / 3 / 2 / 4; }
+  body.list-as-rows .loan-card .status-pill{
+    display: inline-flex; grid-area: 1 / 4 / 2 / 5; justify-self: start;
+  }
+  /* The settled stamp is a card-sized gesture - 3px border, .14em of tracking,
+     rotated across the box. At row height it is bigger than the row. The pill
+     says the same thing in the space a list has. */
+  body.list-as-rows .loan-card.is-closed::after,
+  body.list-as-rows .loan-card.is-closed[data-repaid]::after,
+  body.list-as-rows .loan-card.is-just-settled::after{ content: none; }
+
+  /* ---------- 3. investments join the toggle ------------------------------- */
+  /* They never had a List at all. The grid becomes a column and the card
+     becomes the same shape as the other two rows. */
+  body.list-as-rows .inv-grid{
+    display: flex; flex-direction: column; gap: var(--sp-4);
+  }
+  body.list-as-rows .inv-card{
+    display: grid; align-items: center;
+    grid-template-columns:
+      minmax(140px, 1.4fr)   /* which one */
+      minmax(150px, 1fr)     /* where it stands */
+      auto;                  /* the way in */
+    gap: var(--sp-3) var(--sp-5);
+    padding: var(--sp-4) var(--sp-6);
+  }
+  body.list-as-rows .inv-card > *{ min-width: 0; }
+  body.list-as-rows .inv-card .inv-card-head{ display: contents; }
+  /* The name is a text input on the card. On a row it is the name. */
+  body.list-as-rows .inv-card .inv-title-input{
+    grid-area: 1 / 1 / 2 / 2;
+    background: transparent; border-color: transparent; padding-left: 0;
+    font-size: var(--fs-md); font-weight: 700;
+    pointer-events: none;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  body.list-as-rows .inv-card .inv-standing-row{
+    grid-area: 1 / 2 / 2 / 3;
+    display: flex; align-items: baseline; gap: var(--sp-4); flex-wrap: nowrap;
+  }
+  body.list-as-rows .inv-card .inv-standing-label{ font-size: var(--fs-3xs); }
+
+  /* ---------- 4. a row that says it opens ---------------------------------- */
+  body.list-as-rows .loan-card,
+  body.list-as-rows .savings-account,
+  body.list-as-rows .inv-card{
+    cursor: pointer;
+    transition: border-color var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out);
+  }
+  /* The name is a button that searches for that person. On a card that is the
+     only thing clicking it could mean; on a row the row is the target, so the
+     name stops taking the pointer and the click reaches the row underneath. */
+  body.list-as-rows .loan-card .loan-who{ pointer-events: none; }
+
+  /* One chevron, drawn rather than fetched: two borders on a square turned
+     45 degrees. It sits where the icons used to. */
+  body.list-as-rows .loan-card .loan-row-actions::after,
+  body.list-as-rows .savings-account::after,
+  body.list-as-rows .inv-card::after{
+    content: ""; display: block;
+    width: 7px; height: 7px; margin-right: 3px;
+    border-right: 2px solid var(--ink-faint);
+    border-top: 2px solid var(--ink-faint);
+    transform: rotate(45deg);
+    transition: border-color var(--dur-fast) var(--ease-out);
+  }
+  body.list-as-rows .savings-account::after{ grid-area: 1 / 5 / 2 / 6; justify-self: end; }
+  body.list-as-rows .inv-card::after{ grid-area: 1 / 3 / 2 / 4; justify-self: end; }
+  body.list-as-rows .loan-card .loan-row-actions{ justify-content: flex-end; }
+
+  /* Hover is gated the way .tg-row:hover above it is gated - this machine
+     answers false to (hover: hover), and a row that stays lit after a tap is
+     worse than a row that never lights. Press feedback is not gated, because
+     press is the thing a finger does. */
+  @media (hover: hover){
+    body.list-as-rows .loan-card:hover,
+    body.list-as-rows .savings-account:hover:not(.is-dragging),
+    body.list-as-rows .inv-card:hover{ border-color: var(--line-strong); }
+    body.list-as-rows .loan-card:hover .loan-row-actions::after,
+    body.list-as-rows .savings-account:hover::after,
+    body.list-as-rows .inv-card:hover::after{ border-color: var(--accent); }
+  }
+  body.list-as-rows .loan-card:active,
+  body.list-as-rows .savings-account:active:not(.is-dragging),
+  body.list-as-rows .inv-card:active{ transform: scale(.996); }
+  body.list-as-rows .loan-card:focus-visible,
+  body.list-as-rows .savings-account:focus-visible,
+  body.list-as-rows .inv-card:focus-visible{
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  /* ---------- 5. the same row on a phone ----------------------------------- */
+  /* Below 900 the savings row is told to become a column again, and the loan
+     grid drops to three columns and four rows. Neither is wanted now there is
+     one line of content: two lines is what a 308px box can hold.
+
+         name                         amount
+         status / when                     > */
+  @media (max-width: 900px){
+    body.list-as-rows .savings-account{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+    }
+    body.list-as-rows .savings-account .sa-head{ display: contents; }
+    body.list-as-rows .sa-name{ grid-area: 1 / 1 / 2 / 2; }
+    body.list-as-rows .sv-metric{ grid-area: 1 / 2 / 2 / 3; text-align: right; }
+    body.list-as-rows .savings-account::after{ grid-area: auto; display: none; }
+  }
+  @media (max-width: 720px){
+    body.list-as-rows .loan-card,
+    body.list-as-rows .loan-card.is-closed{
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-rows: auto auto;
+      row-gap: var(--sp-2);
+    }
+    body.list-as-rows .loan-who-wrap { grid-area: 1 / 1 / 2 / 2; }
+    body.list-as-rows .loan-card .loan-amt-row { grid-area: 1 / 2 / 2 / 3; text-align: right; }
+    body.list-as-rows .loan-card .loan-meta-row{ grid-area: 2 / 1 / 3 / 2; }
+    body.list-as-rows .loan-card .status-pill{ grid-area: 2 / 2 / 3 / 3; justify-self: end; }
+    body.list-as-rows .loan-card .loan-row-actions{ display: none; }
+    body.list-as-rows .inv-card{ grid-template-columns: minmax(0, 1fr) auto; }
+    body.list-as-rows .inv-card .inv-standing-row{ grid-area: 1 / 2 / 2 / 3; justify-content: flex-end; }
+    body.list-as-rows .inv-card::after{ display: none; }
+  }
+
+  /* ---------- the sheet a row opens ---------------------------------------- */
+  /* Built in the language the category drill-down already speaks - .drill, its
+     panel, its head, its kicker - so a modal in this app is one thing with one
+     shape, not two that look nearly alike. */
+  .item-sheet .drill-panel{ max-width: 560px; }
+  .sheet-head-text{ min-width: 0; }
+  .sheet-head-acts{ display: flex; align-items: center; gap: var(--sp-4); flex: 0 0 auto; }
+
+  .sheet-facts{
+    margin: 0; display: grid;
+    grid-template-columns: minmax(110px, 36%) minmax(0, 1fr);
+    gap: var(--sp-5) var(--sp-6);
+  }
+  .sheet-facts dt{
+    font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-dim);
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+    align-self: baseline;
+  }
+  .sheet-facts dd{
+    margin: 0; font-size: var(--fs-sm);
+    font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+  }
+
+  .sheet-field{
+    display: flex; flex-direction: column; gap: var(--sp-3);
+    padding: var(--sp-5) 0; border-bottom: 1px solid var(--line);
+  }
+  .sheet-field:last-of-type{ border-bottom: 0; }
+  .sheet-field-k{
+    font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-dim);
+    text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  /* A borrowed control arrives still wearing the geometry of the row it came
+     from - a grid area, a fixed track width, a margin that positioned it
+     against its neighbours. In here it is one field on its own line. */
+  .drill-body .sheet-ctl{
+    grid-area: auto !important;
+    width: 100% !important; max-width: none !important;
+    margin: 0 !important; flex: 1 1 auto !important;
+    order: 0 !important;
+  }
+  .drill-body .sheet-ctl.row-action-danger{ width: auto !important; flex: 0 0 auto !important; }
+  .drill-body .sheet-field .sa-field{ display: flex; flex-direction: column; gap: var(--sp-3); }
+  .sheet-foot{
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--sp-5); flex-wrap: wrap;
+    margin-top: var(--sp-6); padding-top: var(--sp-6);
+    border-top: 1px solid var(--line);
+  }
+  /* The action bar hides its labels in a row, where there is no room for them.
+     There is room for them here. */
+  .drill-body .row-action-bar{ justify-content: flex-start !important; flex-wrap: wrap !important; }
+  .drill-body .row-action-bar .act-lbl{
+    position: static !important; width: auto !important; height: auto !important;
+    overflow: visible !important; clip-path: none !important;
+  }
+
+  /* A sheet that is already there when you look at it never says where it came
+     from. 160ms and 10px of travel is the whole gesture. */
+  .item-sheet.show{ animation: sheet-in var(--dur-base) var(--ease-out); }
+  .item-sheet.show .drill-panel{ animation: sheet-rise var(--dur-slow) var(--ease-out); }
+  @keyframes sheet-in{ from{ opacity: 0; } }
+  @keyframes sheet-rise{ from{ opacity: 0; transform: translateY(10px) scale(.985); } }
+  @media (prefers-reduced-motion: reduce){
+    .item-sheet.show,
+    .item-sheet.show .drill-panel{ animation: none; }
+  }
+
+  /* On a phone it comes up from the bottom, where a thumb is. */
+  @media (max-width: 720px){
+    .item-sheet{ align-items: flex-end; padding: 0; }
+    .item-sheet .drill-panel{
+      max-width: none; max-height: 86vh;
+      border-radius: var(--r-lg) var(--r-lg) 0 0;
+    }
+    .item-sheet .drill-head,
+    .item-sheet .drill-body{ padding: var(--sp-7); }
+    .item-sheet .drill-body{ padding-bottom: calc(var(--sp-7) + env(safe-area-inset-bottom, 0px)); }
+    .item-sheet.show .drill-panel{ animation-name: sheet-up; }
+    .sheet-facts{ grid-template-columns: minmax(0, 1fr); gap: var(--sp-2) 0; }
+    .sheet-facts dd{ margin-bottom: var(--sp-4); }
+  }
+  @keyframes sheet-up{ from{ transform: translateY(18px); opacity: .4; } }
 </style>
 </body>
 </html>
