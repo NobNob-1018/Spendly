@@ -1153,7 +1153,13 @@
   .rcp{ display:flex; flex-direction:column; gap:2px; padding: var(--sp-6);
     background: var(--sunken); border-radius: var(--r-md); min-width:0; }
   .rcp-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.05em; color: var(--ink-dim); }
-  .rcp-v{ font-size: var(--fs-lg); font-weight:700; font-variant-numeric: tabular-nums; }
+  /* nowrap and min-width:0 are what let fitFigures ask "do you fit?" - scrollWidth
+     against clientWidth is only a real answer if the text is refusing to wrap and
+     the box is free to be narrower than its content. Clipping a number is a lie
+     and wrapping one is worse, so the answer is a smaller figure, never a partial
+     one. */
+  .rcp-v{ min-width:0; white-space:nowrap;
+    font-size: var(--fs-lg); font-weight:700; font-variant-numeric: tabular-nums; }
   .rcp-v.is-good{ color: var(--positive); } .rcp-v.is-bad{ color: var(--negative); }
   .rcp-s{ font-size: var(--fs-3xs); color: var(--ink-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .rcp-note{ margin: var(--sp-6) 0 0; font-size: var(--fs-2xs); line-height:1.6; color: var(--ink-dim); }
@@ -1619,6 +1625,21 @@
   }
   .rail-fold.is-open{ grid-template-rows: 1fr; }
   .rail-fold-inner{ overflow: hidden; min-height: 0; }
+  /* NOT RENDERED, not merely invisible. A closed fold clips its contents to
+     nothing, so there is nothing to see and a tap at those coordinates lands on
+     the item painted over it - but a button clipped to zero size is still
+     FOCUSABLE, and tabbing through the rail stopped on a jump-to-section control
+     that is not on screen. visibility:hidden takes the subtree out of the tab
+     order and out of hit-testing.
+
+     The delay is what keeps the closing animation: this rule starts applying the
+     instant .is-open goes, so without it the contents blink out before the row
+     has finished collapsing. Opening needs no delay to undo - the rule just
+     stops matching. */
+  .rail-fold:not(.is-open) > .rail-fold-inner{
+    visibility: hidden;
+    transition: visibility 0s linear var(--dur-slow);
+  }
 
   /* ---------- the keys, off the wall until asked for ------------------------ */
   /* Kept in the layout at zero opacity rather than removed, so holding Shift
@@ -3514,7 +3535,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18k";
+  const APP_BUILD = "2026-09-18l";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -9746,6 +9767,32 @@
             '</strong> \u2014 account for ' + (spent ? Math.round((top3 / spent) * 100) : 0) + '% of the month, ' +
             fmtMoney(top3) + ' of ' + fmtMoney(spent) + '.</p>'
           : '');
+
+    fitFigures(wrap);
+  }
+
+  /* THE NUMBER DECIDES ITS OWN SIZE. Three of the four recap tiles are money and
+     the grid gives every tile an equal share of the card, so a long figure has
+     nowhere to grow into - measured, span.cur-cents painting 12px past its own
+     box. Sizing the type off the TILE cannot help, because all four tiles are
+     the same width whether the number in them is six digits or twelve; the first
+     attempt at that shrank every figure to 13.85px from 17 to rescue the rare
+     one. CSS cannot size text by its own length.
+
+     So the figure is laid out, asked whether it fits, and stepped down real type
+     tokens until it does. An ordinary figure is asked once, fits, and never
+     moves. The ladder stops at --fs-2xs: below that it would be smaller than the
+     caption underneath it, and a headline figure that has lost to its own
+     caption has stopped being the headline. */
+  const FIGURE_LADDER = ["var(--fs-base)", "var(--fs-xs)", "var(--fs-2xs)"];
+  function fitFigures(scope){
+    (scope || document).querySelectorAll(".rcp-v").forEach(el => {
+      el.style.fontSize = "";
+      for (let i = 0; i < FIGURE_LADDER.length; i++){
+        if (el.scrollWidth <= el.clientWidth + 1) return;
+        el.style.fontSize = FIGURE_LADDER[i];
+      }
+    });
   }
 
 
@@ -11043,8 +11090,26 @@
     if (!tabIsAvailable(name)) activateTab("dashboard");
   });
 
+  /* The other half of "you put the phone down and pick up the desktop": the
+     putting down. scheduleAutoSync waits 2.5s so a burst of edits is one push,
+     and nothing ran on the way out - so an edit made just before locking the
+     phone sat here until that device was next opened, because a backgrounded tab
+     can be frozen before its timer fires. The wait is a courtesy to the API, not
+     a promise to the user, and leaving cancels it. */
+  function flushPendingSync(){
+    if (!autoPushTimer) return;
+    clearTimeout(autoPushTimer);
+    autoPushTimer = null;
+    quietSync();
+  }
+
   // The moment that matters most: you put the phone down and pick up the desktop.
-  document.addEventListener("visibilitychange", ()=>{ if (!document.hidden) quietSync(); });
+  document.addEventListener("visibilitychange", ()=>{
+    if (!document.hidden){ quietSync(); return; }
+    flushPendingSync();
+  });
+  // A tab being closed or navigated away gets this one and not always the other.
+  window.addEventListener("pagehide", flushPendingSync);
   window.addEventListener("focus", quietSync);
   window.addEventListener("online", quietSync);
   // And a slow poll for the case where both are open and visible at once.
@@ -14854,9 +14919,20 @@
             const d = dx * dx + dy * dy;
             if (d < bestD){ bestD = d; best = el; }
           });
-          // Only if the pointer is actually near the grid. A drop out in the
-          // margin still means "the end", which is a real thing to want.
-          return bestD <= 140 * 140 ? best : null;
+          /* INSIDE THE GRID, THE NEAREST CARD WINS however far off it is.
+             Aiming at the empty half of a row is how a person says "beside that
+             one", and the flat 140px cap meant it said nothing at all: measured
+             on a 1600px window, Money overview is span 7 of 12 with 549px free
+             beside it, and the nearest other card to that space is 444px away.
+             No card, so no outline, no ghost, and no move on release - which
+             reads as "it does not fit" when it fits with room to spare.
+
+             Outside the grid it still resolves to nothing. That is what stops a
+             release out in the margin from quietly sending the card to the
+             bottom of a page you were only rearranging. */
+          const hb = host.getBoundingClientRect();
+          const inside = x >= hb.left && x <= hb.right && y >= hb.top && y <= hb.bottom;
+          return (inside || bestD <= 140 * 140) ? best : null;
         }
 
         host.addEventListener("dragstart", ev => {
