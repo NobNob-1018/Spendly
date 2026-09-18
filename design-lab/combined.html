@@ -663,7 +663,13 @@
     border:1px solid var(--line); border-radius: var(--r-md);
   }
   .loan-card.is-open{ border-left:3px solid var(--warn); }
-  .loan-card.is-closed{ opacity:.78; }
+  /* NO opacity on the card itself. It used to carry .78, from before the stamp
+     and the step-back existed, and it fought both: the record inside is dimmed
+     again to .8 and blurred, so it rendered at .62, while the mark across it
+     and the one control on it were held at .78 with everything else. Opacity
+     multiplies down a chain and cannot be undone from inside, so a card-wide
+     value is a ceiling on every part of it. The dim lives on the record now,
+     which is the part that is meant to step back. */
   .loan-card-head{ display:flex; align-items:center; justify-content:space-between; gap: var(--sp-5); }
   .loan-who{ font-size: var(--fs-md); font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .loan-amt-row{ display:flex; align-items:baseline; gap: var(--sp-5); }
@@ -3178,6 +3184,17 @@
             <button data-palette="cvd">Colour-blind safe</button>
           </div>
         </div>
+        <div class="pref-row">
+          <span class="pref-k">
+            <span class="pref-name">Card edges</span>
+            <span class="pref-why">A card is a border and a shadow together. Outlined keeps the line and drops the shadow; Flat separates by surface alone.</span>
+          </span>
+          <div class="range-tabs" id="surface-toggle" style="display:inline-flex;">
+            <button data-surface="raised">Shadowed</button>
+            <button data-surface="outlined">Outlined</button>
+            <button data-surface="flat">Flat</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3225,7 +3242,7 @@
     <div data-settings-group="appearance" class="card">
       <header class="panel-head is-toolbar">
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/></svg></span><span class="h-text">Easier to look at</span></h2>
-        <p class="sub">Two yes-or-no questions. Both are off unless this machine has already asked for them.</p>
+        <p class="sub">Five yes-or-no questions, all off to begin with. The first two follow this machine if it has already asked for them.</p>
       </header>
       <div class="pref-rows">
         <div class="pref-row">
@@ -3243,6 +3260,33 @@
             <span class="pref-why">Panels slide, figures count, marks fade. If this machine already asks for less motion Spendly honours that; this is how to ask for it anyway.</span>
           </span>
           <button type="button" class="pref-switch" id="motion-switch" role="switch" aria-checked="false">
+            <span class="pref-switch-track" aria-hidden="true"><span class="pref-switch-thumb"></span></span>
+          </button>
+        </div>
+        <div class="pref-row">
+          <span class="pref-k">
+            <span class="pref-name">Always label buttons</span>
+            <span class="pref-why">In a list the row actions are icons, because four labelled buttons want twice the room and that difference is a second line. The words are still the tooltip and the accessible name. This puts them back on the button.</span>
+          </span>
+          <button type="button" class="pref-switch" id="labels-switch" role="switch" aria-checked="false">
+            <span class="pref-switch-track" aria-hidden="true"><span class="pref-switch-thumb"></span></span>
+          </button>
+        </div>
+        <div class="pref-row">
+          <span class="pref-k">
+            <span class="pref-name">Stripe table rows</span>
+            <span class="pref-why">History, savings and investments are wide rows of figures, and the eye loses its line halfway across one. A faint band on every other row gives it something to hold.</span>
+          </span>
+          <button type="button" class="pref-switch" id="stripes-switch" role="switch" aria-checked="false">
+            <span class="pref-switch-track" aria-hidden="true"><span class="pref-switch-thumb"></span></span>
+          </button>
+        </div>
+        <div class="pref-row">
+          <span class="pref-k">
+            <span class="pref-name">Bold focus ring</span>
+            <span class="pref-why">The outline that follows the keyboard is two pixels. On a busy table that is easy to lose; this makes it three and stands it further off.</span>
+          </span>
+          <button type="button" class="pref-switch" id="focusring-switch" role="switch" aria-checked="false">
             <span class="pref-switch-track" aria-hidden="true"><span class="pref-switch-thumb"></span></span>
           </button>
         </div>
@@ -11548,6 +11592,25 @@
     document.querySelectorAll("#corners-toggle button").forEach(b =>
       b.classList.toggle("active", b.dataset.corners === mode));
   }
+  function applySurface(v){
+    const mode = (v === "outlined" || v === "flat") ? v : "raised";
+    document.documentElement.setAttribute("data-surface", mode);
+    markSegmented(document.querySelectorAll("#surface-toggle button"),
+      b => b.dataset.surface === mode);
+    document.querySelectorAll("#surface-toggle button").forEach(b =>
+      b.classList.toggle("active", b.dataset.surface === mode));
+  }
+  // Three switches with one shape: an attribute on :root, a stored value, and
+  // the switch told what it now says.
+  function applyFlag(attr, id, on){
+    if (on) document.documentElement.setAttribute(attr, "on");
+    else document.documentElement.removeAttribute(attr);
+    const sw = document.getElementById(id);
+    if (sw) sw.setAttribute("aria-checked", on ? "true" : "false");
+  }
+  const applyLabels = v => applyFlag("data-labels", "labels-switch", v === "always");
+  const applyStripes = v => applyFlag("data-stripes", "stripes-switch", v === "on");
+  const applyFocus  = v => applyFlag("data-focus", "focusring-switch", v === "bold");
   function applyContrast(v){
     const mode = v === "high" ? "high" : "normal";
     document.documentElement.setAttribute("data-contrast", mode);
@@ -11583,6 +11646,31 @@
       showToast(next === "high" ? "Stronger borders on." : "Borders back to quiet.");
     });
   }
+  document.querySelectorAll("#surface-toggle button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      applySurface(btn.dataset.surface);
+      setUiPref("surface", btn.dataset.surface);
+      showToast("Card edges: " + btn.textContent.trim().toLowerCase() + ".");
+    });
+  });
+  {
+    const wire = (id, apply, key, onVal, offVal, onSay, offSay) => {
+      const sw = document.getElementById(id);
+      if (!sw) return;
+      sw.addEventListener("click", ()=>{
+        const next = sw.getAttribute("aria-checked") === "true" ? offVal : onVal;
+        apply(next);
+        setUiPref(key, next);
+        showToast(next === onVal ? onSay : offSay);
+      });
+    };
+    wire("labels-switch", applyLabels, "labels", "always", "icons",
+      "Buttons are labelled.", "Buttons are icons again.");
+    wire("stripes-switch", applyStripes, "stripes", "on", "off",
+      "Table rows are striped.", "Table rows are plain again.");
+    wire("focusring-switch", applyFocus, "focusRing", "bold", "standard",
+      "Bold focus ring on.", "Focus ring back to standard.");
+  }
   document.querySelectorAll("#palette-toggle button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       setUiPref("palette", btn.dataset.palette);
@@ -11599,6 +11687,10 @@
   applyCorners(pref("corners", "rounded"));
   applyContrast(pref("contrast", "normal"));
   applyPalette(pref("palette", "default"));
+  applySurface(pref("surface", "raised"));
+  applyLabels(pref("labels", "icons"));
+  applyStripes(pref("stripes", "off"));
+  applyFocus(pref("focusRing", "standard"));
   // lg-bank / lt-bank / inv-bank are covered by refreshAccountSelects above.
   populateInCurrencyOptions();
   populateCurrencyOptions();
@@ -14209,7 +14301,13 @@
              already knew how to be. */
           pad.innerHTML =
             '<div class="card-seam" title="Drag to set the width. Double-click to reset."></div>' +
-            '<div class="card-corner" title="Drag down for a taller card. Double-click to fit the contents."></div>';
+            '<div class="card-corner" title="Drag down for a taller card. Double-click to fit the contents."></div>' +
+            // Height alone, in the middle of the bottom edge, where a hand
+            // looks for it. 64px rather than the full width - the bar that used
+            // to be here was the whole edge and lay across the gutter a dragged
+            // card lands in - and the handles no longer take the pointer at all
+            // while a card is in the air, which is what actually fixed that.
+            '<div class="card-foot" title="Drag down for a taller card. Double-click to fit the contents."></div>';
           host.appendChild(pad);
           placeHandles(host, el, pad);
         });
@@ -14356,7 +14454,10 @@
            that is the one direction a set height was ever wrong in. */
         let cornerDrag = null;
         host.addEventListener("pointerdown", ev => {
-          const corner = ev.target.closest(".card-corner");
+          // The corner and the foot are the same gesture. The corner is where a
+          // hand goes for both axes, the foot is where it goes for height, and
+          // there is one rule for height either way.
+          const corner = ev.target.closest(".card-corner, .card-foot");
           if (corner && editing && ev.button === 0){
             const pad = corner.closest(".card-handles");
             const card = pad && (host.querySelector('[data-arrange-id="' + CSS.escape(pad.dataset.card) + '"]')
@@ -14564,7 +14665,7 @@
         window.addEventListener("pointerup", endCorner);
         window.addEventListener("pointercancel", endCorner);
         host.addEventListener("dblclick", ev => {
-          const corner = ev.target.closest(".card-corner");
+          const corner = ev.target.closest(".card-corner, .card-foot");
           if (!corner || !editing) return;
           const pad = corner.closest(".card-handles");
           const card = pad && (host.querySelector('[data-arrange-id="' + CSS.escape(pad.dataset.card) + '"]')
@@ -18772,6 +18873,158 @@
     nav.tabs .nav-tool[aria-pressed="true"]:hover{
       background: var(--accent-dark, var(--accent)); border-color: var(--accent-dark, var(--accent));
       color: var(--on-accent);
+    }
+  }
+
+  /* ---------- a handle for height alone ------------------------------------ */
+  /* There was a bar along the bottom once and I took it out, because it ran the
+     FULL width and lay across the gutter a dragged card has to land in, so it
+     swallowed every drop that crossed it. This one is 64px in the middle, which
+     leaves the gutter either side of it clear - and the handles no longer take
+     the pointer at all while a card is in the air, which is the fix that
+     actually closed that hole. */
+  .card-foot{
+    position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+    width: 64px; height: 16px;
+    cursor: ns-resize; pointer-events: auto; touch-action: none;
+    display: grid; place-items: center;
+  }
+  .card-foot::after{
+    content: ""; width: 44px; height: 4px; border-radius: var(--r-pill);
+    background: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg) 78%, transparent),
+                0 0 10px color-mix(in srgb, var(--accent) 55%, transparent);
+    opacity: 0; transition: opacity var(--dur-fast) var(--ease-out),
+                            transform var(--dur-base) var(--ease-out);
+    transform: scaleX(.7);
+  }
+  .is-layout-editing .card-foot::after{ opacity: .85; transform: scaleX(1); }
+  @media (hover: hover){
+    .card-foot:hover::after{ opacity: 1; transform: scaleX(1) scaleY(1.5); }
+  }
+  body.is-seam-resizing .card-foot::after{ opacity: 1; }
+  @media (prefers-reduced-motion: reduce){ .card-foot::after{ transition: none; } }
+
+  /* ---------- the one control on a settled card is not the record ---------- */
+  /* Measured on a 345px card: the button sits at 17..124 in 10px type, and it
+     renders at 80% although both filter and opacity are already set back on the
+     button itself - because its ANCESTOR is at .8, and opacity cannot be undone
+     from inside. A descendant at 1 inside a parent at .8 is still .8.
+
+     So the wrapper holding it keeps its own opacity, and the parts of the
+     record inside it step back one at a time. */
+  .loan-card.is-closed > [data-payment-for]{ opacity: 1; }
+  .loan-card.is-closed > [data-payment-for] > .loan-note-read,
+  .loan-card.is-closed > [data-payment-for] > .collapsible-body{
+    opacity: .8; transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){
+    .loan-card.is-closed:hover > [data-payment-for] > .loan-note-read,
+    .loan-card.is-closed:hover > [data-payment-for] > .collapsible-body{ opacity: 1; }
+  }
+  .loan-card.is-closed:focus-within > [data-payment-for] > .loan-note-read,
+  .loan-card.is-closed:focus-within > [data-payment-for] > .collapsible-body,
+  .loan-card.is-closed.is-editing > [data-payment-for] > .loan-note-read,
+  .loan-card.is-closed.is-editing > [data-payment-for] > .collapsible-body{ opacity: 1; }
+
+  /* Under the middle of the mark, and a size up - it is the one thing on this
+     card you can do, and it was smaller than the note it sits beside. */
+  body:not(.list-as-rows) .loan-card.is-closed .row-action-bar{ justify-content: center; }
+  body:not(.list-as-rows) .loan-card.is-closed [data-action="unsettle"]{
+    font-size: var(--fs-sm); padding: var(--sp-5) var(--sp-8);
+  }
+  body:not(.list-as-rows) .loan-card.is-closed [data-action="unsettle"] svg{
+    width: 14px; height: 14px;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .loan-card.is-closed > [data-payment-for] > .loan-note-read,
+    .loan-card.is-closed > [data-payment-for] > .collapsible-body{ transition: none; }
+  }
+
+  /* ====================================================================== */
+  /* FOUR MORE THINGS THE USER DECIDES                                      */
+  /* ====================================================================== */
+
+  /* ---------- card edges ---------------------------------------------------- */
+  /* A card is a border AND a shadow, which is one opinion about depth with no
+     way out of it. These are the two other opinions. */
+  :root[data-surface="outlined"] .card,
+  :root[data-surface="outlined"] .is-arrangeable{ box-shadow: none; }
+  :root[data-surface="outlined"] .card{ border-color: var(--line-strong); }
+  :root[data-surface="flat"] .card,
+  :root[data-surface="flat"] .is-arrangeable{ box-shadow: none; border-color: transparent; }
+  /* NO background change. Lifting the card to --raised to make up for the lost
+     line cost contrast on what sits on it: measured on Charts in the night
+     edition, span.cs-cmp.is-up went from passing to 4.22 against 4.5, because
+     rgb(224,106,94) on a lighter ground is a smaller step. The card is already
+     --surface #141922 on a --bg of #0C0F14, which is a real step on its own -
+     that IS the separation, and it is the one that does not move any text.
+     Nothing here may change the ground under a figure. */
+
+  /* ---------- always label buttons ------------------------------------------ */
+  /* The row actions are icons because four labelled buttons want 321px and the
+     same four as icons want 150 - that difference is the second line. On, the
+     words come back and the row is allowed the height they need. */
+  :root[data-labels] body.list-as-rows .row-action-bar .act-lbl,
+  :root[data-labels] body.list-as-rows .loan-card .act-lbl{
+    position: static; width: auto; height: auto;
+    overflow: visible; clip-path: none; white-space: nowrap;
+  }
+  :root[data-labels] body.list-as-rows .row-action-bar{ flex-wrap: wrap; }
+  :root[data-labels] body.list-as-rows .row-action-bar .loan-payment-link{
+    padding: var(--sp-3) var(--sp-6); gap: var(--sp-3);
+  }
+  /* And the tooltip goes: it would now be repeating the label beside it. */
+  :root[data-labels] body.list-as-rows .loan-payment-link[data-tip]::after{ content: none; }
+
+  /* ---------- stripe table rows --------------------------------------------- */
+  /* Counted before writing this: three tables, twenty-five rows on the page as
+     it stands, every one of them transparent. Faint enough that it is a band
+     rather than a second colour, because the row still has to read as one row
+     of one table. */
+  :root[data-stripes] table tbody tr:nth-child(even) > td{
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
+  }
+  /* A row the pointer is on, or one that is selected, still wins. */
+  :root[data-stripes] table tbody tr.is-selected > td,
+  :root[data-stripes] table tbody tr[aria-selected="true"] > td{ background: inherit; }
+
+  /* ---------- bold focus ring ----------------------------------------------- */
+  /* The ONE place in this file that uses !important, on purpose: a focus ring is
+     restated locally in a dozen rules with their own specificity and offsets,
+     and a preference about being able to see where you are has to beat all of
+     them or it is not a preference. */
+  :root[data-focus] :focus-visible{
+    outline: 3px solid var(--accent) !important;
+    outline-offset: 3px !important;
+  }
+
+  /* ---------- and a row says the same thing ------------------------------- */
+  /* body.list-as-rows .loan-card.is-closed > * is (0,3,1) and beats the plain
+     exemption, so the wrapper holding the control was still dimmed in a row. */
+  body.list-as-rows .loan-card.is-closed > [data-payment-for]{ opacity: 1; }
+  body.list-as-rows .loan-card.is-closed > [data-payment-for] > .loan-note-read,
+  body.list-as-rows .loan-card.is-closed > [data-payment-for] > .collapsible-body{ opacity: .78; }
+  @media (hover: hover){
+    body.list-as-rows .loan-card.is-closed:hover > [data-payment-for] > .loan-note-read,
+    body.list-as-rows .loan-card.is-closed:hover > [data-payment-for] > .collapsible-body{ opacity: 1; }
+  }
+
+  /* ---------- a settled row stacks like every other one -------------------- */
+  /* The two-line settled layout puts the note and the control on line two,
+     which is right for a wide row. Under 760px the stack has already put the
+     AMOUNT on line two, and the two rules never knew about each other:
+     measured at 706px, the wrapper at 2/1/3/7 and the amount row at 2/1/3/4,
+     drawn on top of each other, with "No note on this one" under the figure.
+
+     A container query adds no specificity, so this has to come after the rules
+     it corrects, not just be more specific than them. */
+  @container loanrow (max-width: 760px){
+    body.list-as-rows .loan-card.is-closed{ grid-template-rows: auto; }
+    body.list-as-rows .loan-card.is-closed .loan-meta-row{ grid-area: 3 / 1 / 4 / 4; }
+    body.list-as-rows .loan-card.is-closed > [data-payment-for],
+    body.list-as-rows .loan-card.is-closed > [data-payment-for]:has(.loan-note-read){
+      grid-area: 4 / 1 / 5 / 4;
     }
   }
 </style>
