@@ -359,6 +359,11 @@
   td.desc-cell > *{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   tbody tr:has(input[type=checkbox]:checked){ background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
   tbody tr:has(input[type=checkbox]:checked) td{ background:transparent; }
+  /* The wash above is a lighter ground than the page, and the quiet currency
+     mark stops reading on it: 4.36:1 in day mode, against 4.5. Only the ground
+     changed, so only here does the ink - --ink-soft is 6.58:1 on the same
+     blend. */
+  tbody tr:has(input[type=checkbox]:checked) .amount-cur{ color: var(--ink-soft); }
   .cell-select, .row-select{ width:32px; }
   .cell-actions{ width:1%; white-space:nowrap; text-align:right; }
   .tags-cell{ width:12%; }
@@ -447,7 +452,11 @@
   .btn-sm{ height:28px; padding:0 var(--sp-6); font-size: var(--fs-3xs); }
   .btn-primary{ background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   .btn-outline{ background:transparent; } .btn-ghost{ background:transparent; border-color:transparent; color: var(--ink-soft); }
-  .btn-danger-text{ background:transparent; border-color:transparent; color: var(--negative); }
+  /* --negative-note, not --negative: this is TEXT on a raised ground, which is
+     the job that token exists for. As a fill colour --negative came to 4.34:1
+     against --over and failed AA - unnoticed while the only way to this bar was
+     a checkbox no phone showed. */
+  .btn-danger-text{ background:transparent; border-color:transparent; color: var(--negative-note); }
   @media (hover: hover){ .btn:hover{ background: var(--over); } .btn-primary:hover{ background: var(--accent-dark); } .btn-ghost:hover{ color: var(--ink); background: var(--raised); } }
   button:disabled, button[aria-disabled="true"]{ opacity:1; color: var(--ink-dim); background: var(--sunken); border-color: var(--line); cursor:default !important; }
   button.is-loading{ color: var(--ink-soft); cursor:progress !important; }
@@ -3624,7 +3633,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18d";
+  const APP_BUILD = "2026-09-18e";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4138,6 +4147,63 @@
     Array.from(set).forEach(id=>{ if (!present.has(id)) set.delete(id); });
   }
 
+  /* ---------- an entry that is filed away, not destroyed ------------------ */
+  /* An archived entry leaves the list and stays in the books: the money was
+     still spent, so every total, chart, balance and export counts it exactly as
+     before, and there is no second sum anywhere that says otherwise. List
+     management, not bookkeeping - which is what makes it the one gesture on a
+     row that cannot lose anything, and so the one on the safe side.
+
+     Whether they are shown is a view preference, so it lives in uiPrefs beside
+     the density and the filters, and out of backups - but pref() is a const
+     declared a hundred lines below this one, so it cannot be read here. It is
+     read on the line after pref exists, which is still long before anything
+     renders. Reading it here threw, and because the app is one IIFE that meant
+     no app at all: every row gone, the markup still drawn. */
+  let showArchived = false;
+  const isArchived = e => !!(e && e.archived);
+
+  /* One writer for both tables. Nothing else in the app knows the field: the
+     merge takes a record whole by its write time, so this is an ordinary edit
+     as far as syncing is concerned. */
+  function setArchived(kind, id, on){
+    const isExpense = kind !== "income";
+    const arr = isExpense ? expenses : incomes;
+    const item = arr.find(x => x.id === id);
+    if (!item) return null;
+    if (on) item.archived = true; else delete item.archived;
+    (isExpense ? saveExpenses : saveIncomes)(arr);
+    if (isExpense) renderHistory(); else renderIncomeHistory();
+    return item;
+  }
+
+  /* The strip that says a list is shorter than it looks, and gives back the
+     rest in one tap. Rendered beside the filter chips because it is the same
+     kind of statement: this is what narrowed what you are looking at. */
+  function archivedNoteHtml(kind, hidden){
+    if (showArchived){
+      return '<div class="archived-note is-showing">' +
+        '<span>Archived entries are in this list.</span>' +
+        '<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-archived" data-kind="' + kind + '">Hide them</button>' +
+      '</div>';
+    }
+    if (!hidden) return "";
+    return '<div class="archived-note">' +
+      '<span>' + hidden + ' archived entr' + (hidden === 1 ? "y is" : "ies are") + ' hidden.</span>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-archived" data-kind="' + kind + '">Show</button>' +
+    '</div>';
+  }
+  /* Delegated, so it survives every re-render of either table without being
+     re-wired in two places. */
+  document.addEventListener("click", ev => {
+    const b = ev.target.closest && ev.target.closest('[data-action="toggle-archived"]');
+    if (!b) return;
+    showArchived = !showArchived;
+    setUiPref("showArchived", showArchived);
+    renderHistory();
+    renderIncomeHistory();
+  });
+
   let selectedExpenseIds = new Set();
   let selectedIncomeIds = new Set();
 
@@ -4183,6 +4249,8 @@
   // so the selection is held here rather than read back from the DOM. All of it
   // persists via uiPrefs, so a reload doesn't wipe the user's view.
   const pref = (key, fallback)=> uiPrefs[key] !== undefined ? uiPrefs[key] : fallback;
+  // Declared with the rest of the history state; hydrated here, where pref exists.
+  showArchived = !!pref("showArchived", false);
   const loanView = {
     // status defaults to "outstanding": repaid loans stay out of the way until asked
     // for. sort defaults preserve the previous newest-first behaviour.
@@ -5176,6 +5244,13 @@
     // scrolling under it. The listener does nothing at all until then.
     app.addEventListener("touchmove", (e)=>{
       if (!tracking || !panel) return;
+      /* A history row swipes sideways too, under the same finger on the same
+         screen. It engages at 6px and raises this flag; this decides at 8px.
+         Pointer events are dispatched before touch events for the same input,
+         so by the time this reads the flag it is already up. */
+      if (document.body.dataset.rowSwipe){
+        tracking = false; letGo(panel); panel = null; hidePeek(); return;
+      }
       const dx = e.touches[0].clientX - x0;
       const dy = e.touches[0].clientY - y0;
       if (!decided){
@@ -7220,6 +7295,10 @@
       (e.tags || []).some(t=>t.toLowerCase().includes(search))
     );
     list = filterByDateRange(list, rangeVal, fromVal, toVal);
+    /* Counted AFTER the other filters, because the number the strip prints has
+       to be how many are missing from THIS view, not from the file. */
+    const expArchivedHidden = showArchived ? 0 : list.filter(isArchived).length;
+    if (!showArchived) list = list.filter(e => !isArchived(e));
     list = sortEntries(list, expenseSort);
 
     // A selection belongs to the set it was made in. Filter to a different set and the
@@ -7243,7 +7322,7 @@
       { label:"Date", value: expenseRange !== "all" ? dateRangeLabel(expenseRange) : "", clear: ()=>{ expenseRange = "all"; setUiPref("expRange","all"); } },
       { label:"Search", value: search, clear: ()=>{ const el=document.getElementById("filter-search"); if (el) el.value=""; } }
     ];
-    const expStatusBar = filterChipsHtml(expChipDefs);
+    const expStatusBar = filterChipsHtml(expChipDefs) + archivedNoteHtml("expense", expArchivedHidden);
     const expHeaderRowHtml = (checked)=>`
           <tr>
             <th><span class="sr-only">Select</span><input type="checkbox" id="expense-select-all" ${checked ? "checked" : ""}></th>
@@ -7311,13 +7390,13 @@
     function rowFor(e){
       const catOptions = categories.map(c=>`<option value="${escapeHtml(c)}" ${c===e.category?"selected":""}>${escapeHtml(c)}</option>`).join("");
       return `
-        <tr data-id="${e.id}" class="${selectedExpenseIds.has(e.id) ? "is-selected" : ""}">
+        <tr data-id="${e.id}" data-kind="expense"${e.archived ? ' data-archived="1"' : ""} style="--cat:${colorFor(e.category)}" class="${selectedExpenseIds.has(e.id) ? "is-selected" : ""}">
           <td class="cell-select" data-label=""><input type="checkbox" class="row-select" ${selectedExpenseIds.has(e.id) ? "checked" : ""}></td>
-          <td data-label="Date"><input type="date" value="${e.date}" data-field="date" style="width:150px;"></td>
+          <td data-label="Date" data-short="${escapeHtml(fmtDate(e.date))}"><input type="date" value="${e.date}" data-field="date" style="width:150px;"></td>
           <td data-label="Description"><input type="text" value="${escapeHtml(e.description)}" data-field="description"></td>
           <td class="tags-cell" data-label="Tags"><input type="text" value="${escapeHtml((e.tags||[]).join(", "))}" data-field="tags" placeholder="—"></td>
           <td data-label="Category"><select class="status-select" data-field="category">${catOptions}</select></td>
-          <td class="num" data-label="Amount"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(e.amount)}" data-field="amount" data-money="1"></div>${e.originalCurrency ? `<div class="hint">${e.originalAmount} ${e.originalCurrency}</div>` : ""}</td>
+          <td class="num" data-label="Amount" data-short="${escapeHtml(fmtMoney(e.amount))}"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(e.amount)}" data-field="amount" data-money="1"></div>${e.originalCurrency ? `<div class="hint">${e.originalAmount} ${e.originalCurrency}</div>` : ""}</td>
           <td class="cell-actions" data-label=""  style="white-space:nowrap;">
             <button class="row-action" data-action="duplicate" aria-label="Copy into a new entry" title="Copy into a new entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="row-action row-action-danger" data-action="delete" aria-label="Remove this entry" title="Remove this entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
@@ -7586,6 +7665,8 @@
       (i.tags || []).some(t=>t.toLowerCase().includes(search))
     );
     list = filterByDateRange(list, rangeVal, fromVal, toVal);
+    const incArchivedHidden = showArchived ? 0 : list.filter(isArchived).length;
+    if (!showArchived) list = list.filter(i => !isArchived(i));
     list = sortEntries(list, incomeSort);
 
     pruneSelection(selectedIncomeIds, list);   // see renderHistory
@@ -7644,13 +7725,13 @@
     const rows = pageList.map(i=>{
       const catOptions = INCOME_CATEGORIES.map(c=>`<option value="${escapeHtml(c)}" ${c===i.category?"selected":""}>${escapeHtml(c)}</option>`).join("");
       return `
-        <tr data-id="${i.id}" class="${selectedIncomeIds.has(i.id) ? "is-selected" : ""}">
+        <tr data-id="${i.id}" data-kind="income"${i.archived ? ' data-archived="1"' : ""} style="--cat:${colorFor(i.category)}" class="${selectedIncomeIds.has(i.id) ? "is-selected" : ""}">
           <td class="cell-select" data-label=""><input type="checkbox" class="row-select" ${selectedIncomeIds.has(i.id) ? "checked" : ""}></td>
-          <td data-label="Date"><input type="date" value="${i.date}" data-field="date" style="width:150px;"></td>
+          <td data-label="Date" data-short="${escapeHtml(fmtDate(i.date))}"><input type="date" value="${i.date}" data-field="date" style="width:150px;"></td>
           <td data-label="Description"><input type="text" value="${escapeHtml(i.description)}" data-field="description"></td>
           <td class="tags-cell" data-label="Tags"><input type="text" value="${escapeHtml((i.tags||[]).join(", "))}" data-field="tags" placeholder="—"></td>
           <td data-label="Category"><select class="status-select" data-field="category">${catOptions}</select></td>
-          <td class="num" data-label="Amount"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(i.amount)}" data-field="amount" data-money="1"></div>${i.originalCurrency ? `<div class="hint">${i.originalAmount} ${i.originalCurrency}</div>` : ""}</td>
+          <td class="num" data-label="Amount" data-short="${escapeHtml(fmtMoney(i.amount))}"><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(i.amount)}" data-field="amount" data-money="1"></div>${i.originalCurrency ? `<div class="hint">${i.originalAmount} ${i.originalCurrency}</div>` : ""}</td>
           <td class="cell-actions" data-label=""  style="white-space:nowrap;">
             <button class="row-action" data-action="duplicate" aria-label="Copy into a new entry" title="Copy into a new entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="row-action row-action-danger" data-action="delete" aria-label="Remove this entry" title="Remove this entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
@@ -16155,7 +16236,15 @@
     (function itemSheet(){
       "use strict";
 
-      const ROW_SEL = ".loan-card, .savings-account, .inv-card";
+      const ROW_SEL = ".loan-card, .savings-account, .inv-card, #tab-history tbody tr";
+      const HIST_SEL = "#tab-history tbody tr";
+      const PHONE = window.matchMedia("(max-width: 720px)");
+      /* The three lists become rows on a preference; History becomes rows on a
+         screen width. Above 720px a history row is a table row you edit in
+         place, and clicking it has to go on doing exactly that. */
+      const isLean = row => row.matches(HIST_SEL)
+        ? PHONE.matches
+        : document.body.classList.contains("list-as-rows");
 
       /* The three lists name their controls three ways - loans put the meaning
          in data-action, investments in data-field, savings notes in
@@ -16194,6 +16283,8 @@
          way wherever on the row the field happens to sit. */
       function shownValue(input){
         if (!input.value) return "\u2014";
+        // A date field holds 2026-09-18 and means Sep 18.
+        if (input.type === "date") return fmtDate(input.value);
         const box = input.parentElement;
         const lead  = (box && box.classList.contains("amount-wrap")) ? txt(box, "span") : "";
         const trail = (box && box.classList.contains("sa-inline"))   ? txt(box, "span") : "";
@@ -16203,11 +16294,19 @@
       }
 
       function kickerOf(row){
+        if (row.matches(HIST_SEL)){
+          return (row.dataset.kind === "income" ? "Income" : "Expense") +
+                 (row.hasAttribute("data-archived") ? " \u00b7 archived" : "");
+        }
         if (row.classList.contains("savings-account")) return "Savings account";
         if (row.classList.contains("inv-card")) return "Investment";
         return row.closest("#loans-taken-table-wrap") ? "Money you borrowed" : "Money you lent";
       }
       function titleOf(row){
+        if (row.matches(HIST_SEL)){
+          const d = row.querySelector('input[data-field="description"]');
+          return (d && d.value.trim()) || "Entry";
+        }
         if (row.classList.contains("savings-account")) return txt(row, ".sa-name");
         if (row.classList.contains("inv-card")){
           const n = row.querySelector(".inv-title-input");
@@ -16215,14 +16314,28 @@
         }
         return txt(row, ".loan-who");
       }
-      function subOf(row){
+      /* The figure is what the sheet was opened to see, so it stops being a
+         clause in a sentence of small grey text. It comes back on its own and
+         is set large; what is true about it comes back beside it, small. */
+      function headOf(row){
+        if (row.matches(HIST_SEL)){
+          const amt = row.querySelector("td.num");
+          const when = row.querySelector('td[data-label="Date"]');
+          return {
+            fig: amt ? (amt.getAttribute("data-short") || "") : "",
+            cap: [chosen(row.querySelector('select[data-field="category"]')),
+                  when ? when.getAttribute("data-short") : ""].filter(Boolean).join(" \u00b7 ")
+          };
+        }
         if (row.classList.contains("savings-account")){
           const share = txt(row, ".sv-metric-share");
-          return txt(row, ".sv-metric-value") + (share ? " \u00b7 " + share + " of savings" : "");
+          return { fig: txt(row, ".sv-metric-value"), cap: share ? share + " of savings" : "" };
         }
-        if (row.classList.contains("inv-card")) return txt(row, ".pl-figure");
+        if (row.classList.contains("inv-card")){
+          return { fig: txt(row, ".pl-figure"), cap: txt(row, ".inv-standing-label") };
+        }
         const st = row.querySelector('select[data-action="status"]');
-        return txt(row, ".loan-amt") + (chosen(st) ? " \u00b7 " + chosen(st) : "");
+        return { fig: txt(row, ".loan-amt"), cap: chosen(st) };
       }
 
       /* Every fact on the record, read off the row itself rather than out of
@@ -16250,7 +16363,10 @@
         push("Logged", txt(row, ".loan-logged"));
 
         const kind = pick(row, "field", "category");
-        if (kind) push("Kind", chosen(kind));
+        /* On an investment this select IS the kind of thing it is - Stocks,
+           Mutual Fund. On a history entry it is the spending category, and
+           "Kind" is a word nothing else in the app uses for that. */
+        if (kind) push(row.matches(HIST_SEL) ? "Category" : "Kind", chosen(kind));
 
         const stand = row.querySelector(".inv-standing-row");
         if (stand){
@@ -16284,8 +16400,11 @@
           if (input.closest(".sa-field")) return;         // already said, with its own label
           if (input.type === "checkbox" || input.type === "radio") return;
           const f = input.getAttribute("data-field");
-          // These four have a line of their own, below or above.
+          // These have a line of their own, above or below: the first four by
+          // name, and on a history entry the description is the title and the
+          // amount is the figure at the top of the sheet.
           if (f === "name" || f === "notes" || f === "deadline" || f === "payment") return;
+          if (row.matches(HIST_SEL) && (f === "description" || f === "amount")) return;
           push(pretty(f), shownValue(input));
         });
 
@@ -16305,8 +16424,12 @@
 
         const note = row.querySelector('textarea[data-field="notes"], textarea[data-note-field="notes"]');
         const read = txt(row, ".loan-note-read");
-        push("Note", (note && note.value.trim()) ||
-                     (read && !/^No note/i.test(read) ? read : "") || "\u2014");
+        /* A history entry has no note field at all, and "Note -" under every
+           one of them is a row of nothing. */
+        if (note || read){
+          push("Note", (note && note.value.trim()) ||
+                       (read && !/^No note/i.test(read) ? read : "") || "\u2014");
+        }
         return out;
       }
 
@@ -16325,6 +16448,7 @@
               '<div class="sheet-head-text">' +
                 '<p class="drill-kicker"></p>' +
                 '<h2 class="drill-title" id="item-sheet-title"></h2>' +
+                '<p class="sheet-figure"></p>' +
                 '<p class="drill-sub"></p>' +
               '</div>' +
               '<div class="sheet-head-acts">' +
@@ -16386,6 +16510,11 @@
         borrowed = [];
       }
 
+      /* Same word the read view uses, for the same reason. */
+      function labelOf(ctl, row){
+        const l = labelFor(ctl);
+        return (l === "Kind" && row.matches(HIST_SEL)) ? "Category" : l;
+      }
       function labelFor(ctl){
         return ctl.getAttribute("aria-label") ||
                pretty(ctl.getAttribute("data-field") ||
@@ -16436,12 +16565,16 @@
                that saves it looks for the textarea inside it. */
             const field = within(ctl, ".sa-field");
             if (field){ add(field, null); return; }
+            /* An amount field is a currency mark and a field. Borrowing the
+               field alone leaves the mark behind on a row nobody can see. */
+            const money = within(ctl, ".amount-cell");
+            if (money){ add(money, labelOf(ctl, row)); return; }
             const panel = within(ctl, ".collapsible-body");
             if (panel){
               add(panel, panel.hasAttribute("data-payment-panel") ? "Log a payment" : "Note");
               return;
             }
-            add(ctl, labelFor(ctl));
+            add(ctl, labelOf(ctl, row));
           });
 
         units.forEach(u => {
@@ -16461,8 +16594,29 @@
         foot.className = "sheet-foot";
         const bar = row.querySelector(".row-action-bar");
         if (bar) foot.appendChild(borrow(bar));
+        /* A history row keeps its two buttons in a cell of their own. */
+        row.querySelectorAll(".cell-actions .row-action:not(.row-action-danger)")
+          .forEach(b => foot.appendChild(borrow(b)));
         const del = row.querySelector(".row-action-danger");
         if (del) foot.appendChild(borrow(del));
+
+        /* The button half of the swipe. A gesture cannot be the only way to
+           reach an action - and archiving has no control on the row to borrow,
+           because it is new here. */
+        if (row.matches(HIST_SEL)){
+          const filed = row.hasAttribute("data-archived");
+          const arch = document.createElement("button");
+          arch.type = "button";
+          arch.className = "btn btn-ghost btn-sm sheet-archive";
+          arch.textContent = filed ? "Put back in the list" : "Archive";
+          arch.addEventListener("click", () => {
+            const id = row.dataset.id, kind = row.dataset.kind || "expense";
+            setArchived(kind, id, !filed);
+            showToast(filed ? "Back in the list."
+                            : "Filed away. It still counts in every total.");
+          });
+          foot.insertBefore(arch, foot.firstChild);
+        }
         if (foot.children.length) body.appendChild(foot);
 
         if (!units.length && !foot.children.length){
@@ -16479,7 +16633,9 @@
         giveBack();
         sheet.querySelector(".drill-kicker").textContent = kickerOf(row);
         sheet.querySelector(".drill-title").textContent = titleOf(row) || "Entry";
-        sheet.querySelector(".drill-sub").textContent = subOf(row);
+        const head = headOf(row);
+        sheet.querySelector(".sheet-figure").textContent = head.fig || "";
+        sheet.querySelector(".drill-sub").textContent = head.cap || "";
         const body = sheet.querySelector(".drill-body");
         body.innerHTML = "";
         if (editing) buildEdit(body, row); else buildRead(body, row);
@@ -16554,13 +16710,12 @@
       }, true);
 
       document.addEventListener("click", ev => {
-        if (!document.body.classList.contains("list-as-rows")) return;
         if (sheet && sheet.contains(ev.target)) return;
         if (Date.now() < notAClickUntil) return;
         const t = ev.target;
         if (!t.closest) return;
         const row = t.closest(ROW_SEL);
-        if (!row) return;
+        if (!row || !isLean(row)) return;
         /* Whatever is still interactive on the row is itself, not the row. */
         if (t.closest("input, select, textarea, button, a, label, .sa-grip")) return;
         open(row);
@@ -16568,17 +16723,17 @@
 
       document.addEventListener("keydown", ev => {
         if (ev.key !== "Enter" && ev.key !== " ") return;
-        if (!document.body.classList.contains("list-as-rows")) return;
         const row = document.activeElement;
         if (!row || !row.matches || !row.matches(ROW_SEL)) return;
+        if (!isLean(row)) return;
         ev.preventDefault();
         open(row);
       });
 
       /* A row is a way in only while the list is a list. */
       function syncRows(){
-        const on = document.body.classList.contains("list-as-rows");
         document.querySelectorAll(ROW_SEL).forEach(row => {
+          const on = isLean(row);
           if (on){
             if (row.getAttribute("tabindex") === null){
               row.setAttribute("tabindex", "0");
@@ -16589,12 +16744,257 @@
             row.removeAttribute("aria-haspopup");
           }
         });
-        if (!on && sheet && sheet.classList.contains("show")) close();
+        if (openRow && !isLean(openRow) && sheet && sheet.classList.contains("show")) close();
       }
       syncRows();
       /* The same shape the drill-down above uses to catch its own re-renders:
          after anything is clicked, look again. */
       document.addEventListener("click", () => setTimeout(syncRows, 180), true);
+    })();
+
+    /* ======================================================================
+       A HISTORY ROW UNDER A FINGER
+
+       HOLD to pick. The checkbox is not on the row until it is asked for, so
+       the list stays a list until the moment you want several of them. 450ms,
+       between iOS's 500 and Android's 400.
+
+       SWIPE to act. Left deletes, right archives - the destructive one on the
+       side the destructive one is on everywhere. The row follows the finger
+       1:1, and what it uncovers is a pane naming the action.
+
+       TAP to open the sheet.
+
+       WHO OWNS THE GESTURE. This app already swipes sideways to change tab, on
+       this screen, under this finger. One has to yield: the row engages at 6px
+       of dominant-horizontal travel and raises document.body.dataset.rowSwipe,
+       and the tab swipe - which decides at 8px - stands down when it sees it.
+       Pointer events are dispatched before touch events for the same input, so
+       the flag is up in time. Off a row, the tab swipe is untouched.
+
+       AND A GESTURE IS NEVER THE ONLY WAY. Both actions are buttons in the
+       sheet, and the row is focusable with Enter to open it.
+       ====================================================================== */
+    (function historyGestures(){
+      "use strict";
+
+      const PHONE = window.matchMedia("(max-width: 720px)");
+      const ROW = "#tab-history tbody tr";
+      const LONG_PRESS = 450;   // iOS holds for 500, Android for 400
+      const ENGAGE = 6;         // and the tab swipe makes its mind up at 8
+      const COMMIT = 96;        // a third of a 309px row
+
+      const panel = () => document.getElementById("tab-history");
+      const buzz = ms => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e){} };
+
+      let press = null, pane = null, deaf = 0;
+
+      /* ---------- picking several ---------------------------------------- */
+      function picking(){ const p = panel(); return !!(p && p.dataset.picking === "1"); }
+      function setPicking(on){
+        const p = panel(); if (!p) return;
+        if (on) p.dataset.picking = "1"; else delete p.dataset.picking;
+        /* The add button floats over the whole app, including over the bar that
+           appears when something is picked - measured as a real overlap at 390.
+           It is not what you want while choosing entries, so it stands aside. */
+        document.body.classList.toggle("is-picking", !!on);
+      }
+      function anyChecked(){ const p = panel(); return !!(p && p.querySelector(".row-select:checked")); }
+      /* The checkbox is the app's own, and so is the handler on it that owns the
+         selection set and the bulk bar. This only presses it. */
+      function tick(row, force){
+        const box = row.querySelector(".row-select");
+        if (!box) return;
+        box.checked = (force === true) ? true : !box.checked;
+        box.dispatchEvent(new Event("change", { bubbles: true }));
+        if (!anyChecked()) setPicking(false);
+      }
+
+      /* ---------- what the swipe uncovers --------------------------------- */
+      function paneFor(row, dir){
+        const wrap = row.closest('[id$="-table-wrap"]');
+        if (!wrap) return;
+        if (!pane) pane = document.createElement("div");
+        const filed = row.hasAttribute("data-archived");
+        pane.className = "swipe-pane " + (dir < 0 ? "is-delete" : "is-archive");
+        pane.textContent = dir < 0 ? "Delete" : (filed ? "Put back" : "Archive");
+        const r = row.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+        pane.style.top = (r.top - w.top) + "px";
+        pane.style.left = (r.left - w.left) + "px";
+        pane.style.width = r.width + "px";
+        pane.style.height = r.height + "px";
+        if (pane.parentNode !== wrap) wrap.appendChild(pane);
+      }
+      function dropPane(){ if (pane && pane.parentNode) pane.parentNode.removeChild(pane); }
+
+      function springBack(row){
+        row.style.transition = "transform var(--dur-base) var(--ease-out)";
+        row.style.transform = "translateX(0)";
+        window.setTimeout(() => {
+          row.style.transition = ""; row.style.transform = "";
+          row.classList.remove("is-swiping", "is-past");
+          dropPane();
+        }, 180);
+      }
+
+      function commit(row, action){
+        buzz(14);
+        const filed = row.hasAttribute("data-archived");
+        const id = row.dataset.id, kind = row.dataset.kind || "expense";
+        const away = (action === "delete" ? -1 : 1) * (row.offsetWidth + 24);
+        row.style.transition = "transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)";
+        row.style.transform = "translateX(" + away + "px)";
+        row.style.opacity = "0";
+        /* It leaves, and THEN the record changes and the list redraws without
+           it. Doing both at once makes the list jump a row under a finger that
+           is still on the screen. */
+        window.setTimeout(() => {
+          dropPane();
+          if (action === "delete"){
+            /* Not reimplemented. This button's handler is the path that also
+               puts the money back into the account the expense came out of and
+               raises the undo. */
+            const del = row.querySelector('[data-action="delete"]');
+            if (del) del.click(); else springBack(row);
+            return;
+          }
+          setArchived(kind, id, !filed);
+          showUndoToast(
+            filed ? "Back in the list." : "Filed away. It still counts in every total.",
+            () => setArchived(kind, id, filed)
+          );
+        }, 170);
+      }
+
+      /* ---------- the gesture --------------------------------------------- */
+      function letGo(){
+        if (!press) return;
+        window.clearTimeout(press.timer);
+        press.row.classList.remove("is-pressing");
+        press = null;
+      }
+
+      document.addEventListener("pointerdown", ev => {
+        if (!PHONE.matches) return;
+        if (ev.pointerType === "mouse" && ev.button !== 0) return;
+        const t = ev.target;
+        if (!t.closest) return;
+        const row = t.closest(ROW);
+        if (!row) return;
+        if (t.closest("button, a, .bulk-bar")) return;
+        press = { row: row, x: ev.clientX, y: ev.clientY, dx: 0, mode: "", side: 0, id: ev.pointerId };
+        row.classList.add("is-pressing");
+        press.timer = window.setTimeout(() => {
+          if (!press || press.mode) return;
+          press.mode = "pick";
+          press.row.classList.remove("is-pressing");
+          buzz(10);
+          setPicking(true);
+          tick(press.row, true);
+        }, LONG_PRESS);
+      }, true);
+
+      document.addEventListener("pointermove", ev => {
+        if (!press || ev.pointerId !== press.id) return;
+        const dx = ev.clientX - press.x, dy = ev.clientY - press.y;
+        if (!press.mode){
+          if (Math.abs(dx) >= ENGAGE && Math.abs(dx) > Math.abs(dy) * 1.2){
+            press.mode = "swipe";
+            window.clearTimeout(press.timer);
+            press.row.classList.remove("is-pressing");
+            press.row.classList.add("is-swiping");
+            document.body.dataset.rowSwipe = "1";   // the tab swipe reads this
+            try { press.row.setPointerCapture(ev.pointerId); } catch(e){}
+            /* and falls through, so the move that decides is also the move that
+               moves it. Returning here left the row one event behind the
+               finger: measured, the first move at 26px did nothing and only the
+               second put the row at 52px. */
+          } else {
+            // Up the page is a scroll, and a scroll is not a press.
+            if (Math.abs(dy) > 10) letGo();
+            return;
+          }
+        }
+        if (press.mode !== "swipe") return;
+        press.dx = dx;
+        const side = dx < 0 ? -1 : 1;
+        if (side !== press.side){ press.side = side; paneFor(press.row, side); }
+        press.row.style.transform = "translateX(" + dx + "px)";
+        const past = Math.abs(dx) >= COMMIT;
+        press.row.classList.toggle("is-past", past);
+        if (pane) pane.classList.toggle("is-past", past);   // "let go now"
+      });
+
+      document.addEventListener("pointerup", ev => {
+        if (!press || ev.pointerId !== press.id) return;
+        const p = press; press = null;
+        window.clearTimeout(p.timer);
+        p.row.classList.remove("is-pressing");
+        delete document.body.dataset.rowSwipe;
+        if (p.mode === "swipe"){
+          deaf = Date.now() + 350;        // letting go of a swipe is not a tap
+          if (Math.abs(p.dx) >= COMMIT) commit(p.row, p.dx < 0 ? "delete" : "archive");
+          else springBack(p.row);
+          return;
+        }
+        if (p.mode === "pick") deaf = Date.now() + 350;   // nor is finishing a hold
+      });
+
+      document.addEventListener("pointercancel", () => {
+        if (press && press.mode === "swipe") springBack(press.row);
+        delete document.body.dataset.rowSwipe;
+        letGo();
+      });
+
+      /* A tap while picking picks, and a tap that is really the end of a
+         gesture is nothing at all. In the CAPTURE phase, so the sheet's opener -
+         which listens on the way back up - never sees the ones it should not. */
+      document.addEventListener("click", ev => {
+        if (!PHONE.matches) return;
+        const t = ev.target;
+        if (!t.closest) return;
+        const row = t.closest(ROW);
+        if (!row) return;
+        /* A click ON A CONTROL is never the thing this guard is about, and
+           swallowing one is not harmless: this is a capture listener, so
+           stopPropagation here means the event never reaches its target. The
+           swipe commits by pressing the row's own delete button 170ms after
+           release - inside the deaf window - and without this line that press
+           was eaten by this guard and nothing was ever deleted. */
+        if (t.closest("button, a, input, select, textarea, label")) return;
+        if (Date.now() < deaf){ ev.stopPropagation(); ev.preventDefault(); return; }
+        if (!picking()) return;
+        ev.stopPropagation(); ev.preventDefault();
+        tick(row);
+      }, true);
+
+      /* Emptying the selection leaves the mode - otherwise the checkboxes stay
+         out with nothing ticked and no way back to a plain list. */
+      document.addEventListener("click", ev => {
+        if (!ev.target.closest) return;
+        if (!ev.target.closest("#btn-bulk-clear-expense, #btn-bulk-clear-income, " +
+                               "#btn-bulk-delete-expense, #btn-bulk-delete-income")) return;
+        window.setTimeout(() => { if (!anyChecked()) setPicking(false); }, 60);
+      });
+
+      /* ---------- and the card stops giving the wrong instruction --------- */
+      /* "Click any field to fix the date, category, description, tags, or
+         amount" stopped being true on a phone the moment the fields left the
+         row. Set as text rather than drawn with a pseudo-element, so a screen
+         reader is told the same thing the screen says. */
+      const PHONE_SUB = "Tap an entry to open it. Hold to pick several, or swipe one aside.";
+      const desktopSub = new WeakMap();
+      function sayHow(){
+        ["#history-expense-card", "#history-income-card"].forEach(sel => {
+          const el = document.querySelector(sel + " .panel-head .sub");
+          if (!el) return;
+          if (!desktopSub.has(el)) desktopSub.set(el, el.textContent);
+          el.textContent = PHONE.matches ? PHONE_SUB : desktopSub.get(el);
+        });
+      }
+      sayHow();
+      if (PHONE.addEventListener) PHONE.addEventListener("change", sayHow);
+      else if (PHONE.addListener) PHONE.addListener(sayHow);
     })();
 
 })();
@@ -19975,6 +20375,8 @@
     #tab-history [id$="-table-wrap"]{
       overflow-x: visible; overflow-y: visible;
       border: 0; background: transparent; padding: 0;
+      /* What a swipe reveals is drawn behind the row, in here. */
+      position: relative;
     }
     #tab-history table,
     #tab-history thead,
@@ -20007,35 +20409,95 @@
       overflow: hidden; text-overflow: ellipsis;
     }
 
-    /* Three lines of what is actually read: what it was and how much, then
-       when and which category, then the tags and the two things you can do. */
-    #tab-history tbody tr > .cell-select{ grid-area: 1 / 1 / 4 / 2; align-self: start; }
+    /* TWO LINES. What it was and how much, then which category and when.
+       Line two mirrors line one - label left, figure right - so the columns
+       agree down the page. Everything else is in the sheet the row opens. */
     #tab-history tbody tr > td[data-label="Description"]{
       grid-area: 1 / 2 / 2 / 3; font-weight: 700; font-size: var(--fs-base);
+      white-space: nowrap;
     }
     #tab-history tbody tr > td[data-label="Amount"],
     #tab-history tbody tr > td.num{
       grid-area: 1 / 3 / 2 / 4; text-align: right; font-weight: 800;
       font-variant-numeric: tabular-nums; white-space: nowrap;
     }
-    #tab-history tbody tr > td[data-label="Date"]{
-      grid-area: 2 / 2 / 3 / 3; font-size: var(--fs-2xs); color: var(--ink-dim);
-    }
     #tab-history tbody tr > td[data-label="Category"]{
-      grid-area: 2 / 3 / 3 / 4; font-size: var(--fs-2xs); text-align: right;
+      grid-area: 2 / 2 / 3 / 3; font-size: var(--fs-2xs); color: var(--ink-soft);
+      display: flex; align-items: center; gap: var(--sp-3);
     }
-    #tab-history tbody tr > .tags-cell{ grid-area: 3 / 2 / 4 / 3; }
-    #tab-history tbody tr > .cell-actions{
-      grid-area: 3 / 3 / 4 / 4; display: flex; justify-content: flex-end; gap: var(--sp-4);
+    /* A category is a label, not a state. The coloured LEFT EDGE on a row
+       already means a state in this app - a loan overdue or due this week - so
+       the category takes the 7px dot the tag breakdown uses instead. */
+    #tab-history tbody tr > td[data-label="Category"]::before{
+      content: ""; flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%;
+      background: var(--cat, var(--ink-faint));
     }
+    #tab-history tbody tr > td[data-label="Date"]{
+      grid-area: 2 / 3 / 3 / 4; font-size: var(--fs-2xs); color: var(--ink-dim);
+      text-align: right; white-space: nowrap;
+    }
+    /* A date input prints 18/09/2026 and carries a picker indicator that no
+       amount of appearance:none reliably removes. The cell prints the short
+       date the rest of the app uses, and the field itself goes to the sheet. */
+    #tab-history tbody tr > td[data-label="Date"] input{ display: none; }
+    #tab-history tbody tr > td[data-label="Date"]::after{ content: attr(data-short); }
+    /* And the amount, for a reason of its own: the cell is a currency mark and
+       a right-aligned field, which lines up beautifully in a narrow column and
+       on a 140px row cell leaves the P at one end and the digits at the other.
+       An input cannot be sized to its value in CSS, so the cell prints the
+       figure fmtMoney made and the field goes to the sheet. */
+    #tab-history tbody tr > td.num .amount-cell{ display: none; }
+    #tab-history tbody tr > td.num::after{ content: attr(data-short); }
 
-    /* The controls inside a cell were sized for a table column. */
+    /* Not on a row: the tags, the two buttons, and the checkbox until it is
+       asked for. */
+    #tab-history tbody tr > .tags-cell,
+    #tab-history tbody tr > .cell-actions,
+    #tab-history tbody tr > .cell-select{ display: none; }
+
+    /* THE FIELDS STAY FIELDS. Flattened, and out of the pointer's reach so the
+       tap reaches the row. The renderers are untouched, which is how sorting,
+       paging, the selection set and every write path stay the ones that were
+       already written. */
     #tab-history tbody tr td input,
-    #tab-history tbody tr td select{ width: 100%; min-width: 0; max-width: 100%; }
+    #tab-history tbody tr td select{
+      width: 100%; min-width: 0; max-width: 100%;
+      background: transparent; border-color: transparent; box-shadow: none;
+      padding: 0; height: auto; min-height: 0; line-height: inherit;
+      color: inherit; font: inherit; text-overflow: ellipsis;
+      -webkit-appearance: none; appearance: none;
+      pointer-events: none;
+    }
     #tab-history tbody tr td.num input{ text-align: right; }
 
-    /* A table draws its own separators; a list of cards does not need them. */
-    #tab-history tbody tr + tr{ border-top: 1px solid var(--line); }
+    /* Asked for: the checkbox arrives on a long press and not before. */
+    #tab-history[data-picking="1"] tbody tr > .cell-select{
+      display: flex; align-items: center; justify-content: center;
+      grid-area: 1 / 1 / 3 / 2; margin-right: var(--sp-2);
+    }
+    #tab-history[data-picking="1"] tbody tr > .cell-select input{
+      pointer-events: none; width: 20px; height: 20px; flex: 0 0 auto;
+      -webkit-appearance: checkbox; appearance: checkbox;
+      accent-color: var(--accent);
+    }
+
+    /* A row is the way in. */
+    #tab-history tbody tr{
+      cursor: pointer;
+      /* The browser keeps vertical panning; sideways belongs to the row. */
+      touch-action: pan-y;
+      -webkit-user-select: none; user-select: none;
+    }
+    #tab-history tbody tr:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* An entry that has been filed away says so, or showing them means nothing. */
+    #tab-history tbody tr[data-archived]{ opacity: .66; }
+    #tab-history tbody tr[data-archived] > td[data-label="Description"]::after{
+      content: "Archived"; margin-left: var(--sp-4);
+      font-size: var(--fs-3xs); font-weight: 700; letter-spacing: var(--track-caps);
+      text-transform: uppercase; color: var(--ink-faint);
+    }
+
     #tab-history table{ border-collapse: separate; border-spacing: 0; }
 
     /* The pagination bar was sized to sit under a wide table. */
@@ -20331,21 +20793,123 @@
     .item-sheet.show .drill-panel{ animation: none; }
   }
 
-  /* On a phone it comes up from the bottom, where a thumb is. */
+  /* On a phone it is CENTRED, not docked. A bottom sheet is the shape of a
+     peripheral surface - something you pulled up out of the way and will push
+     back down. This one was opened deliberately, by tapping one entry, and it
+     is the only thing being looked at until it closes, so it arrives where the
+     eye already is and the page behind it goes out of focus. */
   @media (max-width: 720px){
-    .item-sheet{ align-items: flex-end; padding: 0; }
+    .item-sheet{ align-items: center; padding: var(--sp-6); }
     .item-sheet .drill-panel{
-      max-width: none; max-height: 86vh;
-      border-radius: var(--r-lg) var(--r-lg) 0 0;
+      max-width: none; max-height: 78vh;
+      border-radius: var(--r-lg);
     }
     .item-sheet .drill-head,
     .item-sheet .drill-body{ padding: var(--sp-7); }
-    .item-sheet .drill-body{ padding-bottom: calc(var(--sp-7) + env(safe-area-inset-bottom, 0px)); }
-    .item-sheet.show .drill-panel{ animation-name: sheet-up; }
+    /* Two columns of 110px and a gap does not fit a 358px panel; the key goes
+       above what it names. */
     .sheet-facts{ grid-template-columns: minmax(0, 1fr); gap: var(--sp-2) 0; }
     .sheet-facts dd{ margin-bottom: var(--sp-4); }
   }
-  @keyframes sheet-up{ from{ transform: translateY(18px); opacity: .4; } }
+
+  /* ---------- the sheet is the only thing being looked at ----------------- */
+  /* The same treatment the modal rail drawer already uses: the page behind goes
+     soft, so the dialog is unmistakably the thing in front rather than another
+     panel among panels. */
+  .item-sheet{ background: var(--scrim-strong); backdrop-filter: blur(3px); }
+
+  /* The figure is what the sheet was opened to see. It was a clause in a line
+     of small grey text beside the word "Outstanding"; it leads now. */
+  .sheet-figure{
+    margin: var(--sp-4) 0 0;
+    font-size: var(--fs-3xl); font-weight: 800; line-height: 1;
+    letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  }
+  .sheet-figure:empty{ display: none; }
+  .sheet-head-text{ flex: 1 1 auto; min-width: 0; }
+  .drill-sub:empty{ display: none; }
+
+  /* ---------- a history row under a finger -------------------------------- */
+  @media (max-width: 720px){
+    /* A hold that shows nothing until it fires reads as a dead press, so the
+       row scales down over the hold and the scale IS the progress. It snaps
+       back the moment the finger leaves or starts to scroll. */
+    #tab-history tbody tr{
+      transition: transform var(--dur-base) var(--ease-out),
+                  opacity var(--dur-base) var(--ease-out);
+    }
+    #tab-history tbody tr.is-pressing{
+      transform: scale(.975);
+      transition: transform 450ms var(--ease-out);
+    }
+    /* Under a finger, 1:1, with no lag between the two. */
+    #tab-history tbody tr.is-swiping{
+      transition: none; position: relative; z-index: 2;
+    }
+    @media (prefers-reduced-motion: reduce){
+      #tab-history tbody tr{ transition: none; }
+      /* Not left with no feedback at all - it just stops being movement. */
+      #tab-history tbody tr.is-pressing{ transform: none; border-color: var(--accent); }
+    }
+
+    .swipe-pane{
+      position: absolute; z-index: 0; pointer-events: none;
+      display: flex; align-items: center;
+      padding: 0 var(--sp-7); border-radius: var(--r-md);
+      font-size: var(--fs-2xs); font-weight: 800;
+      letter-spacing: var(--track-caps); text-transform: uppercase;
+      transition: background var(--dur-fast) var(--ease-out);
+    }
+    /* Both pairings are already in this file: the overdue deadline chip is this
+       red on this wash, an open disclosure is this teal on this one. */
+    .swipe-pane.is-delete{
+      justify-content: flex-end;
+      background: rgb(228 105 92 / .18); color: var(--negative);
+    }
+    .swipe-pane.is-archive{
+      justify-content: flex-start;
+      background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent);
+    }
+    /* Past the point of no return the wash deepens. One property, fast, no
+       bounce - it is saying "let go now", not celebrating. */
+    .swipe-pane.is-past.is-delete{ background: rgb(228 105 92 / .32); }
+    .swipe-pane.is-past.is-archive{ background: color-mix(in srgb, var(--accent) 30%, transparent); }
+    @media (prefers-reduced-motion: reduce){ .swipe-pane{ transition: none; } }
+  }
+
+  /* ---------- a list that is shorter than it looks ------------------------ */
+  /* Hiding entries without saying so is the thing the filter rules call out by
+     name: when a list is short, say what made it short, and put the way back in
+     the same place every time. */
+  .archived-note{
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--sp-5); flex-wrap: wrap;
+    margin: 0 0 var(--sp-6); padding: var(--sp-4) var(--sp-6);
+    border: 1px dashed var(--line-strong); border-radius: var(--r-md);
+    font-size: var(--fs-2xs); color: var(--ink-soft);
+  }
+  .archived-note.is-showing{ border-style: solid; }
+
+  /* ---------- the bar that appears when entries are picked ---------------- */
+  /* It was only ever reachable from a desktop, where seven controls in a row
+     is a row of seven controls. A long press summons it on a phone now, where
+     the same seven are 390px wide and the floating add button sits on top of
+     the last two. */
+  @media (max-width: 720px){
+    body.is-picking #btn-fab-add{ display: none; }
+    .bulk-bar{
+      flex-wrap: wrap; row-gap: var(--sp-4); gap: var(--sp-4);
+      padding: var(--sp-5) var(--sp-6) calc(var(--sp-5) + env(safe-area-inset-bottom, 0px));
+    }
+    /* The count is the heading of the bar, not an item in it. */
+    .bulk-bar > span[id$="-bulk-count"]{ flex: 1 0 100%; font-weight: 700; color: var(--ink); }
+    /* Each picker keeps its own button on the same line as itself. */
+    .bulk-bar > select{ flex: 1 1 130px; min-width: 0; max-width: none; }
+    .bulk-bar > button[id^="btn-bulk-recategorize"],
+    .bulk-bar > button[id^="btn-bulk-bank"]{ flex: 0 0 auto; }
+    .bulk-bar > button[id^="btn-bulk-delete"]{ flex: 1 1 auto; }
+    .bulk-bar > button[id^="btn-bulk-clear"]{ flex: 0 0 auto; margin-left: auto; }
+  }
 </style>
 </body>
 </html>
