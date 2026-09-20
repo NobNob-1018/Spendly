@@ -779,9 +779,35 @@
   button:disabled, button[aria-disabled="true"]{ opacity:1; color: var(--ink-dim); background: var(--sunken); border-color: var(--line); cursor:default !important; }
   button.is-loading{ color: var(--ink-soft); cursor:progress !important; }
   button.is-loading::after{ content:""; width:12px; height:12px; margin-left: var(--sp-4); border:2px solid currentColor; border-right-color:transparent; border-radius: var(--r-pill); display:inline-block; vertical-align:-2px; animation: spendly-spin 700ms linear infinite; }
-  .range-tabs{ display:inline-flex; gap: var(--sp-2); padding: var(--sp-2); background: var(--sunken); border:1px solid var(--line); border-radius: var(--r-md); flex-wrap:wrap; }
-  .range-tabs button{ display:inline-flex; align-items:center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-6); background:transparent; border:0; border-radius: var(--r-sm); color: var(--ink-dim); font:inherit; font-size: var(--fs-3xs); font-weight:700; cursor:pointer; white-space:nowrap; }
-  .range-tabs button.active{ background: var(--accent); color: var(--on-accent); }
+  /* CONCENTRIC: the outer radius is the inner radius plus the padding between
+     them, or the pills look wedged into the corners. 4px buttons + 6px of tray
+     = 10px, which is --r-lg. It was --r-md (6) around --sp-2 (4) around 4. */
+  .range-tabs{ display:inline-flex; gap: var(--sp-3); padding: var(--sp-3);
+    background: var(--sunken); border:1px solid var(--line);
+    border-radius: var(--r-lg); flex-wrap:wrap; }
+  /* A stated height, because these are buttons and every other button in the
+     app states one - .btn is 34, .btn-sm is 28. Without it the row was as tall
+     as its font happened to make it, and drifted between the toggles that carry
+     an icon and the ones that do not. */
+  .range-tabs button{ display:inline-flex; align-items:center; justify-content:center;
+    gap: var(--sp-4); height:28px; padding:0 var(--sp-6);
+    background:transparent; border:0; border-radius: var(--r-sm);
+    color: var(--ink-dim); font:inherit; font-size: var(--fs-2xs); font-weight:700;
+    cursor:pointer; white-space:nowrap;
+    transition: color var(--dur-fast) var(--ease-out),
+                background-color var(--dur-fast) var(--ease-out); }
+  /* THE RAIL'S LANGUAGE. --accent-light is named for this job - the token's own
+     comment is "the tint behind an active destination" - and nav.tabs has used
+     it all along while these filled solid and inverted to near-black. One
+     question, one answer: a tinted ground and accent text.
+
+     This is a one-of-N control, not a filter: the others are visibly off beside
+     it, so a tint plus accent plus 700 is unmistakable. A multi-select filter
+     still states active with a fill and a check. */
+  .range-tabs button.active{ background: var(--accent-light); color: var(--accent); }
+  @media (hover: hover){
+    .range-tabs button:not(.active):hover{ background: var(--raised); color: var(--ink); }
+  }
   .range-tabs button svg{ width:14px; height:14px; }
   /* nowrap, because .range-tabs sets flex-wrap:wrap and this sets overflow-x:
      auto - so it wrapped onto a second line before it could ever scroll, and
@@ -816,7 +842,10 @@
     -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
             mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
   }
-  #density-toggle button{ flex-direction:column; gap:0; line-height:1.15; }
+  /* Two lines, so it is the one control in the set that cannot be 28px. Stated
+     here rather than left as a rule that silently squashes it. */
+  #density-toggle button{ flex-direction:column; justify-content:center; gap:0;
+    height:auto; min-height:34px; padding: var(--sp-3) var(--sp-6); line-height:1.15; }
   #density-toggle button small{ font-size:9px; opacity:.6; text-transform:uppercase; }
   #btn-global-search, #btn-sync, button.ico{ width:32px; height:32px; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--line); border-radius: var(--r-md); color: var(--ink-soft); cursor:pointer; }
   @media (hover: hover){ #btn-global-search:hover, #btn-sync:hover{ color: var(--ink); background: var(--raised); } }
@@ -3840,7 +3869,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21b";
+  const APP_BUILD = "2026-09-21c";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -15447,7 +15476,10 @@
         if (!row){
           row = document.createElement("div");
           row.className = "panel-jumps";
-          panel.insertBefore(row, panel.firstChild);
+          /* APPENDED. It was inserted at the front and that made it the first
+             thing on a page you came to read something else on. A "what else is
+             here" list belongs after the thing it is else to. */
+          panel.appendChild(row);
           row.addEventListener("click", ev => {
             const hit = ev.target.closest("[data-jump-sec]");
             if (!hit) return;
@@ -15459,8 +15491,11 @@
         // Kept on the node, not closed over: the handler is bound once and the
         // sections it must open are the ones from the LAST pass, not the first.
         row.secs = secs; row.chosen = chosen;
+        // Last, still: a late card appended to the panel would otherwise land
+        // under a footer that says "more on this page".
+        if (row.nextElementSibling) panel.appendChild(row);
         row.dataset.of = want;
-        row.innerHTML = '<span class="panel-jumps-k">Also here</span>' +
+        row.innerHTML = '<span class="panel-jumps-k">More on this page</span>' +
           items.map(x => '<button type="button" class="panel-jump" data-jump-sec="' +
             escapeHtml(x.id) + '">' + escapeHtml((x.head.textContent || "").trim()) +
             '</button>').join("");
@@ -18414,16 +18449,23 @@ if ("serviceWorker" in navigator &&
      groups. They were 12px apart either side, which is a wall with words in it. */
   /* The list has a home. Nothing above it moves when the tab changes; the list
      itself is the only thing that does, and it says so by arriving. */
-  /* The sections of this page that open beside it: on the page, above the cards
-     it refers to. It was in the rail, where it moved the six destinations and
-     then, parked under all of them, pointed at nothing. */
+  /* The sections of this page that open beside it, at the END of the page. It
+     has been in the rail under the active destination (which moved the five
+     below it on every tab change), in a fixed slot under all six (which held
+     them still and detached the list from its subject), and at the top of the
+     page (attached, stable, and the first thing you read on a page you came to
+     read something else on). A "what else is here" list goes after the thing it
+     is else to. */
   .panel-jumps{
     display: flex; align-items: center; flex-wrap: wrap;
-    gap: var(--sp-4) var(--sp-5); margin-bottom: var(--sp-7);
+    gap: var(--sp-4) var(--sp-5);
+    margin-top: var(--sp-9); padding-top: var(--sp-7);
+    border-top: 1px solid var(--line);
   }
+  /* Sentence case, not the caps label it was: a caps run reads as a heading,
+     and this is a sentence about the page. */
   .panel-jumps-k{
-    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
-    letter-spacing: var(--track-caps); color: var(--ink-dim);
+    font-size: var(--fs-2xs); font-weight: 600; color: var(--ink-dim);
   }
   .panel-jump{
     height: 28px; padding: 0 var(--sp-6);
@@ -18441,7 +18483,7 @@ if ("serviceWorker" in navigator &&
   /* A phone had no version of this at all - the rail is a bottom bar there and
      the list was simply hidden. It is the same row. */
   @media (max-width: 720px){
-    .panel-jumps{ margin-bottom: var(--sp-6); }
+    .panel-jumps{ margin-top: var(--sp-8); padding-top: var(--sp-6); }
   }
 
   .nav-contents-slot{ display: block; }
