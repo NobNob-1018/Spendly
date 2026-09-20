@@ -244,7 +244,10 @@
     gap: var(--sp-5);
   }
   /* ---------- a group of cards, as one card ------------------------------ */
-  .group-body{ display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-8); }
+  /* Two columns, said outright. auto-fit meant which card sat beside which was
+     whatever the width happened to allow, so a pair was only a pair by luck. */
+  .group-body{ display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-8); }
+  @media (max-width: 900px){ .group-body{ grid-template-columns: 1fr; } }
   .group-body:empty{ display:none; }
   /* Inside a group a card is a part: no ground of its own, no border, no
      shadow, and its heading steps down to match the ones around it. */
@@ -259,8 +262,10 @@
   }
   .card.is-grouped > .panel-head.is-toolbar h2{ font-size: var(--fs-md); }
   .card.is-grouped > .dash-subhead{ font-size: var(--fs-md); }
-  /* A part that spans the whole group rather than sharing a column. */
-  #insights-card.is-grouped, #wc-card.is-grouped{ grid-column: 1 / -1; }
+  /* The headline of each group runs the full width; what follows shares. */
+  #recap-card.is-grouped,
+  #insights-card.is-grouped,
+  #money-overview-card.is-grouped{ grid-column: 1 / -1; }
 
   .tmw-places:empty{ display:none; }
   /* Every account, with a pin against each: the one place that both adds one to
@@ -268,6 +273,29 @@
   .tmw-chooser{ margin-top: var(--sp-7); padding-top: var(--sp-6);
     border-top:1px solid var(--line); }
   .tmw-chooser[hidden]{ display:none; }
+  /* Only while arranging - both the chooser and the tile that opens it. A stale
+     hidden attribute cannot leak it back, because this wins either way. */
+  body:not(.is-layout-editing) .tmw-chooser,
+  body:not(.is-layout-editing) .tmw-place.is-add{ display:none !important; }
+
+  /* Smaller tiles while arranging, so the row makes room for the one that adds
+     to it and the whole set is visible at once. */
+  body.is-layout-editing .tmw-places{
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  }
+  body.is-layout-editing .tmw-place{ padding: var(--sp-5) var(--sp-6); gap: var(--sp-3); }
+  body.is-layout-editing .tmw-place-v{ font-size: var(--fs-md); }
+
+  .tmw-place.is-add{
+    display:flex; flex-direction:row; align-items:center; justify-content:center;
+    gap: var(--sp-4); min-height:76px;
+    background:none; border:1px dashed var(--line-strong); color: var(--ink-dim);
+    cursor:pointer; font-size: var(--fs-2xs);
+  }
+  .tmw-place.is-add svg{ width:16px; height:16px; flex:0 0 auto; }
+  @media (hover: hover){
+    .tmw-place.is-add:hover{ border-color: var(--accent); color: var(--ink); }
+  }
   .tmw-chooser-k{ display:block; margin-bottom: var(--sp-5);
     font-size: var(--fs-3xs); font-weight:700; text-transform:uppercase;
     letter-spacing: var(--track-caps); color: var(--ink-dim); }
@@ -2883,8 +2911,6 @@
         <header class="panel-head is-toolbar">
           <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><path d="M3 7.5V17a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 9.5h-4.2a2.75 2.75 0 0 0 0 5.5H21z"/></svg></span><span class="h-text">Total money</span></h2>
           <p class="sub">Everything you hold right now, and where it is.</p>
-          <button class="btn btn-ghost btn-sm" id="btn-choose-accounts" type="button"
-                  aria-expanded="false" aria-controls="dash-tm-chooser">Choose accounts</button>
         </header>
 
         <div class="tmw-top">
@@ -3777,7 +3803,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-20i";
+  const APP_BUILD = "2026-09-20j";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4944,6 +4970,16 @@
               `</button>` +
             `</div>`;
           }).join("") +
+          /* One more of these. A hollow tile of the same shape as the ones it
+             adds to, at the end of the row, only while the layout is being
+             edited. */
+          `<button type="button" class="tmw-place is-add" data-add-account="1" ` +
+            `aria-expanded="false" aria-controls="dash-tm-chooser" ` +
+            `title="Choose which accounts this card shows">` +
+            `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" ` +
+              `stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/>` +
+              `<line x1="5" y1="12" x2="19" y2="12"/></svg>` +
+            `<span>Add an account</span></button>` +
           (places.length > SHOWN
             ? `<div class="tmw-place is-rest">` +
               `<div class="tmw-place-top"><span class="tmw-place-k">and ${places.length - SHOWN} more</span></div>` +
@@ -5007,7 +5043,7 @@
             const isOver = bp.totalSpent > bp.totalLimit;
             return '<button type="button" class="tmw-item is-budget" data-tm-budget="1" ' +
               'title="Spent against every limit you have set this month">' +
-              '<span class="k">Budget</span>' +
+              '<span class="k">Total Budget</span>' +
               '<span class="v ' + (isOver ? "is-out" : "") + '">' +
                 fmtMoney(bp.totalSpent) + '<span class="of"> / ' + fmtMoney(bp.totalLimit) +
                 '</span></span></button>';
@@ -10964,9 +11000,11 @@
 
   /* Which card belongs in which group. Run again whenever a module has mounted
      one of its own, and a no-op when there is nothing left to move. */
+  /* The order IS the flow, because groupDashboardCards appends in this order.
+     Headline first, then the pair that fills out the detail. */
   const GROUPS = {
-    "monthly-overview-body": ["recap-card", "fc-card", "summary-card"],
-    "highlights-body": ["insights-card", "money-overview-card", "out-card", "wc-card"]
+    "monthly-overview-body": ["recap-card", "summary-card", "fc-card"],
+    "highlights-body": ["insights-card", "money-overview-card", "wc-card", "out-card"]
   };
   function groupDashboardCards(){
     let moved = 0;
@@ -10991,6 +11029,21 @@
         body.appendChild(card);
         moved++;
       });
+      /* The order IS the flow, so it is enforced rather than assumed: these
+         cards arrive on three different timers and the one that mounts last was
+         landing last whatever the list said. Only when it is actually wrong -
+         re-appending every pass is a DOM change every pass, and the observer
+         watching this page turns that into another pass. */
+      const want = GROUPS[bodyId].filter(id => {
+        const el = document.getElementById(id);
+        return el && el.parentElement === body;
+      });
+      const have = [...body.children].map(el => el.id);
+      if (want.join("|") !== have.join("|")){
+        want.forEach(id => body.appendChild(document.getElementById(id)));
+        moved++;
+      }
+
       // An empty group is a heading with nothing under it.
       const host = body.closest(".card");
       if (host) host.style.display = body.children.length ? "" : "none";
@@ -12501,15 +12554,18 @@
     const editLimits = document.getElementById("btn-budget-settings");
     if (editLimits) editLimits.addEventListener("click", goToBudgets);
 
-    const chooseBtn = document.getElementById("btn-choose-accounts");
+    /* The + tile at the end of the accounts opens the chooser. It only exists
+       while the layout is being edited - choosing which accounts a card shows is
+       a decision about the card, and that is what arrange mode is. */
+    const places = document.getElementById("dash-tm-places");
     const chooseBox = document.getElementById("dash-tm-chooser");
-    if (chooseBtn && chooseBox){
-      chooseBtn.addEventListener("click", ()=>{
+    if (places && chooseBox){
+      places.addEventListener("click", ev => {
+        const add = ev.target.closest && ev.target.closest("[data-add-account]");
+        if (!add) return;
         const open = chooseBox.hasAttribute("hidden");
         if (open) chooseBox.removeAttribute("hidden"); else chooseBox.setAttribute("hidden", "");
-        chooseBtn.setAttribute("aria-expanded", open ? "true" : "false");
-        // A toggle whose label never changes is one you press twice to find out.
-        chooseBtn.textContent = open ? "Done choosing" : "Choose accounts";
+        add.setAttribute("aria-expanded", open ? "true" : "false");
       });
     }
   }
@@ -13161,7 +13217,9 @@
           });
         });
 
-        return found.sort((a, b) => b.ratio - a.ratio).slice(0, 8);
+        // Five. Eight of these inside a group of four cards is a wall, and the
+        // top of a list sorted by how unusual something is, is the list.
+        return found.sort((a, b) => b.ratio - a.ratio).slice(0, 5);
       }
 
       function buildOutliers(){
@@ -13530,7 +13588,8 @@
            on a hairline, so every category was a stub beside whichever one
            happened to move most - and the figure beside it already says the
            amount and the percentage, which is the whole content of the bar. */
-        const list = '<div class="wc-list">' + rows.map(r => {
+        // Five, for the same reason: this drew every category that had moved.
+        const list = '<div class="wc-list">' + rows.slice(0, 5).map(r => {
           return '<div class="wc-row' + (r.notable ? " is-notable" : "") + '">' +
             '<span class="wc-name">' + escapeHtml(r.cat) +
               (r.notable ? '<span class="wc-flag">unusual</span>' : "") + '</span>' +
