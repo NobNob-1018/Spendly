@@ -207,8 +207,15 @@
      nothing between them, which is what "slapped on" looks like: air is not
      the same thing as presence. */
 
-  /* 1. the reading. Top left, where reading starts. */
-  .tmw-read{ padding-top: var(--sp-6); }
+  /* 1. the reading and where the money is, on ONE row. The figure used to have a
+     full-width row to itself with about 1500px of nothing beside it, and the
+     accounts sat underneath on a row of their own. The empty half is filled by
+     the thing that was already directly below it. */
+  .tmw-top{
+    display:grid; grid-template-columns: minmax(230px, 310px) minmax(0, 1fr);
+    gap: var(--sp-9); align-items:center; padding-top: var(--sp-6);
+  }
+  .tmw-read{ min-width:0; }
   .tmw-line{ display:flex; align-items:baseline; gap: var(--sp-7); flex-wrap:wrap; }
   #total-money-card .tm-value{
     display:block; white-space:nowrap;
@@ -228,7 +235,7 @@
      sum to the figure. */
   .tmw-places{
     display:grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
-    gap: var(--sp-5); margin-top: var(--sp-8);
+    gap: var(--sp-5);
   }
   .tmw-places:empty{ display:none; }
   .tmw-place{
@@ -284,7 +291,8 @@
   }
 
   @media (max-width: 860px){
-    .tmw-places{ grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); margin-top: var(--sp-7); }
+    .tmw-top{ grid-template-columns: 1fr; gap: var(--sp-7); }
+    .tmw-places{ grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); }
     .tmw-outside{
       margin: 0 calc(var(--sp-7) * -1) calc(var(--sp-7) * -1);
       padding: var(--sp-6) var(--sp-7); align-items:flex-start;
@@ -884,47 +892,6 @@
 
 
   /* ---------- compare -------------------------------------------------------- */
-  .cmp-head, .cmp-row{
-    display: grid; grid-template-columns: minmax(0,1.2fr) 1fr 1fr 90px;
-    align-items: center; gap: var(--sp-6);
-    padding: var(--sp-5) 0;
-    font-variant-numeric: tabular-nums;
-  }
-  .cmp-head{
-    border-bottom: 1px solid var(--line);
-    font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-dim);
-    text-transform: uppercase; letter-spacing: var(--track-caps);
-  }
-  .cmp-row{ border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
-  .cmp-row:last-of-type{ border-bottom: 0; }
-  .cmp-label{ color: var(--ink-soft); font-weight: 600; }
-  .cmp-now{ font-weight: 700; font-size: var(--fs-md); }
-  .cmp-prev{ color: var(--ink-dim); }
-  .cmp-delta{ text-align: right; font-weight: 700; font-size: var(--fs-3xs); }
-  .cmp-delta.is-good{ color: var(--positive); }
-  .cmp-delta.is-bad{ color: var(--negative); }
-  .cmp-delta.is-flat{ color: var(--ink-dim); }
-
-  .cmp-movers{ margin-top: var(--sp-7); padding-top: var(--sp-7); border-top: 1px solid var(--line); }
-  .cmp-movers h3{
-    margin: 0 0 var(--sp-6); font-size: var(--fs-3xs); font-weight: 700;
-    color: var(--ink-dim); text-transform: uppercase; letter-spacing: var(--track-caps);
-  }
-  .cmp-mover{
-    display: grid; grid-template-columns: 130px minmax(0,1fr) 110px;
-    align-items: center; gap: var(--sp-6);
-    padding: var(--sp-4) 0; font-size: var(--fs-sm);
-  }
-  .cmp-mover-name{ color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cmp-mover-bar{ position: relative; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
-  .cmp-mover-bar i{ position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
-  .cmp-mover-bar i.is-up{ background: var(--negative); }
-  .cmp-mover-bar i.is-down{ background: var(--positive); }
-  .cmp-mover-amt{ text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .cmp-mover-amt.is-good{ color: var(--positive); }
-  .cmp-mover-amt.is-bad{ color: var(--negative); }
-  .cmp-empty{ padding: var(--sp-7) 0 0; color: var(--ink-dim); font-size: var(--fs-sm); }
-
   /* ---------- drill-down ------------------------------------------------------ */
   .is-drillable{ cursor: pointer; }
   .is-drillable:hover{ color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
@@ -1697,18 +1664,9 @@
   /* The label column is the only one with an explicit zero minimum, so it is
      the only one that can give way — and it did, to 2.875px, while the figures
      beside it held their min-content width. */
-  .cmp-head, .cmp-row{
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 90px;
-  }
   /* Below this there is no honest way to fit four columns of figures, so the
      row stops trying and stacks. */
   @media (max-width: 620px){
-    .cmp-head{ display: none; }
-    .cmp-row{ grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; column-gap: var(--sp-5); }
-    .cmp-label{ grid-column: 1; grid-row: 1; }
-    .cmp-now{ grid-column: 2; grid-row: 1; text-align: right; }
-    .cmp-prev{ grid-column: 1; grid-row: 2; font-size: var(--fs-2xs); }
-    .cmp-delta{ grid-column: 2; grid-row: 2; }
   }
 
   @media (max-width: 720px){
@@ -2426,8 +2384,14 @@
     stroke-linecap: round; stroke-linejoin: round;
   }
   .nav-pin[aria-pressed="true"] svg path{ fill: currentColor; }
-  /* And two lines where a name needs them, rather than a cut. */
-  .nav-content.is-chip .nav-content-t{ -webkit-line-clamp: 2; }
+  /* ONE line. Two was the right call when this row was a name and nothing else;
+     with a grip, a dot and a pin on it the name gets about 150px of a 212px box,
+     so seven of eleven wrapped and the list became eleven rows of two different
+     heights running past 600px. The whole name is on the row's title, which is
+     the trade every other list here makes. */
+  .nav-content.is-chip .nav-content-t{ -webkit-line-clamp: 1; }
+  /* And a step down the scale, so fewer of them need the ellipsis at all. */
+  nav.tabs .nav-content.is-chip{ font-size: var(--fs-sm); min-height: 32px; }
 
   /* Same depth as nav.tabs .nav-content, so it is not beaten by source order,
      and every child placed by name so nothing is auto-placed into the wrong
@@ -2843,15 +2807,16 @@
           <p class="sub">Everything you hold right now, and where it is.</p>
         </header>
 
-        <div class="tmw-read">
-          <div class="tmw-line">
-            <div class="tm-value num" id="dash-tm-value">₱0.00</div>
-            <span class="tm-trend" id="dash-tm-trend" style="display:none;"></span>
+        <div class="tmw-top">
+          <div class="tmw-read">
+            <div class="tmw-line">
+              <div class="tm-value num" id="dash-tm-value">₱0.00</div>
+              <span class="tm-trend" id="dash-tm-trend" style="display:none;"></span>
+            </div>
+            <p class="tmw-meta" id="dash-tm-meta"></p>
           </div>
-          <p class="tmw-meta" id="dash-tm-meta"></p>
+          <div class="tmw-places" id="dash-tm-places"></div>
         </div>
-
-        <div class="tmw-places" id="dash-tm-places"></div>
 
         <div class="tmw-outside" id="dash-tm-outside"></div>
       </div>
@@ -3711,7 +3676,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-20d";
+  const APP_BUILD = "2026-09-20e";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -9952,12 +9917,21 @@
       }
     }
 
-    // Budget pace — the most actionable thing the app knows.
+    /* Budget pace. The most actionable thing the app knows - and since the
+       dashboard grew a card that says exactly this, with a bar and a mark for
+       where today is, saying it again here put "Bills is over budget by
+       ₱5,999.00" on the screen twice at once. It stands down while that card is
+       on the page, and comes back if the card is taken off, because then nothing
+       else is saying it. */
+    const budgetCardOn = (() => {
+      const el = document.getElementById("budget-card");
+      return !!el && el.style.display !== "none" && !el.hasAttribute("hidden");
+    })();
     const spendByCat = currentMonthSpendByCategory();
     const now = new Date();
     const daysIn = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
     const dayOf = now.getDate();
-    Object.keys(budgets).forEach(cat=>{
+    if (!budgetCardOn) Object.keys(budgets).forEach(cat=>{
       const budget = budgets[cat], spent = spendByCat[cat] || 0;
       if (!budget || spent <= 0) return;
       if (spent > budget){
@@ -12567,87 +12541,6 @@
         return { spent: sum(exp), earned: sum(inMonth(incomes)), count: exp.length, byCat };
       }
 
-      function buildCompare(){
-        const nowKey = monthKeyOffset(0), prevKey = monthKeyOffset(1);
-        const a = totalsFor(nowKey), b = totalsFor(prevKey);
-        const delta = (x, y) => {
-          const d = round2(x - y);
-          const pct = y > 0 ? Math.round((d / y) * 100) : null;
-          return { d, pct };
-        };
-        const row = (label, cur, prev, invert) => {
-          const { d, pct } = delta(cur, prev);
-          const good = invert ? d <= 0 : d >= 0;
-          const arrow = d === 0 ? "→" : (d > 0 ? "▲" : "▼");
-          return `
-            <div class="cmp-row">
-              <span class="cmp-label">${escapeHtml(label)}</span>
-              <span class="cmp-now">${fmtMoney(cur)}</span>
-              <span class="cmp-prev">${fmtMoney(prev)}</span>
-              <span class="cmp-delta ${d === 0 ? "is-flat" : (good ? "is-good" : "is-bad")}">
-                ${arrow} ${pct === null ? "—" : Math.abs(pct) + "%"}
-              </span>
-            </div>`;
-        };
-
-        // The categories that moved most, which is the actual question behind
-        // "am I spending more" — more on WHAT.
-        const cats = [...new Set(Object.keys(a.byCat).concat(Object.keys(b.byCat)))]
-          .map(c => ({ name: c, now: a.byCat[c] || 0, prev: b.byCat[c] || 0 }))
-          .map(c => Object.assign(c, { move: round2(c.now - c.prev) }))
-          .filter(c => Math.abs(c.move) > 0.005)
-          .sort((x, y) => Math.abs(y.move) - Math.abs(x.move))
-          .slice(0, 5);
-
-        const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-        const nice = k => MONTHS[Number(k.split("-")[1]) - 1] + " " + k.split("-")[0];
-
-        return `
-          <div class="cmp">
-            <div class="cmp-head">
-              <span class="cmp-label"></span>
-              <span class="cmp-now">${escapeHtml(nice(nowKey))}</span>
-              <span class="cmp-prev">${escapeHtml(nice(prevKey))}</span>
-              <span class="cmp-delta">Change</span>
-            </div>
-            ${row("Spent", a.spent, b.spent, true)}
-            ${row("Received", a.earned, b.earned, false)}
-            ${row("Net", round2(a.earned - a.spent), round2(b.earned - b.spent), false)}
-            ${cats.length ? `
-              <div class="cmp-movers">
-                <h3>Biggest movers</h3>
-                ${cats.map(c => `
-                  <div class="cmp-mover">
-                    <span class="cmp-mover-name">${escapeHtml(c.name)}</span>
-                    <span class="cmp-mover-bar">
-                      <i class="${c.move > 0 ? "is-up" : "is-down"}"
-                         style="width:${Math.min(100, Math.round(Math.abs(c.move) / (Math.abs(cats[0].move) || 1) * 100))}%"></i>
-                    </span>
-                    <span class="cmp-mover-amt ${c.move > 0 ? "is-bad" : "is-good"}">
-                      ${c.move > 0 ? "+" : "−"}${fmtMoney(Math.abs(c.move))}
-                    </span>
-                  </div>`).join("")}
-              </div>` : `<p class="cmp-empty">Nothing moved between these two months.</p>`}
-          </div>`;
-      }
-
-      function mountCompare(){
-        const panel = document.getElementById("tab-dashboard");
-        // getElementById, not panel.querySelector: a card open beside the page is in
-        // the drawer, still in the document, and must not be built a second time.
-        if (!panel || document.getElementById("cmp-card")) return;
-        const card = document.createElement("div");
-        card.className = "card bento-span-12";
-        card.id = "cmp-card";
-        card.innerHTML = `
-          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20V7"/></svg></span>This month against last</h2>
-          <p class="sub">A figure on its own is not an observation. This is the comparison that makes it one.</p>
-          <div id="cmp-body"></div>`;
-        const bento = panel.querySelector(".bento");
-        (bento || panel).appendChild(card);
-        card.querySelector("#cmp-body").innerHTML = buildCompare();
-      }
-
       /* ---------- 3. category drill-down -----------------------------------
          Clicking a category anywhere should open what is inside it. The chart
          and the table already agree on the totals; this shows the rows behind
@@ -12722,15 +12615,9 @@
             if (name) openDrill(name);
           });
         });
-        document.querySelectorAll(".cmp-mover-name").forEach(el => {
-          if (el.dataset.drill) return;
-          el.dataset.drill = "1";
-          el.classList.add("is-drillable");
-          el.addEventListener("click", () => openDrill(el.textContent.trim()));
-        });
       }
 
-      function mountAll(){ mountCompare(); wireDrill(); }
+      function mountAll(){ wireDrill(); }
       mountAll();
       document.addEventListener("click", () => setTimeout(mountAll, 180), true);
     })();
@@ -14207,7 +14094,11 @@
           b.innerHTML =
             '' +
             '<span class="nav-content-dot" aria-hidden="true"></span>' +
-            '<span class="nav-content-t">' + escapeHtml(s.head.textContent.trim()) + '</span>' +
+            /* Titled, because the row shows one line and cuts what will not fit.
+               On the text rather than the button: the button's own title is the
+               reorder hint, and whichever was written second would win. */
+            '<span class="nav-content-t" title="' + escapeHtml(s.head.textContent.trim()) + '">' +
+              escapeHtml(s.head.textContent.trim()) + '</span>' +
             /* The last one on the page is KEPT, and says so, rather than
                offering a pin that answers with a refusal. And nothing standing
                on the page offers to be taken out of the list: unpin it first,
@@ -14558,8 +14449,8 @@
         else if (el.querySelector(".kpi")) n = 4;         // two figures to a line, not one
 
         /* And then the card is ASKED, at the widths a drag can stop on.
-           "This month against last" is a four-column comparison built out of
-           divs, so it matched none of the three above and got the bare 3 - and
+           A four-column comparison built out of divs matched none of the
+           three above and got the bare 3 - and
            at 3 its figures were drawn 66px outside their column, which is the
            cards-collide report. Probed: 37px of spill at 4, clean at 6.
 
@@ -14854,6 +14745,10 @@
           /* Not aria-hidden any more: it holds a real button now, and a button
              inside an aria-hidden container is one nobody can reach. The three
              drag targets carry the attribute themselves instead. */
+          /* The padlock itself lives on the arrange tag now - it and the tag
+             were both absolutely positioned at the card's top right and drew
+             over each other. The classes stay: they are what dims the handles
+             and outlines the card. */
           const locked = !!rectOf(tab, el).l;
           el.classList.toggle("is-locked", locked);
           pad.classList.toggle("is-locked", locked);
@@ -14875,15 +14770,6 @@
              preset sizes - every width you can stop on is one the layout
              already knew how to be. */
           pad.innerHTML =
-            '<button type="button" class="card-lock" aria-pressed="' + (locked ? "true" : "false") + '"' +
-              ' title="' + (locked ? "Unlock this card" : "Lock this card where it is") + '"' +
-              ' aria-label="' + (locked ? "Unlock this card" : "Lock this card where it is") + '">' +
-              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                '<rect x="4" y="10.5" width="16" height="10" rx="2"/>' +
-                (locked ? '<path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>'
-                        : '<path d="M8 10.5V7a4 4 0 0 1 7.6-1.6"/>') +
-              '</svg></button>' +
             '<div class="card-seam" aria-hidden="true" title="Drag to set the width. Double-click to reset."></div>' +
             '<div class="card-corner" aria-hidden="true" title="Drag down for a taller card. Double-click to fit the contents."></div>' +
             // Height alone, in the middle of the bottom edge, where a hand
@@ -14930,8 +14816,18 @@
 
       /* The tag. No grip: the card cannot be dragged, and a grip is an
          instruction that would fail. Where it is, and a menu to move it. */
+      /* Locked, by the section id, which is the same key the layout store uses.
+         Asked here rather than passed in, so the tag can be built from what it
+         already knows. */
+      function lockedById(id){
+        const t = currentTab();
+        const v = t && spans[t] && spans[t][id];
+        return !!(v && typeof v === "object" && v.l);
+      }
+
       function arrangeTag(at, of, staying, secId){
         const tag = document.createElement("div");
+        const locked = lockedById(secId);
         tag.className = "arrange-tag" + (staying ? "" : " is-temporary");
         tag.innerHTML =
           (staying
@@ -14944,6 +14840,16 @@
                   'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
                   '<path d="M9 4h6l-1 6 4 3v2H6v-2l4-3z"/><line x1="12" y1="15" x2="12" y2="21"/>' +
                 '</svg></button>') +
+          '<button type="button" class="arrange-step is-lock' + (locked ? " is-on" : "") + '" ' +
+            'data-lock-card="' + escapeHtml(secId || "") + '" draggable="false" ' +
+            'aria-pressed="' + (locked ? "true" : "false") + '" ' +
+            'aria-label="' + (locked ? "Unlock this card" : "Lock this card where it is") + '" ' +
+            'title="' + (locked ? "Unlock this card" : "Lock this card where it is") + '">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+              '<rect x="4" y="10.5" width="16" height="10" rx="2"/>' +
+              (locked ? '<path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>'
+                      : '<path d="M8 10.5V7a4 4 0 0 1 7.6-1.6"/>') +
+            '</svg></button>' +
           '<button type="button" class="arrange-step" data-menu draggable="false" ' +
             'aria-haspopup="menu" aria-expanded="false" ' +
             'aria-label="Place this card" title="Where this card goes, and how wide">' +
@@ -15039,12 +14945,12 @@
         /* On click, not pointerdown: the seam and the corner start on a press
            because they are drags, and this is a button. */
         host.addEventListener("click", ev => {
-          const btn = ev.target.closest && ev.target.closest(".card-lock");
+          const btn = ev.target.closest && ev.target.closest("[data-lock-card]");
           if (!btn || !editing) return;
           ev.preventDefault(); ev.stopPropagation();
-          const pad = btn.closest(".card-handles");
-          const card = pad && (host.querySelector('[data-arrange-id="' + CSS.escape(pad.dataset.card) + '"]')
-                             || document.getElementById(pad.dataset.card));
+          const id = btn.dataset.lockCard;
+          const card = id && (host.querySelector('[data-arrange-id="' + CSS.escape(id) + '"]')
+                            || document.getElementById(id));
           if (!card) return;
           const now = !rectOf(tab, card).l;
           remember(tab, card, { l: now ? 1 : null });
@@ -17835,8 +17741,10 @@ if ("serviceWorker" in navigator &&
   /* L4, the filter rule: idle is surface and a border, active is FILLED with a
      mark. Never a five percent background shift - the difference between chosen
      and not chosen is the highest-value contrast in the control. */
+  /* More air above a heading than below it, so three groups read as three
+     groups. They were 12px apart either side, which is a wall with words in it. */
   .nav-group-k{
-    margin: var(--sp-6) 0 var(--sp-3); padding: 0 var(--sp-3);
+    margin: var(--sp-9) 0 var(--sp-4); padding: 0 var(--sp-3);
     font-size: var(--fs-3xs); font-weight: 700; letter-spacing: var(--track-caps);
     text-transform: uppercase; color: var(--ink-dim);
   }
@@ -17988,12 +17896,23 @@ if ("serviceWorker" in navigator &&
   .is-arrangeable > h2,
   .is-arrangeable > h3,
   .is-arrangeable > h2 + p.sub{ margin-right: 95px; padding-right: 0; }
+
+  /* A BANDED head needs it on the sub, not on the band. .card > .panel-head
+     .is-toolbar sets a negative right margin to bleed the band to the card edge,
+     and at three classes it beats the two-classes-and-an-element rule above - so
+     the reserve above silently did nothing on every card with a banded head, and
+     the tag was drawn over the sub. Measured: two overlaps on the dashboard in
+     arrange mode. Four classes here, which wins, and it moves the text rather
+     than the band so the bleed survives. */
+  .is-arrangeable > .panel-head.is-toolbar .sub{ margin-right: 100px; }
+
   /* The words drop out below 720, so the room they needed goes with them. */
   @media (max-width: 720px){
     .is-arrangeable > header.panel-head,
     .is-arrangeable > h2,
     .is-arrangeable > h3,
     .is-arrangeable > h2 + p.sub{ margin-right: 62px; padding-right: 0; }
+    .is-arrangeable > .panel-head.is-toolbar .sub{ margin-right: 70px; }
   }
 
   /* ---------- the glyph needs room to be a glyph --------------------------- */
@@ -18273,22 +18192,12 @@ if ("serviceWorker" in navigator &&
   .card-ghost{ overflow: visible; }
   .card-handles > *{ pointer-events: auto; }
 
-  /* The padlock. Top-right of the card's own rectangle, inside it rather than in
-     the gutter - the gutter is where a dragged card lands, and everything that
-     lives there is a drag target. */
-  .card-lock{
-    position:absolute; top: var(--sp-5); right: var(--sp-5); z-index:2;
-    width:28px; height:28px; display:grid; place-items:center; padding:0;
-    background: var(--over); color: var(--ink-soft);
-    border:1px solid var(--line-strong); border-radius: var(--r-md);
-    cursor:pointer; box-shadow: var(--elev-1);
-    transition: background var(--dur-fast) var(--ease-out),
-                color var(--dur-fast) var(--ease-out);
-  }
-  .card-lock svg{ width:15px; height:15px; }
-  @media (hover: hover){ .card-lock:hover{ background: var(--raised); color: var(--ink); } }
-  .card-handles.is-locked .card-lock{
-    background: var(--accent); color: var(--on-accent); border-color: transparent;
+  /* The padlock is a step on the arrange tag, beside the placement caret. It was
+     its own absolutely-positioned button at the card's top right, which is
+     exactly where the tag already is - so the two were drawn on top of each
+     other. One row of buttons cannot collide with itself. */
+  .arrange-step.is-lock.is-on{
+    background: var(--on-accent); color: var(--accent);
   }
   /* Locked, the drag targets are still drawn but plainly not offered. */
   .card-handles.is-locked .card-seam,
