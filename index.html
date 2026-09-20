@@ -4013,7 +4013,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21r";
+  const APP_BUILD = "2026-09-21s";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -12157,6 +12157,35 @@
     });
   })();
 
+  /* AN AUTOMATIC RE-RENDER MUST NOT COST THE READER THEIR PLACE.
+
+     A sync poll or the rail's own pass is bookkeeping: nobody asked for it and
+     nobody should be able to tell it happened. Both rebuild enough of the page
+     that it changes height on the way through - the bento un-pins every card to
+     measure it, blocks are shown and hidden, cards are moved between groups -
+     and a page that dips below the window has nowhere to keep a scroll. The
+     browser clamps to 0 and does not put it back.
+
+     None of that is visible afterwards: it is over inside one task, so the page
+     is the same height before and after and only the position is gone. On a
+     dashboard with 106px of travel that is the whole scroll, every few seconds.
+
+     THE LAYOUT IS FORCED BEFORE THE RESTORE. scrollTo cannot go further than the
+     page currently allows, and without a reflow the page is still whatever
+     height the last write left it - so the restore gets clamped by the same
+     shortness it is undoing. Reading offsetHeight settles it first.
+
+     Only automatic passes are wrapped. Pressing a tab or a sub-tab is a person
+     asking to go somewhere. */
+  function keepingScroll(work){
+    const y = window.scrollY;
+    try{ work(); }
+    finally{
+      void document.documentElement.offsetHeight;
+      if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
+    }
+  }
+
   function refreshAfterSync(){
     if (editingATableField()){ refreshHeldForEditing = true; return; }
     refreshHeldForEditing = false;
@@ -12166,17 +12195,19 @@
     // scheduleDerivedRefresh already uses.
     const onScreen = (id)=>{ const el = document.getElementById(id); return el && el.style.display !== "none"; };
 
-    renderTotalMoneyBar();        // page chrome: on screen whatever tab you are on
-    // The category dropdowns are built once from the list, so a pulled category is
-    // invisible until they are rebuilt - and the add form is reachable from every tab.
-    renderCategoryOptions();
-    // Side panel and the add form, neither of them tab-scoped.
-    renderRecurringList(); renderCryptoList();
+    keepingScroll(() => {
+      renderTotalMoneyBar();        // page chrome: on screen whatever tab you are on
+      // The category dropdowns are built once from the list, so a pulled category is
+      // invisible until they are rebuilt - and the add form is reachable from every tab.
+      renderCategoryOptions();
+      // Side panel and the add form, neither of them tab-scoped.
+      renderRecurringList(); renderCryptoList();
 
-    if (onScreen("tab-dashboard")) renderDashboardSummary();
-    if (onScreen("tab-history")){ renderHistory(); renderIncomeHistory(); }
-    if (onScreen("tab-savings")) renderSavingsList();
-    if (onScreen("tab-loans")){ renderLoansGiven(); renderLoansTaken(); renderInvestments(); }
+      if (onScreen("tab-dashboard")) renderDashboardSummary();
+      if (onScreen("tab-history")){ renderHistory(); renderIncomeHistory(); }
+      if (onScreen("tab-savings")) renderSavingsList();
+      if (onScreen("tab-loans")){ renderLoansGiven(); renderLoansTaken(); renderInvestments(); }
+    });
   }
 
   /* ================= Automatic sync =================
@@ -12194,6 +12225,9 @@
 
   async function quietSync(){
     if (!ghTok() || syncInFlight || !navigator.onLine) return;
+    /* A poll every twelve seconds that moves the page is worse than no poll.
+       The whole of it - the merge, the saves and every render they set off -
+       happens between remembering the position and putting it back. */
     syncInFlight = true;
     if (typeof paintSyncButton === "function") paintSyncButton("syncing");
     try{
@@ -15556,7 +15590,6 @@
            So the page is allowed to change size while it is measured, which is
            what measuring is, and the position is put back immediately after, in
            the same task, before the browser paints. */
-        const keptY = window.scrollY;
         host.classList.add("is-measuring");
         const natural = cards.map(el => el.getBoundingClientRect().height);
         host.classList.remove("is-measuring");
@@ -15589,10 +15622,12 @@
           // somebody drags a corner - leaves this exactly as it was.
           setRows(el, Math.max(n, floorRows(tab, el)));
         });
-        /* Back where the reader had it. Same task as the measurement that took
-           it away, so the clamped position is never painted; and only when it
-           actually moved, so this cannot fight a scroll in progress. */
-        if (Math.abs(window.scrollY - keptY) > 1) window.scrollTo(0, keptY);
+        /* The guard used to be here and was too narrow twice over: it captured
+           the position after showAllBlocks, applyPageGroup and applyOrderToPage
+           had already run - so a clamp in any of those was already recorded as
+           the position to restore - and it restored without forcing a layout, so
+           scrollTo was clamped by the very shortness it was undoing. It lives
+           around the whole pass now; see keepingScroll. */
         /* And check. The natural pass reports a card with nothing holding it,
            and the parts that size themselves against the card measure smaller
            there than they will be once it is put back - measured at up to 105px
@@ -17198,7 +17233,10 @@
         if (records.every(r => nav.contains(r.target))) return;
         if (records.every(textOnly)) return;
         clearTimeout(settle);
-        settle = setTimeout(() => { buildContents(false); renderPlaces(); }, 220);
+        // Nobody asked for this pass, so nobody should be able to tell it ran.
+        settle = setTimeout(() => keepingScroll(() => {
+          buildContents(false); renderPlaces();
+        }), 220);
       }).observe(document.querySelector(".app") || document.body,
                  { childList: true, subtree: true });
 
