@@ -273,10 +273,19 @@
   .tmw-chooser{ margin-top: var(--sp-7); padding-top: var(--sp-6);
     border-top:1px solid var(--line); }
   .tmw-chooser[hidden]{ display:none; }
-  /* Only while arranging - both the chooser and the tile that opens it. A stale
-     hidden attribute cannot leak it back, because this wins either way. */
-  body:not(.is-layout-editing) .tmw-chooser,
-  body:not(.is-layout-editing) .tmw-place.is-add{ display:none !important; }
+  /* Only while arranging - on a window that CAN arrange. .nav-tools is
+     display:none below 721px, so a phone has no arrange mode and its reading
+     view is its only view; hiding the chooser there hid it for good. Below that
+     width the [hidden] attribute governs instead, and the "and N more" tile is
+     what toggles it. The + tile stays a wide-window control either way - on a
+     phone it would be a second way to do what that tile already does. */
+  @media (min-width: 721px){
+    body:not(.is-layout-editing) .tmw-chooser,
+    body:not(.is-layout-editing) .tmw-place.is-add{ display:none !important; }
+  }
+  @media (max-width: 720px){
+    .tmw-place.is-add{ display:none !important; }
+  }
 
   /* Smaller tiles while arranging, so the row makes room for the one that adds
      to it and the whole set is visible at once. */
@@ -314,7 +323,12 @@
   }
   /* Pinned says so on the tile, not only on its button. */
   .tmw-place.is-pinned{ border-color: rgb(55 200 184 / .42); }
-  .tmw-place[draggable="true"]{ cursor: grab; }
+  /* The handle is the top row, not the tile: the bottom half is the button that
+     opens Savings. pan-y so a swipe down the row still scrolls the page - a
+     lifted tile stops that itself, from touchmove. */
+  .tmw-place-top{ cursor: grab; touch-action: pan-y; }
+  .tmw-places.is-reordering .tmw-place-top{ cursor: grabbing; }
+  .tmw-places.is-reordering{ user-select: none; }
   .tmw-place.is-lifting{ opacity: .4; }
   /* Where it will land, on the tile it will land before. */
   .tmw-place.is-drop{ border-color: var(--accent); background: var(--hover); }
@@ -348,6 +362,15 @@
                 color var(--dur-fast) var(--ease-out);
   }
   .tmw-pin svg{ width:12px; height:12px; }
+  /* 22px is right for a mouse and half of what a finger needs. The hit area
+     grows to 44px; the drawing does not move. */
+  @media (pointer: coarse){
+    .tmw-pin{ position: relative; }
+    .tmw-pin::after{
+      content:""; position:absolute; top:50%; left:50%;
+      width:44px; height:44px; transform: translate(-50%, -50%);
+    }
+  }
   .tmw-pin.is-on{ background: var(--accent); border-color: transparent; color: var(--on-accent); }
   .tmw-pin.is-on svg path{ fill: currentColor; }
   @media (hover: hover){
@@ -867,6 +890,9 @@
   .recent-tx-desc{ flex:1; min-width:0; font-size: var(--fs-sm); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .recent-tx-meta{ font-size: var(--fs-3xs); color: var(--ink-dim); white-space:nowrap; }
   .recent-tx-amount{ font-weight:700; font-variant-numeric: tabular-nums; white-space:nowrap; }
+  /* Setup is over. !important because the rail also writes this element's
+     display and there must be no question which fact wins. */
+  #welcome-card[data-setup-done]{ display: none !important; }
   .onboard{ border-color: var(--accent-deep); }
   .onboard-head{ display:flex; align-items:center; gap: var(--sp-6); }
   .onboard-progress{ font-size: var(--fs-3xs); color: var(--ink-dim); font-variant-numeric: tabular-nums; }
@@ -2891,7 +2917,9 @@
 
   <!-- DASHBOARD -->
   <section id="tab-dashboard" class="tab-panel">
-    <div class="card onboard" id="welcome-card" style="display:none;">
+    <!-- data-setup-done, not style="display:none": this card is a rail block now
+         and the rail owns inline display on those. One writer per property. -->
+    <div class="card onboard" id="welcome-card" data-setup-done>
       <div class="onboard-head">
         <div>
           <header class="panel-head is-toolbar">
@@ -3812,7 +3840,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21a";
+  const APP_BUILD = "2026-09-21b";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4804,50 +4832,106 @@
     });
   }
 
-  let acctDragId = null;
+  /* POINTER EVENTS, NOT DRAG-AND-DROP. This was dragstart / dragover / drop,
+     which no touch browser fires - so the grip advertised a drag that a phone
+     could not perform. One mechanism for both now, with the one difference that
+     has to exist: a mouse has nothing else to do with a press, so it lifts after
+     6px of movement; a finger has to be able to scroll, so it lifts on a 350ms
+     hold and a move before that is a scroll, exactly as it was.
+
+     Bound to the host once, not to each tile: the tiles are rewritten on every
+     render and the host is not, so per-tile listeners died with their tile while
+     host listeners would stack up one deep per render.
+
+     The handle is the top row - grip and name - and not the whole tile, because
+     the bottom half of the tile is the button that opens Savings. */
   function wireAccountDrag(host){
-    if (!host) return;
-    host.querySelectorAll("[data-acct-drag]").forEach(tile=>{
-      tile.addEventListener("dragstart", ev=>{
-        acctDragId = tile.dataset.acctDrag;
-        tile.classList.add("is-lifting");
-        if (ev.dataTransfer){
-          ev.dataTransfer.effectAllowed = "move";
-          // Firefox will not start a drag without something on the transfer.
-          try{ ev.dataTransfer.setData("text/plain", acctDragId); }catch(e){}
-        }
-      });
-      tile.addEventListener("dragend", ()=>{
-        acctDragId = null;
-        host.querySelectorAll(".tmw-place").forEach(t=>
-          t.classList.remove("is-lifting", "is-drop"));
-      });
-      tile.addEventListener("dragover", ev=>{
-        if (!acctDragId || tile.dataset.acctDrag === acctDragId) return;
-        ev.preventDefault();
-        if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
-        host.querySelectorAll(".tmw-place").forEach(t=>t.classList.remove("is-drop"));
-        tile.classList.add("is-drop");
-      });
-      tile.addEventListener("dragleave", ()=> tile.classList.remove("is-drop"));
-      tile.addEventListener("drop", ev=>{
-        ev.preventDefault();
-        const from = acctDragId, to = tile.dataset.acctDrag;
-        acctDragId = null;
-        if (!from || !to || from === to) return;
-        /* Built from what is ON SCREEN, so the saved order matches what was just
-           dragged. Anything not shown keeps its place after them. */
-        const shown = [...host.querySelectorAll("[data-acct-drag]")]
-          .map(t=>t.dataset.acctDrag).filter(Boolean);
-        const rest = tmAccountOrder().filter(id => shown.indexOf(id) < 0);
-        const next = shown.slice();
-        next.splice(next.indexOf(from), 1);
-        next.splice(next.indexOf(to), 0, from);
-        setUiPref("tmAccountOrder", next.concat(rest));
-        renderTotalMoneyBar();
-        showToast("Accounts reordered.");
-      });
+    if (!host || host.__acctDragWired) return;
+    host.__acctDragWired = true;
+
+    let from = null, tile = null, lifted = false, hold = 0, sx = 0, sy = 0;
+
+    function tileUnder(x, y){
+      /* Geometry, not hit-testing: the pointer is captured to the host, so every
+         move arrives on the host whatever it is over. */
+      const el = document.elementFromPoint(x, y);
+      const t = el && el.closest && el.closest("[data-acct-drag]");
+      return t && host.contains(t) ? t : null;
+    }
+    function lift(){
+      if (lifted || !tile) return;
+      lifted = true;
+      tile.classList.add("is-lifting");
+      host.classList.add("is-reordering");
+    }
+    function clear(){
+      clearTimeout(hold);
+      host.classList.remove("is-reordering");
+      host.querySelectorAll(".tmw-place").forEach(t =>
+        t.classList.remove("is-lifting", "is-drop"));
+      from = null; tile = null; lifted = false;
+    }
+
+    host.addEventListener("pointerdown", ev => {
+      if (ev.button != null && ev.button > 0) return;
+      if (ev.target.closest && ev.target.closest(".tmw-pin")) return;
+      const top = ev.target.closest && ev.target.closest(".tmw-place-top");
+      if (!top) return;
+      const t = top.closest("[data-acct-drag]");
+      if (!t || !t.dataset.acctDrag) return;
+      tile = t; from = t.dataset.acctDrag; lifted = false;
+      sx = ev.clientX; sy = ev.clientY;
+      try{ host.setPointerCapture(ev.pointerId); }catch(e){}
+      // A finger holds to lift, so that a swipe is still a scroll.
+      if (ev.pointerType !== "mouse"){
+        clearTimeout(hold);
+        hold = setTimeout(lift, 350);
+      }
     });
+
+    host.addEventListener("pointermove", ev => {
+      if (!from) return;
+      const far = Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy);
+      if (!lifted){
+        // Moving before the hold is done is a scroll, not a drag: let it go.
+        if (ev.pointerType !== "mouse"){ if (far > 8) clear(); return; }
+        if (far < 6) return;
+        lift();
+      }
+      const over = tileUnder(ev.clientX, ev.clientY);
+      host.querySelectorAll(".tmw-place").forEach(t => t.classList.remove("is-drop"));
+      if (over && over !== tile) over.classList.add("is-drop");
+    });
+
+    /* Non-passive, because touch-action cannot be changed part way through a
+       gesture that has already begun - this is what actually stops the page
+       scrolling under a lifted tile. */
+    host.addEventListener("touchmove", ev => {
+      if (lifted) ev.preventDefault();
+    }, { passive: false });
+
+    function drop(ev){
+      if (!from) return;
+      const over = lifted ? tileUnder(ev.clientX, ev.clientY) : null;
+      const to = over && over !== tile ? over.dataset.acctDrag : null;
+      const was = from;
+      try{ host.releasePointerCapture(ev.pointerId); }catch(e){}
+      clear();
+      if (!to || to === was) return;
+      /* Built from what is ON SCREEN, so the saved order matches what was just
+         dragged. Anything not shown keeps its place after them. */
+      const shown = [...host.querySelectorAll("[data-acct-drag]")]
+        .map(t => t.dataset.acctDrag).filter(Boolean);
+      const rest = tmAccountOrder().filter(id => shown.indexOf(id) < 0);
+      const next = shown.slice();
+      next.splice(next.indexOf(was), 1);
+      next.splice(next.indexOf(to), 0, was);
+      setUiPref("tmAccountOrder", next.concat(rest));
+      renderTotalMoneyBar();
+      showToast("Accounts reordered.");
+    }
+    host.addEventListener("pointerup", drop);
+    host.addEventListener("pointercancel", clear);
   }
 
   let lastTotalMoney = null;
@@ -4956,13 +5040,13 @@
             const share = Math.max(0, Math.min(100, (p.value / whole) * 100));
             /* The tile stays the button that opens Savings; the pin is its own
                button beside the name, so one does not swallow the other. */
-            return `<div class="tmw-place${p.pinned ? " is-pinned" : ""}" draggable="true" ` +
+            return `<div class="tmw-place${p.pinned ? " is-pinned" : ""}" ` +
               `data-acct-drag="${escapeHtml(p.id || "")}">` +
               `<div class="tmw-place-top">` +
                 `<span class="tmw-grip" aria-hidden="true"></span>` +
                 `<span class="tmw-place-k">${escapeHtml(p.name)}</span>` +
                 (p.id
-                  ? `<button type="button" draggable="false" class="tmw-pin${p.pinned ? " is-on" : ""}" ` +
+                  ? `<button type="button" class="tmw-pin${p.pinned ? " is-on" : ""}" ` +
                       `data-pin-account="${escapeHtml(p.id)}" aria-pressed="${p.pinned}" ` +
                       `title="${p.pinned ? "Unpin this account" : "Always show this account"}" ` +
                       `aria-label="${p.pinned ? "Unpin " + escapeHtml(p.name) : "Always show " + escapeHtml(p.name)}">` +
@@ -4992,8 +5076,17 @@
           (places.length > SHOWN
             ? `<div class="tmw-place is-rest">` +
               `<div class="tmw-place-top"><span class="tmw-place-k">and ${places.length - SHOWN} more</span></div>` +
-              `<button type="button" class="tmw-place-open" data-tm-go="savings">` +
+              /* A phone shows three and hides the rest, and its only way to say
+                 WHICH three is the chooser - which is part of arranging, and a
+                 phone has no arrange mode. So on a phone this tile opens the
+                 chooser instead of jumping to Savings: the tile that says there
+                 are more is the one that shows them. */
+              (TM_PHONE.matches
+                ? `<button type="button" class="tmw-place-open" data-add-account="1" ` +
+                    `aria-expanded="false" aria-controls="dash-tm-chooser">`
+                : `<button type="button" class="tmw-place-open" data-tm-go="savings">`) +
                 `<span class="tmw-place-v">${fmtMoney(places.slice(SHOWN).reduce((t,p)=>t+p.value,0))}</span>` +
+                (TM_PHONE.matches ? `<span class="tmw-place-s">Choose which show</span>` : "") +
               `</button></div>`
             : "")
         : "";
@@ -6840,8 +6933,12 @@
         cta: "Add an entry", go: () => openAddSurface() }
     ];
     const doneCount = steps.filter(s => s.done).length;
-    el.style.display = (doneCount < steps.length && !dismissed) ? "" : "none";
-    if (el.style.display === "none") return;
+    /* An attribute, because the rail owns inline display on a block it places
+       and calls style.removeProperty("display") on every pass. Written as a
+       fact about the data - setup is done - and hidden by CSS from there. */
+    const showing = doneCount < steps.length && !dismissed;
+    el.toggleAttribute("data-setup-done", !showing);
+    if (!showing) return;
 
     const countEl = document.getElementById("onboard-count");
     if (countEl) countEl.textContent = doneCount + "/" + steps.length;
@@ -10886,8 +10983,16 @@
         '<span class="wk-v' + (c.tone ? " is-" + c.tone : "") + '">' + c.v + '</span>' +
         '<span class="wk-s">' + escapeHtml(c.s || "") + '</span></div>').join("") + '</div>'
       + '<div class="wk-chart">' +
-        '<div class="wk-avg" style="bottom:' + Math.min(96, (avg / peak) * 100).toFixed(1) + '%">' +
-          '<span>avg ' + fmtMoney(avg) + '</span></div>' +
+        /* Capped at 96 so it cannot leave the top, and floored at 12 so it
+           cannot land on the weekday labels - measured doing exactly that on a
+           fresh install, "avg \u20B10.00" printed across "Mon". A week with
+           nothing in it has no average at all, and seven empty bars have already
+           said so, so that one is not drawn. */
+        (avg > 0
+          ? '<div class="wk-avg" style="bottom:' +
+              Math.min(96, Math.max(12, (avg / peak) * 100)).toFixed(1) + '%">' +
+            '<span>avg ' + fmtMoney(avg) + '</span></div>'
+          : '') +
         days.map(d => '<div class="wk-day' + (d[key] >= peak && peak > 0 ? " is-peak" : "") + '">' +
           '<span class="wk-bar" style="height:' + Math.max(2, Math.round((d[key] / peak) * 100)) + '%" ' +
             'title="' + d.iso + ' \u00B7 ' + fmtMoney(d[key]) + '"></span>' +
@@ -14073,8 +14178,15 @@
            <h2> has to be named here.
            total-money-card leads, because how much you have is the first
            question and the rest of the page is commentary on it. */
-        dashboard: { on: ["total-money-card", "budget-card", "highlights-card",
-                          "blk-recent-activity", "monthly-overview-card"],
+        /* welcome-card first, and not because of `first`: it sits outside the
+           bento, above it, so position already leads it. It is named here
+           because a section left out of this list is not on the page, and the
+           one card a new install has to show was being left out of it. It hides
+           itself once the three steps are done, and a display:none heading is
+           not a section, so it leaves both lists without being taken out. */
+        dashboard: { on: ["welcome-card", "total-money-card", "budget-card",
+                          "highlights-card", "blk-recent-activity",
+                          "monthly-overview-card"],
                      first: "total-money-card" },
         charts:    { on: ["blk-spending-over-time"], first: "blk-spending-over-time" },
         history:   { on: ["history-expense-card"],   first: "history-expense-card" },
@@ -14098,8 +14210,12 @@
       /* What a phone keeps on the page. Budget joins it because "am I inside my
          limits" is one of the four questions this tab exists to answer, and the
          one you most want on the screen you actually carry. */
-      const PHONE_KEEP = { dashboard: ["total-money-card", "money-overview-card",
-                                       "budget-card", "blk-recent-activity"] };
+      /* welcome-card is here for the same reason and more sharply: the rail list
+         is display:none on a phone, so before the page chips a first-run phone
+         had NO route to its own setup card. */
+      const PHONE_KEEP = { dashboard: ["welcome-card", "total-money-card",
+                                       "money-overview-card", "budget-card",
+                                       "blk-recent-activity"] };
       const railPhone = () => !!(window.matchMedia && window.matchMedia("(max-width: 720px)").matches);
       let pinned = {};
       try{ pinned = JSON.parse(localStorage.getItem(PIN_KEY) || "{}") || {}; }catch(e){ pinned = {}; }
@@ -14406,6 +14522,7 @@
           // No list to disclose: the sub-tabs are the list.
           nav.querySelectorAll(".nav-contents-fold").forEach(el => el.remove());
           spyTargets = [];
+          paintPanelJumps(panel, []);
           const here = buttons.find(b => b.classList.contains("active"));
           if (here) here.classList.add("has-no-list");
           if (listOpen[tab]){ delete listOpen[tab]; save(); }
@@ -14468,6 +14585,7 @@
         active.classList.toggle("has-no-list", secs.length < 2);
         paintTools();
         if (secs.length < 2){
+          paintPanelJumps(panel, []);
           if (listOpen[tab]){ delete listOpen[tab]; save(); }
           paintCarets();
           return;
@@ -14492,16 +14610,43 @@
              ...secs.filter(x => !away.has(x.id) && !onPage.has(x.id))]
           : secs.filter(x => !onPage.has(x.id) && !away.has(x.id));
         const gone = editing ? secs.filter(x => away.has(x.id)) : [];
-        /* A heading over an empty list is a fold that pushes the whole rail
-           down and shows nothing. Edit and Tidy used to live in this header,
-           which is why it had to exist even when empty; they have a row of
-           their own now, so it does not. */
-        if (!editing && !listed.length && !gone.length){
+
+        /* READING: this list is about the PAGE, so it goes on the page and the
+           rail is six destinations that never move. It used to be inserted after
+           the active one, which shoved every destination below it down on every
+           tab change; parking it under all six held them still but left the list
+           detached from the thing it described - under Settings while you were
+           reading Charts. On the page it is attached and nothing moves.
+
+           ARRANGING keeps the rail list. That is pins, hidden sections and order
+           - a rail activity, entered deliberately, where the column changing
+           height is the thing you asked for. */
+        if (!editing){
+          /* While the app is being set up, the page IS the setup card, so it
+             gets the page to itself. A row of jumps to a Monthly overview with
+             no months in it yet is a worse first impression than no row. It
+             returns on its own: the card hides itself once the three steps are
+             done, and a hidden card is not a section. */
+          const start = panel.querySelector("#welcome-card");
+          const settingUp = !!start && (start.checkVisibility
+            ? start.checkVisibility() : start.offsetParent !== null);
+          paintPanelJumps(panel, settingUp ? [] : listed, secs, chosen);
+          const slot = contentsSlot();
+          if (slot.firstChild) slot.innerHTML = "";
           active.classList.add("has-no-list");
           if (listOpen[tab]){ delete listOpen[tab]; save(); }
           paintCarets(); paintTools();
           return;
         }
+        /* One at a time: on the page while reading, in the rail while arranging
+           - except on a phone, where the rail is a bottom bar and the fold is
+           display:none. There the chips are the only route to a section
+           PHONE_KEEP left off the page, so arranging must not take them away.
+           (.nav-tools is display:none on a phone too, so this cannot happen
+           today; it is here so that showing it later cannot break the route.) */
+        paintPanelJumps(panel,
+          railPhone() ? secs.filter(x => !away.has(x.id) && !onPage.has(x.id)) : [],
+          secs, chosen);
         head.innerHTML =
           '<span class="nav-contents-label">' +
             (editing ? "Arrange" : "Opens beside") + '</span>' +
@@ -15287,6 +15432,38 @@
         const t = currentTab();
         const v = t && spans[t] && spans[t][id];
         return !!(v && typeof v === "object" && v.l);
+      }
+
+      /* The sections of this page that open beside it, as a row on the page
+         itself. Rebuilt only when the set changes: this runs on every rail pass,
+         and a DOM write on every pass is a change the observer watching this page
+         turns straight back into another pass. */
+      function paintPanelJumps(panel, items, secs, chosen){
+        if (!panel) return;
+        let row = panel.querySelector(":scope > .panel-jumps");
+        if (!items || !items.length){ if (row) row.remove(); return; }
+        const want = items.map(x => x.id).join("|");
+        if (row && row.dataset.of === want) return;
+        if (!row){
+          row = document.createElement("div");
+          row.className = "panel-jumps";
+          panel.insertBefore(row, panel.firstChild);
+          row.addEventListener("click", ev => {
+            const hit = ev.target.closest("[data-jump-sec]");
+            if (!hit) return;
+            const sec = row.secs.find(x => x.id === hit.dataset.jumpSec);
+            if (!sec) return;
+            openBeside(sec, row.secs.filter(x => !row.chosen.has(x.id)));
+          });
+        }
+        // Kept on the node, not closed over: the handler is bound once and the
+        // sections it must open are the ones from the LAST pass, not the first.
+        row.secs = secs; row.chosen = chosen;
+        row.dataset.of = want;
+        row.innerHTML = '<span class="panel-jumps-k">Also here</span>' +
+          items.map(x => '<button type="button" class="panel-jump" data-jump-sec="' +
+            escapeHtml(x.id) + '">' + escapeHtml((x.head.textContent || "").trim()) +
+            '</button>').join("");
       }
 
       /* Made once and kept: the list has a fixed home under the destinations so
@@ -18237,6 +18414,36 @@ if ("serviceWorker" in navigator &&
      groups. They were 12px apart either side, which is a wall with words in it. */
   /* The list has a home. Nothing above it moves when the tab changes; the list
      itself is the only thing that does, and it says so by arriving. */
+  /* The sections of this page that open beside it: on the page, above the cards
+     it refers to. It was in the rail, where it moved the six destinations and
+     then, parked under all of them, pointed at nothing. */
+  .panel-jumps{
+    display: flex; align-items: center; flex-wrap: wrap;
+    gap: var(--sp-4) var(--sp-5); margin-bottom: var(--sp-7);
+  }
+  .panel-jumps-k{
+    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim);
+  }
+  .panel-jump{
+    height: 28px; padding: 0 var(--sp-6);
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--r-pill); color: var(--ink-soft);
+    font-size: var(--fs-2xs); cursor: pointer; white-space: nowrap;
+    transition: background var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover){
+    .panel-jump:hover{ background: var(--raised); color: var(--ink);
+      border-color: var(--line-strong); }
+  }
+  /* A phone had no version of this at all - the rail is a bottom bar there and
+     the list was simply hidden. It is the same row. */
+  @media (max-width: 720px){
+    .panel-jumps{ margin-bottom: var(--sp-6); }
+  }
+
   .nav-contents-slot{ display: block; }
   .nav-contents{ animation: navContentsIn var(--dur-base) var(--ease-out) both; }
   @keyframes navContentsIn{
