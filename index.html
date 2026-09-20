@@ -1069,6 +1069,10 @@
   .loan-amt{ font-size: var(--fs-2xl); font-weight:700; letter-spacing:-0.02em; font-variant-numeric: tabular-nums; }
   .loan-amt .cur-sym{ color: var(--ink-dim); font-size:.7em; } .loan-amt .cur-cents{ color: var(--ink-soft); font-size:.7em; }
   .loan-meta-row{ display:flex; align-items:center; gap: var(--sp-5); font-size: var(--fs-3xs); color: var(--ink-dim); flex-wrap:wrap; }
+  /* On the CARD, a loan you can still pay has a select for its account, so the
+     chip would be the same fact twice. A settled one has no select and keeps
+     the chip, which is how it read before. In List there is no select at all. */
+  body:not(.list-as-rows) .loan-card:not(.is-closed) .loan-chip.is-bank{ display: none; }
   .loan-card-controls{ display:flex; align-items:center; gap: var(--sp-5); flex-wrap:wrap; }
   .loan-card-controls .status-select{ flex:1; min-width:110px; }
 
@@ -3777,7 +3781,9 @@
     const textEl = document.getElementById("save-status-text");
     if (!el) return;
     el.classList.remove("is-error");
-    textEl.textContent = "Saved";
+    // Only when it would say something different - writing the same string still
+    // replaces the text node, and something is always watching.
+    if (textEl && textEl.textContent !== "Saved") textEl.textContent = "Saved";
     el.classList.add("show");
     clearTimeout(saveStatusTimer);
     saveStatusTimer = setTimeout(()=> el.classList.remove("show"), 1600);
@@ -3791,7 +3797,8 @@
     const textEl = document.getElementById("save-status-text");
     if (!el) return;
     clearTimeout(saveStatusTimer);
-    textEl.textContent = "Not saved — storage full";
+    const msg = "Not saved \u2014 storage full";
+    if (textEl && textEl.textContent !== msg) textEl.textContent = msg;
     el.classList.add("show", "is-error");
     if (!saveFailWarned){
       saveFailWarned = true;
@@ -3845,7 +3852,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21f";
+  const APP_BUILD = "2026-09-21g";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4369,6 +4376,14 @@
   }
 
   function setUiPref(key, value){
+    /* NOTHING TO DO IF NOTHING CHANGED. buildContents asks each panel to
+       re-apply its own sub-tab on every pass, and those handlers all end in a
+       setUiPref with the value already stored - so the app wrote localStorage
+       four times a second to record something it already knew, and each write
+       flashed the save indicator, and each flash was a DOM change the page
+       observer turned into another pass. Measured on Loans: nine writes in two
+       seconds while nothing was happening. */
+    if (uiPrefs[key] === value) return;
     uiPrefs[key] = value;
     uiPrefsStore.save(uiPrefs);
   }
@@ -9053,7 +9068,12 @@
           ${l.reference ? `<span class="loan-chip is-quiet" title="${escapeHtml(l.reference)}">Ref</span>` : ""}
           ${paid.length ? `<span class="loan-chip is-quiet" title="${paid.length} payment${paid.length === 1 ? "" : "s"} recorded">${paid.length} paid</span>` : ""}
           ${l.notes && l.notes.trim() ? `<span class="loan-chip is-quiet" title="${escapeHtml(l.notes.trim())}">Note</span>` : ""}
-          ${!canPay && l.bank ? `<span class="loan-chip is-quiet is-bank" title="Held at ${escapeHtml(l.bank)}">${escapeHtml(l.bank)}</span>` : ""}
+          <!-- Always, not only when the loan is past paying. The gate was here
+               because a payable loan carries a <select> for its account on the
+               card - but List hides the select, so an outstanding loan showed
+               its account nowhere at all. CSS hides this chip on the card where
+               the select is doing the job. -->
+          ${l.bank ? `<span class="loan-chip is-quiet is-bank" title="Held at ${escapeHtml(l.bank)}">${escapeHtml(l.bank)}</span>` : ""}
         </div>
         <div class="loan-card-controls">
           <select class="status-select" data-action="status"${canPay ? "" : " disabled"}>
@@ -16862,8 +16882,22 @@
 
       window.addEventListener("scroll", spy, { passive: true });
       let settle = null;
+      /* TEXT IS CONTENT, NOT STRUCTURE. This rebuilds the rail when the page
+         changes shape - a section appearing, a card being added. What it must
+         not do is rebuild because a label rewrote itself, and it did: a status
+         line writing "Saved" over "Saved" replaces a text node, which is a
+         childList change, which cost a full pass 220ms later, which triggered
+         the next write. Two of those loops have now been found by hand; this is
+         what makes a third impossible.
+
+         An element being added or removed still counts, which is the case this
+         observer exists for. */
+      const textOnly = r => r.type === "childList" &&
+        [...r.addedNodes].every(n => n.nodeType === 3) &&
+        [...r.removedNodes].every(n => n.nodeType === 3);
       new MutationObserver(records => {
         if (records.every(r => nav.contains(r.target))) return;
+        if (records.every(textOnly)) return;
         clearTimeout(settle);
         settle = setTimeout(() => { buildContents(false); renderPlaces(); }, 220);
       }).observe(document.querySelector(".app") || document.body,
@@ -21665,7 +21699,11 @@ if ("serviceWorker" in navigator &&
   body.list-as-rows .loan-card.is-closed > [data-payment-for],
   body.list-as-rows .loan-card.is-closed > [data-payment-for]:has(.loan-note-read),
   body.list-as-rows .loan-card .deadline-cell input,
+  /* Narrow rows keep hiding it - see the min-width block below, which is where
+     it comes back. A truncated bank name is worse than none, because the sheet
+     has it either way. */
   body.list-as-rows .loan-card .loan-chip.is-bank,
+
   body.list-as-rows .loan-card .loan-row-actions > button,
   body.list-as-rows .savings-account .sv-kpis,
   body.list-as-rows .savings-account .sa-share,
@@ -21683,6 +21721,38 @@ if ("serviceWorker" in navigator &&
 
   /* The deadline INPUT goes; the band chip beside it stays, because "in 5 days"
      is the one thing about an outstanding loan you scan a list for. */
+
+  /* ---------- 1b. and what a WIDE row carries ------------------------------ */
+  /* Still one line, still no controls - the index rule is untouched. A row on a
+     wide screen simply uses the width it already has: measured at 1440, a
+     savings row ended at 625 of 1046px with the two columns these KPIs are
+     assigned to sitting empty, and a loan row never showed which account the
+     money moved through. */
+  @media (min-width: 1100px){
+    body.list-as-rows .savings-account .sv-kpis{
+      display: flex; align-items: baseline; gap: var(--sp-7);
+      font-size: var(--fs-2xs); color: var(--ink-dim); white-space: nowrap;
+      overflow: hidden;
+      /* The card gives this block padding and a rule above and below, which is
+         right on a card and 65px tall in a row that wants to be 27. A row is one
+         line: no padding, no rules, aligned with the figure beside it. */
+      padding: 0; border: 0; align-self: center;
+    }
+    body.list-as-rows .savings-account .sv-kpi{
+      /* row, not column: the card stacks the label over the figure and that is
+         two lines, which is the one thing a row is not. */
+      display: flex; flex-direction: row; align-items: baseline;
+      gap: var(--sp-4); min-width: 0;
+    }
+    body.list-as-rows .savings-account .sv-kpi .label{
+      margin: 0; font-size: var(--fs-3xs); text-transform: uppercase;
+      letter-spacing: var(--track-caps); color: var(--ink-faint);
+    }
+    body.list-as-rows .savings-account .sv-kpi .value{
+      font-weight: 600; color: var(--ink-soft); font-variant-numeric: tabular-nums;
+    }
+    body.list-as-rows .loan-card .loan-chip.is-bank{ display: inline-flex; }
+  }
 
   /* ---------- 2. one line, because line two is gone ------------------------ */
   /* The loan grid declares two 34px rows explicitly, so emptying the second one
