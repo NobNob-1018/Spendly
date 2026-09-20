@@ -243,7 +243,30 @@
     display:grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
     gap: var(--sp-5);
   }
+  /* ---------- a group of cards, as one card ------------------------------ */
+  .group-body{ display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-8); }
+  .group-body:empty{ display:none; }
+  /* Inside a group a card is a part: no ground of its own, no border, no
+     shadow, and its heading steps down to match the ones around it. */
+  .card.is-grouped{
+    background: none; border: 0; box-shadow: none; padding: 0;
+    border-radius: 0; min-width: 0;
+  }
+  .card.is-grouped > .panel-head.is-toolbar{
+    margin: 0 0 var(--sp-6); padding: 0 0 var(--sp-5);
+    background: none; border-radius: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .card.is-grouped > .panel-head.is-toolbar h2{ font-size: var(--fs-md); }
+  .card.is-grouped > .dash-subhead{ font-size: var(--fs-md); }
+  /* A part that spans the whole group rather than sharing a column. */
+  #insights-card.is-grouped, #wc-card.is-grouped{ grid-column: 1 / -1; }
+
   .tmw-places:empty{ display:none; }
+  .tmw-places-hint{
+    margin: var(--sp-5) 0 0; font-size: var(--fs-3xs); color: var(--ink-faint);
+  }
+  .tmw-places:empty + .tmw-places-hint{ display:none; }
   .tmw-place{
     display:flex; flex-direction:column; gap: var(--sp-4); min-width:0;
     padding: var(--sp-6) var(--sp-7); text-align:left; color:inherit;
@@ -256,6 +279,14 @@
   /* Where it will land, on the tile it will land before. */
   .tmw-place.is-drop{ border-color: var(--accent); background: var(--hover); }
   .tmw-place-top{ display:flex; align-items:center; gap: var(--sp-4); min-width:0; }
+  /* The tiles have been draggable for a build and nothing said so. A drag with
+     no handle is a feature nobody finds. */
+  .tmw-grip{
+    flex:0 0 auto; width:8px; height:14px;
+    background-image: radial-gradient(currentColor 1px, transparent 1px);
+    background-size: 4px 4px; background-position: 0 1px;
+    color: var(--ink-dim); opacity:.7;
+  }
   /* The figure and its bar are the link to Savings; the pin is its own control. */
   .tmw-place-open{
     display:flex; flex-direction:column; gap: var(--sp-4); min-width:0;
@@ -308,7 +339,13 @@
     flex:0 0 auto; font-size: var(--fs-3xs); font-weight:700; text-transform:uppercase;
     letter-spacing: var(--track-caps); color: var(--ink-dim);
   }
-  .tmw-items{ display:flex; align-items:center; flex-wrap:wrap; flex:1 1 auto; gap: var(--sp-4); }
+  .tmw-items{ display:flex; align-items:center; flex-wrap:wrap; flex:0 1 auto; gap: var(--sp-4); }
+  /* Pushed to the far end, and divided from the items beside it by more than a
+     hairline, because it is a different kind of fact. */
+  .tmw-item.is-budget{
+    margin-left:auto; padding-left: var(--sp-7);
+    border-left:1px solid var(--line-strong);
+  }
   .tmw-item{
     display:flex; align-items:baseline; gap: var(--sp-5); min-width:0;
     padding: var(--sp-3) var(--sp-6); border:0; background:none;
@@ -2848,6 +2885,7 @@
             <p class="tmw-meta" id="dash-tm-meta"></p>
           </div>
           <div class="tmw-places" id="dash-tm-places"></div>
+          <p class="tmw-places-hint">Drag to reorder · pin to keep an account in view</p>
         </div>
 
         <div class="tmw-outside" id="dash-tm-outside"></div>
@@ -2864,6 +2902,26 @@
 
       <!-- Spent against what you meant to spend. The limits live in Settings;
            this is the only place they are answered. -->
+      <!-- TWO GROUPS, NOT TEN WIDGETS. The cards inside these keep their own
+           headings and their own renderers; sectionsOf resolves a heading to the
+           direct child of .bento it sits in, so nesting them makes the container
+           the section and their headings its parts. -->
+      <div class="card bento-span-12 is-group" id="monthly-overview-card">
+        <header class="panel-head is-toolbar">
+          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg></span><span class="h-text">Monthly overview</span></h2>
+          <p class="sub">How this month is going, and where it ends up.</p>
+        </header>
+        <div class="group-body" id="monthly-overview-body"></div>
+      </div>
+
+      <div class="card bento-span-12 is-group" id="highlights-card">
+        <header class="panel-head is-toolbar">
+          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.1 5.4 5.9.4-4.5 3.8 1.4 5.7L12 15.6 7.1 18.3l1.4-5.7L4 8.8l5.9-.4z"/></svg></span><span class="h-text">Highlights</span></h2>
+          <p class="sub">What the month did that is worth a second look.</p>
+        </header>
+        <div class="group-body" id="highlights-body"></div>
+      </div>
+
       <div class="card bento-span-5" id="budget-card">
         <div class="dash-subhead-row">
           <h3 class="dash-subhead">Spent against budget</h3>
@@ -3708,7 +3766,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-20g";
+  const APP_BUILD = "2026-09-20h";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4839,6 +4897,7 @@
             return `<div class="tmw-place${p.pinned ? " is-pinned" : ""}" draggable="true" ` +
               `data-acct-drag="${escapeHtml(p.id || "")}">` +
               `<div class="tmw-place-top">` +
+                `<span class="tmw-grip" aria-hidden="true"></span>` +
                 `<span class="tmw-place-k">${escapeHtml(p.name)}</span>` +
                 (p.id
                   ? `<button type="button" draggable="false" class="tmw-pin${p.pinned ? " is-on" : ""}" ` +
@@ -4895,13 +4954,34 @@
        Loans & Invest, so each one goes there. */
     const dashOutside = document.getElementById("dash-tm-outside");
     if (dashOutside){
-      dashOutside.innerHTML = aside.length
+      /* What is left of the month's limits, at the far end of the strip. Set
+         apart from the items beside it rather than listed among them: those are
+         money you hold and are not in the figure above, and this is not money at
+         all - it is what is left of a decision. */
+      const bp = typeof budgetPicture === "function" ? budgetPicture() : null;
+      const budgetBit = (bp && bp.limited.length)
+        ? (()=>{
+            const leftOver = round2(bp.totalLimit - bp.totalSpent);
+            const isOver = leftOver < 0;
+            return '<button type="button" class="tmw-item is-budget" data-tm-budget="1" ' +
+              'title="' + (isOver ? "Over your limits for the month" : "What is left of your limits this month") + '">' +
+              '<span class="k">' + (isOver ? "Over budget" : "Budget left") + '</span>' +
+              '<span class="v ' + (isOver ? "is-out" : "is-in") + '">' +
+                fmtMoney(Math.abs(leftOver)) + '</span></button>';
+          })()
+        : "";
+
+      dashOutside.innerHTML = (aside.length || budgetBit)
         ? '<span class="tmw-outside-k">Not in this total</span><div class="tmw-items">' +
           aside.map(r=>`<button type="button" class="tmw-item" data-tm-go="loans">` +
             `<span class="k">${escapeHtml(r.label)}</span>` +
             `<span class="v${r.tone ? " is-" + r.tone : ""}">${fmtMoney(r.value)}</span></button>`).join("") +
-          '</div>'
+          '</div>' + budgetBit
         : "";
+      const budgetBtn = dashOutside.querySelector("[data-tm-budget]");
+      if (budgetBtn) budgetBtn.addEventListener("click", ()=>{
+        if (typeof goToBudgets === "function") goToBudgets();
+      });
       /* Re-bound on every paint, and that is correct: innerHTML replaced the
          nodes, so the old listeners went with them. */
       dashOutside.querySelectorAll("[data-tm-go]").forEach(btn=>{
@@ -10839,6 +10919,42 @@
     }
   }
 
+  /* Which card belongs in which group. Run again whenever a module has mounted
+     one of its own, and a no-op when there is nothing left to move. */
+  const GROUPS = {
+    "monthly-overview-body": ["recap-card", "fc-card", "summary-card"],
+    "highlights-body": ["insights-card", "money-overview-card", "out-card", "wc-card"]
+  };
+  function groupDashboardCards(){
+    let moved = 0;
+    Object.keys(GROUPS).forEach(bodyId => {
+      const body = document.getElementById(bodyId);
+      if (!body) return;
+      GROUPS[bodyId].forEach(id => {
+        const card = document.getElementById(id);
+        if (!card || card.parentElement === body) return;
+        /* Inside a group it is a part, not a card: the chrome comes off so the
+           group reads as one surface rather than as cards within a card. */
+        card.classList.add("is-grouped");
+        /* It was a section a moment ago and the rail may have hidden it. Inside a
+           group it is a part of something its parent is already showing, so the
+           display:none and the hidden attribute it was given as a card come off. */
+        card.removeAttribute("hidden");
+        card.style.removeProperty("display");
+        card.removeAttribute("data-rail-block");
+        card.classList.remove("bento-span-5", "bento-span-7", "bento-span-12");
+        card.style.removeProperty("--span");
+        card.style.removeProperty("--rows");
+        body.appendChild(card);
+        moved++;
+      });
+      // An empty group is a heading with nothing under it.
+      const host = body.closest(".card");
+      if (host) host.style.display = body.children.length ? "" : "none";
+    });
+    return moved;
+  }
+
   function renderDashboardSummary(){
     renderInsights();
     renderRecap();
@@ -10846,6 +10962,7 @@
     renderSummaryContent();
     renderRecentHistory();
     renderDashBudget();
+    groupDashboardCards();
   }
 
   /* ---------- budgets, as one picture ------------------------------------ */
@@ -10915,16 +11032,14 @@
         ? "ahead of where today is \u2014 on track for " + fmtMoney(p.projected)
         : "in step with the month";
 
-    /* WHAT IS LEFT leads. The card led with what had been spent, and the number
-       anyone actually wants from a budget is how much more they can spend. The
-       spent figure moves down a line, where the percentage was already saying it
-       a second way. */
-    const left = round2(p.totalLimit - p.totalSpent);
+    /* Spent against the limit again. What is LEFT of the month moved up to the
+       total-money strip, where it is answered once for the whole month; this
+       card is here for the categories underneath it. */
     host.innerHTML =
-      '<p class="bgl-lead' + (over ? " is-over" : "") + '">' + fmtMoneyRich(Math.abs(left)) +
-        ' <span class="k">' + (over ? "over" : "left") + ' of ' + fmtMoney(p.totalLimit) + '</span></p>' +
-      '<p class="bgl-sub' + (over ? " is-over" : "") + '">' + fmtMoney(p.totalSpent) + ' spent \u00b7 ' +
-        Math.round(usedPct) + '% on day ' + p.day + ' of ' + p.daysIn +
+      '<p class="bgl-lead' + (over ? " is-over" : "") + '">' + fmtMoneyRich(p.totalSpent) +
+        ' <span class="k">of ' + fmtMoney(p.totalLimit) + '</span></p>' +
+      '<p class="bgl-sub' + (over ? " is-over" : "") + '">' + Math.round(usedPct) +
+        '% used on day ' + p.day + ' of ' + p.daysIn +
         ' \u2014 ' + escapeHtml(verdict) + '</p>' +
       budgetBarHtml(usedPct, p.elapsedPct, over, !over && usedPct > 85) +
       '<div class="bgl-list">' + p.limited.slice(0, 4).map(r => {
@@ -12814,6 +12929,13 @@
       function mountAll(){ wireDrill(); }
       mountAll();
       document.addEventListener("click", () => setTimeout(mountAll, 180), true);
+      /* These three append themselves to .bento, so they have to be collected
+         after every mount or they sit outside their group. */
+      const collect = () => {
+        if (typeof groupDashboardCards === "function") groupDashboardCards();
+      };
+      collect();
+      document.addEventListener("click", () => setTimeout(collect, 220), true);
     })();
 
 
@@ -13064,8 +13186,15 @@
         }
       }
 
-      mount();
-      document.addEventListener("click", () => setTimeout(mount, 190), true);
+      /* Collected into its group straight after mounting. These cards append
+         themselves to .bento, so without this they stand outside the group,
+         count as sections of their own, and the rail hides them. */
+      const mountAndGroup = () => {
+        mount();
+        if (typeof groupDashboardCards === "function") groupDashboardCards();
+      };
+      mountAndGroup();
+      document.addEventListener("click", () => setTimeout(mountAndGroup, 190), true);
     })();
 
     /* ======================================================================
@@ -13247,8 +13376,15 @@
         paint();
       }
 
-      mount();
-      document.addEventListener("click", () => setTimeout(mount, 200), true);
+      /* Gathered into its group straight after mounting, for the same reason as
+         the others: it appends itself to .bento, and outside a group it counts
+         as a section of its own and the rail hides it. */
+      const mountAndGroup = () => {
+        mount();
+        if (typeof groupDashboardCards === "function") groupDashboardCards();
+      };
+      mountAndGroup();
+      document.addEventListener("click", () => setTimeout(mountAndGroup, 200), true);
     })();
 
 
@@ -13401,8 +13537,15 @@
         if (body) body.innerHTML = build();
       }
 
-      mount();
-      document.addEventListener("click", () => setTimeout(mount, 200), true);
+      /* Gathered into its group straight after mounting, for the same reason as
+         the others: it appends itself to .bento, and outside a group it counts
+         as a section of its own and the rail hides it. */
+      const mountAndGroup = () => {
+        mount();
+        if (typeof groupDashboardCards === "function") groupDashboardCards();
+      };
+      mountAndGroup();
+      document.addEventListener("click", () => setTimeout(mountAndGroup, 200), true);
     })();
 
 
@@ -13590,8 +13733,15 @@
         paint();
       }
 
-      mount();
-      document.addEventListener("click", () => setTimeout(mount, 200), true);
+      /* Gathered into its group straight after mounting, for the same reason as
+         the others: it appends itself to .bento, and outside a group it counts
+         as a section of its own and the rail hides it. */
+      const mountAndGroup = () => {
+        mount();
+        if (typeof groupDashboardCards === "function") groupDashboardCards();
+      };
+      mountAndGroup();
+      document.addEventListener("click", () => setTimeout(mountAndGroup, 200), true);
     })();
 
 
@@ -13819,9 +13969,8 @@
            <h2> has to be named here.
            total-money-card leads, because how much you have is the first
            question and the rest of the page is commentary on it. */
-        dashboard: { on: ["total-money-card", "money-overview-card", "budget-card",
-                          "insights-card", "summary-card", "blk-recent-activity",
-                          "recap-card"],
+        dashboard: { on: ["total-money-card", "budget-card", "highlights-card",
+                          "blk-recent-activity", "monthly-overview-card"],
                      first: "total-money-card" },
         charts:    { on: ["blk-spending-over-time"], first: "blk-spending-over-time" },
         history:   { on: ["history-expense-card"],   first: "history-expense-card" },
@@ -14264,12 +14413,7 @@
               lastGroup = g;
               const gh = document.createElement("p");
               gh.className = "nav-group-k";
-              /* What the group MEANS, once, under its name. On the page, opens
-                 beside and not in the list are three states of one thing and the
-                 difference between them was written down nowhere. */
-              gh.innerHTML = (on ? "On the page" : "Opens beside") +
-                '<span class="nav-group-s">' +
-                (on ? "always here" : "one tap from this list") + '</span>';
+              gh.textContent = on ? "On the page" : "Opens beside";
               box.appendChild(gh);
             }
           }
@@ -14356,7 +14500,7 @@
         if (gone.length){
           const g = document.createElement("div");
           g.className = "nav-gone";
-          g.innerHTML = '<p class="nav-gone-k">Not in the list<span class="nav-group-s">hidden until you add it back</span></p>' +
+          g.innerHTML = '<p class="nav-gone-k">Not in the list</p>' +
             gone.map(x => '<button type="button" class="nav-restore" data-restore="' +
               escapeHtml(x.id) + '">' + escapeHtml(x.head.textContent.trim()) +
               '<span class="nav-restore-plus" aria-hidden="true">+</span></button>').join("");
@@ -17955,11 +18099,6 @@ if ("serviceWorker" in navigator &&
      and not chosen is the highest-value contrast in the control. */
   /* More air above a heading than below it, so three groups read as three
      groups. They were 12px apart either side, which is a wall with words in it. */
-  .nav-group-s{
-    display: block; margin-top: 1px;
-    font-size: var(--fs-3xs); font-weight: 500; text-transform: none;
-    letter-spacing: 0; color: var(--ink-faint);
-  }
   .nav-group-k{
     margin: var(--sp-9) 0 var(--sp-4); padding: 0 var(--sp-3);
     font-size: var(--fs-3xs); font-weight: 700; letter-spacing: var(--track-caps);
