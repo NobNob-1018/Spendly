@@ -123,6 +123,10 @@
     --fs-display-1: clamp(28px, 3.4vw, 40px);
     --fs-display-2: clamp(22px, 2.6vw, 30px);
     --fs-display-3: 24px;
+    /* One figure on the dashboard is larger than anything else in the app, and
+       the scale stops at --fs-4xl. Written against that token rather than as a
+       number, so the text-size setting still moves it. */
+    --fs-hero: clamp(30px, 3.6vw, calc(var(--fs-4xl) * 1.85));
 
     --r-sm: 4px; --r-md: 6px; --r-lg: 10px; --r-xl: 14px; --r-pill: 9999px;
 
@@ -197,37 +201,76 @@
   .tm-value .cur-cents{ color: var(--ink-soft); font-size:.72em; }
   .tm-trend{ font-size: var(--fs-3xs); font-weight:700; color: var(--ink-soft); white-space:nowrap; }
   .tm-hint, .tm-spark, .tm-aside-label, .tm-trend-period{ display:none; }
-  /* ---------- the dashboard's own total-money panel ---------------------- */
-  /* The toolbar version is a button with a figure in it. This one is the answer
-     to the first question you have, so it gets a row of its own and says what it
-     is made of in place rather than behind a tap. */
-  #total-money-card{ padding: var(--sp-9); }
-  .dash-tm{ display:flex; align-items:stretch; gap: var(--sp-9); }
-  .dash-tm-main{ flex:1 1 auto; min-width:0; }
-  .dash-tm-head{ display:flex; align-items:center; gap: var(--sp-6); margin-bottom: var(--sp-4); }
-  #dash-tm-value{
-    font-size: clamp(32px, 4.6vw, 52px); line-height:1.02; letter-spacing:-0.03em;
+  /* ---------- the card the dashboard opens with -------------------------- */
+  /* It uses the app's own card anatomy - the banded head with an icon, a
+     sentence-case heading and its line - rather than the uppercase micro-label a
+     hero banner would use. This is a ledger header, and it belongs to this app. */
+  #total-money-card .tm-value{
     display:block; white-space:nowrap;
+    font-size: var(--fs-hero); line-height:1.02; letter-spacing:-0.03em;
   }
-  #dash-tm-trend{ font-size: var(--fs-2xs); padding: 2px var(--sp-5); border-radius: var(--r-pill);
-    background: var(--sunken); }
-  .dash-tm-rows{ display:flex; flex-wrap:wrap; gap: var(--sp-4) var(--sp-9); margin-top: var(--sp-7); }
-  .dtm-row{ display:flex; align-items:baseline; gap: var(--sp-4); font-size: var(--fs-sm); }
-  .dtm-row .k{ color: var(--ink-dim); }
-  .dtm-row .v{ font-weight:700; font-variant-numeric: tabular-nums; }
-  /* Money that is real but is not in the total. Dimmer, and it says so once
-     rather than on every row. */
-  .dtm-aside{ display:flex; flex-wrap:wrap; align-items:baseline; gap: var(--sp-4) var(--sp-7);
-    margin-top: var(--sp-6); padding-top: var(--sp-6); border-top:1px solid var(--line); }
-  .dtm-aside .dtm-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing: var(--track-caps);
-    font-weight:700; color: var(--ink-dim); }
-  .dtm-aside .dtm-row .v{ color: var(--ink-soft); }
-  .dash-tm-spark{ flex:0 1 360px; min-width:0; display:flex; align-items:flex-end; }
-  .dash-tm-spark svg{ width:100%; height:auto; }
+  #dash-tm-trend{
+    flex:0 0 auto; margin-left:auto; padding: 3px var(--sp-5);
+    font-size: var(--fs-2xs); border-radius: var(--r-pill);
+    background: var(--surface); border:1px solid var(--line);
+  }
+
+  .tmw{ display:flex; align-items:flex-end; gap: var(--sp-9); }
+  .tmw-figure{ flex:1 1 auto; min-width:0; }
+
+  /* Only drawn when the total HAS parts. With investments left out of it - the
+     default - the one part IS the total, and printing it under the figure is the
+     same number twice, 30px apart. */
+  .tmw-parts{ display:flex; flex-wrap:wrap; gap: var(--sp-5); margin-top: var(--sp-6); }
+  .tmw-parts:empty{ display:none; }
+  .tmw-part{
+    display:flex; flex-direction:column; gap:2px; min-width:0;
+    padding: var(--sp-5) var(--sp-6); background: var(--sunken); border-radius: var(--r-md);
+  }
+  .tmw-part .k{ font-size: var(--fs-3xs); font-weight:700; text-transform:uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim); }
+  .tmw-part .v{ font-size: var(--fs-md); font-weight:700; font-variant-numeric: tabular-nums; }
+
+  /* The trend, anchored. It was a stretched path with no baseline, no end point
+     and no period, which is a shape rather than a reading. */
+  .tmw-trend{ flex:0 1 340px; min-width:0; margin:0;
+    display:flex; flex-direction:column; gap: var(--sp-4); }
+  .tmw-spark{ height:76px; border-bottom:1px solid var(--line); }
+  .tmw-spark svg{ display:block; width:100%; height:100%; }
+  .tmw-trend figcaption{ font-size: var(--fs-3xs); color: var(--ink-faint); text-align:right; }
+
+  /* Real, and not in the figure above. Equal weight to each other and a rule
+     between them and the total: at four fifths of what is held, money owed to
+     you is not a footnote in the dimmest ink on the card. */
+  .tmw-outside{ margin-top: var(--sp-8); padding-top: var(--sp-7); border-top:1px solid var(--line); }
+  .tmw-outside:empty{ display:none; }
+  .tmw-outside-k{ display:block; margin-bottom: var(--sp-5);
+    font-size: var(--fs-3xs); font-weight:700; text-transform:uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim); }
+  /* 140, not 168: at 168 only one tile fits a 308px phone card, so three of them
+     cost 210px of the first screen you see. Two per row on a phone, three on a
+     desktop, from the one rule. */
+  .tmw-tiles{ display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--sp-5); }
+  .tmw-tile{
+    display:flex; flex-direction:column; gap:3px; min-width:0; text-align:left;
+    padding: var(--sp-6); background: var(--sunken);
+    border:1px solid var(--line); border-radius: var(--r-md); color: inherit;
+  }
+  .tmw-tile .k{ font-size: var(--fs-2xs); color: var(--ink-dim); }
+  .tmw-tile .v{ font-size: var(--fs-lg); font-weight:700; font-variant-numeric: tabular-nums; }
+  .tmw-tile .v.is-in{ color: var(--positive); }
+  .tmw-tile .v.is-out{ color: var(--negative); }
+  /* They go to Loans & Invest, so they say so on the way past. Background only,
+     at the app's fast step, and only where there is a pointer to do it with. */
+  @media (hover: hover){
+    button.tmw-tile{ cursor:pointer; transition: background var(--dur-fast) var(--ease-out); }
+    button.tmw-tile:hover{ background: var(--hover); }
+  }
+
   @media (max-width: 860px){
-    #total-money-card{ padding: var(--sp-7); }
-    .dash-tm{ flex-direction:column; gap: var(--sp-6); }
-    .dash-tm-spark{ flex:0 0 auto; }
+    .tmw{ flex-direction:column; align-items:stretch; gap: var(--sp-7); }
+    .tmw-trend{ flex:0 0 auto; }
+    .tmw-spark{ height:60px; }
   }
 
   /* ---------- a budget bar ----------------------------------------------- */
@@ -2774,17 +2817,24 @@
            breakdown was behind a tap; here it is the size of the thing it is,
            and what it is made of is in place beside it. -->
       <div class="card bento-span-12" id="total-money-card">
-        <div class="dash-tm">
-          <div class="dash-tm-main">
-            <div class="dash-tm-head">
-              <span class="tm-label">Total money</span>
-              <span class="tm-trend" id="dash-tm-trend" style="display:none;"></span>
-            </div>
+        <header class="panel-head is-toolbar">
+          <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><path d="M3 7.5V17a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 9.5h-4.2a2.75 2.75 0 0 0 0 5.5H21z"/></svg></span><span class="h-text">Total money</span></h2>
+          <p class="sub">Everything you hold right now, and which way it has moved.</p>
+          <span class="tm-trend" id="dash-tm-trend" style="display:none;"></span>
+        </header>
+
+        <div class="tmw">
+          <div class="tmw-figure">
             <div class="tm-value num" id="dash-tm-value">₱0.00</div>
-            <div class="dash-tm-rows" id="dash-tm-rows"></div>
+            <div class="tmw-parts" id="dash-tm-parts"></div>
           </div>
-          <div class="dash-tm-spark" id="dash-tm-spark" aria-hidden="true"></div>
+          <figure class="tmw-trend">
+            <div class="tmw-spark" id="dash-tm-spark" aria-hidden="true"></div>
+            <figcaption id="dash-tm-caption">the last 60 days</figcaption>
+          </figure>
         </div>
+
+        <div class="tmw-outside" id="dash-tm-outside"></div>
       </div>
 
       <div class="card bento-span-7" id="money-overview-card">
@@ -2911,14 +2961,10 @@
       <button data-loans="invest">Investments</button>
     </div>
     <div class="card is-board" data-loans-group="given">
-      <div class="section-head-row panel-head is-toolbar">
-        <div>
-          <header class="panel-head is-toolbar">
-            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span><span class="h-text">Money you've lent to others</span></h2>
-            <div class="loan-summary is-headline" id="loans-given-summary"></div>
-          </header>
-        </div>
-      </div>
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span><span class="h-text">Money you've lent to others</span></h2>
+        <div class="loan-summary is-headline" id="loans-given-summary"></div>
+      </header>
       <div id="loans-given-body" class="collapsible-body">
         <div class="form-grid form-cols">
           <div class="fld">
@@ -3013,14 +3059,10 @@
     </div>
 
     <div class="card is-board" data-loans-group="taken">
-      <div class="section-head-row panel-head is-toolbar">
-        <div>
-          <header class="panel-head is-toolbar">
-            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span><span class="h-text">Loans you've taken</span></h2>
-            <div class="loan-summary is-headline" id="loans-taken-summary"></div>
-          </header>
-        </div>
-      </div>
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span><span class="h-text">Loans you've taken</span></h2>
+        <div class="loan-summary is-headline" id="loans-taken-summary"></div>
+      </header>
       <div id="loans-taken-body" class="collapsible-body">
         <div class="form-grid form-cols">
           <div class="fld">
@@ -3115,14 +3157,10 @@
     </div>
 
     <div class="card is-board" data-loans-group="invest">
-      <div class="section-head-row panel-head is-toolbar">
-        <div>
-          <header class="panel-head is-toolbar">
-            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg></span><span class="h-text">Investments</span></h2>
-            <div class="loan-summary is-headline" id="investments-summary"></div>
-          </header>
-        </div>
-      </div>
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg></span><span class="h-text">Investments</span></h2>
+        <div class="loan-summary is-headline" id="investments-summary"></div>
+      </header>
       <div id="investments-body" class="collapsible-body">
         <div class="form-grid form-cols">
           <div class="fld">
@@ -3440,14 +3478,10 @@
     </div>
 
     <div data-settings-group="budgeting" class="card">
-      <div class="section-head-row panel-head is-toolbar">
-        <div>
-          <header class="panel-head is-toolbar">
-            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span><span class="h-text">Monthly budgets</span></h2>
-            <p class="sub">Set a monthly limit per category and see how this month is tracking.</p>
-          </header>
-        </div>
-      </div>
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span><span class="h-text">Monthly budgets</span></h2>
+        <p class="sub">Set a monthly limit per category and see how this month is tracking.</p>
+      </header>
       <div id="budget-list"></div>
     </div>
 
@@ -3471,15 +3505,11 @@
     </div>
 
     <div data-settings-group="trackers" class="card">
-      <div class="section-head-row panel-head is-toolbar">
-        <div>
-          <header class="panel-head is-toolbar">
-            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 3 21 7 17 11"/><line x1="3" y1="7" x2="21" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="21" y1="17" x2="3" y2="17"/></svg></span><span class="h-text">Currency tracker</span></h2>
-            <p class="sub">Rates against ₱ (PHP). Sync online any time, or type in a rate yourself.</p>
-          </header>
-        </div>
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 3 21 7 17 11"/><line x1="3" y1="7" x2="21" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="21" y1="17" x2="3" y2="17"/></svg></span><span class="h-text">Currency tracker</span></h2>
+        <p class="sub">Rates against ₱ (PHP). Sync online any time, or type in a rate yourself.</p>
         <button class="btn btn-ghost btn-sm" id="btn-sync-currencies"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg>Sync rates</button>
-      </div>
+      </header>
       <p class="hint is-help" id="currency-sync-status"></p>
 
       <div class="form-grid form-cols">
@@ -3504,15 +3534,11 @@
     </div>
 
     <div class="card is-board">
-      <div class="section-head-row panel-head is-toolbar">
-        <div>
-          <header class="panel-head is-toolbar">
-            <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 8h4a2 2 0 0 1 0 4h-4m0 0h4.5a2 2 0 0 1 0 4h-4.5"/><line x1="10.5" y1="6" x2="10.5" y2="18"/></svg></span><span class="h-text">Crypto tracker</span></h2>
-            <p class="sub">Bitcoin and Ethereum, priced in ₱ (PHP). Sync online any time, or type in a price yourself.</p>
-          </header>
-        </div>
+      <header class="panel-head is-toolbar">
+        <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 8h4a2 2 0 0 1 0 4h-4m0 0h4.5a2 2 0 0 1 0 4h-4.5"/><line x1="10.5" y1="6" x2="10.5" y2="18"/></svg></span><span class="h-text">Crypto tracker</span></h2>
+        <p class="sub">Bitcoin and Ethereum, priced in ₱ (PHP). Sync online any time, or type in a price yourself.</p>
         <button class="btn btn-ghost btn-sm" id="btn-sync-crypto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="15" height="15"><path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 4v7h-7"/></svg>Sync prices</button>
-      </div>
+      </header>
       <p class="hint is-help" id="crypto-sync-status"></p>
       <div id="crypto-list"></div>
     </div>
@@ -3666,7 +3692,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-20a";
+  const APP_BUILD = "2026-09-20b";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4639,10 +4665,21 @@
       }
       const dashSpark = document.getElementById("dash-tm-spark");
       if (dashSpark){
+        /* Drawn at the box's OWN pixel size. The viewBox used to be a fixed
+           360x110 stretched to fit by preserveAspectRatio="none", so the curve
+           was squashed by whatever the card happened to be and an end point
+           would have been drawn as an ellipse. Measured, it maps 1:1. */
+        const w = Math.round(dashSpark.clientWidth) || 340;
+        const h = Math.round(dashSpark.clientHeight) || 76;
         dashSpark.innerHTML = series.length > 1
-          ? buildSparkline(series, { valueKey:"netWorth", width:360, height:110, pad:4,
-                                     area:true, strokeWidth:2, color:"var(--accent)" })
+          ? buildSparkline(series, { valueKey:"netWorth", width:w, height:h, pad:4,
+                                     area:true, strokeWidth:2, endDot:true,
+                                     color:"var(--accent)" })
           : "";
+        const cap = document.getElementById("dash-tm-caption");
+        if (cap) cap.textContent = series.length > 1
+          ? "the last " + series.length + " days"
+          : "not enough history yet";
       }
     }
 
@@ -4658,8 +4695,8 @@
     const rows = [
       { label: "Savings & cash", value: b.totalSavings, inTotal: true },
       { label: "Investments (unsold)", value: b.unsoldInvestments, inTotal: !!b.investedCounts },
-      { label: "Money owed to you", value: b.outstandingLent, inTotal: false },
-      { label: "Money you owe", value: b.outstandingOwed, inTotal: false }
+      { label: "Money owed to you", value: b.outstandingLent, inTotal: false, tone: "in" },
+      { label: "Money you owe", value: b.outstandingOwed, inTotal: false, tone: "out" }
     ];
     const counted = rows.filter(r=>r.inTotal), aside = rows.filter(r=>!r.inTotal);
     bar.title = counted.map(r=>`${r.label}: ${fmtMoney(r.value)}`).join("\n")
@@ -4674,15 +4711,31 @@
         + `<p class="tm-aside-label">Not counted here — see Loans &amp; Invest</p>`
         + aside.map(r=>`<div class="tm-row is-aside"><span>${escapeHtml(r.label)}</span><strong>${fmtMoney(r.value)}</strong></div>`).join("");
     }
-    const dashRows = document.getElementById("dash-tm-rows");
-    if (dashRows){
-      dashRows.innerHTML =
-        counted.map(r=>`<span class="dtm-row"><span class="k">${escapeHtml(r.label)}</span>` +
-                       `<span class="v">${fmtMoney(r.value)}</span></span>`).join("") +
-        `<span class="dtm-aside"><span class="dtm-k">Not counted here</span>` +
-        aside.map(r=>`<span class="dtm-row"><span class="k">${escapeHtml(r.label)}</span>` +
-                     `<span class="v">${fmtMoney(r.value)}</span></span>`).join("") +
-        `</span>`;
+    /* The parts, only when there is more than one of them. */
+    const dashParts = document.getElementById("dash-tm-parts");
+    if (dashParts){
+      dashParts.innerHTML = counted.length > 1
+        ? counted.map(r=>`<span class="tmw-part"><span class="k">${escapeHtml(r.label)}</span>` +
+                         `<span class="v">${fmtMoney(r.value)}</span></span>`).join("")
+        : "";
+    }
+
+    /* And what is outside it, at the weight it deserves. Each one lives on
+       Loans & Invest, so each one goes there. */
+    const dashOutside = document.getElementById("dash-tm-outside");
+    if (dashOutside){
+      dashOutside.innerHTML = aside.length
+        ? '<span class="tmw-outside-k">Not in this total</span><div class="tmw-tiles">' +
+          aside.map(r=>`<button type="button" class="tmw-tile" data-tm-go="loans">` +
+            `<span class="k">${escapeHtml(r.label)}</span>` +
+            `<span class="v${r.tone ? " is-" + r.tone : ""}">${fmtMoney(r.value)}</span></button>`).join("") +
+          '</div>'
+        : "";
+      /* Re-bound on every paint, and that is correct: innerHTML replaced the
+         nodes, so the old listeners went with them. */
+      dashOutside.querySelectorAll("[data-tm-go]").forEach(btn=>{
+        btn.addEventListener("click", ()=> activateTab(btn.dataset.tmGo));
+      });
     }
     if (typeof updateWelcomeCard === "function") updateWelcomeCard();
     recordNetWorthSnapshot();
@@ -6837,13 +6890,19 @@
       '<path d="' + d + ' L' + xy[xy.length - 1][0].toFixed(1) + ',' + h + ' L' + xy[0][0].toFixed(1) + ',' + h +
       ' Z" fill="url(#' + id + ')"/>';
     const hi = xy[values.indexOf(max)], lo = xy[values.indexOf(min)];
+    /* Where the line ENDS, which on a net-worth reading is the only point on it
+       that is a fact about now. Opt-in, so nothing else that uses this changes. */
+    const endDot = o.endDot
+      ? '<circle cx="' + xy[xy.length - 1][0].toFixed(1) + '" cy="' + xy[xy.length - 1][1].toFixed(1) +
+        '" r="' + (o.endDotR || 2.4) + '" fill="' + color + '"/>'
+      : "";
     const marks = o.area ? "" :
       '<circle cx="' + hi[0].toFixed(1) + '" cy="' + hi[1].toFixed(1) + '" r="1.5" fill="' + color + '" opacity=".55"/>' +
       '<circle cx="' + lo[0].toFixed(1) + '" cy="' + lo[1].toFixed(1) + '" r="1.5" fill="' + color + '" opacity=".55"/>';
     return '<svg viewBox="0 0 ' + w + ' ' + h + '"' +
       (o.area ? ' preserveAspectRatio="none"' : ' width="' + w + '" height="' + h + '"') + ' fill="none">' +
       area + '<path d="' + d + '" stroke="' + color + '" stroke-width="' + (o.strokeWidth || 1.7) +
-      '" stroke-linecap="round" stroke-linejoin="round"/>' + marks + '</svg>';
+      '" stroke-linecap="round" stroke-linejoin="round"/>' + marks + endDot + '</svg>';
   }
 
 
@@ -13614,16 +13673,18 @@
            opens beside the page instead of standing on it, which would have
            quietly emptied the Dashboard. They are named here because they were
            always on the page; they just could not be taken off it before. */
-        /* budget-card is here because a card with a heading is a SECTION, and a
-           section missing from this list opens beside the page instead of
-           standing on it - so a new card renders correctly, reports its own
-           content, and is invisible. Measured exactly that on the first run.
-           total-money-card is deliberately absent: it has no heading of its own,
-           so sectionsOf never sees it and nothing can take the page total off
-           the page. */
-        dashboard: { on: ["money-overview-card", "budget-card", "insights-card",
-                          "summary-card", "blk-recent-activity", "recap-card"],
-                     first: "money-overview-card" },
+        /* A card with a heading is a SECTION, and a section missing from this
+           list opens beside the page instead of standing on it - so it renders
+           correctly, reports its own content, and is invisible. Measured exactly
+           that twice: once on budget-card, and again on total-money-card the
+           moment it was given the app's own banded head. Anything gaining an
+           <h2> has to be named here.
+           total-money-card leads, because how much you have is the first
+           question and the rest of the page is commentary on it. */
+        dashboard: { on: ["total-money-card", "money-overview-card", "budget-card",
+                          "insights-card", "summary-card", "blk-recent-activity",
+                          "recap-card"],
+                     first: "total-money-card" },
         charts:    { on: ["blk-spending-over-time"], first: "blk-spending-over-time" },
         history:   { on: ["history-expense-card"],   first: "history-expense-card" },
         savings:   { on: ["blk-where-is-your-money-", "blk-your-accounts"] }
@@ -13646,7 +13707,8 @@
       /* What a phone keeps on the page. Budget joins it because "am I inside my
          limits" is one of the four questions this tab exists to answer, and the
          one you most want on the screen you actually carry. */
-      const PHONE_KEEP = { dashboard: ["money-overview-card", "budget-card", "blk-recent-activity"] };
+      const PHONE_KEEP = { dashboard: ["total-money-card", "money-overview-card",
+                                       "budget-card", "blk-recent-activity"] };
       const railPhone = () => !!(window.matchMedia && window.matchMedia("(max-width: 720px)").matches);
       let pinned = {};
       try{ pinned = JSON.parse(localStorage.getItem(PIN_KEY) || "{}") || {}; }catch(e){ pinned = {}; }
