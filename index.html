@@ -2146,25 +2146,12 @@
   .rail-place-amt{ font-size: var(--fs-sm); }
   .rail-place-n{ font-size: var(--fs-2xs); }
 
-  /* ---------- the caret, on every heading in the rail ---------------------- */
+  /* The chevron on every destination lived here. It disclosed a list that folded
+     out under the button it was on; that list only exists while arranging now,
+     and it sits in a slot under all six, so the chevron pointed at something
+     that could not happen. position: relative stays - the number key badge is
+     absolutely positioned against it. */
   nav.tabs button[data-tab]{ position: relative; }
-  .nav-caret{
-    flex: 0 0 auto; width: 20px; height: 20px; margin-left: 2px;
-    display: inline-flex; align-items: center; justify-content: center;
-    border-radius: var(--r-sm); cursor: pointer;
-  }
-  .nav-caret::before{
-    content: ""; width: 7px; height: 7px;
-    border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
-    transform: rotate(45deg) translate(-2px, -2px);
-    transition: transform var(--dur-slow) var(--ease-out);
-    opacity: .7;
-  }
-  button[data-tab].is-list-open .nav-caret::before{
-    transform: rotate(225deg) translate(-2px, -2px);
-  }
-  @media (hover: hover){ .nav-caret:hover{ background: var(--hover); } }
-  .nav-caret:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
 
   /* Where the money is leads the rail, so it wears the rule under it rather
      than above it. */
@@ -2173,10 +2160,6 @@
     border-top: 0; border-bottom: 1px solid var(--line);
   }
 
-  /* A destination with one section has nothing to disclose, so it does not
-     offer to. Learned the first time it is opened — a panel's headings cannot
-     be read until it has rendered. */
-  button[data-tab].has-no-list .nav-caret{ display: none; }
 
   /* ---------- the panel beside the page ------------------------------------ */
   .rail-drawer{
@@ -3862,7 +3845,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21e";
+  const APP_BUILD = "2026-09-21f";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -11063,7 +11046,13 @@
         incomes.map(i => ({ description: i.description, category: i.category, amount: i.amount, date: i.date, type: "income" })));
       emptyLabel = "No transactions yet."; titleLabel = "Recent activity";
     }
-    if (titleEl) titleEl.textContent = titleLabel;
+    /* ONLY WHEN IT CHANGES. Assigning the same string still replaces the text
+       node, and the page observer watches childList - so this one line ran a
+       render loop on the dashboard for as long as it was open: write, observer,
+       220ms, renderPlaces, write. Measured at eight rounds in 2.2 seconds while
+       nothing was happening. The signature check further down guards the list
+       it draws; this sits above it and guarded nothing. */
+    if (titleEl && titleEl.textContent !== titleLabel) titleEl.textContent = titleLabel;
 
     // 8 was a number typed into a slice, then a preference. Neither knew how big
     // the card was, and the bento lets it be any height - so it was routinely
@@ -14181,7 +14170,10 @@
                       savings: "Savings", loans: "Loans & Invest", settings: "Settings" };
       const KEY = "spendly_rail_open_v1";
       const PLACES_KEY = "spendly_rail_places_v1";
-      const LIST_KEY = "spendly_rail_lists_v1";
+      /* A stored key held which destination had its list folded out, one flag
+         each. Nothing opens or closes a list any more - Edit builds it open - so
+         the flag has no question left to answer. Its data stays on disk unread
+         rather than being migrated away. */
       // v2: a default only shows through when nothing is stored, and the old
       // keys hold an arrangement made under the old defaults.
       const PIN_KEY = "spendly_rail_pinned_v2";
@@ -14226,10 +14218,6 @@
       try{ open = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(e){ open = {}; }
       let placesOpen = true;
       try{ placesOpen = localStorage.getItem(PLACES_KEY) !== "0"; }catch(e){}
-      // Whether a destination's list is showing, per destination. Closed until
-      // asked for — that is the whole point of the caret.
-      let listOpen = {};
-      try{ listOpen = JSON.parse(localStorage.getItem(LIST_KEY) || "{}") || {}; }catch(e){ listOpen = {}; }
       // Which sections stay on the page, and what order everything is in. Both
       // are the reader's arrangement, so both outlive the session.
       /* What a 375px screen is worth opening on. Everything else on that tab
@@ -14256,7 +14244,6 @@
         try{
           localStorage.setItem(KEY, JSON.stringify(open));
           localStorage.setItem(PLACES_KEY, placesOpen ? "1" : "0");
-          localStorage.setItem(LIST_KEY, JSON.stringify(listOpen));
           localStorage.setItem(PIN_KEY, JSON.stringify(pinned));
           localStorage.setItem(ORDER_KEY, JSON.stringify(order));
           localStorage.setItem(HIDE_KEY, JSON.stringify(hiddenSecs));
@@ -14288,14 +14275,10 @@
         k.className = "nav-key";
         k.textContent = String(i + 1);
         b.appendChild(k);
-        // The same disclosure All places has. A destination is a heading with
-        // something folded under it, and this is how you ask for it.
-        const c = document.createElement("span");
-        c.className = "nav-caret";
-        c.setAttribute("role", "button");
-        c.setAttribute("tabindex", "0");
-        c.setAttribute("aria-label", "Show what is on the " + (NAMES[b.dataset.tab] || b.dataset.tab) + " page");
-        b.appendChild(c);
+        /* No chevron. A destination had one because a list used to fold out
+           underneath it; the list only exists while arranging now, and it sits
+           in a slot under all six rather than under any one of them, so the
+           chevron was pointing at something that could not happen. */
       });
 
       // The digits, taken in the capture phase so the baseline's e.key test —
@@ -14312,60 +14295,13 @@
         activateTab(buttons[n - 1].dataset.tab);
       }, true);
 
-      function isListOpen(tab){ return !!listOpen[tab]; }
-      function paintCarets(){
-        buttons.forEach(b => {
-          // Only the active destination has a fold beneath it, so only it can
-          // be expanded. The remembered preference still decides what you find
-          // when you get there.
-          const on = b.classList.contains("active") && isListOpen(b.dataset.tab);
-          const c = b.querySelector(".nav-caret");
-          if (c) c.setAttribute("aria-expanded", on ? "true" : "false");
-          b.classList.toggle("is-list-open", on);
-        });
-      }
-      // Taken in the capture phase, because this has to run instead of the
-      // app's own navigation rather than after it.
-      nav.addEventListener("click", ev => {
-        const btn = ev.target.closest("button[data-tab]");
-        if (!btn) return;
-        // The controls that sit inside a destination row are not the row.
-        // The pin class went with the pin. The X and the key are still in this
-        // row and still must not start a drag.
-        if (ev.target.closest(".nav-hide, .nav-key")) return;
-        // Nothing to disclose here, so the press is simply navigation and the
-        // app's own handler should have it.
-        if (btn.classList.contains("has-no-list")) return;
-        ev.preventDefault();
-        ev.stopPropagation();
-        const tab = btn.dataset.tab;
-        if (tab !== currentTab()){
-          // Going somewhere is also asking to see what is in it. Always open,
-          // never toggle: a press that navigates should not be able to arrive
-          // with the list shut because of what it was last time.
-          listOpen[tab] = true;
-          save();
-          activateTab(tab);
-          return;
-        }
-        // Already here, so the press is the toggle.
-        listOpen[tab] = !listOpen[tab];
-        save();
-        paintCarets();
-        // The one fold there is. It used to be found as the button's next
-        // sibling, because each destination could have its own; they share a slot
-        // under all of them now, so there is exactly one and this is it.
-        const fold = nav.querySelector(".nav-contents-slot .nav-contents-fold");
-        if (fold) fold.classList.toggle("is-open", listOpen[tab]);
-        else { signature = ""; buildContents(true); }
-      }, true);
-      nav.addEventListener("keydown", ev => {
-        const c = ev.target.closest && ev.target.closest(".nav-caret");
-        if (!c) return;
-        if (ev.key !== "Enter" && ev.key !== " ") return;
-        ev.preventDefault();
-        c.click();
-      });
+      /* The disclosure is gone, all of it: the painter, the capture click that
+         swallowed a press on the destination you were already on in order to
+         toggle a list nobody could see, and the Enter/Space that did the same
+         from the keyboard. A press on a destination is navigation, which is the
+         only thing it has actually meant since the list moved out from under
+         the buttons. The app's own handler has it now, as it does for every
+         other button in this rail. */
       let shiftOn = false;
       function setShift(on){
         if (on === shiftOn) return;
@@ -14450,8 +14386,12 @@
                into view have not been measured since they went out of it, and
                the bento sizes what it can see. */
             signature = ""; buildContents(false);
-            const panelNow = document.getElementById("tab-" + tab);
-            if (panelNow) panelNow.scrollIntoView({ block: "start", behavior: still() ? "auto" : "smooth" });
+            /* AND NOTHING SCROLLS. This called panelNow.scrollIntoView(), which
+               is how the page came to yank itself back to the top while you were
+               reading down it - measured at 400 and back to 0 on the next frame.
+               It was never needed either: this strip is the first thing in the
+               panel, so you have to be able to see it to press it, which means
+               you are already where it would have taken you. */
           });
         }
         const on = pageGroupOf(tab);
@@ -14494,8 +14434,15 @@
         return block.id || ("blk-" + head.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-"));
       }
       function sectionsOf(panel){
+        /* offsetParent answers "is this drawn", which is the right question for
+           a card the rail has hidden and the wrong one for a card that is merely
+           in the group you are not looking at - that one is still part of this
+           page and still has to be in the list, or it could never be brought
+           back. Looking through the class is what lets showAllBlocks leave it
+           alone, which is what stops a pass changing the page height. */
         const heads = [...panel.querySelectorAll("h2, h3")]
-          .filter(h => h.textContent.trim() && h.offsetParent !== null);
+          .filter(h => h.textContent.trim() &&
+                       (h.offsetParent !== null || h.closest(".is-off-group")));
         const out = [];
         let lastBlock = null;
         heads.forEach(h => {
@@ -14518,14 +14465,11 @@
         panel.querySelectorAll("[data-rail-block]").forEach(b => {
           if (!homeOf.has(b)) setBlock(b, true);
         });
-        /* The group class too, or a group can never be left: sectionsOf ignores
-           a heading with no offsetParent, so a block the last group put away is
-           invisible to it, never reaches `secs`, and never gets the class taken
-           off. Measured - the page went to 76px and stayed there. applyPageGroup
-           puts the right ones back in this same pass, so nothing is painted in
-           between. */
-        panel.querySelectorAll(".is-off-group")
-          .forEach(b => b.classList.remove("is-off-group"));
+        /* The group class is NOT cleared here. It used to be, so that sectionsOf
+           could see the headings underneath it - which made the dashboard 8,676px
+           for the length of every pass before applyPageGroup put it back to
+           1,500, and a scroll position does not survive its page growing and
+           shrinking under it. sectionsOf looks through the class instead. */
       }
       // What stays in the page: the first headed section, plus every block that
       // has no heading of its own — the insight strip, the week, the recap. The
@@ -14636,9 +14580,7 @@
           nav.querySelectorAll(".nav-contents-fold").forEach(el => el.remove());
           spyTargets = [];
           const here = buttons.find(b => b.classList.contains("active"));
-          if (here) here.classList.add("has-no-list");
-          if (listOpen[tab]){ delete listOpen[tab]; save(); }
-          paintCarets(); paintTools();
+          paintTools();
           return;
         }
 
@@ -14698,15 +14640,13 @@
         if (!active) return;
         // Now that this panel has rendered we know whether it has anything to
         // disclose. A caret over nothing is a control that lies.
-        active.classList.toggle("has-no-list", secs.length < 2);
         paintTools();
-        if (secs.length < 2){
-          if (listOpen[tab]){ delete listOpen[tab]; save(); }
-          paintCarets();
-          return;
-        }
+        if (secs.length < 2) return;
 
-        const wantOpen = isListOpen(tab);
+        /* Open. This read a remembered per-destination preference that a caret
+           set, and there is no caret; the only thing that builds this list is
+           pressing Edit, and pressing Edit is asking to see it. */
+        const wantOpen = true;
         const fold = makeFold(wantOpen && !animate);
         fold.classList.add("nav-contents-fold");
         const box = document.createElement("div");
@@ -14746,9 +14686,7 @@
         if (!editing){
           const slot = contentsSlot();
           if (slot.firstChild) slot.innerHTML = "";
-          active.classList.add("has-no-list");
-          if (listOpen[tab]){ delete listOpen[tab]; save(); }
-          paintCarets(); paintTools();
+          paintTools();
           return;
         }
 
@@ -14845,7 +14783,6 @@
            at. The destinations are fixed now; only the list changes. */
         contentsSlot().appendChild(fold);
         if (wantOpen && animate) openSoon(fold);
-        paintCarets();
 
         box.addEventListener("click", ev => {
           if (ev.target.closest("[data-edit]")){
@@ -16865,7 +16802,7 @@
           // Published, because the rail's own width control is a different
           // module and there should be one fact about this, not two.
           document.body.classList.toggle("is-layout-editing", editing);
-          if (editing){ listOpen[tab] = true; takeEditSnapshot(); }
+          if (editing) takeEditSnapshot();
           else editSnapshot = null;
           signature = ""; buildContents(false); paintTools();
           return;
@@ -18539,7 +18476,6 @@ if ("serviceWorker" in navigator &&
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   nav.tabs button .tab-icon,
-  nav.tabs button .nav-caret,
   nav.tabs button .nav-key{ flex: 0 0 auto; }
 
   /* ---------- room for the handle ----------------------------------------- */
@@ -21516,8 +21452,7 @@ if ("serviceWorker" in navigator &&
     nav.tabs .nav-contents-fold,
     nav.tabs .rail-fold,
     nav.tabs .rail-resize,
-    nav.tabs .nav-key,
-    nav.tabs .nav-caret{ display: none !important; }
+    nav.tabs .nav-key{ display: none !important; }
     /* The label under the glyph, small enough that five fit a 390px screen. */
     nav.tabs button[data-tab] .tab-label{
       font-size: 9px; line-height: 1.15; max-width: 100%;
