@@ -150,6 +150,13 @@
 
   *{ box-sizing: border-box; }
   html, body{ margin:0; padding:0; }
+  /* NOTHING HAPPENS PAST THE END. The default lets the browser act on a scroll
+     the page cannot use - chaining it outwards, bouncing, or running a
+     pull-to-refresh, which in a standalone PWA reloads the app and lands you at
+     the top of the page. "Scrolling down once at the bottom should do nothing"
+     is this property. The page still scrolls exactly as before; only the
+     overscroll past either end is contained. */
+  html{ overscroll-behavior-y: contain; }
   body{
     background: var(--bg); color: var(--ink);
     font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -3870,7 +3877,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21j";
+  const APP_BUILD = "2026-09-21k";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
