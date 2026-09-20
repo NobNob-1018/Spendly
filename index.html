@@ -462,7 +462,12 @@
   .bgs-card.is-near{ border-color: rgb(226 162 76 / .38); }
   .bgs-card.is-over{ border-color: rgb(224 106 94 / .42); }
   .bgs-top{ display:flex; align-items:center; gap: var(--sp-6); }
+  /* text-transform, because this IS a label - for the box beside it - and picks
+     up the global label{ text-transform: uppercase } with it. Uppercase is right
+     for a field label and wrong for a proper noun, and it is wider. A category
+     is a name. */
   .bgs-name{ flex:1 1 auto; min-width:0; font-size: var(--fs-md); font-weight:600;
+    text-transform: none; letter-spacing: 0;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
   /* The box is the reason this page exists, so it looks like one: a field with
      its currency attached, not a bare number input labelled by a placeholder
@@ -472,7 +477,11 @@
     padding-left: var(--sp-5); }
   .bgs-input:focus-within{ border-color: var(--accent); }
   .bgs-cur{ font-size: var(--fs-sm); color: var(--ink-dim); }
-  .bgs-input input{
+  /* Matched on the type too. input[type="number"]{ width: 100% } is a global
+     form rule at the same specificity as .bgs-input input and later in the file,
+     so it won: the box drew 192px of a 295px card and left 35px for a word that
+     needs 60. One more class settles it. */
+  .bgs-input input[type="number"]{
     width: 84px; height: 34px; padding: 0 var(--sp-5) 0 2px; text-align:right;
     background:transparent; border:0; color: var(--ink);
     font-size: var(--fs-md); font-weight:600; font-variant-numeric: tabular-nums;
@@ -3803,7 +3812,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-20j";
+  const APP_BUILD = "2026-09-21a";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -10751,7 +10760,8 @@
       return '<div class="bgs-card' + (rOver ? " is-over" : rNear ? " is-near" : "") +
           '" data-cat="' + escapeHtml(r.cat) + '">' +
         '<div class="bgs-top">' +
-          '<label class="bgs-name" for="' + id + '">' + escapeHtml(r.cat) + '</label>' +
+          '<label class="bgs-name" for="' + id + '" title="' + escapeHtml(r.cat) + '">' +
+            escapeHtml(r.cat) + '</label>' +
           '<span class="bgs-input">' +
             '<span class="bgs-cur" aria-hidden="true">\u20b1</span>' +
             '<input type="number" min="0" step="1" inputmode="decimal" id="' + id + '"' +
@@ -14198,11 +14208,10 @@
         listOpen[tab] = !listOpen[tab];
         save();
         paintCarets();
-        // This destination's own fold — it is the element immediately after the
-        // button, not merely the first one in the rail.
-        const fold = btn.nextElementSibling &&
-          btn.nextElementSibling.classList.contains("nav-contents-fold")
-            ? btn.nextElementSibling : null;
+        // The one fold there is. It used to be found as the button's next
+        // sibling, because each destination could have its own; they share a slot
+        // under all of them now, so there is exactly one and this is it.
+        const fold = nav.querySelector(".nav-contents-slot .nav-contents-fold");
         if (fold) fold.classList.toggle("is-open", listOpen[tab]);
         else { signature = ""; buildContents(true); }
       }, true);
@@ -14369,6 +14378,11 @@
       const SELF_NAVIGATING = new Set(["settings", "loans"]);
 
       function buildContents(animate){
+        /* Before anything can return early. The slot also rehomes the arrange
+           tools, and doing that lazily meant the rail still stepped once - on
+           the first tab change rather than on every one, which is better and
+           still a step the user sees. */
+        contentsSlot();
         const tab = currentTab();
         const panel = tab && document.getElementById("tab-" + tab);
         if (!panel) return;
@@ -14601,7 +14615,12 @@
           box.appendChild(g);
         }
 
-        active.insertAdjacentElement("afterend", fold);
+        /* A SLOT OF ITS OWN, under all six destinations. This used to be inserted
+           directly after the active one, so every destination below it moved on
+           every tab change - measured, 67px going to History and 65 coming back
+           to Dashboard, on a column whose whole job is to stay still and be aimed
+           at. The destinations are fixed now; only the list changes. */
+        contentsSlot().appendChild(fold);
         if (wantOpen && animate) openSoon(fold);
         paintCarets();
 
@@ -15268,6 +15287,29 @@
         const t = currentTab();
         const v = t && spans[t] && spans[t][id];
         return !!(v && typeof v === "object" && v.l);
+      }
+
+      /* Made once and kept: the list has a fixed home under the destinations so
+         that changing tabs cannot move them. */
+      function contentsSlot(){
+        let slot = nav.querySelector(".nav-contents-slot");
+        if (!slot){
+          slot = document.createElement("div");
+          slot.className = "nav-contents-slot";
+          const last = buttons[buttons.length - 1];
+          if (last) last.insertAdjacentElement("afterend", slot);
+          else nav.appendChild(slot);
+        }
+        /* And the arrange tools go under the destinations too. LAYOUT / Tidy /
+           Edit only exists on a tab that can be arranged - 51px on Dashboard and
+           Charts, nothing on the other four - and it sat ABOVE the destinations,
+           so every change between an arrangeable page and a plain one moved the
+           whole column by 63px. Moved once; it is the same node either way. */
+        const tools = nav.querySelector(".nav-tools");
+        if (tools && tools.previousElementSibling !== slot){
+          slot.insertAdjacentElement("afterend", tools);
+        }
+        return slot;
       }
 
       function arrangeTag(at, of, staying, secId){
@@ -18193,6 +18235,18 @@ if ("serviceWorker" in navigator &&
      and not chosen is the highest-value contrast in the control. */
   /* More air above a heading than below it, so three groups read as three
      groups. They were 12px apart either side, which is a wall with words in it. */
+  /* The list has a home. Nothing above it moves when the tab changes; the list
+     itself is the only thing that does, and it says so by arriving. */
+  .nav-contents-slot{ display: block; }
+  .nav-contents{ animation: navContentsIn var(--dur-base) var(--ease-out) both; }
+  @keyframes navContentsIn{
+    from{ opacity: 0; transform: translateY(-4px); }
+    to{ opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .nav-contents{ animation: none; }
+  }
+
   .nav-group-k{
     margin: var(--sp-9) 0 var(--sp-4); padding: 0 var(--sp-3);
     font-size: var(--fs-3xs); font-weight: 700; letter-spacing: var(--track-caps);
