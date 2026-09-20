@@ -3877,7 +3877,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21m";
+  const APP_BUILD = "2026-09-21n";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -11107,15 +11107,28 @@
     let howMany;
     if (pick === "auto"){
       const card = container.closest(".card");
-      /* The same guard from the other side. Measuring a card that is not being
-         shown gives 0 room and the fallback count, and writing that list is a
-         page-height change nobody asked for. It renders when it is shown -
-         applySpansAndSeams calls this on every pass. */
+      /* A card that is not being shown has 0 room to measure and nobody to show
+         it to. Writing a list against that is a page-height change nobody asked
+         for. It renders when it is shown - applySpansAndSeams calls this on
+         every pass. */
       if (card && card.clientHeight < 1) return;
-      const head = card ? card.querySelector(".dash-subhead-row") : null;
-      const room = card ? card.clientHeight - (head ? head.offsetHeight : 0) - 26 : 0;
-      const ROW = 44;
-      howMany = room > ROW ? Math.max(5, Math.min(10, Math.floor(room / ROW))) : 8;
+      /* AUTO MEANS THE CARD YOU CHOSE. If the reader has dragged this card to a
+         height, fit the rows to it - that number came from a person and does not
+         move. If they have not, there is no card to fit: show eight and let the
+         layout size the card to them, like every other card on the page.
+
+         Measuring a height this list produced - in any form, including one row
+         of it - closes a loop, and every version of that loop has ended with a
+         page changing height under a scroll. */
+      const floor = card ? (+card.dataset.rowFloor || 0) : 0;
+      if (floor > 0){
+        const head = card.querySelector(".dash-subhead-row");
+        const room = card.clientHeight - (head ? head.offsetHeight : 0) - 26;
+        const ROW = 44;
+        howMany = room > ROW ? Math.max(5, Math.min(30, Math.floor(room / ROW))) : 8;
+      } else {
+        howMany = 8;
+      }
     } else {
       howMany = +pick || 8;
     }
@@ -11128,9 +11141,13 @@
        rows made 1,188 and 2,695 - the height following the count that was
        chosen by the height. Any explicit count is the other way round and
        correct: ask for 30 rows and the card grows to hold 30. */
+    /* Only a card being fitted to a DRAGGED height must be kept out of the
+       bento's sizing. Auto without a dragged height is an ordinary card showing
+       a fixed number of rows, and it should be measured like one. */
     const selfSizing = container.closest(".card");
     if (selfSizing){
-      if (pick === "auto") selfSizing.dataset.fitsContents = "1";
+      const floor = +selfSizing.dataset.rowFloor || 0;
+      if (pick === "auto" && floor > 0) selfSizing.dataset.fitsContents = "1";
       else delete selfSizing.dataset.fitsContents;
     }
     // Stamped before the write, so the resize the write causes lands inside it.
@@ -15395,26 +15412,20 @@
              page then changes height whenever anything disturbs it - which is
              what threw a scroll near the end of the page back to the top. It
              keeps the height it is given: the reader's floor, or the default. */
+          /* The card keeps the height the READER dragged, and the list fits
+             itself into it. That number came from a person and never moves on
+             its own, so nothing here can chase anything.
+
+             A card with no dragged height is not special at all - it falls
+             through and is sized to its contents like every other card, and the
+             renderer draws a fixed eight rows into it. The previous attempt gave
+             it a computed height instead, from one row measured out of the list
+             it had just drawn; an empty list or a short first row then made a
+             short card, a shorter page, and a clamped scroll. One circular
+             measurement swapped for another. */
+          el.dataset.rowFloor = String(floorRows(tab, el) || 0);
           if (el.dataset.fitsContents){
-            /* A height the reader dragged wins - it is the one number that
-               should override a default, and it does not move on its own. */
-            const floor = floorRows(tab, el);
-            if (floor > 0){ setRows(el, floor); return; }
-            /* Otherwise a height built from things that do not depend on how
-               many rows are drawn: the head, the padding, and ONE row times a
-               constant. Eight, which is what this card showed before any of
-               this and the first fixed option the Show menu offers. Measuring
-               this height again cannot move it, which is the whole point. */
-            const AUTO_ROWS = 8;
-            const inner = el.querySelector("#recent-history-list");
-            const one = inner && inner.firstElementChild
-              ? inner.firstElementChild.getBoundingClientRect().height : 44;
-            const head = el.querySelector(".dash-subhead-row");
-            const cs = getComputedStyle(el);
-            const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
-            const want = (head ? head.getBoundingClientRect().height : 0) +
-                         pad + (one > 8 ? one : 44) * AUTO_ROWS + 26;
-            setRows(el, rowsForHeight(want));
+            setRows(el, floorRows(tab, el));
             return;
           }
           const n = rowsForHeight(natural[i]);
