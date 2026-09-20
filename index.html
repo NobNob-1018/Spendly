@@ -197,6 +197,107 @@
   .tm-value .cur-cents{ color: var(--ink-soft); font-size:.72em; }
   .tm-trend{ font-size: var(--fs-3xs); font-weight:700; color: var(--ink-soft); white-space:nowrap; }
   .tm-hint, .tm-spark, .tm-aside-label, .tm-trend-period{ display:none; }
+  /* ---------- the dashboard's own total-money panel ---------------------- */
+  /* The toolbar version is a button with a figure in it. This one is the answer
+     to the first question you have, so it gets a row of its own and says what it
+     is made of in place rather than behind a tap. */
+  #total-money-card{ padding: var(--sp-9); }
+  .dash-tm{ display:flex; align-items:stretch; gap: var(--sp-9); }
+  .dash-tm-main{ flex:1 1 auto; min-width:0; }
+  .dash-tm-head{ display:flex; align-items:center; gap: var(--sp-6); margin-bottom: var(--sp-4); }
+  #dash-tm-value{
+    font-size: clamp(32px, 4.6vw, 52px); line-height:1.02; letter-spacing:-0.03em;
+    display:block; white-space:nowrap;
+  }
+  #dash-tm-trend{ font-size: var(--fs-2xs); padding: 2px var(--sp-5); border-radius: var(--r-pill);
+    background: var(--sunken); }
+  .dash-tm-rows{ display:flex; flex-wrap:wrap; gap: var(--sp-4) var(--sp-9); margin-top: var(--sp-7); }
+  .dtm-row{ display:flex; align-items:baseline; gap: var(--sp-4); font-size: var(--fs-sm); }
+  .dtm-row .k{ color: var(--ink-dim); }
+  .dtm-row .v{ font-weight:700; font-variant-numeric: tabular-nums; }
+  /* Money that is real but is not in the total. Dimmer, and it says so once
+     rather than on every row. */
+  .dtm-aside{ display:flex; flex-wrap:wrap; align-items:baseline; gap: var(--sp-4) var(--sp-7);
+    margin-top: var(--sp-6); padding-top: var(--sp-6); border-top:1px solid var(--line); }
+  .dtm-aside .dtm-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing: var(--track-caps);
+    font-weight:700; color: var(--ink-dim); }
+  .dtm-aside .dtm-row .v{ color: var(--ink-soft); }
+  .dash-tm-spark{ flex:0 1 360px; min-width:0; display:flex; align-items:flex-end; }
+  .dash-tm-spark svg{ width:100%; height:auto; }
+  @media (max-width: 860px){
+    #total-money-card{ padding: var(--sp-7); }
+    .dash-tm{ flex-direction:column; gap: var(--sp-6); }
+    .dash-tm-spark{ flex:0 0 auto; }
+  }
+
+  /* ---------- a budget bar ----------------------------------------------- */
+  /* THREE THINGS AT ONCE: how much of the limit is gone, where today is, and
+     whether those two disagree. The mark is what makes overspending visible
+     without the word "pace" and without a footnote explaining it - fill past
+     the mark is spending faster than the month is passing. */
+  .bgl{ display:grid; grid-template-columns: minmax(72px, 1.1fr) minmax(0, 2fr) auto;
+    align-items:center; gap: var(--sp-6); padding: var(--sp-4) 0; }
+  .bgl-name{ font-size: var(--fs-sm); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bgl-bar{ position:relative; height:8px; border-radius: var(--r-pill); background: var(--sunken); }
+  .bgl-fill{ position:absolute; top:0; bottom:0; left:0; border-radius: var(--r-pill); background: var(--accent); }
+  .bgl-fill.is-near{ background: var(--warn); }
+  .bgl-fill.is-over{ background: var(--negative); }
+  .bgl-today{ position:absolute; top:-3px; bottom:-3px; width:2px; border-radius:1px;
+    background: var(--ink-soft); }
+  .bgl-fig{ font-size: var(--fs-2xs); font-variant-numeric: tabular-nums; color: var(--ink-soft);
+    white-space:nowrap; text-align:right; }
+  .bgl-fig.is-over{ color: var(--negative-note); }
+  .bgl-lead{ margin:0; font-size: var(--fs-2xl); font-weight:700; letter-spacing:-0.02em;
+    font-variant-numeric: tabular-nums; }
+  .bgl-lead .k{ font-weight:500; color: var(--ink-dim); font-size: var(--fs-md); }
+  .bgl-sub{ margin: var(--sp-3) 0 var(--sp-7); font-size: var(--fs-2xs); color: var(--ink-dim); }
+  .bgl-sub.is-over{ color: var(--negative-note); }
+  .bgl-list{ margin-top: var(--sp-7); padding-top: var(--sp-5); border-top:1px solid var(--line); }
+  .bgl-more{ margin: var(--sp-5) 0 0; font-size: var(--fs-2xs); color: var(--ink-dim); }
+  .bgl-legend{ display:flex; align-items:center; gap: var(--sp-4); margin: var(--sp-6) 0 0;
+    font-size: var(--fs-3xs); color: var(--ink-dim); }
+  .bgl-legend i{ display:inline-block; width:2px; height:10px; background: var(--ink-soft);
+    border-radius:1px; }
+
+  /* ---------- setting a budget ------------------------------------------- */
+  .bgs-head{ padding-bottom: var(--sp-7); margin-bottom: var(--sp-7); border-bottom:1px solid var(--line); }
+  .bgs-group{
+    display:flex; align-items:baseline; gap: var(--sp-5); flex-wrap:wrap;
+    margin: var(--sp-9) 0 var(--sp-6); font-size: var(--fs-3xs); font-weight:700;
+    text-transform:uppercase; letter-spacing: var(--track-caps); color: var(--ink-dim);
+  }
+  .bgs-group small{ font-weight:500; text-transform:none; letter-spacing:0; color: var(--ink-faint); }
+  .bgs-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-6); }
+  .bgs-card{
+    padding: var(--sp-7); background: var(--sunken); border:1px solid var(--line);
+    border-radius: var(--r-md); display:flex; flex-direction:column; gap: var(--sp-5);
+  }
+  .bgs-card.is-near{ border-color: rgb(226 162 76 / .38); }
+  .bgs-card.is-over{ border-color: rgb(224 106 94 / .42); }
+  .bgs-top{ display:flex; align-items:center; gap: var(--sp-6); }
+  .bgs-name{ flex:1 1 auto; min-width:0; font-size: var(--fs-md); font-weight:600;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
+  /* The box is the reason this page exists, so it looks like one: a field with
+     its currency attached, not a bare number input labelled by a placeholder
+     that disappears the moment there is a value in it. */
+  .bgs-input{ flex:0 0 auto; display:flex; align-items:center; gap: 2px;
+    background: var(--surface); border:1px solid var(--line-strong); border-radius: var(--r-sm);
+    padding-left: var(--sp-5); }
+  .bgs-input:focus-within{ border-color: var(--accent); }
+  .bgs-cur{ font-size: var(--fs-sm); color: var(--ink-dim); }
+  .bgs-input input{
+    width: 84px; height: 34px; padding: 0 var(--sp-5) 0 2px; text-align:right;
+    background:transparent; border:0; color: var(--ink);
+    font-size: var(--fs-md); font-weight:600; font-variant-numeric: tabular-nums;
+  }
+  .bgs-input input:focus{ outline:none; }
+  .bgs-foot{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-5); }
+  .bgs-spent{ font-size: var(--fs-2xs); color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+  .bgs-verdict{ font-size: var(--fs-2xs); font-weight:700; font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .bgs-verdict.is-good{ color: var(--positive); }
+  .bgs-verdict.is-warn{ color: var(--warn-note); }
+  .bgs-verdict.is-bad{ color: var(--negative-note); }
+
   .tm-breakdown{ position:fixed; top: var(--bar-h); right: var(--sp-9); z-index:60; min-width:280px; padding: var(--sp-7); background: var(--over); border:1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--elev-3); font-size: var(--fs-sm); }
   .tm-breakdown[hidden]{ display:none !important; }
   .tm-row{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-6); padding: var(--sp-3) 0; }
@@ -2667,9 +2768,23 @@
     </div>
 
     <div class="bento">
-      <div class="card bento-span-12" id="insights-card" style="display:none;">
-        <h3 class="dash-subhead">What stands out</h3>
-        <div class="insights-strip" id="insights-strip"></div>
+
+      <!-- THE FIRST QUESTION. Not "how is the month trending" - how much is
+           there. The toolbar had it at 18px beside a search field, and the
+           breakdown was behind a tap; here it is the size of the thing it is,
+           and what it is made of is in place beside it. -->
+      <div class="card bento-span-12" id="total-money-card">
+        <div class="dash-tm">
+          <div class="dash-tm-main">
+            <div class="dash-tm-head">
+              <span class="tm-label">Total money</span>
+              <span class="tm-trend" id="dash-tm-trend" style="display:none;"></span>
+            </div>
+            <div class="tm-value num" id="dash-tm-value">₱0.00</div>
+            <div class="dash-tm-rows" id="dash-tm-rows"></div>
+          </div>
+          <div class="dash-tm-spark" id="dash-tm-spark" aria-hidden="true"></div>
+        </div>
       </div>
 
       <div class="card bento-span-7" id="money-overview-card">
@@ -2679,6 +2794,16 @@
         </header>
         <div class="stat-row" id="money-overview-row"></div>
         <p class="hint is-help" id="money-overview-loan-note" style="display:none; margin-top: var(--sp-6); margin-bottom:0;"></p>
+      </div>
+
+      <!-- Spent against what you meant to spend. The limits live in Settings;
+           this is the only place they are answered. -->
+      <div class="card bento-span-5" id="budget-card">
+        <div class="dash-subhead-row">
+          <h3 class="dash-subhead">Spent against budget</h3>
+          <button class="btn btn-ghost btn-sm" id="btn-budget-settings" type="button">Edit limits</button>
+        </div>
+        <div id="budget-card-body"></div>
       </div>
 
       <div class="card bento-span-5" id="summary-card">
@@ -2696,6 +2821,7 @@
           <h3 class="dash-subhead" id="recent-history-title">Recent activity</h3>
           <label class="rows-pick">Show
             <select id="recent-rows" aria-label="How many rows this card shows">
+              <option value="auto">Auto</option>
               <option value="5">5</option>
               <option value="8">8</option>
               <option value="12">12</option>
@@ -2705,6 +2831,11 @@
           </label>
         </div>
         <div id="recent-history-list"></div>
+      </div>
+
+      <div class="card bento-span-12" id="insights-card" style="display:none;">
+        <h3 class="dash-subhead">What stands out</h3>
+        <div class="insights-strip" id="insights-strip"></div>
       </div>
 
       <div class="card bento-span-5" id="recap-card">
@@ -3535,7 +3666,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-18l";
+  const APP_BUILD = "2026-09-20a";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -3980,6 +4111,8 @@
     document.querySelectorAll("#loans-nav button").forEach(b=>
       b.classList.toggle("active", b.dataset.loans === group));
     markSegmented(document.querySelectorAll("#loans-nav button"), b=>b.dataset.loans === group);
+    revealInRow(document.getElementById("loans-nav"),
+               document.querySelector('#loans-nav button.active'));
     setUiPref("loansGroup", group);
   }
 
@@ -3998,6 +4131,25 @@
   }
   window.addEventListener("resize", markScrollableNavs);
 
+  /* Brings a control into view along its own scrolling row, and does nothing
+     else. No scrollIntoView: that one is allowed to scroll every scrollport
+     between the element and the document, which is the whole page here. */
+  function revealInRow(row, el){
+    if (!row || !el) return;
+    /* Measured against the ROW, not against offsetLeft: offsetLeft is relative
+       to the nearest positioned ancestor, which this row is not, so it reported
+       a button as out of view while it was sitting in plain sight. Rects are
+       the only pair that agree about where these two actually are. */
+    const er = el.getBoundingClientRect(), rr = row.getBoundingClientRect();
+    const left = er.left - rr.left + row.scrollLeft;
+    const right = left + er.width;
+    const pad = 12;
+    if (left < row.scrollLeft + pad) row.scrollLeft = Math.max(0, left - pad);
+    else if (right > row.scrollLeft + row.clientWidth - pad){
+      row.scrollLeft = right - row.clientWidth + pad;
+    }
+  }
+
   function applySettingsGroup(group){
 
     const panel = document.getElementById("tab-settings");
@@ -4011,9 +4163,14 @@
     document.querySelectorAll("#settings-nav button").forEach(b=>
       b.classList.toggle("active", b.dataset.settings === group));
     markScrollableNavs();
-    /* The group you are in has to be visible in a row that scrolls. */
-    const on = document.querySelector('#settings-nav button.active');
-    if (on && on.scrollIntoView) on.scrollIntoView({ block: "nearest", inline: "nearest" });
+    /* The group you are in has to be visible in a row that scrolls SIDEWAYS.
+       This was scrollIntoView, which has no way to say "only horizontally":
+       block:"nearest" still scrolls the document when the element is out of
+       view vertically, and this nav sits near the top of the page. Measured,
+       that walked the settings page from 800 back to 105 every time anything
+       re-applied the group. scrollLeft moves the row and cannot move the page. */
+    revealInRow(document.getElementById("settings-nav"),
+               document.querySelector('#settings-nav button.active'));
     markSegmented(document.querySelectorAll("#settings-nav button"), b=>b.dataset.settings === group);
     if (group === "sync" && typeof renderSyncPanel === "function") renderSyncPanel();
     setUiPref("settingsGroup", group);
@@ -4460,13 +4617,33 @@
     animateMoneyTo(el, b.total);
     el.style.color = b.total < 0 ? "var(--warn)" : "var(--ink)";
     renderTotalMoneyTrend(b.total);
+    const series = netWorthHistory.slice(-60);
     const sparkEl = document.getElementById("tm-spark");
     if (sparkEl){
-      const series = netWorthHistory.slice(-60);
       sparkEl.innerHTML = series.length > 1
         ? buildSparkline(series, { valueKey:"netWorth", width:340, height:96, pad:3,
                                    area:true, strokeWidth:2, color:"var(--accent)" })
         : "";
+    }
+    /* The dashboard panel is the same figure at the size the dashboard needs it.
+       Painted from here rather than from its own renderer, so the two can never
+       be showing different money. */
+    const dashVal = document.getElementById("dash-tm-value");
+    if (dashVal){
+      animateMoneyTo(dashVal, b.total);
+      dashVal.style.color = b.total < 0 ? "var(--warn)" : "var(--ink)";
+      const dashTrend = document.getElementById("dash-tm-trend"), src = document.getElementById("tm-trend");
+      if (dashTrend && src){
+        dashTrend.innerHTML = src.innerHTML;
+        dashTrend.style.display = src.innerHTML ? "" : "none";
+      }
+      const dashSpark = document.getElementById("dash-tm-spark");
+      if (dashSpark){
+        dashSpark.innerHTML = series.length > 1
+          ? buildSparkline(series, { valueKey:"netWorth", width:360, height:110, pad:4,
+                                     area:true, strokeWidth:2, color:"var(--accent)" })
+          : "";
+      }
     }
 
     if (lastTotalMoney !== null && Math.abs(b.total - lastTotalMoney) > 0.001){
@@ -4496,6 +4673,16 @@
         + `<div class="tm-row is-total"><span>Total money</span><strong>${fmtMoney(b.total)}</strong></div>`
         + `<p class="tm-aside-label">Not counted here — see Loans &amp; Invest</p>`
         + aside.map(r=>`<div class="tm-row is-aside"><span>${escapeHtml(r.label)}</span><strong>${fmtMoney(r.value)}</strong></div>`).join("");
+    }
+    const dashRows = document.getElementById("dash-tm-rows");
+    if (dashRows){
+      dashRows.innerHTML =
+        counted.map(r=>`<span class="dtm-row"><span class="k">${escapeHtml(r.label)}</span>` +
+                       `<span class="v">${fmtMoney(r.value)}</span></span>`).join("") +
+        `<span class="dtm-aside"><span class="dtm-k">Not counted here</span>` +
+        aside.map(r=>`<span class="dtm-row"><span class="k">${escapeHtml(r.label)}</span>` +
+                     `<span class="v">${fmtMoney(r.value)}</span></span>`).join("") +
+        `</span>`;
     }
     if (typeof updateWelcomeCard === "function") updateWelcomeCard();
     recordNetWorthSnapshot();
@@ -10132,76 +10319,82 @@
   function renderBudgets(){
     const list = document.getElementById("budget-list");
     if (!list) return;
-    const spend = currentMonthSpendByCategory();
-    const now = new Date();
-    const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const elapsed = now.getDate() / daysIn;
+    const p = budgetPicture();
+    const usedPct = p.totalLimit > 0 ? (p.totalSpent / p.totalLimit) * 100 : 0;
+    const over = p.totalSpent > p.totalLimit;
+    const ahead = !over && usedPct > p.elapsedPct + 3;
 
-    const rows = categories.map(cat => {
-      const budget = budgets[cat] || 0;
-      const spent = round2(spend[cat] || 0);
-      const pct = budget > 0 ? (spent / budget) * 100 : 0;
-      return { cat: cat, budget: budget, spent: spent, pct: pct,
-               pace: budget > 0 && elapsed > 0 ? (pct / 100) / elapsed : null };
-    });
-    const limited = rows.filter(r => r.budget > 0).sort((a, b) => b.pct - a.pct);
-    const unlimited = rows.filter(r => r.budget <= 0);
-    const totalLimit = round2(limited.reduce((t, r) => t + r.budget, 0));
-    const totalSpent = round2(limited.reduce((t, r) => t + r.spent, 0));
-    const projected = elapsed > 0 ? round2(totalSpent / elapsed) : 0;
-
-    // The header is the analysis: how much of the envelope is gone against how
-    // much of the month is gone, and where that lands if nothing changes.
-    const header = limited.length
-      ? '<div class="bg-head">' +
-          '<div class="bg-h-cell"><span class="bg-h-k">Budgeted</span><span class="bg-h-v">' + fmtMoney(totalLimit) + '</span>' +
-            '<span class="bg-h-s">' + limited.length + ' of ' + rows.length + ' categories</span></div>' +
-          '<div class="bg-h-cell"><span class="bg-h-k">Spent against it</span><span class="bg-h-v">' + fmtMoney(totalSpent) + '</span>' +
-            '<span class="bg-h-s">' + Math.round((totalSpent / totalLimit) * 100) + '% of the envelope</span></div>' +
-          '<div class="bg-h-cell"><span class="bg-h-k">Month elapsed</span><span class="bg-h-v">' + Math.round(elapsed * 100) + '%</span>' +
-            '<span class="bg-h-s">day ' + now.getDate() + ' of ' + daysIn + '</span></div>' +
-          '<div class="bg-h-cell"><span class="bg-h-k">On track for</span><span class="bg-h-v' +
-            (projected > totalLimit ? " is-bad" : " is-good") + '">' + fmtMoney(projected) + '</span>' +
-            '<span class="bg-h-s">' + (projected > totalLimit
-              ? fmtMoney(round2(projected - totalLimit)) + " over" : fmtMoney(round2(totalLimit - projected)) + " under") + '</span></div>' +
+    /* One sentence and one bar, in that order, saying the same thing the
+       dashboard card says. Four abstract cells across the top were four things
+       to read before the first useful one. */
+    const header = p.limited.length
+      ? '<div class="bgs-head">' +
+          '<p class="bgl-lead">' + fmtMoneyRich(p.totalSpent) +
+            ' <span class="k">of</span> ' + fmtMoney(p.totalLimit) + '</p>' +
+          '<p class="bgl-sub' + (over ? " is-over" : "") + '">' + Math.round(usedPct) +
+            '% of your limits used on day ' + p.day + ' of ' + p.daysIn + ' \u2014 ' +
+            (over ? "already " + fmtMoney(round2(p.totalSpent - p.totalLimit)) + " over"
+                  : ahead ? "spending faster than the month is passing, on track for " + fmtMoney(p.projected)
+                          : "in step with the month") + '</p>' +
+          budgetBarHtml(usedPct, p.elapsedPct, over, !over && usedPct > 85) +
+          '<p class="bgl-legend"><i></i> where today is. Fill past this mark means the limit will not last the month at this rate.</p>' +
         '</div>'
-      : '<p class="hint">No limits set yet. Enter an amount beside a category to start tracking against it.</p>';
+      : '<p class="hint">No limits yet. Put a monthly amount beside a category below and this page starts telling you how the month is going against it.</p>';
 
+    /* A row is: what it is, what it costs you, and the box you came here to
+       type in. The box is labelled and carries its currency - it used to be a
+       bare input whose only label was a placeholder, which is no label at all
+       once there is a number in it. */
     const card = r => {
-      const over = r.budget > 0 && r.spent > r.budget;
-      const near = r.budget > 0 && !over && r.pct > 80;
-      const C = 100.5;                            // 2 * pi * r, r = 16
-      const shown = Math.min(100, r.pct);
-      const paceCls = r.pace == null ? "" : r.pace > 1.1 ? "is-bad" : r.pace < 0.9 ? "is-good" : "is-even";
-      return '<div class="bg-card' + (over ? " is-over" : near ? " is-near" : "") + '" data-cat="' + escapeHtml(r.cat) + '">' +
-        '<div class="bg-card-top">' +
-          '<span class="bg-ring" aria-hidden="true"><svg viewBox="0 0 40 40">' +
-            '<circle class="br-track" cx="20" cy="20" r="16"/>' +
-            '<circle class="br-fill" cx="20" cy="20" r="16" style="stroke-dasharray:' + C +
-              '; stroke-dashoffset:' + (C * (1 - shown / 100)).toFixed(1) + ';"/></svg>' +
-            '<b class="bg-ring-pct">' + (r.budget > 0 ? Math.round(r.pct) + "%" : "\u2014") + '</b></span>' +
-          '<span class="bg-id"><span class="bg-name">' + escapeHtml(r.cat) + '</span>' +
-            '<span class="bg-sub">' + (r.budget > 0
-              ? fmtMoney(r.spent) + " of " + fmtMoney(r.budget)
-              : (r.spent > 0 ? fmtMoney(r.spent) + " spent, no limit" : "nothing spent")) + '</span></span>' +
-          '<input type="number" min="0" step="1" placeholder="Limit" value="' + (r.budget || "") + '" data-budget-input>' +
+      const rOver = r.limit > 0 && r.spent > r.limit;
+      const rNear = r.limit > 0 && !rOver && r.pct > 85;
+      const id = "bgs-in-" + r.cat.replace(/[^A-Za-z0-9]+/g, "-");
+      return '<div class="bgs-card' + (rOver ? " is-over" : rNear ? " is-near" : "") +
+          '" data-cat="' + escapeHtml(r.cat) + '">' +
+        '<div class="bgs-top">' +
+          '<label class="bgs-name" for="' + id + '">' + escapeHtml(r.cat) + '</label>' +
+          '<span class="bgs-input">' +
+            '<span class="bgs-cur" aria-hidden="true">\u20b1</span>' +
+            '<input type="number" min="0" step="1" inputmode="decimal" id="' + id + '"' +
+              ' placeholder="' + (r.limit > 0 ? "" : "No limit") + '" value="' + (r.limit || "") + '"' +
+              ' aria-label="Monthly limit for ' + escapeHtml(r.cat) + '" data-budget-input>' +
+          '</span>' +
         '</div>' +
-        (r.budget > 0
-          ? '<div class="bg-foot">' +
-              '<span class="bg-left' + (over ? " is-bad" : "") + '">' +
-                (over ? fmtMoney(round2(r.spent - r.budget)) + " over" : fmtMoney(round2(r.budget - r.spent)) + " left") + '</span>' +
-              '<span class="bg-pace ' + paceCls + '">' + Math.round(r.pace * 100) + '% of pace</span>' +
+        (r.limit > 0
+          ? budgetBarHtml(r.pct, p.elapsedPct, rOver, rNear) +
+            '<div class="bgs-foot">' +
+              '<span class="bgs-spent">' + fmtMoney(r.spent) + ' of ' + fmtMoney(r.limit) + '</span>' +
+              '<span class="bgs-verdict' + (rOver ? " is-bad" : rNear ? " is-warn" : " is-good") + '">' +
+                (rOver ? fmtMoney(round2(r.spent - r.limit)) + " over"
+                       : fmtMoney(r.left) + " left") + '</span>' +
             '</div>'
-          : '') +
+          : '<div class="bgs-foot">' +
+              '<span class="bgs-spent">' + (r.spent > 0 ? fmtMoney(r.spent) + " spent this month" : "nothing spent this month") + '</span>' +
+            '</div>') +
       '</div>';
     };
 
-    list.innerHTML = header + '<div class="bg-grid">' + limited.map(card).join("") + unlimited.map(card).join("") + '</div>' +
-      '<p class="hint">Pace is the share of the limit spent divided by the share of the month gone. Above 100% means the limit will not last the month at this rate.</p>';
+    /* Two jobs, two groups. Mixed together, the categories you have already set
+       up bury the ones you came here to set up. */
+    const group = (title, note, list) => list.length
+      ? '<h4 class="bgs-group"><span>' + title + '</span><small>' + note + '</small></h4>' +
+        '<div class="bgs-grid">' + list.map(card).join("") + '</div>'
+      : "";
+
+    list.innerHTML = header +
+      group("Tracking", p.limited.length + " of " + p.rows.length + " categories", p.limited) +
+      group("No limit yet", "type an amount to start tracking one", p.unlimited);
 
     list.querySelectorAll("[data-budget-input]").forEach(input => {
       input.addEventListener("change", () => {
-        const cat = input.closest(".bg-card").dataset.cat;
+        /* Keyed off the data attribute, not the class name. This used to ask for
+           the old card class, so renaming it made closest return null and the
+           handler threw on .dataset before it ever reached saveBudgets - the
+           field accepted a number, said nothing, and saved nothing. What
+           identifies the row is data-cat; that is what to ask for. */
+        const host = input.closest("[data-cat]");
+        if (!host) return;
+        const cat = host.dataset.cat;
         const v = parseFloat(input.value);
         if (input.value === "" || isNaN(v) || v <= 0) delete budgets[cat];
         else budgets[cat] = round2(v);
@@ -10325,9 +10518,21 @@
     }
     if (titleEl) titleEl.textContent = titleLabel;
 
-    // 8 was a number typed into a slice. It is a preference now, and the way to
-    // change it is on the card itself, while arranging.
-    const howMany = +pref("recentRows", 8) || 8;
+    // 8 was a number typed into a slice, then a preference. Neither knew how big
+    // the card was, and the bento lets it be any height - so it was routinely
+    // half empty or overflowing. Auto measures the room and fills it, between 5
+    // and 10, which is the range where this list is still a glance.
+    const pick = pref("recentRows", "auto");
+    let howMany;
+    if (pick === "auto"){
+      const card = container.closest(".card");
+      const head = card ? card.querySelector(".dash-subhead-row") : null;
+      const room = card ? card.clientHeight - (head ? head.offsetHeight : 0) - 26 : 0;
+      const ROW = 44;
+      howMany = room > ROW ? Math.max(5, Math.min(10, Math.floor(room / ROW))) : 8;
+    } else {
+      howMany = +pick || 8;
+    }
     const rows = source.sort((a, b) => b.date.localeCompare(a.date)).slice(0, howMany);
     if (!rows.length){ container.innerHTML = emptyStateHtml("list", emptyLabel, ""); return; }
 
@@ -10365,6 +10570,93 @@
     renderMoneyOverview();
     renderSummaryContent();
     renderRecentHistory();
+    renderDashBudget();
+  }
+
+  /* ---------- budgets, as one picture ------------------------------------ */
+  /* Worked out once and read by both the dashboard card and the Settings page,
+     so the two can never disagree about how the month is going. */
+  function budgetPicture(){
+    const spend = currentMonthSpendByCategory();
+    const now = new Date();
+    const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const day = now.getDate();
+    const elapsed = day / daysIn;
+    const rows = categories.map(cat => {
+      const limit = budgets[cat] || 0;
+      const spent = round2(spend[cat] || 0);
+      return { cat, limit, spent, pct: limit > 0 ? (spent / limit) * 100 : 0,
+               left: round2(limit - spent) };
+    });
+    const limited = rows.filter(r => r.limit > 0).sort((a, b) => b.pct - a.pct);
+    const totalLimit = round2(limited.reduce((t, r) => t + r.limit, 0));
+    const totalSpent = round2(limited.reduce((t, r) => t + r.spent, 0));
+    return { rows, limited, unlimited: rows.filter(r => r.limit <= 0),
+             totalLimit, totalSpent, elapsed, elapsedPct: elapsed * 100, daysIn, day,
+             projected: elapsed > 0 ? round2(totalSpent / elapsed) : 0 };
+  }
+
+  /* The bar. A fill, and a mark at how far through the month you are. */
+  function budgetBarHtml(pct, elapsedPct, over, near){
+    const w = Math.max(0, Math.min(100, pct));
+    return '<span class="bgl-bar">' +
+      '<span class="bgl-fill' + (over ? " is-over" : near ? " is-near" : "") +
+        '" style="width:' + w.toFixed(1) + '%"></span>' +
+      '<span class="bgl-today" style="left:' + Math.max(0, Math.min(100, elapsedPct)).toFixed(1) +
+        '%"></span></span>';
+  }
+
+  /* Settings, on the Budgets group, wherever it is asked for. Not a click on a
+     nav button: that is how a person asks. */
+  function goToBudgets(){
+    activateTab("settings");
+    if (typeof applySettingsGroup === "function") applySettingsGroup("budgeting");
+  }
+
+  function renderDashBudget(){
+    const host = document.getElementById("budget-card-body");
+    if (!host) return;
+    const p = budgetPicture();
+
+    if (!p.limited.length){
+      host.innerHTML = emptyStateHtml("check",
+        "No limits set yet.",
+        "Give a category a monthly limit and this becomes a picture of the month: how much of it is gone, and whether that is ahead of where today is.",
+        "Set a limit", "btn-budget-empty");
+      const cta = document.getElementById("btn-budget-empty");
+      if (cta) cta.addEventListener("click", goToBudgets);
+      return;
+    }
+
+    const usedPct = p.totalLimit > 0 ? (p.totalSpent / p.totalLimit) * 100 : 0;
+    const over = p.totalSpent > p.totalLimit;
+    const ahead = !over && usedPct > p.elapsedPct + 3;
+    const verdict = over
+      ? "already " + fmtMoney(round2(p.totalSpent - p.totalLimit)) + " over"
+      : ahead
+        ? "ahead of where today is \u2014 on track for " + fmtMoney(p.projected)
+        : "in step with the month";
+
+    host.innerHTML =
+      '<p class="bgl-lead">' + fmtMoneyRich(p.totalSpent) +
+        ' <span class="k">of</span> ' + fmtMoney(p.totalLimit) + '</p>' +
+      '<p class="bgl-sub' + (over ? " is-over" : "") + '">' + Math.round(usedPct) +
+        '% used on day ' + p.day + ' of ' + p.daysIn + ' \u2014 ' + escapeHtml(verdict) + '</p>' +
+      budgetBarHtml(usedPct, p.elapsedPct, over, !over && usedPct > 85) +
+      '<div class="bgl-list">' + p.limited.slice(0, 4).map(r => {
+        const rOver = r.spent > r.limit, rNear = !rOver && r.pct > 85;
+        return '<div class="bgl">' +
+          '<span class="bgl-name">' + escapeHtml(r.cat) + '</span>' +
+          budgetBarHtml(r.pct, p.elapsedPct, rOver, rNear) +
+          '<span class="bgl-fig' + (rOver ? " is-over" : "") + '">' +
+            (rOver ? fmtMoney(round2(r.spent - r.limit)) + " over"
+                   : fmtMoney(r.left) + " left") + '</span>' +
+        '</div>';
+      }).join("") + '</div>' +
+      (p.limited.length > 4
+        ? '<p class="bgl-more">' + (p.limited.length - 4) + ' more with a limit set.</p>'
+        : "") +
+      '<p class="bgl-legend"><i></i> where today is \u2014 fill past it is spending faster than the month is passing.</p>';
   }
 
   /* The six largest single expenses in the range, under the bars.
@@ -11779,6 +12071,29 @@
   document.querySelectorAll("#settings-nav button").forEach(btn=>{
     btn.addEventListener("click", ()=> applySettingsGroup(btn.dataset.settings));
   });
+
+  {
+    const editLimits = document.getElementById("btn-budget-settings");
+    if (editLimits) editLimits.addEventListener("click", goToBudgets);
+  }
+
+  /* Each sub-nav carries the function that re-applies whatever it is showing, so
+     anything needing a panel put back the way its nav says can ASK for that
+     rather than pressing the live button and hoping the handler has no other
+     side effect. It grew one, and the page scrolled itself to the top every
+     220ms until this was here. */
+  (function publishGroupAppliers(){
+    const settingsNav = document.getElementById("settings-nav");
+    if (settingsNav) settingsNav.applyActiveGroup = () => {
+      const on = settingsNav.querySelector("button.active");
+      if (on) applySettingsGroup(on.dataset.settings);
+    };
+    const loansNav = document.getElementById("loans-nav");
+    if (loansNav) loansNav.applyActiveGroup = () => {
+      const on = loansNav.querySelector("button.active");
+      if (on) applyLoansGroup(on.dataset.loans);
+    };
+  })();
 
   document.querySelectorAll("#density-toggle button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -13299,8 +13614,15 @@
            opens beside the page instead of standing on it, which would have
            quietly emptied the Dashboard. They are named here because they were
            always on the page; they just could not be taken off it before. */
-        dashboard: { on: ["money-overview-card", "insights-card", "summary-card",
-                          "blk-recent-activity", "recap-card"],
+        /* budget-card is here because a card with a heading is a SECTION, and a
+           section missing from this list opens beside the page instead of
+           standing on it - so a new card renders correctly, reports its own
+           content, and is invisible. Measured exactly that on the first run.
+           total-money-card is deliberately absent: it has no heading of its own,
+           so sectionsOf never sees it and nothing can take the page total off
+           the page. */
+        dashboard: { on: ["money-overview-card", "budget-card", "insights-card",
+                          "summary-card", "blk-recent-activity", "recap-card"],
                      first: "money-overview-card" },
         charts:    { on: ["blk-spending-over-time"], first: "blk-spending-over-time" },
         history:   { on: ["history-expense-card"],   first: "history-expense-card" },
@@ -13321,7 +13643,10 @@
       /* What a 375px screen is worth opening on. Everything else on that tab
          still exists, still opens beside, and comes back the moment the screen
          is wide enough - it is the DEFAULT that changes, not the tab. */
-      const PHONE_KEEP = { dashboard: ["money-overview-card", "blk-recent-activity"] };
+      /* What a phone keeps on the page. Budget joins it because "am I inside my
+         limits" is one of the four questions this tab exists to answer, and the
+         one you most want on the screen you actually carry. */
+      const PHONE_KEEP = { dashboard: ["money-overview-card", "budget-card", "blk-recent-activity"] };
       const railPhone = () => !!(window.matchMedia && window.matchMedia("(max-width: 720px)").matches);
       let pinned = {};
       try{ pinned = JSON.parse(localStorage.getItem(PIN_KEY) || "{}") || {}; }catch(e){ pinned = {}; }
@@ -13607,16 +13932,20 @@
 
         if (SELF_NAVIGATING.has(tab)){
           // Clear anything an earlier pass stranded, then let the tab's own
-          // navigation say what is on screen. Re-pressing the live sub-tab is
-          // the decoupled way to ask: it runs whatever that tab does without
-          // this module having to know what that is. Those handlers only call
-          // their group function, so there is no way back in here.
+          // navigation say what is on screen, by ASKING it rather than by
+          // pressing it. This used to call own.click(), on the reasoning that
+          // those handlers only call their group function so there was no way
+          // back in here. That stopped being true the moment one of them grew a
+          // side effect: it scrolled the page to put the nav in view, this
+          // observer saw the change, and 220ms later it pressed the button
+          // again - the settings page walked itself back to the top for as long
+          // as you looked at it. A button is how a person asks.
           panel.querySelectorAll("[data-rail-block][hidden]").forEach(b => {
             b.removeAttribute("hidden");
             b.style.removeProperty("display");
           });
-          const own = panel.querySelector(".settings-nav button.active");
-          if (own) own.click();
+          const ownNav = panel.querySelector(".settings-nav");
+          if (ownNav && typeof ownNav.applyActiveGroup === "function") ownNav.applyActiveGroup();
           // No list to disclose: the sub-tabs are the list.
           nav.querySelectorAll(".nav-contents-fold").forEach(el => el.remove());
           spyTargets = [];
