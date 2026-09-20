@@ -4013,7 +4013,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21s";
+  const APP_BUILD = "2026-09-21t";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -10685,7 +10685,10 @@
   let derivedRefreshTimer = null;
   function scheduleDerivedRefresh(){
     clearTimeout(derivedRefreshTimer);
-    derivedRefreshTimer = setTimeout(()=>{
+    /* The other deferred automatic render: the whole dashboard, 220ms after any
+       save - and a sync merge saves eight times. Nobody asked for it, so nobody
+       should be able to tell it ran. */
+    derivedRefreshTimer = setTimeout(()=> keepingScroll(()=>{
       const visible = (id) => {
         const el = document.getElementById(id);
         return el && el.style.display !== "none";
@@ -10697,7 +10700,7 @@
       renderQuickStats();
       renderSideContext(document.querySelector(".tab-panel.is-active")
         ? document.querySelector(".tab-panel.is-active").id.replace(/^tab-/, "") : "dashboard");
-    }, 220);
+    }), 220);
   }
 
   function renderMoneyOverview(){
@@ -12177,10 +12180,18 @@
 
      Only automatic passes are wrapped. Pressing a tab or a sub-tab is a person
      asking to go somewhere. */
+  let keepingDepth = 0;
   function keepingScroll(work){
+    /* Nested calls are one guard, not several. The pass is wrapped and so are
+       the two timers that call into it, so an inner one would otherwise force a
+       layout per level and restore against a half-finished page. The outermost
+       remembers, the outermost puts it back. */
+    if (keepingDepth > 0){ keepingDepth++; try{ return work(); } finally{ keepingDepth--; } }
     const y = window.scrollY;
-    try{ work(); }
+    keepingDepth = 1;
+    try{ return work(); }
     finally{
+      keepingDepth = 0;
       void document.documentElement.offsetHeight;
       if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
     }
@@ -15526,7 +15537,23 @@
          looking. One delayed re-run catches that; passing again=true stops it
          scheduling another, so it is exactly one, not a loop. */
       let refill = null;
+      /* EVERY CALLER, AT THE PASS. This re-lays the whole grid: it un-pins each
+         card to measure it, writes new row counts, and the page is a different
+         height throughout - so a reader part way down it loses their place, and
+         on a dashboard with 106px of travel that is all of it.
+
+         Wrapped here rather than at the call sites because there are eleven of
+         them, and I wrapped three by hand and missed a fourth each time. The one
+         that finally showed up in a probe was a 450ms follow-up pass calling this
+         directly - invisible to anything wrapped around buildContents.
+
+         A pass that puts the reader back where they were is free for the ones
+         that should move the page anyway: activateTab and the sub-tab press both
+         set their position AFTER rendering, so they still win. */
       function applySpansAndSeams(host, tab, again){
+        return keepingScroll(() => applySpansAndSeamsPass(host, tab, again));
+      }
+      function applySpansAndSeamsPass(host, tab, again){
         // Never while a drag is live - EITHER drag. The width was guarded from
         // the day this existed; the height was not, so the 450ms follow-up pass
         // below re-measured the card and put it back to its contents while the
