@@ -3877,7 +3877,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21k";
+  const APP_BUILD = "2026-09-21m";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -11120,6 +11120,21 @@
       howMany = +pick || 8;
     }
     const rows = source.sort((a, b) => b.date.localeCompare(a.date)).slice(0, howMany);
+    /* WHICH WAY THIS CARD SIZES, restated on every render because it is a fact
+       about the setting. "Auto - fit the card" means the contents are fitted to
+       the card, so the card must NOT also be fitted to its contents - those two
+       together are a cycle, and it is the one this card is alone in having.
+       Measured before the fix: 5 rows made a 376px card and a 1,883px page, 20
+       rows made 1,188 and 2,695 - the height following the count that was
+       chosen by the height. Any explicit count is the other way round and
+       correct: ask for 30 rows and the card grows to hold 30. */
+    const selfSizing = container.closest(".card");
+    if (selfSizing){
+      if (pick === "auto") selfSizing.dataset.fitsContents = "1";
+      else delete selfSizing.dataset.fitsContents;
+    }
+    // Stamped before the write, so the resize the write causes lands inside it.
+    window.__recentRenderedUntil = Date.now() + 500;
     const sig = howMany + "|" + titleLabel + "|" +
       rows.map(r => r.date + "" + r.description + "" + r.amount + "" + r.type).join("");
     if (sig === lastRecentSig) return;
@@ -11171,6 +11186,10 @@
         let lastH = 0;
         new ResizeObserver(()=>{
           if (String(pref("recentRows", "auto")) !== "auto") return;
+          /* A resize this render caused is not news. Belt as well as braces:
+             the corrective pass no longer grows this card, but anything else
+             that changes its height would otherwise start the same round trip. */
+          if (Date.now() < (window.__recentRenderedUntil || 0)) return;
           /* NOT WHILE IT IS PUT AWAY. The sub-tabs take this card to height 0
              and back, which is two resizes, and the row count measured from a
              card of height 0 is the fallback rather than the real one - so the
@@ -15370,6 +15389,34 @@
         const natural = cards.map(el => el.getBoundingClientRect().height);
         host.classList.remove("is-measuring");
         cards.forEach((el, i) => {
+          /* Unless the card fits its CONTENTS to itself. Recent activity on
+             "Auto - fit the card" picks how many rows to draw from how tall it
+             is; deriving its height from what it drew closes the loop, and the
+             page then changes height whenever anything disturbs it - which is
+             what threw a scroll near the end of the page back to the top. It
+             keeps the height it is given: the reader's floor, or the default. */
+          if (el.dataset.fitsContents){
+            /* A height the reader dragged wins - it is the one number that
+               should override a default, and it does not move on its own. */
+            const floor = floorRows(tab, el);
+            if (floor > 0){ setRows(el, floor); return; }
+            /* Otherwise a height built from things that do not depend on how
+               many rows are drawn: the head, the padding, and ONE row times a
+               constant. Eight, which is what this card showed before any of
+               this and the first fixed option the Show menu offers. Measuring
+               this height again cannot move it, which is the whole point. */
+            const AUTO_ROWS = 8;
+            const inner = el.querySelector("#recent-history-list");
+            const one = inner && inner.firstElementChild
+              ? inner.firstElementChild.getBoundingClientRect().height : 44;
+            const head = el.querySelector(".dash-subhead-row");
+            const cs = getComputedStyle(el);
+            const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+            const want = (head ? head.getBoundingClientRect().height : 0) +
+                         pad + (one > 8 ? one : 44) * AUTO_ROWS + 26;
+            setRows(el, rowsForHeight(want));
+            return;
+          }
           const n = rowsForHeight(natural[i]);
           el.dataset.naturalRows = String(n);
           // Whichever is taller. A floor of 0 - which is every card until
@@ -15395,6 +15442,12 @@
            one pass settles it. Nothing here can make a card taller than its
            contents, only tall enough for them. */
         cards.forEach(el => {
+          /* Except one that fits its contents to ITSELF. Recent activity picks
+             how many rows to draw from how tall it is, so growing it to fit what
+             it drew makes it draw more, which grows it again. Measured: 5 rows
+             is a 376px card, 20 rows is 1,188px, and the page height follows. It
+             keeps the height it is given and fits the list into that. */
+          if (el.dataset.fitsContents) return;
           const over = el.scrollHeight - el.clientHeight;
           if (over > 2){
             const n = rowsForHeight(el.scrollHeight);
