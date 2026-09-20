@@ -217,6 +217,12 @@
   }
   .tmw-read{ min-width:0; }
   .tmw-line{ display:flex; align-items:baseline; gap: var(--sp-7); flex-wrap:wrap; }
+  /* A column, so that a card made taller than its contents puts the slack into
+     the accounts rather than under the strip - which left the strip floating in
+     the middle of the card with a band of nothing beneath it. */
+  #total-money-card{ display:flex; flex-direction:column; }
+  #total-money-card .tmw-top{ flex:1 1 auto; }
+
   #total-money-card .tm-value{
     display:block; white-space:nowrap;
     font-size: var(--fs-hero); line-height:1.02; letter-spacing:-0.03em;
@@ -245,6 +251,10 @@
   }
   /* Pinned says so on the tile, not only on its button. */
   .tmw-place.is-pinned{ border-color: rgb(55 200 184 / .42); }
+  .tmw-place[draggable="true"]{ cursor: grab; }
+  .tmw-place.is-lifting{ opacity: .4; }
+  /* Where it will land, on the tile it will land before. */
+  .tmw-place.is-drop{ border-color: var(--accent); background: var(--hover); }
   .tmw-place-top{ display:flex; align-items:center; gap: var(--sp-4); min-width:0; }
   /* The figure and its bar are the link to Savings; the pin is its own control. */
   .tmw-place-open{
@@ -348,6 +358,7 @@
   .bgl-lead{ margin:0; font-size: var(--fs-2xl); font-weight:700; letter-spacing:-0.02em;
     font-variant-numeric: tabular-nums; }
   .bgl-lead .k{ font-weight:500; color: var(--ink-dim); font-size: var(--fs-md); }
+  .bgl-lead.is-over{ color: var(--negative-note); }
   .bgl-sub{ margin: var(--sp-3) 0 var(--sp-7); font-size: var(--fs-2xs); color: var(--ink-dim); }
   .bgl-sub.is-over{ color: var(--negative-note); }
   .bgl-list{ margin-top: var(--sp-7); padding-top: var(--sp-5); border-top:1px solid var(--line); }
@@ -3697,7 +3708,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-20f";
+  const APP_BUILD = "2026-09-20g";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4663,6 +4674,62 @@
     return Array.isArray(v) ? v.slice() : [];
   }
 
+  /* The order the tiles were dragged into. Ids, for the same reason the pins are
+     ids: two accounts can share a name. */
+  function tmAccountOrder(){
+    const v = pref("tmAccountOrder", []);
+    return Array.isArray(v) ? v.slice() : [];
+  }
+
+  /* Reordering the accounts. HTML5 drag rather than a pointer gesture: these
+     tiles are a desk affordance - a phone shows three of them - and the browser
+     already draws the drag image, which a hand-rolled one would have to fake. */
+  let acctDragId = null;
+  function wireAccountDrag(host){
+    if (!host) return;
+    host.querySelectorAll("[data-acct-drag]").forEach(tile=>{
+      tile.addEventListener("dragstart", ev=>{
+        acctDragId = tile.dataset.acctDrag;
+        tile.classList.add("is-lifting");
+        if (ev.dataTransfer){
+          ev.dataTransfer.effectAllowed = "move";
+          // Firefox will not start a drag without something on the transfer.
+          try{ ev.dataTransfer.setData("text/plain", acctDragId); }catch(e){}
+        }
+      });
+      tile.addEventListener("dragend", ()=>{
+        acctDragId = null;
+        host.querySelectorAll(".tmw-place").forEach(t=>
+          t.classList.remove("is-lifting", "is-drop"));
+      });
+      tile.addEventListener("dragover", ev=>{
+        if (!acctDragId || tile.dataset.acctDrag === acctDragId) return;
+        ev.preventDefault();
+        if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+        host.querySelectorAll(".tmw-place").forEach(t=>t.classList.remove("is-drop"));
+        tile.classList.add("is-drop");
+      });
+      tile.addEventListener("dragleave", ()=> tile.classList.remove("is-drop"));
+      tile.addEventListener("drop", ev=>{
+        ev.preventDefault();
+        const from = acctDragId, to = tile.dataset.acctDrag;
+        acctDragId = null;
+        if (!from || !to || from === to) return;
+        /* Built from what is ON SCREEN, so the saved order matches what was just
+           dragged. Anything not shown keeps its place after them. */
+        const shown = [...host.querySelectorAll("[data-acct-drag]")]
+          .map(t=>t.dataset.acctDrag).filter(Boolean);
+        const rest = tmAccountOrder().filter(id => shown.indexOf(id) < 0);
+        const next = shown.slice();
+        next.splice(next.indexOf(from), 1);
+        next.splice(next.indexOf(to), 0, from);
+        setUiPref("tmAccountOrder", next.concat(rest));
+        renderTotalMoneyBar();
+        showToast("Accounts reordered.");
+      });
+    });
+  }
+
   let lastTotalMoney = null;
   function renderTotalMoneyBar(){
     const el = document.getElementById("total-money-value");
@@ -4728,6 +4795,7 @@
     const dashPlaces = document.getElementById("dash-tm-places");
     if (dashPlaces){
       const pinned = tmPinnedAccounts();
+      const order = tmAccountOrder();
       const places = savings
         .map(a => ({ id: a.id, name: a.provider || "Account", value: +a.amount || 0 }))
         /* Counted in the total, so it has to be one of the tiles, or the parts
@@ -4736,6 +4804,18 @@
           ? [{ id: "__invested", name: "Investments", value: b.unsoldInvestments }]
           : [])
         .sort((x, y) => y.value - x.value);
+      /* Whatever you dragged them into, and largest-first for anything that has
+         never been dragged - which keeps a newly added account in a sensible
+         place instead of at the front. */
+      if (order.length){
+        places.sort((x, y) => {
+          const a = order.indexOf(x.id), b = order.indexOf(y.id);
+          if (a < 0 && b < 0) return 0;          // both unplaced: keep by size
+          if (a < 0) return 1;
+          if (b < 0) return -1;
+          return a - b;
+        });
+      }
       places.forEach(p => { p.pinned = pinned.indexOf(p.id) >= 0; });
       /* Pinned first, and within each half still largest first - so pinning
          changes which accounts you see, not how they are ordered among
@@ -4756,11 +4836,12 @@
             const share = Math.max(0, Math.min(100, (p.value / whole) * 100));
             /* The tile stays the button that opens Savings; the pin is its own
                button beside the name, so one does not swallow the other. */
-            return `<div class="tmw-place${p.pinned ? " is-pinned" : ""}">` +
+            return `<div class="tmw-place${p.pinned ? " is-pinned" : ""}" draggable="true" ` +
+              `data-acct-drag="${escapeHtml(p.id || "")}">` +
               `<div class="tmw-place-top">` +
                 `<span class="tmw-place-k">${escapeHtml(p.name)}</span>` +
                 (p.id
-                  ? `<button type="button" class="tmw-pin${p.pinned ? " is-on" : ""}" ` +
+                  ? `<button type="button" draggable="false" class="tmw-pin${p.pinned ? " is-on" : ""}" ` +
                       `data-pin-account="${escapeHtml(p.id)}" aria-pressed="${p.pinned}" ` +
                       `title="${p.pinned ? "Unpin this account" : "Always show this account"}" ` +
                       `aria-label="${p.pinned ? "Unpin " + escapeHtml(p.name) : "Always show " + escapeHtml(p.name)}">` +
@@ -4788,6 +4869,7 @@
       dashPlaces.querySelectorAll("[data-tm-go]").forEach(btn=>{
         btn.addEventListener("click", ()=> activateTab(btn.dataset.tmGo));
       });
+      wireAccountDrag(dashPlaces);
       dashPlaces.querySelectorAll("[data-pin-account]").forEach(btn=>{
         btn.addEventListener("click", ()=>{
           const id = btn.dataset.pinAccount;
@@ -10824,17 +10906,26 @@
     const usedPct = p.totalLimit > 0 ? (p.totalSpent / p.totalLimit) * 100 : 0;
     const over = p.totalSpent > p.totalLimit;
     const ahead = !over && usedPct > p.elapsedPct + 3;
+    /* When the lead already says the overrun, saying it again here is the same
+       number twice in two lines. Over, the useful second fact is where the month
+       ends up if nothing changes. */
     const verdict = over
-      ? "already " + fmtMoney(round2(p.totalSpent - p.totalLimit)) + " over"
+      ? "heading for " + fmtMoney(p.projected) + " by the 30th"
       : ahead
         ? "ahead of where today is \u2014 on track for " + fmtMoney(p.projected)
         : "in step with the month";
 
+    /* WHAT IS LEFT leads. The card led with what had been spent, and the number
+       anyone actually wants from a budget is how much more they can spend. The
+       spent figure moves down a line, where the percentage was already saying it
+       a second way. */
+    const left = round2(p.totalLimit - p.totalSpent);
     host.innerHTML =
-      '<p class="bgl-lead">' + fmtMoneyRich(p.totalSpent) +
-        ' <span class="k">of</span> ' + fmtMoney(p.totalLimit) + '</p>' +
-      '<p class="bgl-sub' + (over ? " is-over" : "") + '">' + Math.round(usedPct) +
-        '% used on day ' + p.day + ' of ' + p.daysIn + ' \u2014 ' + escapeHtml(verdict) + '</p>' +
+      '<p class="bgl-lead' + (over ? " is-over" : "") + '">' + fmtMoneyRich(Math.abs(left)) +
+        ' <span class="k">' + (over ? "over" : "left") + ' of ' + fmtMoney(p.totalLimit) + '</span></p>' +
+      '<p class="bgl-sub' + (over ? " is-over" : "") + '">' + fmtMoney(p.totalSpent) + ' spent \u00b7 ' +
+        Math.round(usedPct) + '% on day ' + p.day + ' of ' + p.daysIn +
+        ' \u2014 ' + escapeHtml(verdict) + '</p>' +
       budgetBarHtml(usedPct, p.elapsedPct, over, !over && usedPct > 85) +
       '<div class="bgl-list">' + p.limited.slice(0, 4).map(r => {
         const rOver = r.spent > r.limit, rNear = !rOver && r.pct > 85;
@@ -15453,6 +15544,11 @@
         }
 
         host.addEventListener("dragstart", ev => {
+          /* The accounts on the total-money card run their own reorder. This
+             handler calls preventDefault on EVERY dragstart in the grid while
+             card dragging is frozen - which is every dragstart - so without this
+             a tile drag was cancelled before it began. */
+          if (ev.target.closest && ev.target.closest("[data-acct-drag]")) return;
           const card = ev.target.closest("[data-arrange-id]");
           if (!CARD_DRAG || !editing || !card){ ev.preventDefault(); return; }
           // Locked: it does not travel. Refused here rather than on the drop, so
