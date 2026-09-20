@@ -365,10 +365,23 @@
   /* 22px is right for a mouse and half of what a finger needs. The hit area
      grows to 44px; the drawing does not move. */
   @media (pointer: coarse){
+    /* The row is given the height the target needs, rather than the target
+       hanging 11px out of it on each side. That was invisible while the card
+       clipped it and became two bleed findings the moment cards stopped being
+       scroll containers - and a 44px row is the better answer anyway, since a
+       finger is aiming at the whole row. */
+    .tmw-place-top{ min-height: 44px; }
     .tmw-pin{ position: relative; }
+    /* TALLER, NOT WIDER. A 44px square centred on a 20px button hangs 12px off
+       each side, and the pin is the last thing in its row - so the overhang went
+       past the row and out of the tile. Invisible while the card clipped it;
+       two bleed findings the moment cards stopped being scroll containers.
+
+       The row is 44px tall now, so height is free and width is not: 20x44 is
+       880px of target against 400, taken entirely from space that exists. */
     .tmw-pin::after{
-      content:""; position:absolute; top:50%; left:50%;
-      width:44px; height:44px; transform: translate(-50%, -50%);
+      content:""; position:absolute; top:50%; left:0; right:0;
+      height:44px; transform: translateY(-50%);
     }
   }
   .tmw-pin.is-on{ background: var(--accent); border-color: transparent; color: var(--on-accent); }
@@ -3857,7 +3870,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21i";
+  const APP_BUILD = "2026-09-21j";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -18672,18 +18685,33 @@ if ("serviceWorker" in navigator &&
     grid-column: span min(var(--span), 12);
     grid-row: span var(--rows);
     min-width: 0; min-height: 0;
-    /* A row span is a real height, so content can be taller than its card. The
-       alternative to scrolling is painting over the card below.
+    /* NOT A SCROLLER ON A PAGE YOU ARE READING. This was `overflow: auto`, so a
+       card whose content outgrew its row span became its own scroll container -
+       and then took the wheel from the page. Reproduced by forcing that state
+       and wheeling once with the page already at its end: the card scrolled
+       itself 0 -> 200, a pass put it back to 0, and the page lurched from 543
+       to 95. Scroll to the bottom, nudge the wheel, arrive near the top.
 
-       No overscroll-behavior. It was "contain", which stops a scroll chaining
-       to the page - and Chrome applies that to a scroll container whether or
-       not it has any room to scroll, so every card swallowed the wheel while
-       having nothing of its own to move. It was there for a card that scrolls
-       reaching its end; a card can no longer be shorter than its contents, so
-       that state should not arise, and paying for it with the wheel over the
-       whole dashboard is the wrong way round. */
-    overflow: auto;
+       The bento sizes cards to their contents already - that is what the
+       measuring pass and calibrateRows are for - so `auto` was insurance
+       against a state the layout is meant to prevent, and it charged for that
+       insurance on every wheel over the dashboard.
+
+       The old note here worried that the alternative is content painting over
+       the card below. It cannot: a row span is a minimum now, not a ceiling, so
+       a card that needs more height takes it and the ones under it move down.
+
+       No overscroll-behavior either, and that reasoning still stands: it was
+       "contain", which Chrome applies to a scroll container whether or not it
+       has room, so every card swallowed the wheel while having nothing to move. */
+    overflow: visible;
   }
+  /* A minimum, not a ceiling. grid-row: span N sets the height exactly, which is
+     what made a card able to be shorter than its contents in the first place. */
+  .bento > *{ height: auto; min-height: 100%; }
+  /* While ARRANGING it scrolls again: there you drag a card deliberately smaller
+     than its contents, and you have to be able to see what is inside it. */
+  body.is-layout-editing .bento > *{ overflow: auto; height: 100%; min-height: 0; }
   .bento-span-7{ --span: 7; }
   .bento-span-5{ --span: 5; }
   .bento-span-12{ --span: 12; }
