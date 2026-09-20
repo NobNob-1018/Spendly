@@ -3799,6 +3799,142 @@
 (function(){
   "use strict";
 
+  /* ======================================================================
+     SCROLL PROBE - off unless the address bar says otherwise.
+
+     Five rounds of fixes have each removed a real cause of "the page throws me
+     back to the top" and it still happens on one machine and not on mine. Three
+     of the things that can cause it - ResizeObserver, requestAnimationFrame and
+     the sync timer - do not run at all in the pane I test in.
+
+     Open the app with ?probe on the end of the address and this arms itself and
+     puts one button on screen. Use the app until it throws you to the top, press
+     Copy report, and send what it copied. Without ?probe none of it runs.
+
+     It reads only: no writes, no data touched, and it stops after five minutes.
+     ====================================================================== */
+  if (/[?&]probe\b/.test(location.search)) (function scrollProbe(){
+    const se = () => document.scrollingElement || document.documentElement;
+    const t0 = Date.now();
+    const log = [], jumps = [];
+    const nameOf = el => !el || el.nodeType !== 1 ? String(el)
+      : ((el.id ? "#" + el.id : "") +
+         (typeof el.className === "string" && el.className ? "." + el.className.split(" ")[0] : "")) || el.nodeName;
+    const at = () => (new Error().stack || "").split("\n").slice(3, 8).join(" | ")
+      .replace(/https?:\/\/[^\s)]+\//g, "").slice(0, 300);
+    const push = e => { if (log.length < 3000) log.push(Object.assign(
+      { t: Date.now() - t0, y: Math.round(window.scrollY), h: se().scrollHeight }, e)); };
+
+    // Everything that can move the page, and the code that did it.
+    const _to = window.scrollTo, _by = window.scrollBy, _sc = window.scroll;
+    window.scrollTo = function(...a){ push({ what:"scrollTo", arg:JSON.stringify(a).slice(0,60), at:at() }); return _to.apply(this,a); };
+    window.scrollBy = function(...a){ push({ what:"scrollBy", arg:JSON.stringify(a).slice(0,60), at:at() }); return _by.apply(this,a); };
+    window.scroll   = function(...a){ push({ what:"scroll",   arg:JSON.stringify(a).slice(0,60), at:at() }); return _sc.apply(this,a); };
+    const dsc = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop");
+    Object.defineProperty(Element.prototype, "scrollTop", { configurable:true, get:dsc.get,
+      set(v){ if (this === document.documentElement || this === document.body)
+                push({ what:"scrollTop=" + Math.round(v), at:at() });
+              return dsc.set.call(this, v); } });
+    const _siv = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function(...a){ push({ what:"scrollIntoView", on:nameOf(this), at:at() }); return _siv.apply(this,a); };
+    const _foc = HTMLElement.prototype.focus;
+    HTMLElement.prototype.focus = function(...a){ push({ what:"focus", on:nameOf(this), at:at() }); return _foc.apply(this,a); };
+
+    // The page changing shape, with the element AND attribute that did it.
+    let lastH = se().scrollHeight;
+    new MutationObserver(recs => {
+      const h = se().scrollHeight;
+      if (Math.abs(h - lastH) < 4) return;
+      const by = {};
+      recs.forEach(r => {
+        const k = r.type === "childList"
+          ? nameOf(r.target)
+          : nameOf(r.target) + " [" + r.attributeName + "]";
+        if (r.type === "childList" &&
+            ![...r.addedNodes, ...r.removedNodes].some(n => n.nodeType === 1)) return;
+        by[k] = (by[k] || 0) + 1;
+      });
+      push({ what:"PAGE HEIGHT", from:lastH, to:h, by:h - lastH,
+             changed:Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,4) });
+      lastH = h;
+    }).observe(document.documentElement,
+      { childList:true, subtree:true, attributes:true, attributeFilter:["style","class","hidden"] });
+
+    // The jump, scaled to the page: losing a quarter of the travel is the event
+    // whether the page is short or long.
+    let lastY = Math.round(window.scrollY), settled = lastY, still = 0;
+    const tick = setInterval(() => {
+      const y = Math.round(window.scrollY);
+      if (y === lastY){ if (++still === 3) settled = y; return; }
+      const range = Math.max(1, se().scrollHeight - se().clientHeight);
+      if (settled - y > Math.max(60, Math.min(120, range * 0.25))){
+        jumps.push({ t:Date.now() - t0, from:settled, to:y, height:se().scrollHeight, before:log.slice(-14) });
+        paint();
+      }
+      still = 0; lastY = y;
+    }, 50);
+
+    // The three that never run where I test.
+    const seen = { raf:0, ro:0, sync:0 };
+    const _raf = window.requestAnimationFrame;
+    window.requestAnimationFrame = function(cb){ seen.raf++; return _raf.call(window, cb); };
+    if (window.ResizeObserver){
+      const RO = window.ResizeObserver;
+      window.ResizeObserver = function(cb){
+        return new RO(function(en, ob){ seen.ro++;
+          push({ what:"ResizeObserver", on:en.map(e=>nameOf(e.target)).slice(0,3) });
+          return cb.call(this, en, ob); });
+      };
+    }
+    const _fetch = window.fetch;
+    window.fetch = function(...a){
+      const u = String(a[0] || "");
+      if (/api\.github\.com|gist/i.test(u)){ seen.sync++; push({ what:"SYNC request" }); }
+      return _fetch.apply(this, a);
+    };
+
+    const report = () => ({
+      build: (document.getElementById("app-build") || {}).textContent || "?",
+      viewport: window.innerWidth + "x" + window.innerHeight,
+      dpr: window.devicePixelRatio,
+      page: se().scrollHeight, scrollNow: Math.round(window.scrollY),
+      tab: (document.querySelector("nav.tabs button.active") || {}).textContent || "?",
+      group: (document.querySelector(".page-groups button.active") || {}).textContent || "-",
+      jumps: jumps.length, firstJump: jumps[0] || null, lastJump: jumps[jumps.length-1] || null,
+      heightChanges: log.filter(e => e.what === "PAGE HEIGHT").slice(-14),
+      scrollCalls: log.filter(e => /scroll|focus/i.test(e.what)).slice(-14),
+      resizeObserver: seen.ro, raf: seen.raf, syncRequests: seen.sync,
+      /* WHETHER sync is set up, never the token. A boolean is the whole
+         answer to "does this machine re-render every twelve seconds", and the
+         token is device-local and stays that way. Matched by suffix because the
+         lab build prefixes its keys. */
+      syncOn: Object.keys(localStorage).some(k => /spendly_gh_token_v1$/.test(k) && localStorage.getItem(k))
+    });
+
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;left:12px;bottom:12px;z-index:99999;display:flex;" +
+      "align-items:center;gap:8px;padding:8px 10px;border-radius:10px;font:600 12px/1.2 system-ui;" +
+      "background:#11282A;color:#37C8B8;border:1px solid #37C8B8;box-shadow:0 8px 24px rgb(0 0 0/.45)";
+    const said = document.createElement("span");
+    const btn = document.createElement("button");
+    btn.textContent = "Copy report";
+    btn.style.cssText = "font:inherit;padding:4px 8px;border-radius:6px;cursor:pointer;" +
+      "background:#37C8B8;color:#06211F;border:0";
+    btn.onclick = async () => {
+      const text = JSON.stringify(report(), null, 2);
+      try{ await navigator.clipboard.writeText(text); btn.textContent = "Copied"; }
+      catch(e){ console.log(text); btn.textContent = "In the console"; }
+      setTimeout(() => { btn.textContent = "Copy report"; }, 1800);
+    };
+    function paint(){ said.textContent = "probe: " + jumps.length + " jump" + (jumps.length === 1 ? "" : "s"); }
+    paint();
+    box.appendChild(said); box.appendChild(btn);
+    (document.body || document.documentElement).appendChild(box);
+
+    setTimeout(() => { clearInterval(tick); said.textContent += " (stopped)"; }, 300000);
+    window.spendlyProbe = report;
+  })();
+
   /* ---------- Save status (defined first — save*() functions below call this immediately) ---------- */
   let saveStatusTimer;
   function flashSaveStatus(){
@@ -3877,7 +4013,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21n";
+  const APP_BUILD = "2026-09-21p";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
