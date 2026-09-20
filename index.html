@@ -221,22 +221,34 @@
   }
   .tmw-meta{ margin: var(--sp-4) 0 0; font-size: var(--fs-2xs); color: var(--ink-dim); }
 
-  /* Only drawn when the total HAS parts. With investments left out of it - the
-     default - the one part IS the total, and printing it under the figure is
-     the same number twice. */
-  .tmw-parts{ display:flex; flex-wrap:wrap; gap: var(--sp-5); margin-top: var(--sp-6); }
-  .tmw-parts:empty{ display:none; }
-  .tmw-part{
-    display:flex; align-items:baseline; gap: var(--sp-4); min-width:0;
-    padding: var(--sp-3) var(--sp-6); background: var(--sunken); border-radius: var(--r-pill);
+  /* 2. WHERE IT IS. This band held a chart - a fifteen-point series stretched
+     across a span-12 card, which is a flat line with one step in it and half
+     the card gone. The accounts are what the figure above is actually made of,
+     and until now the card said "across 2 accounts" without saying which. They
+     sum to the figure. */
+  .tmw-places{
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+    gap: var(--sp-5); margin-top: var(--sp-8);
   }
-  .tmw-part .k{ font-size: var(--fs-2xs); color: var(--ink-dim); }
-  .tmw-part .v{ font-size: var(--fs-sm); font-weight:700; font-variant-numeric: tabular-nums; }
-
-  /* 2. its history, as the card's own surface. Bled to both edges, so the width
-     of a span-12 card is carrying something instead of standing empty. */
-  .tmw-chart{ margin: var(--sp-7) calc(var(--sp-9) * -1) 0; height:104px; }
-  .tmw-chart svg{ display:block; width:100%; height:100%; }
+  .tmw-places:empty{ display:none; }
+  .tmw-place{
+    display:flex; flex-direction:column; gap: var(--sp-4); min-width:0;
+    padding: var(--sp-6) var(--sp-7); text-align:left; color:inherit;
+    background: var(--sunken); border:1px solid var(--line); border-radius: var(--r-md);
+  }
+  .tmw-place-k{
+    font-size: var(--fs-2xs); color: var(--ink-dim);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .tmw-place-v{ font-size: var(--fs-xl); font-weight:700; font-variant-numeric: tabular-nums; }
+  /* The share, so the shape of where the money sits reads without arithmetic. */
+  .tmw-place-bar{ height:4px; border-radius: var(--r-pill); background: var(--line); overflow:hidden; }
+  .tmw-place-bar i{ display:block; height:100%; background: var(--accent); border-radius: var(--r-pill); }
+  .tmw-place-s{ font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  @media (hover: hover){
+    button.tmw-place{ cursor:pointer; transition: background var(--dur-fast) var(--ease-out); }
+    button.tmw-place:hover{ background: var(--hover); }
+  }
 
   /* 3. what is real and is not in the figure. One strip in the same sunken
      material as the head band, closing the card - not three tall boxes with
@@ -272,7 +284,7 @@
   }
 
   @media (max-width: 860px){
-    .tmw-chart{ height:84px; margin-left: calc(var(--sp-7) * -1); margin-right: calc(var(--sp-7) * -1); }
+    .tmw-places{ grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); margin-top: var(--sp-7); }
     .tmw-outside{
       margin: 0 calc(var(--sp-7) * -1) calc(var(--sp-7) * -1);
       padding: var(--sp-6) var(--sp-7); align-items:flex-start;
@@ -2828,7 +2840,7 @@
       <div class="card bento-span-12" id="total-money-card">
         <header class="panel-head is-toolbar">
           <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><path d="M3 7.5V17a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 9.5h-4.2a2.75 2.75 0 0 0 0 5.5H21z"/></svg></span><span class="h-text">Total money</span></h2>
-          <p class="sub">Everything you hold right now, and which way it has moved.</p>
+          <p class="sub">Everything you hold right now, and where it is.</p>
         </header>
 
         <div class="tmw-read">
@@ -2837,10 +2849,9 @@
             <span class="tm-trend" id="dash-tm-trend" style="display:none;"></span>
           </div>
           <p class="tmw-meta" id="dash-tm-meta"></p>
-          <div class="tmw-parts" id="dash-tm-parts"></div>
         </div>
 
-        <div class="tmw-chart" id="dash-tm-spark" aria-hidden="true"></div>
+        <div class="tmw-places" id="dash-tm-places"></div>
 
         <div class="tmw-outside" id="dash-tm-outside"></div>
       </div>
@@ -3700,7 +3711,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-20c";
+  const APP_BUILD = "2026-09-20d";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4645,6 +4656,19 @@
     badge._hideTimer = setTimeout(()=> badge.classList.remove("show"), 2400);
   }
 
+  /* Re-rendered on the CROSSING, because how many accounts fit changes with the
+     width and nothing else would ask again. Driven off resize with a guard rather
+     than off a matchMedia change event: the guard means one render per crossing
+     either way, and it does not depend on that event being delivered - it is not,
+     in an emulated viewport, which is how this was found. */
+  const TM_PHONE = matchMedia("(max-width: 720px)");
+  let tmWasPhone = TM_PHONE.matches;
+  window.addEventListener("resize", ()=>{
+    if (TM_PHONE.matches === tmWasPhone) return;
+    tmWasPhone = TM_PHONE.matches;
+    renderTotalMoneyBar();
+  });
+
   let lastTotalMoney = null;
   function renderTotalMoneyBar(){
     const el = document.getElementById("total-money-value");
@@ -4673,21 +4697,6 @@
       if (dashTrend && src){
         dashTrend.innerHTML = src.innerHTML;
         dashTrend.style.display = src.innerHTML ? "" : "none";
-      }
-      const dashSpark = document.getElementById("dash-tm-spark");
-      if (dashSpark){
-        /* Drawn at the box's OWN pixel size. The viewBox used to be a fixed
-           360x110 stretched to fit by preserveAspectRatio="none", so the curve
-           was squashed by whatever the card happened to be and an end point
-           would have been drawn as an ellipse. Measured, it maps 1:1. */
-        const w = Math.round(dashSpark.clientWidth) || 340;
-        const h = Math.round(dashSpark.clientHeight) || 76;
-        dashSpark.innerHTML = series.length > 1
-          ? buildSparkline(series, { valueKey:"netWorth", width:w, height:h, pad:4,
-                                     area:true, strokeWidth:2, endDot:true,
-                                     color:"var(--accent)" })
-          : "";
-
       }
     }
 
@@ -4719,28 +4728,52 @@
         + `<p class="tm-aside-label">Not counted here — see Loans &amp; Invest</p>`
         + aside.map(r=>`<div class="tm-row is-aside"><span>${escapeHtml(r.label)}</span><strong>${fmtMoney(r.value)}</strong></div>`).join("");
     }
-    /* The parts, only when there is more than one of them. */
-    const dashParts = document.getElementById("dash-tm-parts");
-    if (dashParts){
-      dashParts.innerHTML = counted.length > 1
-        ? counted.map(r=>`<span class="tmw-part"><span class="k">${escapeHtml(r.label)}</span>` +
-                         `<span class="v">${fmtMoney(r.value)}</span></span>`).join("")
+    /* WHERE IT IS. The accounts holding the figure above, largest first, each
+       with its share - which is the question the card raised by saying "across
+       2 accounts" and then not saying which. */
+    const dashPlaces = document.getElementById("dash-tm-places");
+    if (dashPlaces){
+      const places = savings
+        .map(a => ({ name: a.provider || "Account", value: +a.amount || 0 }))
+        /* Counted in the total, so it has to be one of the tiles, or the parts
+           do not add up to the whole they are sitting under. */
+        .concat(b.investedCounts
+          ? [{ name: "Investments", value: b.unsoldInvestments }]
+          : [])
+        .sort((x, y) => y.value - x.value);
+      const whole = places.reduce((t, p) => t + p.value, 0) || 1;
+      /* Seven accounts is 808px of tiles on a phone - the lead card eating a
+         whole screen before the dashboard has said anything else. Three and a
+         summary is two rows, and the rest is one tap away on Savings. */
+      const SHOWN = TM_PHONE.matches ? 3 : 8;
+      dashPlaces.innerHTML = places.length
+        ? places.slice(0, SHOWN).map(p => {
+            const share = Math.max(0, Math.min(100, (p.value / whole) * 100));
+            return `<button type="button" class="tmw-place" data-tm-go="savings">` +
+              `<span class="tmw-place-k">${escapeHtml(p.name)}</span>` +
+              `<span class="tmw-place-v">${fmtMoney(p.value)}</span>` +
+              `<span class="tmw-place-bar"><i style="width:${share.toFixed(1)}%"></i></span>` +
+              `<span class="tmw-place-s">${share < 0.5 ? "under 1" : Math.round(share)}% of the total</span>` +
+            `</button>`;
+          }).join("") +
+          (places.length > SHOWN
+            ? `<button type="button" class="tmw-place" data-tm-go="savings">` +
+              `<span class="tmw-place-k">and ${places.length - SHOWN} more</span>` +
+              `<span class="tmw-place-v">${fmtMoney(places.slice(SHOWN).reduce((t,p)=>t+p.value,0))}</span>` +
+              `</button>`
+            : "")
         : "";
+      dashPlaces.querySelectorAll("[data-tm-go]").forEach(btn=>{
+        btn.addEventListener("click", ()=> activateTab(btn.dataset.tmGo));
+      });
     }
 
-    /* What the figure is across. With one part the breakdown is the total, so
-       the useful thing to say is not what it is made of but where it is. */
     const dashMeta = document.getElementById("dash-tm-meta");
     if (dashMeta){
-      /* The period used to be a caption inside the chart, bottom-right. The line
-         rises to the right, so on a phone it was written over its own data - and
-         a label that can collide with the data will, sooner or later, whatever
-         the numbers are. Out here nothing can be drawn on it. */
       const n = savings.length;
-      const where = n ? "across " + n + " account" + (n === 1 ? "" : "s") : "no accounts yet";
-      dashMeta.textContent = series.length > 1
-        ? where + " · the last " + series.length + " days"
-        : where;
+      dashMeta.textContent = n
+        ? "across " + n + " account" + (n === 1 ? "" : "s")
+        : "no accounts yet";
     }
 
     /* And what is outside it, at the weight it deserves. Each one lives on
@@ -6920,19 +6953,13 @@
       '<path d="' + d + ' L' + xy[xy.length - 1][0].toFixed(1) + ',' + h + ' L' + xy[0][0].toFixed(1) + ',' + h +
       ' Z" fill="url(#' + id + ')"/>';
     const hi = xy[values.indexOf(max)], lo = xy[values.indexOf(min)];
-    /* Where the line ENDS, which on a net-worth reading is the only point on it
-       that is a fact about now. Opt-in, so nothing else that uses this changes. */
-    const endDot = o.endDot
-      ? '<circle cx="' + xy[xy.length - 1][0].toFixed(1) + '" cy="' + xy[xy.length - 1][1].toFixed(1) +
-        '" r="' + (o.endDotR || 2.4) + '" fill="' + color + '"/>'
-      : "";
     const marks = o.area ? "" :
       '<circle cx="' + hi[0].toFixed(1) + '" cy="' + hi[1].toFixed(1) + '" r="1.5" fill="' + color + '" opacity=".55"/>' +
       '<circle cx="' + lo[0].toFixed(1) + '" cy="' + lo[1].toFixed(1) + '" r="1.5" fill="' + color + '" opacity=".55"/>';
     return '<svg viewBox="0 0 ' + w + ' ' + h + '"' +
       (o.area ? ' preserveAspectRatio="none"' : ' width="' + w + '" height="' + h + '"') + ' fill="none">' +
       area + '<path d="' + d + '" stroke="' + color + '" stroke-width="' + (o.strokeWidth || 1.7) +
-      '" stroke-linecap="round" stroke-linejoin="round"/>' + marks + endDot + '</svg>';
+      '" stroke-linecap="round" stroke-linejoin="round"/>' + marks + '</svg>';
   }
 
 
