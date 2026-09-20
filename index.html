@@ -3857,7 +3857,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21h";
+  const APP_BUILD = "2026-09-21i";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -14426,7 +14426,12 @@
           strip.className = "range-tabs settings-nav page-groups";
           strip.id = "groups-" + tab;
           strip.setAttribute("aria-label", "Which part of this page");
-          panel.insertBefore(strip, panel.firstChild);
+          /* After a period strip where the page has one, first otherwise. On
+             Charts the period is the outer question - it applies to all three
+             views - so it reads left to right: the range, then the view of it. */
+          const lead = panel.querySelector(":scope > .range-tabs:not(.page-groups)");
+          if (lead) lead.insertAdjacentElement("afterend", strip);
+          else panel.insertBefore(strip, panel.firstChild);
           strip.addEventListener("click", ev => {
             const b = ev.target.closest("[data-page-group]");
             if (!b) return;
@@ -14435,28 +14440,50 @@
                into view have not been measured since they went out of it, and
                the bento sizes what it can see. */
             signature = ""; buildContents(false);
-            /* AND NOTHING SCROLLS. This called panelNow.scrollIntoView(), which
-               is how the page came to yank itself back to the top while you were
-               reading down it - measured at 400 and back to 0 on the next frame.
-               It was never needed either: this strip is the first thing in the
-               panel, so you have to be able to see it to press it, which means
-               you are already where it would have taken you. */
+
+            /* The top of what you asked for. A sub-tab is a different view, and
+               every other sub-tab in this app - Settings, Loans, History - starts
+               its view at the top. Predictable, and it cannot fight anyone.
+
+               There was a per-group scroll memory here. It worked for one group
+               and never for another, and I could not say why: the position was
+               applied and then taken away with room to spare and nothing calling
+               any scroll API. A retry ladder that re-applies a scroll behind the
+               user's back is a worse thing to ship than landing at the top.
+
+               The rubber-band itself was elsewhere and is gone - see the strip,
+               which no longer rewrites its own buttons on every change. */
+            window.scrollTo({ top: 0, behavior: "auto" });
           });
         }
         const on = pageGroupOf(tab);
-        const want = gs.map(g => g.key + (g.key === on ? "*" : "")).join("|");
-        // Only when it changed: this runs on every rail pass, and a DOM write on
-        // every pass is what the page observer turns into another pass.
+        /* THE KEYS, NOT THE CHOICE. Rewriting the markup when the chosen group
+           changed put new BUTTONS in the page, which is a childList change, which
+           the page observer turns into a second full pass 220ms later - and the
+           scroll position does not survive that pass. Measured: arrive at a group
+           at 260, hold 210ms, drop to 0 with 600px of room still there.
+
+           The groups themselves never change. Only which one is active does, and
+           that is a class, which this observer does not watch. */
+        const want = gs.map(g => g.key).join("|");
         if (strip.dataset.of !== want){
           strip.dataset.of = want;
           strip.innerHTML = gs.map(g =>
-            '<button type="button" data-page-group="' + g.key + '"' +
-            (g.key === on ? ' class="active" aria-pressed="true"' : ' aria-pressed="false"') +
-            '>' + escapeHtml(g.label) + '</button>').join("");
+            '<button type="button" data-page-group="' + escapeHtml(g.key) + '">' +
+            escapeHtml(g.label) + '</button>').join("");
           if (typeof markScrollableNavs === "function") markScrollableNavs();
-          if (typeof revealInRow === "function")
-            revealInRow(strip, strip.querySelector("button.active"));
         }
+        // Every pass, and free when it is already right: toggle does not touch
+        // the attribute when the class is already in the state asked for.
+        let moved = false;
+        strip.querySelectorAll("[data-page-group]").forEach(b => {
+          const isOn = b.dataset.pageGroup === on;
+          if (b.classList.contains("active") !== isOn) moved = true;
+          b.classList.toggle("active", isOn);
+          b.setAttribute("aria-pressed", isOn ? "true" : "false");
+        });
+        if (moved && typeof revealInRow === "function")
+          revealInRow(strip, strip.querySelector("button.active"));
         return strip;
       }
 
@@ -18403,10 +18430,11 @@ if ("serviceWorker" in navigator &&
   /* One subject at a time. The strip is the same component Settings, Loans and
      History use; this is only its spacing and the class that puts a group away. */
   .page-groups{ margin-bottom: var(--sp-8); }
-  /* Charts carries two: which view, and which period. Both are inline-flex, so
-     they share a line where there is room and wrap where there is not. */
-  #tab-charts > .page-groups{ margin-right: var(--sp-6); vertical-align: top; }
-  #tab-charts > #range-tabs{ margin-bottom: var(--sp-8); vertical-align: top; }
+  /* Charts carries two: which period, then which view of it. Both are
+     inline-flex, so they share a line where there is room and wrap where there
+     is not. The period leads because it applies to all three views. */
+  #tab-charts > #range-tabs{ margin-right: var(--sp-6); vertical-align: top; }
+  #tab-charts > .page-groups{ margin-bottom: var(--sp-8); vertical-align: top; }
   /* !important because the rail writes inline display on these same blocks and
      the two facts must not be able to overwrite each other: the rail says
      "hidden", this says "not the group you are looking at". */
