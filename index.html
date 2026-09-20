@@ -4013,7 +4013,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21q";
+  const APP_BUILD = "2026-09-21r";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -15538,21 +15538,25 @@
 
            One measuring pass for the whole grid rather than one per card: the
            cost is a single forced layout either way. */
-        /* HOLD THE PAGE UP WHILE WE LOOK AT IT. .is-measuring un-pins every card
-           so each reports its natural height, which makes the grid a completely
-           different size for the length of the read - measured on a real machine
-           at 1,038 -> 2,889 -> 967 -> 911 in one pass. A page that dips below the
-           window during that has nowhere to be scrolled to, and the browser
-           clamps to 0. On a dashboard with 106px of travel that is the whole
-           scroll, gone, every time anything re-renders.
+        /* .is-measuring un-pins every card so each reports its natural height,
+           which makes the grid a completely different size for the length of the
+           read - measured on a real machine at 1,038 -> 2,889 -> 967 -> 911 in
+           one pass. A page that dips below the window during that has nowhere to
+           be scrolled to, and the browser clamps to 0. On a dashboard with 106px
+           of travel that is the whole scroll, gone, every time anything
+           re-renders.
 
-           Nothing scrolls and nothing ends up a different height, so this was
-           invisible to every check I had: it is over inside one task, and on a
-           page with room to spare the clamp has nothing to take.
+           THE SCROLL IS KEPT, NOT THE LAYOUT. Holding the grid up with
+           min-height was the obvious instrument and the wrong one: the grid
+           stretches to that minimum, the rows take the extra space, and every
+           card fills its now-too-big area - then the next pass measures the
+           stretched card and writes it into --rows. Cards with an acre of empty
+           space in them, worse on every pass.
 
-           A measurement is not a change. The grid keeps its height through it. */
-        const heldAt = host.getBoundingClientRect().height;
-        if (heldAt > 0) host.style.minHeight = heldAt + "px";
+           So the page is allowed to change size while it is measured, which is
+           what measuring is, and the position is put back immediately after, in
+           the same task, before the browser paints. */
+        const keptY = window.scrollY;
         host.classList.add("is-measuring");
         const natural = cards.map(el => el.getBoundingClientRect().height);
         host.classList.remove("is-measuring");
@@ -15585,10 +15589,10 @@
           // somebody drags a corner - leaves this exactly as it was.
           setRows(el, Math.max(n, floorRows(tab, el)));
         });
-        /* Released here, not after the measurement: the rows above are what the
-           grid will actually be, so this is the first moment letting go cannot
-           drop the page under the window. */
-        host.style.minHeight = "";
+        /* Back where the reader had it. Same task as the measurement that took
+           it away, so the clamped position is never painted; and only when it
+           actually moved, so this cannot fight a scroll in progress. */
+        if (Math.abs(window.scrollY - keptY) > 1) window.scrollTo(0, keptY);
         /* And check. The natural pass reports a card with nothing holding it,
            and the parts that size themselves against the card measure smaller
            there than they will be once it is put back - measured at up to 105px
@@ -18932,9 +18936,11 @@ if ("serviceWorker" in navigator &&
        has room, so every card swallowed the wheel while having nothing to move. */
     overflow: visible;
   }
-  /* A minimum, not a ceiling. grid-row: span N sets the height exactly, which is
-     what made a card able to be shorter than its contents in the first place. */
-  .bento > *{ height: auto; min-height: 100%; }
+  /* The row span IS the height, and stays that way. This was `height: auto;
+     min-height: 100%` so a card could grow past its span - which is also what
+     let a stretched grid stretch the card inside it, and then be measured, and
+     then stretch further. A card can still spill past its box; it is
+     overflow: visible and nothing is clipped. */
   /* While ARRANGING it scrolls again: there you drag a card deliberately smaller
      than its contents, and you have to be able to see what is inside it. */
   body.is-layout-editing .bento > *{ overflow: auto; height: 100%; min-height: 0; }
