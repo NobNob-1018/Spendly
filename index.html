@@ -202,75 +202,84 @@
   .tm-trend{ font-size: var(--fs-3xs); font-weight:700; color: var(--ink-soft); white-space:nowrap; }
   .tm-hint, .tm-spark, .tm-aside-label, .tm-trend-period{ display:none; }
   /* ---------- the card the dashboard opens with -------------------------- */
-  /* It uses the app's own card anatomy - the banded head with an icon, a
-     sentence-case heading and its line - rather than the uppercase micro-label a
-     hero banner would use. This is a ledger header, and it belongs to this app. */
+  /* Three bands, each using the whole width. The previous version placed a
+     figure at one end and a chart at the other and left a thousand pixels of
+     nothing between them, which is what "slapped on" looks like: air is not
+     the same thing as presence. */
+
+  /* 1. the reading. Top left, where reading starts. */
+  .tmw-read{ padding-top: var(--sp-6); }
+  .tmw-line{ display:flex; align-items:baseline; gap: var(--sp-7); flex-wrap:wrap; }
   #total-money-card .tm-value{
     display:block; white-space:nowrap;
     font-size: var(--fs-hero); line-height:1.02; letter-spacing:-0.03em;
   }
   #dash-tm-trend{
-    flex:0 0 auto; margin-left:auto; padding: 3px var(--sp-5);
+    flex:0 0 auto; padding: 3px var(--sp-5);
     font-size: var(--fs-2xs); border-radius: var(--r-pill);
-    background: var(--surface); border:1px solid var(--line);
+    background: var(--sunken); border:1px solid var(--line);
   }
-
-  .tmw{ display:flex; align-items:flex-end; gap: var(--sp-9); }
-  .tmw-figure{ flex:1 1 auto; min-width:0; }
+  .tmw-meta{ margin: var(--sp-4) 0 0; font-size: var(--fs-2xs); color: var(--ink-dim); }
 
   /* Only drawn when the total HAS parts. With investments left out of it - the
-     default - the one part IS the total, and printing it under the figure is the
-     same number twice, 30px apart. */
+     default - the one part IS the total, and printing it under the figure is
+     the same number twice. */
   .tmw-parts{ display:flex; flex-wrap:wrap; gap: var(--sp-5); margin-top: var(--sp-6); }
   .tmw-parts:empty{ display:none; }
   .tmw-part{
-    display:flex; flex-direction:column; gap:2px; min-width:0;
-    padding: var(--sp-5) var(--sp-6); background: var(--sunken); border-radius: var(--r-md);
+    display:flex; align-items:baseline; gap: var(--sp-4); min-width:0;
+    padding: var(--sp-3) var(--sp-6); background: var(--sunken); border-radius: var(--r-pill);
   }
-  .tmw-part .k{ font-size: var(--fs-3xs); font-weight:700; text-transform:uppercase;
-    letter-spacing: var(--track-caps); color: var(--ink-dim); }
-  .tmw-part .v{ font-size: var(--fs-md); font-weight:700; font-variant-numeric: tabular-nums; }
+  .tmw-part .k{ font-size: var(--fs-2xs); color: var(--ink-dim); }
+  .tmw-part .v{ font-size: var(--fs-sm); font-weight:700; font-variant-numeric: tabular-nums; }
 
-  /* The trend, anchored. It was a stretched path with no baseline, no end point
-     and no period, which is a shape rather than a reading. */
-  .tmw-trend{ flex:0 1 340px; min-width:0; margin:0;
-    display:flex; flex-direction:column; gap: var(--sp-4); }
-  .tmw-spark{ height:76px; border-bottom:1px solid var(--line); }
-  .tmw-spark svg{ display:block; width:100%; height:100%; }
-  .tmw-trend figcaption{ font-size: var(--fs-3xs); color: var(--ink-faint); text-align:right; }
+  /* 2. its history, as the card's own surface. Bled to both edges, so the width
+     of a span-12 card is carrying something instead of standing empty. */
+  .tmw-chart{ margin: var(--sp-7) calc(var(--sp-9) * -1) 0; height:104px; }
+  .tmw-chart svg{ display:block; width:100%; height:100%; }
 
-  /* Real, and not in the figure above. Equal weight to each other and a rule
-     between them and the total: at four fifths of what is held, money owed to
-     you is not a footnote in the dimmest ink on the card. */
-  .tmw-outside{ margin-top: var(--sp-8); padding-top: var(--sp-7); border-top:1px solid var(--line); }
+  /* 3. what is real and is not in the figure. One strip in the same sunken
+     material as the head band, closing the card - not three tall boxes with
+     small labels in them, which read as empty furniture. */
+  .tmw-outside{
+    display:flex; align-items:center; gap: var(--sp-6) var(--sp-7); flex-wrap:wrap;
+    margin: 0 calc(var(--sp-9) * -1) calc(var(--sp-9) * -1);
+    padding: var(--sp-6) var(--sp-9);
+    background: var(--sunken); border-top:1px solid var(--line);
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+  }
   .tmw-outside:empty{ display:none; }
-  .tmw-outside-k{ display:block; margin-bottom: var(--sp-5);
-    font-size: var(--fs-3xs); font-weight:700; text-transform:uppercase;
-    letter-spacing: var(--track-caps); color: var(--ink-dim); }
-  /* 140, not 168: at 168 only one tile fits a 308px phone card, so three of them
-     cost 210px of the first screen you see. Two per row on a phone, three on a
-     desktop, from the one rule. */
-  .tmw-tiles{ display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--sp-5); }
-  .tmw-tile{
-    display:flex; flex-direction:column; gap:3px; min-width:0; text-align:left;
-    padding: var(--sp-6); background: var(--sunken);
-    border:1px solid var(--line); border-radius: var(--r-md); color: inherit;
+  .tmw-outside-k{
+    flex:0 0 auto; font-size: var(--fs-3xs); font-weight:700; text-transform:uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim);
   }
-  .tmw-tile .k{ font-size: var(--fs-2xs); color: var(--ink-dim); }
-  .tmw-tile .v{ font-size: var(--fs-lg); font-weight:700; font-variant-numeric: tabular-nums; }
-  .tmw-tile .v.is-in{ color: var(--positive); }
-  .tmw-tile .v.is-out{ color: var(--negative); }
-  /* They go to Loans & Invest, so they say so on the way past. Background only,
-     at the app's fast step, and only where there is a pointer to do it with. */
+  .tmw-items{ display:flex; align-items:center; flex-wrap:wrap; flex:1 1 auto; gap: var(--sp-4); }
+  .tmw-item{
+    display:flex; align-items:baseline; gap: var(--sp-5); min-width:0;
+    padding: var(--sp-3) var(--sp-6); border:0; background:none;
+    border-radius: var(--r-sm); color: inherit; text-align:left;
+  }
+  /* A hairline between them, not a box around each. */
+  .tmw-item + .tmw-item{ border-left:1px solid var(--line); }
+  .tmw-item .k{ font-size: var(--fs-2xs); color: var(--ink-dim); white-space:nowrap; }
+  .tmw-item .v{ font-size: var(--fs-md); font-weight:700; font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .tmw-item .v.is-in{ color: var(--positive); }
+  .tmw-item .v.is-out{ color: var(--negative); }
+  /* They go to Loans & Invest, so they say so on the way past. */
   @media (hover: hover){
-    button.tmw-tile{ cursor:pointer; transition: background var(--dur-fast) var(--ease-out); }
-    button.tmw-tile:hover{ background: var(--hover); }
+    button.tmw-item{ cursor:pointer; transition: background var(--dur-fast) var(--ease-out); }
+    button.tmw-item:hover{ background: var(--hover); }
   }
 
   @media (max-width: 860px){
-    .tmw{ flex-direction:column; align-items:stretch; gap: var(--sp-7); }
-    .tmw-trend{ flex:0 0 auto; }
-    .tmw-spark{ height:60px; }
+    .tmw-chart{ height:84px; margin-left: calc(var(--sp-7) * -1); margin-right: calc(var(--sp-7) * -1); }
+    .tmw-outside{
+      margin: 0 calc(var(--sp-7) * -1) calc(var(--sp-7) * -1);
+      padding: var(--sp-6) var(--sp-7); align-items:flex-start;
+    }
+    /* Stacked, the hairline is a rule between rows rather than between columns. */
+    .tmw-item + .tmw-item{ border-left:0; }
+    .tmw-items{ gap: var(--sp-3) var(--sp-6); }
   }
 
   /* ---------- a budget bar ----------------------------------------------- */
@@ -2820,19 +2829,18 @@
         <header class="panel-head is-toolbar">
           <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><path d="M3 7.5V17a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 9.5h-4.2a2.75 2.75 0 0 0 0 5.5H21z"/></svg></span><span class="h-text">Total money</span></h2>
           <p class="sub">Everything you hold right now, and which way it has moved.</p>
-          <span class="tm-trend" id="dash-tm-trend" style="display:none;"></span>
         </header>
 
-        <div class="tmw">
-          <div class="tmw-figure">
+        <div class="tmw-read">
+          <div class="tmw-line">
             <div class="tm-value num" id="dash-tm-value">₱0.00</div>
-            <div class="tmw-parts" id="dash-tm-parts"></div>
+            <span class="tm-trend" id="dash-tm-trend" style="display:none;"></span>
           </div>
-          <figure class="tmw-trend">
-            <div class="tmw-spark" id="dash-tm-spark" aria-hidden="true"></div>
-            <figcaption id="dash-tm-caption">the last 60 days</figcaption>
-          </figure>
+          <p class="tmw-meta" id="dash-tm-meta"></p>
+          <div class="tmw-parts" id="dash-tm-parts"></div>
         </div>
+
+        <div class="tmw-chart" id="dash-tm-spark" aria-hidden="true"></div>
 
         <div class="tmw-outside" id="dash-tm-outside"></div>
       </div>
@@ -3692,7 +3700,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-20b";
+  const APP_BUILD = "2026-09-20c";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4184,7 +4192,10 @@
     [...panel.children].forEach(el=>{
       if (el.classList.contains("settings-nav")) return;
       if (el.dataset && el.dataset.settingsGroup) current = el.dataset.settingsGroup;
-      if (current) el.style.display = (current === group) ? "" : "none";
+      /* A card that has hidden itself because it has nothing to show stays
+         hidden. Opening a group must not overrule the page about what is in it. */
+      const mine = current === group && el.dataset.empty !== "1";
+      if (current) el.style.display = mine ? "" : "none";
     });
     document.querySelectorAll("#settings-nav button").forEach(b=>
       b.classList.toggle("active", b.dataset.settings === group));
@@ -4676,10 +4687,7 @@
                                      area:true, strokeWidth:2, endDot:true,
                                      color:"var(--accent)" })
           : "";
-        const cap = document.getElementById("dash-tm-caption");
-        if (cap) cap.textContent = series.length > 1
-          ? "the last " + series.length + " days"
-          : "not enough history yet";
+
       }
     }
 
@@ -4720,13 +4728,28 @@
         : "";
     }
 
+    /* What the figure is across. With one part the breakdown is the total, so
+       the useful thing to say is not what it is made of but where it is. */
+    const dashMeta = document.getElementById("dash-tm-meta");
+    if (dashMeta){
+      /* The period used to be a caption inside the chart, bottom-right. The line
+         rises to the right, so on a phone it was written over its own data - and
+         a label that can collide with the data will, sooner or later, whatever
+         the numbers are. Out here nothing can be drawn on it. */
+      const n = savings.length;
+      const where = n ? "across " + n + " account" + (n === 1 ? "" : "s") : "no accounts yet";
+      dashMeta.textContent = series.length > 1
+        ? where + " · the last " + series.length + " days"
+        : where;
+    }
+
     /* And what is outside it, at the weight it deserves. Each one lives on
        Loans & Invest, so each one goes there. */
     const dashOutside = document.getElementById("dash-tm-outside");
     if (dashOutside){
       dashOutside.innerHTML = aside.length
-        ? '<span class="tmw-outside-k">Not in this total</span><div class="tmw-tiles">' +
-          aside.map(r=>`<button type="button" class="tmw-tile" data-tm-go="loans">` +
+        ? '<span class="tmw-outside-k">Not in this total</span><div class="tmw-items">' +
+          aside.map(r=>`<button type="button" class="tmw-item" data-tm-go="loans">` +
             `<span class="k">${escapeHtml(r.label)}</span>` +
             `<span class="v${r.tone ? " is-" + r.tone : ""}">${fmtMoney(r.value)}</span></button>`).join("") +
           '</div>'
@@ -6557,7 +6580,14 @@
     // the committed part of a month is visible before anything else is spent.
     const card = document.getElementById("recurring-card");
     const list = document.getElementById("recurring-list");
-    if (!recurring.length){ card.style.display = "none"; return; }
+    /* data-empty, not just display:none. applySettingsGroup shows every card in
+       the group it is opening, unconditionally, so a card that had hidden itself
+       for having nothing to show came straight back - and then hid itself again
+       on the next render. That is the Recurring card appearing and disappearing:
+       two writers on one inline property, and whichever ran last won. The
+       attribute is how a card says the hiding is its own. */
+    if (!recurring.length){ card.dataset.empty = "1"; card.style.display = "none"; return; }
+    delete card.dataset.empty;
     card.style.display = "";
     const committed = round2(recurring.filter(r=>r.type !== "income").reduce((t,r)=>t+r.amount,0));
     const max = Math.max.apply(null, recurring.map(r=>r.amount).concat([1]));
@@ -14396,9 +14426,16 @@
       // meant the width, so it is read as one rather than thrown away.
       function rectOf(tab, el){
         const v = spans[tab] && spans[tab][keyOf(el)];
-        if (typeof v === "number") return { c: v, r: null };
-        if (v && typeof v === "object") return { c: v.c || null, r: v.r || null };
-        return { c: null, r: null };
+        if (typeof v === "number") return { c: v, r: null, l: null };
+        if (v && typeof v === "object") return { c: v.c || null, r: v.r || null, l: v.l || null };
+        return { c: null, r: null, l: null };
+      }
+
+      /* Locked against being moved or resized, per tab. Asked for by the event
+         handlers, which know the card but not which tab they are on. */
+      function isLocked(el){
+        const t = currentTab();
+        return !!(t && rectOf(t, el).l);
       }
       function remember(tab, el, patch){
         const id = keyOf(el);
@@ -14410,9 +14447,12 @@
         // height back and the refit did nothing.
         const next = {
           c: ("c" in patch) ? patch.c : now.c,
-          r: ("r" in patch) ? patch.r : now.r
+          r: ("r" in patch) ? patch.r : now.r,
+          l: ("l" in patch) ? patch.l : now.l
         };
-        if (next.c == null && next.r == null) delete spans[tab][id];
+        // l counts here too, or resetting a width to its born value would throw
+        // the record away and take the lock with it.
+        if (next.c == null && next.r == null && next.l == null) delete spans[tab][id];
         else spans[tab][id] = next;
         saveSpans();
       }
@@ -14784,7 +14824,12 @@
           pad.dataset.bentoChrome = "1";
           pad.dataset.card = el.dataset.arrangeId || el.id || "";
           pad.classList.toggle("is-temporary", el.classList.contains("is-unpinned"));
-          pad.setAttribute("aria-hidden", "true");
+          /* Not aria-hidden any more: it holds a real button now, and a button
+             inside an aria-hidden container is one nobody can reach. The three
+             drag targets carry the attribute themselves instead. */
+          const locked = !!rectOf(tab, el).l;
+          el.classList.toggle("is-locked", locked);
+          pad.classList.toggle("is-locked", locked);
           // Width only. There is no height handle because there is no height to
           // set: it is the contents. And the one there used to be was a bar the
           // full width of the card lying in the gutter below it, which is the
@@ -14803,14 +14848,23 @@
              preset sizes - every width you can stop on is one the layout
              already knew how to be. */
           pad.innerHTML =
-            '<div class="card-seam" title="Drag to set the width. Double-click to reset."></div>' +
-            '<div class="card-corner" title="Drag down for a taller card. Double-click to fit the contents."></div>' +
+            '<button type="button" class="card-lock" aria-pressed="' + (locked ? "true" : "false") + '"' +
+              ' title="' + (locked ? "Unlock this card" : "Lock this card where it is") + '"' +
+              ' aria-label="' + (locked ? "Unlock this card" : "Lock this card where it is") + '">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<rect x="4" y="10.5" width="16" height="10" rx="2"/>' +
+                (locked ? '<path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>'
+                        : '<path d="M8 10.5V7a4 4 0 0 1 7.6-1.6"/>') +
+              '</svg></button>' +
+            '<div class="card-seam" aria-hidden="true" title="Drag to set the width. Double-click to reset."></div>' +
+            '<div class="card-corner" aria-hidden="true" title="Drag down for a taller card. Double-click to fit the contents."></div>' +
             // Height alone, in the middle of the bottom edge, where a hand
             // looks for it. 64px rather than the full width - the bar that used
             // to be here was the whole edge and lay across the gutter a dragged
             // card lands in - and the handles no longer take the pointer at all
             // while a card is in the air, which is what actually fixed that.
-            '<div class="card-foot" title="Drag down for a taller card. Double-click to fit the contents."></div>';
+            '<div class="card-foot" aria-hidden="true" title="Drag down for a taller card. Double-click to fit the contents."></div>';
           host.appendChild(pad);
           placeHandles(host, el, pad);
         });
@@ -14955,6 +15009,22 @@
         /* The corner sets the floor. Down makes the card taller than it needs,
            up gives the space back, and it can never go under the contents -
            that is the one direction a set height was ever wrong in. */
+        /* On click, not pointerdown: the seam and the corner start on a press
+           because they are drags, and this is a button. */
+        host.addEventListener("click", ev => {
+          const btn = ev.target.closest && ev.target.closest(".card-lock");
+          if (!btn || !editing) return;
+          ev.preventDefault(); ev.stopPropagation();
+          const pad = btn.closest(".card-handles");
+          const card = pad && (host.querySelector('[data-arrange-id="' + CSS.escape(pad.dataset.card) + '"]')
+                             || document.getElementById(pad.dataset.card));
+          if (!card) return;
+          const now = !rectOf(tab, card).l;
+          remember(tab, card, { l: now ? 1 : null });
+          applySpansAndSeams(host, tab);
+          showToast(now ? "Card locked in place." : "Card unlocked.");
+        });
+
         host.addEventListener("pointerdown", ev => {
           // The corner and the foot are the same gesture. The corner is where a
           // hand goes for both axes, the foot is where it goes for height, and
@@ -14965,6 +15035,7 @@
             const card = pad && (host.querySelector('[data-arrange-id="' + CSS.escape(pad.dataset.card) + '"]')
                                || document.getElementById(pad.dataset.card));
             if (!card) return;
+            if (isLocked(card)) return;      // locked: no height either
             ev.preventDefault(); ev.stopPropagation();
             const box = card.getBoundingClientRect();
             cornerDrag = {
@@ -14983,6 +15054,12 @@
           }
           const seam = ev.target.closest(".card-seam");
           if (!seam || !editing || ev.button !== 0) return;
+          {
+            const p = seam.closest(".card-handles");
+            const c = p && (host.querySelector('[data-arrange-id="' + CSS.escape(p.dataset.card) + '"]')
+                          || document.getElementById(p.dataset.card));
+            if (c && isLocked(c)) return;    // locked: no width either
+          }
           const axis = "x";
           // Named on the overlay: the handles are no longer inside the card,
           // because a card that scrolls would take them with it.
@@ -15329,6 +15406,9 @@
         host.addEventListener("dragstart", ev => {
           const card = ev.target.closest("[data-arrange-id]");
           if (!CARD_DRAG || !editing || !card){ ev.preventDefault(); return; }
+          // Locked: it does not travel. Refused here rather than on the drop, so
+          // nothing lifts and there is no ghost to wonder about.
+          if (isLocked(card)){ ev.preventDefault(); return; }
           dragCard = card.dataset.arrangeId;
           card.classList.add("is-dragging");
           // The handle overlay is at z-index 6 with pointer-events:auto on the
@@ -18165,6 +18245,32 @@ if ("serviceWorker" in navigator &&
   }
   .card-ghost{ overflow: visible; }
   .card-handles > *{ pointer-events: auto; }
+
+  /* The padlock. Top-right of the card's own rectangle, inside it rather than in
+     the gutter - the gutter is where a dragged card lands, and everything that
+     lives there is a drag target. */
+  .card-lock{
+    position:absolute; top: var(--sp-5); right: var(--sp-5); z-index:2;
+    width:28px; height:28px; display:grid; place-items:center; padding:0;
+    background: var(--over); color: var(--ink-soft);
+    border:1px solid var(--line-strong); border-radius: var(--r-md);
+    cursor:pointer; box-shadow: var(--elev-1);
+    transition: background var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
+  }
+  .card-lock svg{ width:15px; height:15px; }
+  @media (hover: hover){ .card-lock:hover{ background: var(--raised); color: var(--ink); } }
+  .card-handles.is-locked .card-lock{
+    background: var(--accent); color: var(--on-accent); border-color: transparent;
+  }
+  /* Locked, the drag targets are still drawn but plainly not offered. */
+  .card-handles.is-locked .card-seam,
+  .card-handles.is-locked .card-corner,
+  .card-handles.is-locked .card-foot{ opacity: .18; pointer-events: none; }
+  /* And the card itself says so, quietly, while the layout is being edited. */
+  body.is-layout-editing .card.is-locked{
+    outline: 1px solid rgb(55 200 184 / .42); outline-offset: -1px;
+  }
 
   /* No entrance animation. There was one, and it fired on every rebuild rather
      than once per mode, because each rebuild makes new elements and "once" is
