@@ -263,10 +263,22 @@
   #insights-card.is-grouped, #wc-card.is-grouped{ grid-column: 1 / -1; }
 
   .tmw-places:empty{ display:none; }
-  .tmw-places-hint{
-    margin: var(--sp-5) 0 0; font-size: var(--fs-3xs); color: var(--ink-faint);
-  }
-  .tmw-places:empty + .tmw-places-hint{ display:none; }
+  /* Every account, with a pin against each: the one place that both adds one to
+     the card and takes one off it. */
+  .tmw-chooser{ margin-top: var(--sp-7); padding-top: var(--sp-6);
+    border-top:1px solid var(--line); }
+  .tmw-chooser[hidden]{ display:none; }
+  .tmw-chooser-k{ display:block; margin-bottom: var(--sp-5);
+    font-size: var(--fs-3xs); font-weight:700; text-transform:uppercase;
+    letter-spacing: var(--track-caps); color: var(--ink-dim); }
+  .tmw-pick{ display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: var(--sp-4) var(--sp-7); }
+  .tmw-pick-row{ display:flex; align-items:center; gap: var(--sp-5); min-width:0;
+    padding: var(--sp-3) 0; }
+  .tmw-pick-n{ flex:1 1 auto; min-width:0; font-size: var(--fs-sm);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tmw-pick-v{ flex:0 0 auto; font-size: var(--fs-2xs); color: var(--ink-dim);
+    font-variant-numeric: tabular-nums; }
   .tmw-place{
     display:flex; flex-direction:column; gap: var(--sp-4); min-width:0;
     padding: var(--sp-6) var(--sp-7); text-align:left; color:inherit;
@@ -357,6 +369,7 @@
   .tmw-item .v{ font-size: var(--fs-md); font-weight:700; font-variant-numeric: tabular-nums; white-space:nowrap; }
   .tmw-item .v.is-in{ color: var(--positive); }
   .tmw-item .v.is-out{ color: var(--negative); }
+  .tmw-item .v .of{ font-weight:600; color: var(--ink-dim); }
   /* They go to Loans & Invest, so they say so on the way past. */
   @media (hover: hover){
     button.tmw-item{ cursor:pointer; transition: background var(--dur-fast) var(--ease-out); }
@@ -1579,21 +1592,18 @@
 
   /* ---------- what changed ------------------------------------------------------ */
   .wc-list{ margin: var(--sp-6) 0; }
-  .wc-row{ display:grid; grid-template-columns: minmax(120px, 1.1fr) minmax(120px, 1.6fr) auto;
-    grid-template-areas: "name bars diff" "basis basis basis";
-    align-items:center; gap: var(--sp-3) var(--sp-6); padding: var(--sp-5) 0;
+  .wc-row{ display:grid; grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name diff" "basis basis";
+    align-items:baseline; gap: var(--sp-3) var(--sp-6); padding: var(--sp-5) 0;
     border-bottom:1px solid var(--line); }
   .wc-row:last-child{ border-bottom:0; }
-  .wc-name{ grid-area: name; display:flex; flex-direction:column; gap:1px;
-    font-size: var(--fs-2xs); font-weight:600; min-width:0; }
-  .wc-flag{ font-size: 9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
-    color: var(--warn); }
-  .wc-bars{ grid-area: bars; position:relative; display:flex; align-items:center;
-    justify-content:center; height:10px; }
-  .wc-bars .wc-neg, .wc-bars .wc-pos{ height:8px; border-radius:2px; }
-  .wc-neg{ background: var(--positive); opacity:.75; margin-left:auto; }
-  .wc-pos{ background: var(--negative); opacity:.75; margin-right:auto; }
-  .wc-mid{ width:1px; height:12px; background: var(--line-strong); flex:none; }
+  /* The name and its flag on one line: the flag was its own shouted caps line,
+     and on five rows of six a warning on almost everything is not a warning. */
+  .wc-name{ grid-area: name; display:flex; align-items:baseline; gap: var(--sp-4);
+    font-size: var(--fs-sm); font-weight:600; min-width:0; }
+  .wc-flag{ flex:0 0 auto; padding: 1px var(--sp-4); border-radius: var(--r-pill);
+    font-size: 9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+    color: var(--warn); background: rgb(226 162 76 / .14); }
   .wc-diff{ grid-area: diff; font-size: var(--fs-2xs); font-weight:700;
     font-variant-numeric: tabular-nums; white-space:nowrap; text-align:right; }
   .wc-diff.is-up{ color: var(--negative); } .wc-diff.is-down{ color: var(--positive); }
@@ -1707,7 +1717,6 @@
      part that can go: the figures carry the same information. */
   @media (max-width: 560px){
     .wc-row{ grid-template-columns: 1fr auto; grid-template-areas: "name diff" "basis basis"; }
-    .wc-bars{ display: none; }
   }
   /* The planner is six columns of figures; it scrolls rather than crushing the
      category cell until its own subtitle lands on the name above it. */
@@ -2874,6 +2883,8 @@
         <header class="panel-head is-toolbar">
           <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><path d="M3 7.5V17a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 9.5h-4.2a2.75 2.75 0 0 0 0 5.5H21z"/></svg></span><span class="h-text">Total money</span></h2>
           <p class="sub">Everything you hold right now, and where it is.</p>
+          <button class="btn btn-ghost btn-sm" id="btn-choose-accounts" type="button"
+                  aria-expanded="false" aria-controls="dash-tm-chooser">Choose accounts</button>
         </header>
 
         <div class="tmw-top">
@@ -2885,7 +2896,7 @@
             <p class="tmw-meta" id="dash-tm-meta"></p>
           </div>
           <div class="tmw-places" id="dash-tm-places"></div>
-          <p class="tmw-places-hint">Drag to reorder · pin to keep an account in view</p>
+          <div class="tmw-chooser" id="dash-tm-chooser" hidden></div>
         </div>
 
         <div class="tmw-outside" id="dash-tm-outside"></div>
@@ -3766,7 +3777,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-20h";
+  const APP_BUILD = "2026-09-20i";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4742,6 +4753,22 @@
   /* Reordering the accounts. HTML5 drag rather than a pointer gesture: these
      tiles are a desk affordance - a phone shows three of them - and the browser
      already draws the drag image, which a hand-rolled one would have to fake. */
+  /* One handler, two places that draw pins: the tiles and the chooser. */
+  function wireAccountPins(host){
+    if (!host) return;
+    host.querySelectorAll("[data-pin-account]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const id = btn.dataset.pinAccount;
+        const now = tmPinnedAccounts();
+        const at = now.indexOf(id);
+        if (at >= 0) now.splice(at, 1); else now.push(id);
+        setUiPref("tmPinnedAccounts", now);
+        renderTotalMoneyBar();
+        showToast(at >= 0 ? "Account taken off the card." : "Account pinned \u2014 it will always show here.");
+      });
+    });
+  }
+
   let acctDragId = null;
   function wireAccountDrag(host){
     if (!host) return;
@@ -4929,17 +4956,30 @@
         btn.addEventListener("click", ()=> activateTab(btn.dataset.tmGo));
       });
       wireAccountDrag(dashPlaces);
-      dashPlaces.querySelectorAll("[data-pin-account]").forEach(btn=>{
-        btn.addEventListener("click", ()=>{
-          const id = btn.dataset.pinAccount;
-          const now = tmPinnedAccounts();
-          const at = now.indexOf(id);
-          if (at >= 0) now.splice(at, 1); else now.push(id);
-          setUiPref("tmPinnedAccounts", now);
-          renderTotalMoneyBar();
-          showToast(at >= 0 ? "Account unpinned." : "Account pinned \u2014 it will always show here.");
-        });
-      });
+
+      /* Every account, shown or not, so this is where one is added as well as
+         where one is taken off. */
+      const chooser = document.getElementById("dash-tm-chooser");
+      if (chooser){
+        chooser.innerHTML = places.length
+          ? '<span class="tmw-chooser-k">Which accounts show on this card</span>' +
+            '<div class="tmw-pick">' + places.map(p => p.id
+              ? `<div class="tmw-pick-row">` +
+                  `<button type="button" class="tmw-pin${p.pinned ? " is-on" : ""}" ` +
+                    `data-pin-account="${escapeHtml(p.id)}" aria-pressed="${p.pinned}" ` +
+                    `aria-label="${p.pinned ? "Unpin " + escapeHtml(p.name) : "Always show " + escapeHtml(p.name)}">` +
+                    `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" ` +
+                      `stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
+                      `<path d="M9 4h6l-1 6 4 3v2H6v-2l4-3z"/><line x1="12" y1="15" x2="12" y2="21"/>` +
+                    `</svg></button>` +
+                  `<span class="tmw-pick-n">${escapeHtml(p.name)}</span>` +
+                  `<span class="tmw-pick-v">${fmtMoney(p.value)}</span>` +
+                `</div>`
+              : "").join("") + '</div>'
+          : "";
+        wireAccountPins(chooser);
+      }
+      wireAccountPins(dashPlaces);
     }
 
     const dashMeta = document.getElementById("dash-tm-meta");
@@ -4961,13 +5001,16 @@
       const bp = typeof budgetPicture === "function" ? budgetPicture() : null;
       const budgetBit = (bp && bp.limited.length)
         ? (()=>{
-            const leftOver = round2(bp.totalLimit - bp.totalSpent);
-            const isOver = leftOver < 0;
+            /* A quantity, not a verdict. "Over budget" is a judgement sitting in
+               a row of amounts, and what belongs there is the amount: what has
+               gone against what was set, for every category at once. */
+            const isOver = bp.totalSpent > bp.totalLimit;
             return '<button type="button" class="tmw-item is-budget" data-tm-budget="1" ' +
-              'title="' + (isOver ? "Over your limits for the month" : "What is left of your limits this month") + '">' +
-              '<span class="k">' + (isOver ? "Over budget" : "Budget left") + '</span>' +
-              '<span class="v ' + (isOver ? "is-out" : "is-in") + '">' +
-                fmtMoney(Math.abs(leftOver)) + '</span></button>';
+              'title="Spent against every limit you have set this month">' +
+              '<span class="k">Budget</span>' +
+              '<span class="v ' + (isOver ? "is-out" : "") + '">' +
+                fmtMoney(bp.totalSpent) + '<span class="of"> / ' + fmtMoney(bp.totalLimit) +
+                '</span></span></button>';
           })()
         : "";
 
@@ -11020,29 +11063,12 @@
       return;
     }
 
-    const usedPct = p.totalLimit > 0 ? (p.totalSpent / p.totalLimit) * 100 : 0;
-    const over = p.totalSpent > p.totalLimit;
-    const ahead = !over && usedPct > p.elapsedPct + 3;
-    /* When the lead already says the overrun, saying it again here is the same
-       number twice in two lines. Over, the useful second fact is where the month
-       ends up if nothing changes. */
-    const verdict = over
-      ? "heading for " + fmtMoney(p.projected) + " by the 30th"
-      : ahead
-        ? "ahead of where today is \u2014 on track for " + fmtMoney(p.projected)
-        : "in step with the month";
 
-    /* Spent against the limit again. What is LEFT of the month moved up to the
-       total-money strip, where it is answered once for the whole month; this
-       card is here for the categories underneath it. */
+    /* THE CATEGORIES, and only those. The month's total is answered once, in the
+       total-money strip, and repeating it above these rows put the same figure
+       twice on one screen. */
     host.innerHTML =
-      '<p class="bgl-lead' + (over ? " is-over" : "") + '">' + fmtMoneyRich(p.totalSpent) +
-        ' <span class="k">of ' + fmtMoney(p.totalLimit) + '</span></p>' +
-      '<p class="bgl-sub' + (over ? " is-over" : "") + '">' + Math.round(usedPct) +
-        '% used on day ' + p.day + ' of ' + p.daysIn +
-        ' \u2014 ' + escapeHtml(verdict) + '</p>' +
-      budgetBarHtml(usedPct, p.elapsedPct, over, !over && usedPct > 85) +
-      '<div class="bgl-list">' + p.limited.slice(0, 4).map(r => {
+      '<div class="bgl-list is-bare">' + p.limited.slice(0, 6).map(r => {
         const rOver = r.spent > r.limit, rNear = !rOver && r.pct > 85;
         return '<div class="bgl">' +
           '<span class="bgl-name">' + escapeHtml(r.cat) + '</span>' +
@@ -12474,6 +12500,18 @@
   {
     const editLimits = document.getElementById("btn-budget-settings");
     if (editLimits) editLimits.addEventListener("click", goToBudgets);
+
+    const chooseBtn = document.getElementById("btn-choose-accounts");
+    const chooseBox = document.getElementById("dash-tm-chooser");
+    if (chooseBtn && chooseBox){
+      chooseBtn.addEventListener("click", ()=>{
+        const open = chooseBox.hasAttribute("hidden");
+        if (open) chooseBox.removeAttribute("hidden"); else chooseBox.setAttribute("hidden", "");
+        chooseBtn.setAttribute("aria-expanded", open ? "true" : "false");
+        // A toggle whose label never changes is one you press twice to find out.
+        chooseBtn.textContent = open ? "Done choosing" : "Choose accounts";
+      });
+    }
   }
 
   /* Each sub-nav carries the function that re-applies whatever it is showing, so
@@ -13488,17 +13526,14 @@
               '</span><span class="fig-sub">−' + money(Math.abs(down.reduce((t, r) => t + r.diff, 0))) + '</span></div>' +
           '</div>';
 
-        const max = Math.max.apply(null, rows.map(r => Math.abs(r.diff)).concat([1]));
+        /* No bars. They were drawn against the largest MOVE on screen and centred
+           on a hairline, so every category was a stub beside whichever one
+           happened to move most - and the figure beside it already says the
+           amount and the percentage, which is the whole content of the bar. */
         const list = '<div class="wc-list">' + rows.map(r => {
-          const w = Math.round((Math.abs(r.diff) / max) * 50);
           return '<div class="wc-row' + (r.notable ? " is-notable" : "") + '">' +
             '<span class="wc-name">' + escapeHtml(r.cat) +
-              (r.notable ? '<span class="wc-flag">unusual for this category</span>' : "") + '</span>' +
-            '<span class="wc-bars">' +
-              '<i class="wc-neg" style="width:' + (r.diff < 0 ? w : 0) + '%"></i>' +
-              '<b class="wc-mid"></b>' +
-              '<i class="wc-pos" style="width:' + (r.diff > 0 ? w : 0) + '%"></i>' +
-            '</span>' +
+              (r.notable ? '<span class="wc-flag">unusual</span>' : "") + '</span>' +
             '<span class="wc-diff ' + (r.diff > 0 ? "is-up" : "is-down") + '">' +
               (r.diff > 0 ? "+" : "−") + money(Math.abs(r.diff)) +
               (r.pct != null && Math.abs(r.b) >= Math.abs(r.diff) * 0.1
