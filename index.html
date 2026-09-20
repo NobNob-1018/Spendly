@@ -790,9 +790,9 @@
      as its font happened to make it, and drifted between the toggles that carry
      an icon and the ones that do not. */
   .range-tabs button{ display:inline-flex; align-items:center; justify-content:center;
-    gap: var(--sp-4); height:28px; padding:0 var(--sp-6);
+    gap: var(--sp-4); height:34px; padding:0 var(--sp-7);
     background:transparent; border:0; border-radius: var(--r-sm);
-    color: var(--ink-dim); font:inherit; font-size: var(--fs-2xs); font-weight:700;
+    color: var(--ink-dim); font:inherit; font-size: var(--fs-sm); font-weight:700;
     cursor:pointer; white-space:nowrap;
     transition: color var(--dur-fast) var(--ease-out),
                 background-color var(--dur-fast) var(--ease-out); }
@@ -830,22 +830,25 @@
   /* Only on the side that has more. A permanent fade over a row that fits says
      nothing, and a fade on the right when you have already scrolled to the end
      says something untrue. */
-  .settings-nav.fade-end{
+  .settings-nav.fade-end,
+  .rd-tabs.fade-end{
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
             mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
   }
-  .settings-nav.fade-start{
+  .settings-nav.fade-start,
+  .rd-tabs.fade-start{
     -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
             mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
   }
-  .settings-nav.fade-start.fade-end{
+  .settings-nav.fade-start.fade-end,
+  .rd-tabs.fade-start.fade-end{
     -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
             mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
   }
   /* Two lines, so it is the one control in the set that cannot be 28px. Stated
      here rather than left as a rule that silently squashes it. */
   #density-toggle button{ flex-direction:column; justify-content:center; gap:0;
-    height:auto; min-height:34px; padding: var(--sp-3) var(--sp-6); line-height:1.15; }
+    height:auto; min-height:40px; padding: var(--sp-3) var(--sp-7); line-height:1.15; }
   #density-toggle button small{ font-size:9px; opacity:.6; text-transform:uppercase; }
   #btn-global-search, #btn-sync, button.ico{ width:32px; height:32px; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--line); border-radius: var(--r-md); color: var(--ink-soft); cursor:pointer; }
   @media (hover: hover){ #btn-global-search:hover, #btn-sync:hover{ color: var(--ink); background: var(--raised); } }
@@ -2211,10 +2214,18 @@
     color: var(--ink-dim);
   }
   /* The peers, across the top, so moving between them is not close-and-start-again. */
+  /* One line that scrolls, never two that wrap. Five tabs at 375px made a 66px
+     wall on top of the form they belong to. Shares the settings nav's rules
+     below, including the fade that says the row continues. */
   .rd-tabs{
-    grid-column: 1 / -1; display: flex; gap: var(--sp-3); flex-wrap: wrap;
-    margin-top: var(--sp-6);
+    grid-column: 1 / -1; display: flex; gap: var(--sp-3); flex-wrap: nowrap;
+    margin-top: var(--sp-6); max-width: 100%;
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+    /* Sideways is this row's; up and down belongs to the form behind it. */
+    touch-action: pan-x;
   }
+  .rd-tabs::-webkit-scrollbar{ display: none; }
+  .rd-tabs > .rd-tab{ flex: 0 0 auto; }
   .rd-tab{
     padding: var(--sp-4) var(--sp-6);
     background: none; border: 0; border-radius: var(--r-pill);
@@ -2222,7 +2233,9 @@
     white-space: nowrap;
   }
   @media (hover: hover){ .rd-tab:hover{ background: var(--hover); color: var(--ink); } }
-  .rd-tab.is-on{ background: var(--accent); color: var(--bg); }
+  /* The rail's tint, like every other one-of-N control in the app. This was the
+     one left filling solid accent when the rest moved over. */
+  .rd-tab.is-on{ background: var(--accent-light); color: var(--accent); font-weight: 700; }
   .rd-body{
     flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
     padding: var(--sp-8);
@@ -2367,6 +2380,9 @@
      window, and 72px clears the masthead; in the side panel it is the panel,
      and 72px would park this on top of the form it belongs to. */
   #rd-body #entry-preview{ top: 0; }
+  /* The drawer head carries the five tabs, so the panel's own Expense/Income
+     row would be the same question asked twice, one row below the other. */
+  #rd-body #entry-mode-toggle{ display: none; }
 
   /* ======================================================================
      THE MASTHEAD, REHAULED — one total, and the logo does something
@@ -2527,30 +2543,6 @@
 
   .nav-content.is-dragging{ opacity: .4; }
   .nav-content.is-drop-before{ box-shadow: inset 0 2px 0 var(--accent); }
-  .nav-pin{
-    flex: 0 0 auto; padding: 1px var(--sp-4); margin: 0;
-    background: none; border: 1px solid var(--line-strong); border-radius: var(--r-pill);
-    font: inherit; font-size: var(--fs-3xs); font-weight: 700; color: var(--ink-dim);
-    cursor: pointer; white-space: nowrap;
-  }
-  @media (hover: hover){ .nav-pin:hover{ border-color: var(--accent); color: var(--ink); } }
-  .nav-pin[aria-pressed="true"]{
-    background: var(--accent-light); border-color: var(--accent); color: var(--accent);
-  }
-
-  /* A glyph, not three words: in a 264px rail the words were taking the room
-     the section's own name needs, and the name is what you are dragging. */
-  .nav-pin{
-    width: 24px; height: 24px; padding: 0; flex: 0 0 auto;
-    display: inline-flex; align-items: center; justify-content: center;
-    border-radius: var(--r-sm);
-  }
-  .nav-pin svg{
-    width: 14px; height: 14px;
-    fill: none; stroke: currentColor; stroke-width: 1.8;
-    stroke-linecap: round; stroke-linejoin: round;
-  }
-  .nav-pin[aria-pressed="true"] svg path{ fill: currentColor; }
   /* ONE line. Two was the right call when this row was a name and nothing else;
      with a grip, a dot and a pin on it the name gets about 150px of a 212px box,
      so seven of eleven wrapped and the list became eleven rows of two different
@@ -2569,7 +2561,6 @@
   }
   nav.tabs .nav-content.is-chip .nav-content-dot{ grid-column: 2; }
   nav.tabs .nav-content.is-chip .nav-content-t{ grid-column: 3; }
-  nav.tabs .nav-content.is-chip .nav-pin{ grid-column: 4; }
 
   /* ---------- one account, looked at --------------------------------------- */
   .acct-view[hidden]{ display: none; }
@@ -2705,7 +2696,6 @@
   nav.tabs .nav-content.is-chip{ grid-template-columns: 9px minmax(0, 1fr) 24px auto; }
   nav.tabs .nav-content.is-chip .nav-content-dot{ grid-column: 1; }
   nav.tabs .nav-content.is-chip .nav-content-t{ grid-column: 2; }
-  nav.tabs .nav-content.is-chip .nav-pin{ grid-column: 3; }
   nav.tabs .nav-content.is-chip .nav-hide{ grid-column: 4; }
 
   .nav-gone{ margin-top: var(--sp-5); padding-top: var(--sp-5);
@@ -2806,6 +2796,9 @@
 
   <!-- ADD EXPENSE / INCOME -->
   <section id="tab-add" class="tab-panel" style="display:none;">
+    <!-- Expense / Income, for the Add page itself. In the drawer the strip in
+         the head is the one you use, and this one is hidden - two rows of the
+         same five choices, one above the other, is a question asked twice. -->
     <div class="range-tabs" id="entry-mode-toggle">
       <button class="active" data-mode="expense"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M12 4v11"/><path d="M8 11l4 4 4-4"/><path d="M4 20h16"/></svg>Expense</button>
       <button data-mode="income"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M12 20V9"/><path d="M8 13l4-4 4 4"/><path d="M4 4h16"/></svg>Income / Payslip</button>
@@ -3869,7 +3862,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21c";
+  const APP_BUILD = "2026-09-21d";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4322,7 +4315,9 @@
   /* The fade is a promise that there is more along the row, so it is only made
      when there is. Re-checked on resize, because a rotation changes the answer. */
   function markScrollableNavs(){
-    document.querySelectorAll(".settings-nav").forEach(nav => {
+    /* .rd-tabs too: the add strip is the same shape of problem - more labels
+       than a phone is wide - and this is the code that already solves it. */
+    document.querySelectorAll(".settings-nav, .rd-tabs").forEach(nav => {
       const more = nav.scrollWidth - nav.clientWidth;
       nav.classList.toggle("fade-start", more > 4 && nav.scrollLeft > 4);
       nav.classList.toggle("fade-end", more > 4 && nav.scrollLeft < more - 4);
@@ -7837,6 +7832,10 @@
      directly. A button is how a PERSON asks for something; code asks for the
      thing. */
   let openEntryPanel = null;
+  /* The bare form, with no tab strip: used by the callers that already know
+     which mode they want and set it themselves - Copy into a new entry, the
+     onboarding button, the palette commands. openAdd() is the one with the
+     strip, and it is what the + calls. */
   function openAddSurface(){
     if (openEntryPanel){ openEntryPanel(); return; }
     activateTab("add");   // before the drawer exists, and on any build without it
@@ -14239,12 +14238,10 @@
       /* What a phone keeps on the page. Budget joins it because "am I inside my
          limits" is one of the four questions this tab exists to answer, and the
          one you most want on the screen you actually carry. */
-      /* welcome-card is here for the same reason and more sharply: the rail list
-         is display:none on a phone, so before the page chips a first-run phone
-         had NO route to its own setup card. */
-      const PHONE_KEEP = { dashboard: ["welcome-card", "total-money-card",
-                                       "money-overview-card", "budget-card",
-                                       "blk-recent-activity"] };
+      /* PHONE_KEEP is gone with the rest of the shortlist. It narrowed the
+         dashboard to four cards on a phone and sent the others to a drawer,
+         which is the behaviour this change exists to remove. A phone gets the
+         whole page and scrolls, like every other page in the app. */
       const railPhone = () => !!(window.matchMedia && window.matchMedia("(max-width: 720px)").matches);
       let pinned = {};
       try{ pinned = JSON.parse(localStorage.getItem(PIN_KEY) || "{}") || {}; }catch(e){ pinned = {}; }
@@ -14333,7 +14330,9 @@
         const btn = ev.target.closest("button[data-tab]");
         if (!btn) return;
         // The controls that sit inside a destination row are not the row.
-        if (ev.target.closest(".nav-pin, .nav-hide, .nav-key")) return;
+        // The pin class went with the pin. The X and the key are still in this
+        // row and still must not start a drag.
+        if (ev.target.closest(".nav-hide, .nav-key")) return;
         // Nothing to disclose here, so the press is simply navigation and the
         // app's own handler should have it.
         if (btn.classList.contains("has-no-list")) return;
@@ -14437,35 +14436,26 @@
       // What stays in the page: the first headed section, plus every block that
       // has no heading of its own — the insight strip, the week, the recap. The
       // rest is reachable, not resident.
+      /* EVERY SECTION, unless it has been hidden on purpose.
+
+         This used to keep a shortlist resident and send the rest to a drawer -
+         a default list per tab, a narrower one per phone, and a pin to override
+         both. Which meant a section could be part of a page without being on
+         it, and that needed advertising, and there turned out to be nowhere
+         good to advertise it: four placements for the list of them, four
+         complaints, every one about where it sat rather than about the list.
+
+         So the shortlist is gone. What is part of the page is on the page, and
+         the only way one leaves is Edit and the X beside it - a decision made
+         on purpose, undone in the same place.
+
+         The fallback stands: hiding every section would otherwise leave an
+         empty page, so an all-hidden tab shows all of them again. The X guards
+         against reaching that state in the first place. */
       function glanceOf(tab, secs){
-        /* Nothing that has been taken out of the list may be the thing holding
-           the page open. Without this, hiding every section left the page still
-           showing one of them, listed under "Not in the list", with an X on it -
-           a card you could not reach and could not remove, standing on a page
-           that said it was not there. */
         const away = new Set(hiddenSecs[tab] || []);
         const here = secs.filter(x => !away.has(x.id));
-        let pool = here.length ? here : secs;
-        // On a phone the pool narrows to what the screen can hold. Nothing is
-        // removed - the rest is one tap away in the list, and a wider screen
-        // gets all of it back without a setting.
-        if (railPhone() && PHONE_KEEP[tab]){
-          const fits = pool.filter(x => PHONE_KEEP[tab].indexOf(x.id) >= 0);
-          if (fits.length) return fits.map(x => x.id);
-        }
-        const want = pinned[tab];
-        if (want && want.length){
-          const live = want.filter(id => pool.some(x => x.id === id));
-          if (live.length) return live;
-        }
-        // Filtered against what this tab actually has, so a renamed or removed
-        // section leaves the tab with its first one rather than with nothing.
-        const def = TAB_DEFAULTS[tab];
-        if (def){
-          const live = def.on.filter(id => pool.some(x => x.id === id));
-          if (live.length) return live;
-        }
-        return pool.length ? [pool[0].id] : [];
+        return (here.length ? here : secs).map(x => x.id);
       }
 
       /* The reader's order, applied to the page as well as to the list — a list
@@ -14551,7 +14541,6 @@
           // No list to disclose: the sub-tabs are the list.
           nav.querySelectorAll(".nav-contents-fold").forEach(el => el.remove());
           spyTargets = [];
-          paintPanelJumps(panel, []);
           const here = buttons.find(b => b.classList.contains("active"));
           if (here) here.classList.add("has-no-list");
           if (listOpen[tab]){ delete listOpen[tab]; save(); }
@@ -14614,7 +14603,6 @@
         active.classList.toggle("has-no-list", secs.length < 2);
         paintTools();
         if (secs.length < 2){
-          paintPanelJumps(panel, []);
           if (listOpen[tab]){ delete listOpen[tab]; save(); }
           paintCarets();
           return;
@@ -14651,15 +14639,6 @@
            - a rail activity, entered deliberately, where the column changing
            height is the thing you asked for. */
         if (!editing){
-          /* While the app is being set up, the page IS the setup card, so it
-             gets the page to itself. A row of jumps to a Monthly overview with
-             no months in it yet is a worse first impression than no row. It
-             returns on its own: the card hides itself once the three steps are
-             done, and a hidden card is not a section. */
-          const start = panel.querySelector("#welcome-card");
-          const settingUp = !!start && (start.checkVisibility
-            ? start.checkVisibility() : start.offsetParent !== null);
-          paintPanelJumps(panel, settingUp ? [] : listed, secs, chosen);
           const slot = contentsSlot();
           if (slot.firstChild) slot.innerHTML = "";
           active.classList.add("has-no-list");
@@ -14667,44 +14646,20 @@
           paintCarets(); paintTools();
           return;
         }
-        /* One at a time: on the page while reading, in the rail while arranging
-           - except on a phone, where the rail is a bottom bar and the fold is
-           display:none. There the chips are the only route to a section
-           PHONE_KEEP left off the page, so arranging must not take them away.
-           (.nav-tools is display:none on a phone too, so this cannot happen
-           today; it is here so that showing it later cannot break the route.) */
-        paintPanelJumps(panel,
-          railPhone() ? secs.filter(x => !away.has(x.id) && !onPage.has(x.id)) : [],
-          secs, chosen);
+
         head.innerHTML =
           '<span class="nav-contents-label">' +
             (editing ? "Arrange" : "Opens beside") + '</span>' +
           '<span class="nav-contents-n">' + listed.length + '</span>';
         box.appendChild(head);
 
-        // Which group a chip belongs to, so the heading can change between them.
-        let lastGroup = null;
+        /* No groups any more. There was "On the page" and "Opens beside"; there
+           is only on the page now, and the hidden ones keep their own heading
+           further down. */
         listed.forEach(s => {
-          // The set the pin WRITES, not the set arrange mode widens to include
-          // every card. `chosen` is every section while editing, so reading it
-          // here lit all six pins at once and told you nothing.
           const on = onPage.has(s.id);
-          if (editing){
-            const g = on ? "on" : "beside";
-            if (g !== lastGroup){
-              lastGroup = g;
-              const gh = document.createElement("p");
-              gh.className = "nav-group-k";
-              gh.textContent = on ? "On the page" : "Opens beside";
-              box.appendChild(gh);
-            }
-          }
-          // Greyed, not gone: it says this screen is too small for it, which is
-          // a different thing from it not being there.
-          const tooBig = railPhone() && PHONE_KEEP[tab] &&
-            PHONE_KEEP[tab].indexOf(s.id) < 0;
           const item = document.createElement("div");
-          item.className = "nav-item" + (tooBig ? " is-too-big" : "");
+          item.className = "nav-item";
 
           const b = document.createElement("button");
           b.type = "button";
@@ -14715,7 +14670,6 @@
           b.setAttribute("aria-pressed", on ? "true" : "false");
           if (beside) b.setAttribute("aria-current", "true");
           if (editing) b.title = "Use the card's menu, or Arrow Up and Down here, to reorder it";
-          if (tooBig) b.title = "More than this screen can hold — opens beside instead";
           b.innerHTML =
             '' +
             '<span class="nav-content-dot" aria-hidden="true"></span>' +
@@ -14724,32 +14678,22 @@
                reorder hint, and whichever was written second would win. */
             '<span class="nav-content-t" title="' + escapeHtml(s.head.textContent.trim()) + '">' +
               escapeHtml(s.head.textContent.trim()) + '</span>' +
-            /* The last one on the page is KEPT, and says so, rather than
-               offering a pin that answers with a refusal. And nothing standing
-               on the page offers to be taken out of the list: unpin it first,
-               which is the step that makes removing it mean anything. */
-            (editing ? '<button type="button" class="nav-pin" data-pin="' + escapeHtml(s.id) + '" ' +
-              (on && onPage.size === 1 ? 'data-kept="1" ' : '') +
-              'aria-pressed="' + (on ? "true" : "false") + '" ' +
-              'aria-label="' + (on && onPage.size === 1
-                                   ? "Kept on the page. Pin another first to move this one."
-                                   : on ? "On the page. Unpin to make it open beside instead."
-                                        : "Pin to keep this on the page.") + '" ' +
-              'title="' + (on && onPage.size === 1 ? "Kept \u2014 pin another first"
-                              : on ? "On the page \u2014 unpin to send it beside"
-                              : "Pin to keep it on the page") + '">' +
-              '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-                '<path d="M9 4h6l-1 6 4 3v2H6v-2l4-3z"/>' +
-                '<line x1="12" y1="15" x2="12" y2="21"/>' +
-              '</svg></button>' +
-              (on ? '' :
-              '<button type="button" class="nav-hide" data-hide="' + escapeHtml(s.id) + '" ' +
-                'aria-label="Take this out of the list" ' +
-                'title="Take this out of the list">' +
+            /* One control, not two. The pin meant "keep this one resident" and
+               everything is resident, so it has nothing left to say; the X is
+               the whole question now - is this section on this page or not.
+               The last one refuses, because a page with nothing on it is not a
+               page. */
+            (editing ? '<button type="button" class="nav-hide" data-hide="' + escapeHtml(s.id) + '" ' +
+                (onPage.size === 1 ? 'data-kept="1" ' : '') +
+                'aria-label="' + (onPage.size === 1
+                    ? "The last section on this page. It cannot be taken off."
+                    : "Take this off the page") + '" ' +
+                'title="' + (onPage.size === 1 ? "The last one \u2014 it has to stay"
+                                               : "Take this off the page") + '">' +
                 '<svg viewBox="0 0 24 24" aria-hidden="true">' +
                   '<line x1="6" y1="6" x2="18" y2="18"/>' +
                   '<line x1="18" y1="6" x2="6" y2="18"/>' +
-                '</svg></button>') : '');
+                '</svg></button>' : '');
           item.appendChild(b);
 
           // Whatever is inside the card only has somewhere to go while the card
@@ -14810,23 +14754,17 @@
           const hide = ev.target.closest("[data-hide]");
           if (hide){
             ev.stopPropagation();
-            // Defensively, not just in the markup: what is on the page is not
-            // a thing you can take out of the list.
-            if (new Set(glanceOf(tab, secs)).has(hide.dataset.hide)){
+            /* The last one stays. glanceOf falls back to showing everything
+               when a tab has nothing left, so without this the X on the final
+               section would appear to do nothing at all. */
+            if (new Set(glanceOf(tab, secs)).size <= 1){
               if (typeof showToast === "function")
-                showToast("That one is on the page. Unpin it first.");
+                showToast("That is the last section on this page.");
               return;
             }
             const now = new Set(hiddenSecs[tab] || []);
             now.add(hide.dataset.hide);
             hiddenSecs[tab] = [...now];
-            // A section nobody can reach is not allowed to also be the one
-            // holding the page open.
-            const keep = new Set(glanceOf(tab, secs));
-            if (keep.has(hide.dataset.hide) && keep.size === 1){
-              const other = secs.find(x => x.id !== hide.dataset.hide && !now.has(x.id));
-              if (other) pinned[tab] = [other.id];
-            }
             save(); signature = ""; buildContents(false);
             return;
           }
@@ -14849,21 +14787,8 @@
             save(); signature = ""; buildContents(false);
             return;
           }
-          const pin = ev.target.closest("[data-pin]");
-          if (pin){
-            ev.stopPropagation();
-            const id = pin.dataset.pin;
-            const now = new Set(glanceOf(tab, secs));
-            // One has to stay: a page with nothing on it is not a glance.
-            if (now.has(id) && now.size === 1){
-              showToast("Something has to stay on the page. Pin another first.");
-              return;
-            }
-            now.has(id) ? now.delete(id) : now.add(id);
-            pinned[tab] = [...now];
-            save(); signature = ""; buildContents(false);
-            return;
-          }
+          /* The pin handler is gone with the pin. It wrote pinned[tab], the
+             override on a shortlist that no longer exists. */
           const jump = ev.target.closest("[data-jump]");
           if (jump){
             const t = document.getElementById(jump.dataset.jump);
@@ -14873,16 +14798,11 @@
           const hit = ev.target.closest("[data-sec]");
           if (!hit) return;
           const s = secs.find(x => x.id === hit.dataset.sec);
-          if (!s) return;
-          // The one already in front of you is a place on this page; the rest
-          // open beside it.
-          if (chosen.has(s.id)){
-            if (s.head) s.head.scrollIntoView({ block: "start", behavior: still() ? "auto" : "smooth" });
-            return;
-          }
-          // No s.tab here: openBeside stamps it, so there is one place that
-          // decides it rather than one per caller.
-          openBeside(s, secs.filter(x => !chosen.has(x.id)));
+          if (!s || !s.head) return;
+          /* Every section is on this page, so every entry in this list is a
+             place to go to rather than a thing to open. It used to send the
+             ones that were not resident into a drawer. */
+          s.head.scrollIntoView({ block: "start", behavior: still() ? "auto" : "smooth" });
         });
 
         /* ---- arranging ------------------------------------------------------
@@ -15463,43 +15383,9 @@
         return !!(v && typeof v === "object" && v.l);
       }
 
-      /* The sections of this page that open beside it, as a row on the page
-         itself. Rebuilt only when the set changes: this runs on every rail pass,
-         and a DOM write on every pass is a change the observer watching this page
-         turns straight back into another pass. */
-      function paintPanelJumps(panel, items, secs, chosen){
-        if (!panel) return;
-        let row = panel.querySelector(":scope > .panel-jumps");
-        if (!items || !items.length){ if (row) row.remove(); return; }
-        const want = items.map(x => x.id).join("|");
-        if (row && row.dataset.of === want) return;
-        if (!row){
-          row = document.createElement("div");
-          row.className = "panel-jumps";
-          /* APPENDED. It was inserted at the front and that made it the first
-             thing on a page you came to read something else on. A "what else is
-             here" list belongs after the thing it is else to. */
-          panel.appendChild(row);
-          row.addEventListener("click", ev => {
-            const hit = ev.target.closest("[data-jump-sec]");
-            if (!hit) return;
-            const sec = row.secs.find(x => x.id === hit.dataset.jumpSec);
-            if (!sec) return;
-            openBeside(sec, row.secs.filter(x => !row.chosen.has(x.id)));
-          });
-        }
-        // Kept on the node, not closed over: the handler is bound once and the
-        // sections it must open are the ones from the LAST pass, not the first.
-        row.secs = secs; row.chosen = chosen;
-        // Last, still: a late card appended to the panel would otherwise land
-        // under a footer that says "more on this page".
-        if (row.nextElementSibling) panel.appendChild(row);
-        row.dataset.of = want;
-        row.innerHTML = '<span class="panel-jumps-k">More on this page</span>' +
-          items.map(x => '<button type="button" class="panel-jump" data-jump-sec="' +
-            escapeHtml(x.id) + '">' + escapeHtml((x.head.textContent || "").trim()) +
-            '</button>').join("");
-      }
+      /* paintPanelJumps is gone. It drew the "More on this page" footer -
+         the fourth and last placement for a list of sections that were part
+         of a page without being on it. There are none of those now. */
 
       /* Made once and kept: the list has a fixed home under the destinations so
          that changing tabs cannot move them. */
@@ -16381,11 +16267,14 @@
       drawer.setAttribute("aria-labelledby", "rd-title");
       drawer.innerHTML =
         '<div class="rd-bar">' +
-          '<p class="rd-kicker">The rest of this page</p>' +
+          /* Named by whoever opens it. The old wording announced the remainder
+             of the current page, which was true while this drawer held sections
+             of one and has not been true since it stopped. */
+          '<p class="rd-kicker" id="rd-kicker">New entry</p>' +
           '<h2 class="rd-title" id="rd-title"></h2>' +
           '<button type="button" class="rd-close" id="rd-close">' +
-            'Back to the page <kbd>esc</kbd></button>' +
-          '<nav class="rd-tabs" id="rd-tabs" aria-label="The other sections"></nav>' +
+            'Close <kbd>esc</kbd></button>' +
+          '<nav class="rd-tabs" id="rd-tabs" aria-label="What are you adding?"></nav>' +
         '</div>' +
         '<div class="rd-body" id="rd-body"></div>';
       const scrim = document.createElement("div");
@@ -16395,50 +16284,11 @@
       document.body.appendChild(drawer);
 
       let lastFocus = null;
-      function openBeside(sec, peers){
-        const body = document.getElementById("rd-body");
-        if (besideNow && besideNow.block !== sec.block) putBack();
-        if (!homeOf.has(sec.block))
-          homeOf.set(sec.block, { parent: sec.block.parentElement, next: sec.block.nextElementSibling });
-        if (!besideNow) lastFocus = document.activeElement;
-
-        setBlock(sec.block, true);
-        body.appendChild(sec.block);
-        /* Which page this section belongs to, stamped HERE rather than by
-           whoever called. The rail set it before calling and the peer strip
-           below did not - it hands over a section straight from the array it
-           captured when the drawer opened, and only the one originally clicked
-           had ever been stamped. buildContents puts the open section back into
-           the list guarded on besideNow.tab === tab, so an unstamped one failed
-           that test and dropped out of the rail entirely: picking a peer from
-           inside the drawer made its own entry disappear from the list on the
-           left, and the count fall by one.
-
-           A section can only be opened beside from the page it is on, so the
-           current tab is the answer on every path. */
-        sec.tab = currentTab();
-        besideNow = sec;
-
-        document.getElementById("rd-title").textContent = sec.head.textContent.trim();
-        const tabs = document.getElementById("rd-tabs");
-        tabs.innerHTML = peers.map(p =>
-          '<button type="button" class="rd-tab' + (p.id === sec.id ? " is-on" : "") +
-          '" data-beside="' + escapeHtml(p.id) + '">' +
-          escapeHtml(p.head.textContent.trim()) + '</button>').join("");
-        tabs.onclick = ev => {
-          const b = ev.target.closest("[data-beside]");
-          if (!b) return;
-          const next = peers.find(p => p.id === b.dataset.beside);
-          if (next) openBeside(next, peers);
-        };
-
-        drawer.classList.add("is-open");
-        scrim.classList.add("is-open");
-        document.body.classList.add("beside-open");
-        signature = ""; buildContents(false);   // the list marks what is open
-        body.scrollTop = 0;
-        document.getElementById("rd-close").focus();
-      }
+      /* openBeside is gone. It moved a SECTION into the drawer and drew a
+         strip of its peers across the top so you could step between them.
+         Sections do not leave their page any more; openPanelBeside below
+         stays, because the add form and the log forms are tasks you finish
+         and leave rather than parts of a page. */
       // A whole panel rather than a section of one: same drawer, no peer strip,
       // and it is put back exactly as a section is.
       /* asModal picks the SHAPE the panel opens in, and it is set here rather
@@ -16458,6 +16308,8 @@
         body.appendChild(el);
         besideNow = { block: el, id: "__panel__" + el.id, head: null, tab: null, inside: [] };
         document.getElementById("rd-title").textContent = title;
+        const kick = document.getElementById("rd-kicker");
+        if (kick) kick.textContent = "New entry";
         document.getElementById("rd-tabs").innerHTML = "";
         drawer.classList.add("is-open");
         scrim.classList.add("is-open");
@@ -16474,11 +16326,15 @@
       /* fromFab: the + in the corner opens this one, so it needs no button of
          its own in a header with no room for one. */
       const LOG_FORMS = [
-        { body: "loans-given-body", submit: "btn-add-loan-given", fromFab: true,
+        /* asModal on all of them. The comment above says a short form you finish
+           and leave belongs in FRONT of the page, and only the savings one was
+           ever given the flag that does it - so the + strip changed shape as you
+           moved along it, two tabs in front and three beside. Measured. */
+        { body: "loans-given-body", submit: "btn-add-loan-given", fromFab: true, asModal: true,
           probe: "lg-person", label: "Add a loan given", title: "Log a loan you gave" },
-        { body: "loans-taken-body", submit: "btn-add-loan-taken", fromFab: true,
+        { body: "loans-taken-body", submit: "btn-add-loan-taken", fromFab: true, asModal: true,
           probe: "lt-person", label: "Add a loan taken", title: "Log a loan you took" },
-        { body: "investments-body", submit: "btn-add-investment", fromFab: true,
+        { body: "investments-body", submit: "btn-add-investment", fromFab: true, asModal: true,
           probe: "inv-name", label: "Add an investment", title: "Log an investment" },
         { body: "savings-form-card", submit: "btn-add-savings",
           probe: "sv-amount", label: "Add an account", title: "Add a savings account",
@@ -16570,92 +16426,78 @@
         if (openLog(b.dataset.openLog)) ev.preventDefault();
       });
 
-      /* ---- the + asks what you are adding --------------------------------
-         It opened the expense form wherever you were, which was wrong on Loans.
-         Reading the screen instead made it silently mean "new investment" on
-         the Investments board, with nothing on the button saying so. A control
-         that means six different things depending on where you are standing is
-         a control you have to think about before pressing, so it offers the six
-         and you get what you picked, from anywhere. */
-      function entryForm(mode){
-        openAddSurface();
-        const m = document.querySelector('#entry-mode-toggle button[data-mode="' + mode + '"]');
-        if (m) m.click();
-      }
-      const ADD_MENU = [
-        { label: "Expense", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 4v11\"/><path d=\"M8 11l4 4 4-4\"/><path d=\"M4 20h16\"/></svg>',
-          run: () => entryForm("expense") },
-        { label: "Income", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 20V9\"/><path d=\"M8 13l4-4 4 4\"/><path d=\"M4 4h16\"/></svg>',
-          run: () => entryForm("income") },
-        { label: "Loan you gave", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14\"/><path d=\"M13 6l6 6-6 6\"/></svg>',
-          run: () => openLog("loans-given-body") },
-        { label: "Loan you took", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M19 12H5\"/><path d=\"M11 6l-6 6 6 6\"/></svg>',
-          run: () => openLog("loans-taken-body") },
-        { label: "Investment", icon: '<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 17l6-6 4 4 8-8\"/><path d=\"M17 7h4v4\"/></svg>',
-          run: () => openLog("investments-body") }
-      ];
+      /* ---- the + opens the form -------------------------------------------
+         It used to open a MENU of five, and the form after that - two steps to
+         write down an expense, where the first step gives the same answer four
+         times out of five. The five are tabs on the form now, so you get the
+         common one immediately and can still change your mind without closing
+         anything.
 
-      let addMenu = null;
-      function buildMenu(){
-        if (addMenu) return addMenu;
-        addMenu = document.createElement("div");
-        addMenu.className = "add-menu";
-        addMenu.id = "add-menu";
-        addMenu.innerHTML =
-          '<div class="add-menu-scrim"></div>' +
-          '<div class="add-menu-card" role="menu" aria-label="What are you adding?">' +
-            ADD_MENU.map((x, i) =>
-              '<button type="button" role="menuitem" class="add-menu-item" data-add="' + i +
-                '" style="--i:' + i + '">' + x.icon + '<span>' + x.label + '</span></button>'
-            ).join("") +
-          '</div>';
-        document.body.appendChild(addMenu);
-        /* Click, not pointerdown - the scrim has to still be here when the tap
-           resolves or it lands on the page behind it. */
-        addMenu.addEventListener("click", ev => {
-          if (ev.target.classList.contains("add-menu-scrim")){ closeMenu(); return; }
-          const b = ev.target.closest("[data-add]");
-          if (!b) return;
-          const item = ADD_MENU[+b.dataset.add];
-          closeMenu();
-          if (item) item.run();
-        });
-        document.addEventListener("keydown", ev => {
-          if (!addMenu || !addMenu.classList.contains("show")) return;
-          if (ev.key === "Escape"){ ev.preventDefault(); ev.stopPropagation(); closeMenu(); return; }
-          if (ev.key !== "ArrowDown" && ev.key !== "ArrowUp") return;
-          ev.preventDefault();
-          const items = [...addMenu.querySelectorAll(".add-menu-item")];
-          const at = items.indexOf(document.activeElement);
-          const next = ev.key === "ArrowDown" ? at + 1 : at - 1;
-          items[(next + items.length) % items.length].focus();
-        }, true);
-        return addMenu;
+         The strip goes in the drawer's HEAD. The body is what gets swapped
+         when you change tab, so a strip inside it would be put back with the
+         panel it belongs to and disappear. #rd-tabs is in the head already -
+         it used to carry the peer sections and nothing carries those now. */
+      const ADD_TABS = [
+        { key: "expense",    label: "Expense",    mode: "expense" },
+        { key: "income",     label: "Income",     mode: "income" },
+        { key: "lent",       label: "Lent",       log: "loans-given-body" },
+        { key: "borrowed",   label: "Borrowed",   log: "loans-taken-body" },
+        { key: "investment", label: "Investment", log: "investments-body" }
+      ];
+      const ADD_TITLE = {
+        expense: "Add an expense", income: "Add income",
+        lent: "Log a loan you gave", borrowed: "Log a loan you took",
+        investment: "Log an investment"
+      };
+
+      /* Painted AFTER whatever opened the drawer, because openPanelBeside and
+         openLog both clear #rd-tabs on their way in - which is what keeps the
+         strip off every other thing that uses this drawer. */
+      function paintAddTabs(key){
+        const tabs = document.getElementById("rd-tabs");
+        if (!tabs) return;
+        tabs.innerHTML = ADD_TABS.map(t =>
+          '<button type="button" class="rd-tab' + (t.key === key ? " is-on" : "") +
+          '" data-add-tab="' + t.key + '">' + escapeHtml(t.label) + '</button>').join("");
+        tabs.onclick = ev => {
+          const hit = ev.target.closest("[data-add-tab]");
+          if (hit) openAdd(hit.dataset.addTab);
+        };
+        const title = document.getElementById("rd-title");
+        if (title) title.textContent = ADD_TITLE[key] || "Add";
+        const kick = document.getElementById("rd-kicker");
+        if (kick) kick.textContent = "What are you adding?";
+        /* After the row exists and has a width, or there is nothing to measure
+           and the fade is decided against an empty box. */
+        if (typeof markScrollableNavs === "function") markScrollableNavs();
+        if (typeof revealInRow === "function")
+          revealInRow(tabs, tabs.querySelector(".rd-tab.is-on"));
       }
-      function openMenu(){
-        buildMenu();
-        addMenu.classList.add("show");
-        document.body.classList.add("add-menu-open");
-        lockPage(true);
-        const fab = document.getElementById("btn-fab-add");
-        if (fab) fab.setAttribute("aria-expanded", "true");
-        const first = addMenu.querySelector(".add-menu-item");
-        if (first) first.focus();
+
+      /* One way in, from the + and from every caller that used to go through
+         the menu. Expense unless asked otherwise. */
+      function openAdd(key){
+        const t = ADD_TABS.find(x => x.key === key) || ADD_TABS[0];
+        if (t.log){
+          openLog(t.log);
+        } else {
+          openAddSurface();
+          const m = document.querySelector('#entry-mode-toggle button[data-mode="' + t.mode + '"]');
+          // Only when it is not already the one showing: the mode buttons
+          // rebuild the category list, and doing that under a caret that has
+          // just been placed takes the focus off the field.
+          if (m && !m.classList.contains("active")) m.click();
+        }
+        paintAddTabs(t.key);
       }
-      function closeMenu(){
-        if (!addMenu || !addMenu.classList.contains("show")) return;
-        addMenu.classList.remove("show");
-        document.body.classList.remove("add-menu-open");
-        lockPage(false);
-        const fab = document.getElementById("btn-fab-add");
-        if (fab){ fab.setAttribute("aria-expanded", "false"); fab.focus(); }
-      }
-      /* Capture, because the button already carries two handlers that would
-         open the entry form underneath this one. */
+      window.openAdd = openAdd;
+
+      /* Capture, because the button carries two older handlers that would open
+         the entry form underneath this one. */
       document.addEventListener("click", ev => {
         if (!ev.target.closest || !ev.target.closest("#btn-fab-add")) return;
         ev.preventDefault(); ev.stopPropagation();
-        if (addMenu && addMenu.classList.contains("show")) closeMenu(); else openMenu();
+        openAdd("expense");
       }, true);
 
       /* ---- everything with one person -------------------------------------
@@ -17250,7 +17092,11 @@
         openEntryPanel = () => {
           // Asking for it twice must not close the thing that was just asked for.
           if (besideNow && besideNow.block === panel) return;
-          openPanelBeside(panel, "Add an entry");
+          /* asModal: a form you fill in and leave belongs in FRONT of the page,
+             which is the shape the three log forms already open in. The five
+             tabs put all of them in one surface, so they had better be one
+             shape too. */
+          openPanelBeside(panel, "Add an entry", true);
           const d = document.getElementById("in-desc");
           if (d) setTimeout(() => d.focus(), 80);
         };
@@ -18449,43 +18295,6 @@ if ("serviceWorker" in navigator &&
      groups. They were 12px apart either side, which is a wall with words in it. */
   /* The list has a home. Nothing above it moves when the tab changes; the list
      itself is the only thing that does, and it says so by arriving. */
-  /* The sections of this page that open beside it, at the END of the page. It
-     has been in the rail under the active destination (which moved the five
-     below it on every tab change), in a fixed slot under all six (which held
-     them still and detached the list from its subject), and at the top of the
-     page (attached, stable, and the first thing you read on a page you came to
-     read something else on). A "what else is here" list goes after the thing it
-     is else to. */
-  .panel-jumps{
-    display: flex; align-items: center; flex-wrap: wrap;
-    gap: var(--sp-4) var(--sp-5);
-    margin-top: var(--sp-9); padding-top: var(--sp-7);
-    border-top: 1px solid var(--line);
-  }
-  /* Sentence case, not the caps label it was: a caps run reads as a heading,
-     and this is a sentence about the page. */
-  .panel-jumps-k{
-    font-size: var(--fs-2xs); font-weight: 600; color: var(--ink-dim);
-  }
-  .panel-jump{
-    height: 28px; padding: 0 var(--sp-6);
-    background: var(--surface); border: 1px solid var(--line);
-    border-radius: var(--r-pill); color: var(--ink-soft);
-    font-size: var(--fs-2xs); cursor: pointer; white-space: nowrap;
-    transition: background var(--dur-fast) var(--ease-out),
-                color var(--dur-fast) var(--ease-out),
-                border-color var(--dur-fast) var(--ease-out);
-  }
-  @media (hover: hover){
-    .panel-jump:hover{ background: var(--raised); color: var(--ink);
-      border-color: var(--line-strong); }
-  }
-  /* A phone had no version of this at all - the rail is a bottom bar there and
-     the list was simply hidden. It is the same row. */
-  @media (max-width: 720px){
-    .panel-jumps{ margin-top: var(--sp-8); padding-top: var(--sp-6); }
-  }
-
   .nav-contents-slot{ display: block; }
   .nav-contents{ animation: navContentsIn var(--dur-base) var(--ease-out) both; }
   @keyframes navContentsIn{
@@ -18494,33 +18303,6 @@ if ("serviceWorker" in navigator &&
   }
   @media (prefers-reduced-motion: reduce){
     .nav-contents{ animation: none; }
-  }
-
-  .nav-group-k{
-    margin: var(--sp-9) 0 var(--sp-4); padding: 0 var(--sp-3);
-    font-size: var(--fs-3xs); font-weight: 700; letter-spacing: var(--track-caps);
-    text-transform: uppercase; color: var(--ink-dim);
-  }
-  .nav-contents > .nav-group-k:first-of-type{ margin-top: var(--sp-4); }
-  nav.tabs .nav-pin{
-    background: transparent; border: 1px solid var(--line-strong); color: var(--ink-dim);
-  }
-  /* A tint, not a fill. Six saturated squares stacked in a 240px rail was the
-     loudest thing on the screen, and they report a state rather than offering
-     an action. */
-  nav.tabs .nav-pin[aria-pressed="true"]{
-    background: color-mix(in srgb, var(--accent) 16%, transparent);
-    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-    color: var(--accent);
-  }
-  nav.tabs .nav-pin[aria-pressed="true"] svg path{ fill: currentColor; }
-  nav.tabs .nav-pin[aria-pressed="false"] svg path{ fill: none; }
-  @media (hover: hover){
-    nav.tabs .nav-pin[aria-pressed="false"]:hover{ border-color: var(--accent); color: var(--accent); }
-    nav.tabs .nav-pin[aria-pressed="true"]:hover{
-      background: color-mix(in srgb, var(--accent) 28%, transparent);
-      border-color: var(--accent);
-    }
   }
   /* And the row it sits in carries the same fact, so the list reads as two
      groups at a glance rather than six rows with a badge somewhere on them.
@@ -18667,20 +18449,7 @@ if ("serviceWorker" in navigator &&
     .is-arrangeable > h2 + p.sub{ margin-right: 62px; padding-right: 0; }
     .is-arrangeable > .panel-head.is-toolbar .sub{ margin-right: 70px; }
   }
-
-  /* ---------- the glyph needs room to be a glyph --------------------------- */
-  /* nav.tabs button (0,1,2) beats .nav-pin (0,1,0) and hands every control in
-     the rail its 10px/12px padding. At 24px square that is a content box 0 wide
-     and the icon disappears into it. Restated where it wins. */
-  nav.tabs .nav-pin,
-  nav.tabs .nav-hide{
-    padding: 0; min-height: 0; min-width: 0;
-    display: inline-flex; align-items: center; justify-content: center;
-  }
-  nav.tabs .nav-pin{ width: 24px; height: 24px; }
   nav.tabs .nav-hide{ width: 22px; height: 22px; }
-  /* And the icon may not be the thing that gives. */
-  nav.tabs .nav-pin svg{ flex: 0 0 auto; width: 13px; height: 13px; }
   nav.tabs .nav-hide svg{ flex: 0 0 auto; width: 11px; height: 11px; }
 
   /* ---------- the ends of the order --------------------------------------- */
@@ -20759,15 +20528,6 @@ if ("serviceWorker" in navigator &&
   }
   body.list-as-rows .loan-card.is-closed.is-editing > *{ position: relative; z-index: 1; }
 
-  /* ---------- the one that is kept ----------------------------------------- */
-  /* It is not a control that refuses; it is a statement that this one stays. */
-  .nav-pin[data-kept]{
-    cursor: default; opacity: 1;
-    background: color-mix(in srgb, var(--accent) 22%, transparent);
-    border-color: var(--accent); color: var(--accent);
-  }
-  @media (hover: hover){ .nav-pin[data-kept]:hover{ transform: none; } }
-
   /* ---------- a setting is a row, not a card ------------------------------- */
   /* Eight cards with one control each is a screen you scroll rather than read. */
   .pref-rows{ display: flex; flex-direction: column; }
@@ -20909,14 +20669,6 @@ if ("serviceWorker" in navigator &&
   body.list-as-rows .loan-card.is-closed > [data-payment-for]{
     display: flex; flex-direction: column; gap: var(--sp-6);
   }
-
-  /* ---------- what this screen cannot hold --------------------------------- */
-  /* Greyed rather than gone: it is still in the list, it still opens beside,
-     and a wider screen gets it back without anyone changing a setting. */
-  .nav-item.is-too-big .nav-content{ opacity: .45; }
-  .nav-item.is-too-big .nav-content-t{ text-decoration: line-through;
-    text-decoration-color: var(--line-strong); }
-  .nav-item.is-too-big .nav-pin{ opacity: .4; }
 
   /* ---------- the settled card: one column for things you press ------------ */
   /* space-between put Mark unpaid wherever the note happened to end, so it sat
@@ -22381,62 +22133,10 @@ if ("serviceWorker" in navigator &&
     #tab-history tbody tr > .note-cell::after{ content: attr(data-note); }
   }
 
-  /* ---------- the + asks what you are adding ------------------------------ */
-  .add-menu{ display: none; position: fixed; inset: 0; z-index: 9994; }
-  .add-menu.show{ display: block; }
-  .add-menu-scrim{ position: absolute; inset: 0; background: rgb(4 7 12 / .5); }
-  /* Anchored to the button it came out of: same right edge, just above it. */
-  .add-menu-card{
-    position: absolute; right: var(--sp-7);
-    bottom: calc(54px + var(--sp-7) + var(--sp-5));
-    min-width: 212px; padding: var(--sp-3);
-    display: flex; flex-direction: column; gap: 2px;
-    background: var(--surface); border: 1px solid var(--line-strong);
-    border-radius: var(--r-lg);
-    box-shadow:
-      0 1px 2px rgb(0 0 0 / .50),
-      0 8px 18px rgb(0 0 0 / .34),
-      0 24px 56px rgb(0 0 0 / .50);
-  }
-  @media (max-width: 1000px){
-    /* The button keeps right: var(--sp-7) at every width - only its bottom
-       moves - so the card that comes out of it keeps that edge too. */
-    .add-menu-card{ bottom: calc(64px + var(--sp-6) + 54px + var(--sp-5)); }
-  }
-  .add-menu-item{
-    display: flex; align-items: center; gap: var(--sp-5);
-    min-height: 44px; padding: 0 var(--sp-5);
-    background: transparent; border: 0; border-radius: var(--r-md);
-    color: var(--ink); font: inherit; font-size: var(--fs-sm); font-weight: 600;
-    text-align: left; cursor: pointer;
-  }
-  .add-menu-item svg{ width: 17px; height: 17px; flex: 0 0 auto; color: var(--ink-dim); }
-  @media (hover: hover){ .add-menu-item:hover{ background: var(--raised); } }
-  .add-menu-item:active{ background: var(--raised); }
-  .add-menu-item:focus-visible{ outline: 2px solid var(--accent); outline-offset: -2px; }
-
-  /* The button stays above its own scrim, lit, because pressing it again is
-     how you change your mind - and it turns into the way out rather than
-     becoming a second control. */
-  body.add-menu-open #btn-fab-add{ z-index: 9995; }
-  #btn-fab-add svg{ transition: transform var(--dur-base) var(--ease-out); }
-  body.add-menu-open #btn-fab-add svg{ transform: rotate(45deg); }
-
-  /* Out of the button it came from: 22ms apart over six items is 110ms of
-     lead-in, which a menu you summoned deliberately can afford. `backwards` so
-     they are not drawn before their turn. */
-  .add-menu.show .add-menu-card{ animation: add-menu-in var(--dur-fast) var(--ease-out); }
-  .add-menu.show .add-menu-item{
-    animation: add-menu-item var(--dur-base) var(--ease-out) backwards;
-    animation-delay: calc(var(--i) * 22ms);
-  }
-  @keyframes add-menu-in{ from{ opacity: 0; } }
-  @keyframes add-menu-item{ from{ opacity: 0; transform: translateY(8px); } }
-  @media (prefers-reduced-motion: reduce){
-    .add-menu.show .add-menu-card,
-    .add-menu.show .add-menu-item{ animation: none; }
-    #btn-fab-add svg{ transition: none; }
-  }
+  /* The add menu's CSS lived here - a card, a scrim, five items with a
+     22ms stagger, and the 45-degree turn the + made when it became a close
+     button. The + opens the form directly now, so there is no menu to
+     style and nothing for the button to turn into. */
 </style>
 </body>
 </html>

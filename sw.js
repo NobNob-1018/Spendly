@@ -12,7 +12,7 @@
 
    Bump VERSION on release. The activate handler deletes every cache that is not in
    the current set, so a bump is also the cache eviction. */
-const VERSION = 'spendly-v30';
+const VERSION = 'spendly-v31';
 const SHELL   = VERSION + '-shell';
 const VENDOR  = VERSION + '-vendor';
 
