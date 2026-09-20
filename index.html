@@ -4013,7 +4013,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21p";
+  const APP_BUILD = "2026-09-21q";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -15538,6 +15538,21 @@
 
            One measuring pass for the whole grid rather than one per card: the
            cost is a single forced layout either way. */
+        /* HOLD THE PAGE UP WHILE WE LOOK AT IT. .is-measuring un-pins every card
+           so each reports its natural height, which makes the grid a completely
+           different size for the length of the read - measured on a real machine
+           at 1,038 -> 2,889 -> 967 -> 911 in one pass. A page that dips below the
+           window during that has nowhere to be scrolled to, and the browser
+           clamps to 0. On a dashboard with 106px of travel that is the whole
+           scroll, gone, every time anything re-renders.
+
+           Nothing scrolls and nothing ends up a different height, so this was
+           invisible to every check I had: it is over inside one task, and on a
+           page with room to spare the clamp has nothing to take.
+
+           A measurement is not a change. The grid keeps its height through it. */
+        const heldAt = host.getBoundingClientRect().height;
+        if (heldAt > 0) host.style.minHeight = heldAt + "px";
         host.classList.add("is-measuring");
         const natural = cards.map(el => el.getBoundingClientRect().height);
         host.classList.remove("is-measuring");
@@ -15570,6 +15585,10 @@
           // somebody drags a corner - leaves this exactly as it was.
           setRows(el, Math.max(n, floorRows(tab, el)));
         });
+        /* Released here, not after the measurement: the rows above are what the
+           grid will actually be, so this is the first moment letting go cannot
+           drop the page under the window. */
+        host.style.minHeight = "";
         /* And check. The natural pass reports a card with nothing holding it,
            and the parts that size themselves against the card measure smaller
            there than they will be once it is put back - measured at up to 105px
