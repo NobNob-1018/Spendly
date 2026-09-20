@@ -243,9 +243,35 @@
     padding: var(--sp-6) var(--sp-7); text-align:left; color:inherit;
     background: var(--sunken); border:1px solid var(--line); border-radius: var(--r-md);
   }
+  /* Pinned says so on the tile, not only on its button. */
+  .tmw-place.is-pinned{ border-color: rgb(55 200 184 / .42); }
+  .tmw-place-top{ display:flex; align-items:center; gap: var(--sp-4); min-width:0; }
+  /* The figure and its bar are the link to Savings; the pin is its own control. */
+  .tmw-place-open{
+    display:flex; flex-direction:column; gap: var(--sp-4); min-width:0;
+    padding:0; border:0; background:none; color:inherit; text-align:left;
+  }
   .tmw-place-k{
+    flex:1 1 auto;
     font-size: var(--fs-2xs); color: var(--ink-dim);
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  /* Always drawn, never hover-only: this card is the first thing on a phone, and
+     a control that needs a pointer is a control a phone does not have. */
+  .tmw-pin{
+    flex:0 0 auto; width:22px; height:22px; padding:0;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:none; border:1px solid var(--line-strong); border-radius: var(--r-sm);
+    color: var(--ink-dim); cursor:pointer;
+    transition: background var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
+  }
+  .tmw-pin svg{ width:12px; height:12px; }
+  .tmw-pin.is-on{ background: var(--accent); border-color: transparent; color: var(--on-accent); }
+  .tmw-pin.is-on svg path{ fill: currentColor; }
+  @media (hover: hover){
+    .tmw-pin:hover{ color: var(--ink); border-color: var(--accent); }
+    .tmw-pin.is-on:hover{ color: var(--on-accent); }
   }
   .tmw-place-v{ font-size: var(--fs-xl); font-weight:700; font-variant-numeric: tabular-nums; }
   /* The share, so the shape of where the money sits reads without arithmetic. */
@@ -253,8 +279,8 @@
   .tmw-place-bar i{ display:block; height:100%; background: var(--accent); border-radius: var(--r-pill); }
   .tmw-place-s{ font-size: var(--fs-3xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
   @media (hover: hover){
-    button.tmw-place{ cursor:pointer; transition: background var(--dur-fast) var(--ease-out); }
-    button.tmw-place:hover{ background: var(--hover); }
+    .tmw-place-open{ cursor:pointer; }
+    .tmw-place:has(.tmw-place-open:hover){ background: var(--hover); }
   }
 
   /* 3. what is real and is not in the figure. One strip in the same sunken
@@ -1274,9 +1300,6 @@
   .rx-body{ display:flex; flex-direction:column; gap:2px; min-width:0; }
   .rx-desc{ font-size: var(--fs-2xs); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .rx-meta{ font-size: var(--fs-3xs); color: var(--ink-dim); }
-  .rx-rail{ position:relative; display:block; height:3px; margin-top: var(--sp-3);
-    background: var(--line); border-radius:2px; }
-  .rx-rail i{ position:absolute; inset:0 auto 0 0; border-radius:2px; opacity:.85; }
   .rx-amt{ font-size: var(--fs-2xs); font-weight:700; font-variant-numeric: tabular-nums; white-space:nowrap; }
   .rx-amt.income{ color: var(--positive); } .rx-amt.expense{ color: var(--ink); }
 
@@ -2352,12 +2375,7 @@
     margin-bottom: 2px; cursor: grab;
   }
   .nav-content.is-chip:active{ cursor: grabbing; }
-  .nav-grip{
-    width: 10px; height: 14px; align-self: center;
-    background-image: radial-gradient(currentColor 1px, transparent 1px);
-    background-size: 4px 4px; background-position: 0 2px;
-    color: var(--ink-dim); opacity: .8;
-  }
+
   .nav-content.is-dragging{ opacity: .4; }
   .nav-content.is-drop-before{ box-shadow: inset 0 2px 0 var(--accent); }
   .nav-pin{
@@ -2400,7 +2418,6 @@
     grid-template-columns: 10px 9px minmax(0, 1fr) 24px;
     align-items: center;
   }
-  nav.tabs .nav-content.is-chip .nav-grip{ grid-column: 1; }
   nav.tabs .nav-content.is-chip .nav-content-dot{ grid-column: 2; }
   nav.tabs .nav-content.is-chip .nav-content-t{ grid-column: 3; }
   nav.tabs .nav-content.is-chip .nav-pin{ grid-column: 4; }
@@ -2532,7 +2549,11 @@
   .nav-hide svg{ width: 11px; height: 11px; fill: none; stroke: currentColor;
     stroke-width: 2; stroke-linecap: round; }
   @media (hover: hover){ .nav-hide:hover{ border-color: var(--negative); color: var(--negative); } }
-  nav.tabs .nav-content.is-chip{ grid-template-columns: 9px minmax(0, 1fr) 24px 22px; }
+  /* The last track is AUTO, so it collapses on the rows that have no hide button.
+     At a fixed 22px every row reserved it, and with the pin that is 46px of a
+     212px box gone before the name starts - the name got 98px, which is why
+     "Spent against budget" read as "Spent against...". It gets 126 now. */
+  nav.tabs .nav-content.is-chip{ grid-template-columns: 9px minmax(0, 1fr) 24px auto; }
   nav.tabs .nav-content.is-chip .nav-content-dot{ grid-column: 1; }
   nav.tabs .nav-content.is-chip .nav-content-t{ grid-column: 2; }
   nav.tabs .nav-content.is-chip .nav-pin{ grid-column: 3; }
@@ -2855,7 +2876,7 @@
           <h3 class="dash-subhead" id="recent-history-title">Recent activity</h3>
           <label class="rows-pick">Show
             <select id="recent-rows" aria-label="How many rows this card shows">
-              <option value="auto">Auto</option>
+              <option value="auto">Auto — fit the card</option>
               <option value="5">5</option>
               <option value="8">8</option>
               <option value="12">12</option>
@@ -3676,7 +3697,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-20e";
+  const APP_BUILD = "2026-09-20f";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4634,6 +4655,14 @@
     renderTotalMoneyBar();
   });
 
+  /* Which accounts the card must always show, whatever their size. A list of
+     ids rather than names: two accounts can share a name, and one of them being
+     renamed must not silently pin the other. */
+  function tmPinnedAccounts(){
+    const v = pref("tmPinnedAccounts", []);
+    return Array.isArray(v) ? v.slice() : [];
+  }
+
   let lastTotalMoney = null;
   function renderTotalMoneyBar(){
     const el = document.getElementById("total-money-value");
@@ -4698,38 +4727,77 @@
        2 accounts" and then not saying which. */
     const dashPlaces = document.getElementById("dash-tm-places");
     if (dashPlaces){
+      const pinned = tmPinnedAccounts();
       const places = savings
-        .map(a => ({ name: a.provider || "Account", value: +a.amount || 0 }))
+        .map(a => ({ id: a.id, name: a.provider || "Account", value: +a.amount || 0 }))
         /* Counted in the total, so it has to be one of the tiles, or the parts
            do not add up to the whole they are sitting under. */
         .concat(b.investedCounts
-          ? [{ name: "Investments", value: b.unsoldInvestments }]
+          ? [{ id: "__invested", name: "Investments", value: b.unsoldInvestments }]
           : [])
         .sort((x, y) => y.value - x.value);
+      places.forEach(p => { p.pinned = pinned.indexOf(p.id) >= 0; });
+      /* Pinned first, and within each half still largest first - so pinning
+         changes which accounts you see, not how they are ordered among
+         themselves. */
+      places.sort((x, y) => (y.pinned ? 1 : 0) - (x.pinned ? 1 : 0));
       const whole = places.reduce((t, p) => t + p.value, 0) || 1;
       /* Seven accounts is 808px of tiles on a phone - the lead card eating a
          whole screen before the dashboard has said anything else. Three and a
-         summary is two rows, and the rest is one tap away on Savings. */
-      const SHOWN = TM_PHONE.matches ? 3 : 8;
+         summary is two rows, and the rest is one tap away on Savings.
+
+         The cap gives way to an explicit choice, though: pin six on a phone and
+         you see six. A default about screen size does not outrank the user
+         saying which accounts they care about. */
+      const pinnedCount = places.filter(p => p.pinned).length;
+      const SHOWN = Math.max(TM_PHONE.matches ? 3 : 8, pinnedCount);
       dashPlaces.innerHTML = places.length
         ? places.slice(0, SHOWN).map(p => {
             const share = Math.max(0, Math.min(100, (p.value / whole) * 100));
-            return `<button type="button" class="tmw-place" data-tm-go="savings">` +
-              `<span class="tmw-place-k">${escapeHtml(p.name)}</span>` +
-              `<span class="tmw-place-v">${fmtMoney(p.value)}</span>` +
-              `<span class="tmw-place-bar"><i style="width:${share.toFixed(1)}%"></i></span>` +
-              `<span class="tmw-place-s">${share < 0.5 ? "under 1" : Math.round(share)}% of the total</span>` +
-            `</button>`;
+            /* The tile stays the button that opens Savings; the pin is its own
+               button beside the name, so one does not swallow the other. */
+            return `<div class="tmw-place${p.pinned ? " is-pinned" : ""}">` +
+              `<div class="tmw-place-top">` +
+                `<span class="tmw-place-k">${escapeHtml(p.name)}</span>` +
+                (p.id
+                  ? `<button type="button" class="tmw-pin${p.pinned ? " is-on" : ""}" ` +
+                      `data-pin-account="${escapeHtml(p.id)}" aria-pressed="${p.pinned}" ` +
+                      `title="${p.pinned ? "Unpin this account" : "Always show this account"}" ` +
+                      `aria-label="${p.pinned ? "Unpin " + escapeHtml(p.name) : "Always show " + escapeHtml(p.name)}">` +
+                      `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" ` +
+                        `stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
+                        `<path d="M9 4h6l-1 6 4 3v2H6v-2l4-3z"/><line x1="12" y1="15" x2="12" y2="21"/>` +
+                      `</svg></button>`
+                  : "") +
+              `</div>` +
+              `<button type="button" class="tmw-place-open" data-tm-go="savings">` +
+                `<span class="tmw-place-v">${fmtMoney(p.value)}</span>` +
+                `<span class="tmw-place-bar"><i style="width:${share.toFixed(1)}%"></i></span>` +
+                `<span class="tmw-place-s">${share < 0.5 ? "under 1" : Math.round(share)}% of the total</span>` +
+              `</button>` +
+            `</div>`;
           }).join("") +
           (places.length > SHOWN
-            ? `<button type="button" class="tmw-place" data-tm-go="savings">` +
-              `<span class="tmw-place-k">and ${places.length - SHOWN} more</span>` +
-              `<span class="tmw-place-v">${fmtMoney(places.slice(SHOWN).reduce((t,p)=>t+p.value,0))}</span>` +
-              `</button>`
+            ? `<div class="tmw-place is-rest">` +
+              `<div class="tmw-place-top"><span class="tmw-place-k">and ${places.length - SHOWN} more</span></div>` +
+              `<button type="button" class="tmw-place-open" data-tm-go="savings">` +
+                `<span class="tmw-place-v">${fmtMoney(places.slice(SHOWN).reduce((t,p)=>t+p.value,0))}</span>` +
+              `</button></div>`
             : "")
         : "";
       dashPlaces.querySelectorAll("[data-tm-go]").forEach(btn=>{
         btn.addEventListener("click", ()=> activateTab(btn.dataset.tmGo));
+      });
+      dashPlaces.querySelectorAll("[data-pin-account]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const id = btn.dataset.pinAccount;
+          const now = tmPinnedAccounts();
+          const at = now.indexOf(id);
+          if (at >= 0) now.splice(at, 1); else now.push(id);
+          setUiPref("tmPinnedAccounts", now);
+          renderTotalMoneyBar();
+          showToast(at >= 0 ? "Account unpinned." : "Account pinned \u2014 it will always show here.");
+        });
       });
     }
 
@@ -10588,6 +10656,11 @@
     });
   });
 
+  /* What was last written here. The list is re-asked on every layout pass now,
+     so it has to cost nothing when the answer has not moved - otherwise it
+     writes the DOM, the observer watching the page sees a change, and the layout
+     pass runs again. */
+  let lastRecentSig = null;
   function renderRecentHistory(){
     const container = document.getElementById("recent-history-list");
     if (!container) return;
@@ -10624,18 +10697,23 @@
       howMany = +pick || 8;
     }
     const rows = source.sort((a, b) => b.date.localeCompare(a.date)).slice(0, howMany);
+    const sig = howMany + "|" + titleLabel + "|" +
+      rows.map(r => r.date + "" + r.description + "" + r.amount + "" + r.type).join("");
+    if (sig === lastRecentSig) return;
+    lastRecentSig = sig;
+
     if (!rows.length){ container.innerHTML = emptyStateHtml("list", emptyLabel, ""); return; }
 
-    // Each row carries its size relative to the largest on screen, so the list
-    // is also a shape. Eight rows of identical weight read as eight equal facts.
-    const max = Math.max.apply(null, rows.map(r => r.amount).concat([1]));
+    /* No bar. Each row used to carry its amount against the largest ON SCREEN,
+       which rescales every row whenever the number of rows changes and turns
+       every expense into a stub the moment one payslip is in view. A shape that
+       moves for reasons that have nothing to do with the money is not a shape. */
     container.innerHTML = rows.map(tx =>
       '<div class="rx" data-cat="' + escapeHtml(tx.category) + '">' +
         '<span class="rx-dot" style="background:' + colorFor(tx.category) + '"></span>' +
         '<span class="rx-body">' +
           '<span class="rx-desc">' + escapeHtml(tx.description) + '</span>' +
           '<span class="rx-meta">' + fmtDate(tx.date) + ' \u00B7 ' + escapeHtml(tx.category) + '</span>' +
-          '<span class="rx-rail"><i style="width:' + Math.round((tx.amount / max) * 100) + '%; background:' + colorFor(tx.category) + '"></i></span>' +
         '</span>' +
         '<span class="rx-amt ' + tx.type + '">' + (tx.type === "income" ? "+" : "\u2212") + fmtMoneyRich(tx.amount) + '</span>' +
       '</div>').join("");
@@ -10645,12 +10723,37 @@
   {
     const rowsSel = document.getElementById("recent-rows");
     if (rowsSel){
-      rowsSel.value = String(+pref("recentRows", 8) || 8);
+      /* What is actually stored, not a number coerced out of it. This read
+         +pref(...)||8, so a stored "auto" showed as 8 in the box while the
+         renderer went on measuring the card - the control said eight and ten
+         rows were drawn. */
+      rowsSel.value = String(pref("recentRows", "auto"));
+      if (!rowsSel.value) rowsSel.value = "auto";
       rowsSel.addEventListener("change", ()=>{
-        setUiPref("recentRows", +rowsSel.value);
+        const v = rowsSel.value;
+        setUiPref("recentRows", v === "auto" ? "auto" : +v);
         renderRecentHistory();
-        showToast("Recent activity shows " + rowsSel.value + " rows.");
+        showToast(v === "auto"
+          ? "Recent activity fits however tall the card is."
+          : "Recent activity shows " + v + " rows.");
       });
+
+      /* Auto measures the card, and nothing asked again when the card was
+         resized - so dragging its height did nothing at all. This cannot loop:
+         the card's height is pinned by grid-row: span var(--rows), so how many
+         rows are inside it does not change how tall it is. */
+      const rxCard = (document.getElementById("recent-history-list") || {}).closest
+        ? document.getElementById("recent-history-list").closest(".card") : null;
+      if (rxCard && window.ResizeObserver){
+        let lastH = 0;
+        new ResizeObserver(()=>{
+          if (String(pref("recentRows", "auto")) !== "auto") return;
+          const h = Math.round(rxCard.clientHeight);
+          if (Math.abs(h - lastH) < 8) return;
+          lastH = h;
+          renderRecentHistory();
+        }).observe(rxCard);
+      }
     }
   }
 
@@ -14070,7 +14173,12 @@
               lastGroup = g;
               const gh = document.createElement("p");
               gh.className = "nav-group-k";
-              gh.textContent = on ? "On the page" : "Opens beside";
+              /* What the group MEANS, once, under its name. On the page, opens
+                 beside and not in the list are three states of one thing and the
+                 difference between them was written down nowhere. */
+              gh.innerHTML = (on ? "On the page" : "Opens beside") +
+                '<span class="nav-group-s">' +
+                (on ? "always here" : "one tap from this list") + '</span>';
               box.appendChild(gh);
             }
           }
@@ -14157,7 +14265,7 @@
         if (gone.length){
           const g = document.createElement("div");
           g.className = "nav-gone";
-          g.innerHTML = '<p class="nav-gone-k">Not in the list</p>' +
+          g.innerHTML = '<p class="nav-gone-k">Not in the list<span class="nav-group-s">hidden until you add it back</span></p>' +
             gone.map(x => '<button type="button" class="nav-restore" data-restore="' +
               escapeHtml(x.id) + '">' + escapeHtml(x.head.textContent.trim()) +
               '<span class="nav-restore-plus" aria-hidden="true">+</span></button>').join("");
@@ -14735,6 +14843,14 @@
         // depends on the widths the first pass just applied.
         // Only while the layout is being edited. On a page you are reading,
         // a strip of the card that resizes it when dragged is a surprise.
+        /* A card whose contents are sized to fit it has to be asked again when it
+           has been resized, and this is where every resize lands - the drag
+           handle, the keyboard path and the double-click reset all come through
+           here. A ResizeObserver is also watching, for the resizes that do not:
+           it is the right tool and it is not observable in a hidden document, so
+           it is the belt rather than the braces. */
+        if (typeof renderRecentHistory === "function") renderRecentHistory();
+
         host.querySelectorAll(":scope > .card-handles").forEach(x => x.remove());
         if (editing) cards.forEach((el, i) => {
           const pad = document.createElement("div");
@@ -17743,6 +17859,11 @@ if ("serviceWorker" in navigator &&
      and not chosen is the highest-value contrast in the control. */
   /* More air above a heading than below it, so three groups read as three
      groups. They were 12px apart either side, which is a wall with words in it. */
+  .nav-group-s{
+    display: block; margin-top: 1px;
+    font-size: var(--fs-3xs); font-weight: 500; text-transform: none;
+    letter-spacing: 0; color: var(--ink-faint);
+  }
   .nav-group-k{
     margin: var(--sp-9) 0 var(--sp-4); padding: 0 var(--sp-3);
     font-size: var(--fs-3xs); font-weight: 700; letter-spacing: var(--track-caps);
@@ -19912,10 +20033,11 @@ if ("serviceWorker" in navigator &&
     gap: var(--sp-5);
   }
   .dash-subhead-row .dash-subhead{ margin-bottom: 0; }
-  /* Only while arranging. It is a decision about the card, not about the money
-     in it, and it belongs with the other decisions about the card. */
-  .rows-pick{ display: none; }
-  body.is-layout-editing .rows-pick{
+  /* On the card, always. It was arrange-mode only, on the reasoning that how many
+     rows to show is a decision about the card rather than about the money in it -
+     which is true, and still left someone looking for the control unable to find
+     one. It is quiet rather than hidden. */
+  .rows-pick{
     display: inline-flex; align-items: center; gap: var(--sp-4);
     font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
     letter-spacing: var(--track-caps); color: var(--ink-dim);
