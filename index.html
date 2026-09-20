@@ -3054,23 +3054,28 @@
 
   <!-- CHARTS -->
   <section id="tab-charts" class="tab-panel" style="display:none;">
-    <div class="card is-board">
-      <div class="range-tabs" id="range-tabs">
+    <!-- THE PERIOD BELONGS TO THE PAGE, not to the first card on it.
+         renderCharts builds chart-bar, chart-pie AND chart-networth from this one
+         range, and the sub-tabs below can put that first card away - which would
+         have hidden the control that drives whatever you were looking at. Out
+         here it sits beside the sub-tabs: which view, then which period. -->
+    <div class="range-tabs settings-nav" id="range-tabs">
         <button class="active" data-range="daily">Daily</button>
         <button data-range="weekly">Weekly</button>
         <button data-range="monthly">Monthly</button>
         <button data-range="yearly">Yearly</button>
         <button data-range="custom">Custom</button>
-      </div>
+    </div>
 
-      <div class="custom-range-row" id="custom-range-row" style="display:none;">
+    <div class="custom-range-row" id="custom-range-row" style="display:none;">
         <label for="custom-range-start" style="margin:0;">From</label>
         <input type="date" id="custom-range-start">
         <label for="custom-range-end" style="margin:0;">To</label>
         <input type="date" id="custom-range-end">
-        <button class="btn btn-primary btn-sm" id="btn-apply-custom-range">Apply</button>
-      </div>
+      <button class="btn btn-primary btn-sm" id="btn-apply-custom-range">Apply</button>
+    </div>
 
+    <div class="card is-board">
       <div class="loan-summary" id="charts-summary" style="margin-top:0;"></div>
       <div class="stat-row" id="stat-row"></div>
 
@@ -3852,7 +3857,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21g";
+  const APP_BUILD = "2026-09-21h";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -11082,6 +11087,11 @@
     let howMany;
     if (pick === "auto"){
       const card = container.closest(".card");
+      /* The same guard from the other side. Measuring a card that is not being
+         shown gives 0 room and the fallback count, and writing that list is a
+         page-height change nobody asked for. It renders when it is shown -
+         applySpansAndSeams calls this on every pass. */
+      if (card && card.clientHeight < 1) return;
       const head = card ? card.querySelector(".dash-subhead-row") : null;
       const room = card ? card.clientHeight - (head ? head.offsetHeight : 0) - 26 : 0;
       const ROW = 44;
@@ -11141,7 +11151,16 @@
         let lastH = 0;
         new ResizeObserver(()=>{
           if (String(pref("recentRows", "auto")) !== "auto") return;
+          /* NOT WHILE IT IS PUT AWAY. The sub-tabs take this card to height 0
+             and back, which is two resizes, and the row count measured from a
+             card of height 0 is the fallback rather than the real one - so the
+             list came back two rows shorter, the page lost ~88px, and a page
+             that has just dropped under the viewport gets clamped to scroll 0.
+             That is the "scrolling down returns me to the top". */
+          if (rxCard.checkVisibility ? !rxCard.checkVisibility()
+                                     : rxCard.offsetParent === null) return;
           const h = Math.round(rxCard.clientHeight);
+          if (h < 1) return;
           if (Math.abs(h - lastH) < 8) return;
           lastH = h;
           renderRecentHistory();
@@ -14376,6 +14395,16 @@
             of: ["welcome-card", "total-money-card", "budget-card", "blk-recent-activity"] },
           { key: "month", label: "This month", of: ["monthly-overview-card"] },
           { key: "picks", label: "Highlights", of: ["highlights-card"] }
+        ],
+        /* The period strip is NOT in here - it lives outside the cards now, so it
+           belongs to every group rather than to the one that happens to hold it.
+           "By category" stays with Spending: it is the breakdown of the same
+           range, drawn from the same buckets. Category profile is its own thing,
+           which is why it is its own tab. */
+        charts: [
+          { key: "spend", label: "Spending",   of: ["blk-spending-over-time"] },
+          { key: "worth", label: "Net worth",  of: ["blk-net-worth-over-time"] },
+          { key: "cats",  label: "Categories", of: ["cp-card"] }
         ]
       };
       const GROUP_KEY = tab => "pageGroup_" + tab;
@@ -18374,6 +18403,10 @@ if ("serviceWorker" in navigator &&
   /* One subject at a time. The strip is the same component Settings, Loans and
      History use; this is only its spacing and the class that puts a group away. */
   .page-groups{ margin-bottom: var(--sp-8); }
+  /* Charts carries two: which view, and which period. Both are inline-flex, so
+     they share a line where there is room and wrap where there is not. */
+  #tab-charts > .page-groups{ margin-right: var(--sp-6); vertical-align: top; }
+  #tab-charts > #range-tabs{ margin-bottom: var(--sp-8); vertical-align: top; }
   /* !important because the rail writes inline display on these same blocks and
      the two facts must not be able to overwrite each other: the rail says
      "hidden", this says "not the group you are looking at". */
