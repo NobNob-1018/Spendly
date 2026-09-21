@@ -201,7 +201,6 @@
     background:transparent; border:0; padding:0; margin:0; border-radius:0;
     color:inherit; font:inherit; cursor:pointer; text-align:left;
   }
-  .tm-head{ display:flex; align-items:baseline; gap: var(--sp-4); }
   .tm-label{ font-size: var(--fs-3xs); font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing: var(--track-caps); white-space:nowrap; }
   .tm-value{ font-size: var(--fs-2xl); font-weight:700; letter-spacing:-0.02em; font-variant-numeric: tabular-nums; white-space:nowrap; }
   .tm-value .cur-sym{ color: var(--ink-dim); font-size:.72em; }
@@ -586,8 +585,6 @@
   }
   .card h2 .card-icon svg{ width:16px; height:16px; color: var(--accent); }
   .card > .sub, .hint, .dash-subhead{ margin: 0 0 var(--sp-7); font-size: var(--fs-sm); color: var(--ink-soft); }
-  .section-head-row{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-7); margin-bottom: var(--sp-6); flex-wrap:wrap; }
-  .settings-section-label{ margin: var(--sp-9) 0 var(--sp-6); font-size: var(--fs-2xs); font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing: var(--track-caps); }
 
   /* L2: a real workspace grid, 12 columns, gap from L4. */
   .bento{ display:grid; grid-template-columns: repeat(12, minmax(0,1fr)); gap: var(--sp-7); align-items:start; }
@@ -603,48 +600,15 @@
 
   /* ---------- KPI row ------------------------------------------------------- */
   .stat-row{ display:grid; grid-template-columns: 1.5fr 1fr; grid-auto-rows:min-content; gap: var(--sp-6); margin: 0 0 var(--sp-7); align-items:start; }
-  .stat-row > .stat.is-primary{ grid-column:1; grid-row:1 / -1; align-self:stretch; }
-  .stat-row > .stat:not(.is-primary){ grid-column:2; }
   .stat-row:not(:has(.is-primary)){ grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); }
-  .stat-row:not(:has(.is-primary)) > .stat{ grid-column:auto; }
   @media (max-width: 900px){
     .stat-row{ grid-template-columns: 1fr; }
-    .stat-row > .stat.is-primary{ grid-column:1; grid-row:auto; }
-    .stat-row > .stat:not(.is-primary){ grid-column:1; }
   }
-  .stat{
-    display:flex; align-items:center; gap: var(--sp-6);
-    padding: var(--sp-7); background: var(--raised);
-    border:1px solid var(--line); border-radius: var(--r-md); box-shadow:none;
-    min-width:0;
-  }
-  .stat.is-primary{
-    flex-direction:column; align-items:stretch; gap: var(--sp-6);
-    padding: var(--sp-9); background: var(--sunken);
-    border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
-  }
-  .stat-badge{ width:30px; height:30px; flex:0 0 auto; border-radius: var(--r-md); display:flex; align-items:center; justify-content:center; }
-  .stat.is-primary .stat-badge{ order:-1; width:26px; height:26px; }
-  .stat-badge svg{ width:15px; height:15px; color: var(--on-accent); }
   .stat-badge-teal{ background: var(--badge-teal); } .stat-badge-rose{ background: var(--negative); }
   .stat-badge-green{ background: var(--positive); } .stat-badge-blue{ background: var(--info); }
   .stat-badge-purple{ background: var(--violet); }
-  .stat-text{ min-width:0; flex:1; }
-  .stat .label, .label{ font-size: var(--fs-3xs); font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing: var(--track-caps); }
-  .stat .value, .value{ font-size: var(--fs-2xl); font-weight:700; letter-spacing:-0.02em; font-variant-numeric: tabular-nums; }
-  .stat.is-primary .value{ font-size: var(--fs-display-3); }
-  .stat .value .cur-sym{ color: var(--ink-dim); font-size:.7em; } .stat .value .cur-cents{ color: var(--ink-soft); font-size:.7em; }
-  .stat-spark{ width:100%; } .stat-spark svg{ width:100%; height:40px; }
-  .stat-context{ display:flex; align-items:baseline; gap: var(--sp-4); margin-top:2px; }
-  .stat-context-label{ font-size: var(--fs-3xs); color: var(--ink-dim); }
-  .stat-delta{ font-size: var(--fs-3xs); font-weight:700; }
-  .stat-delta.is-good{ color: var(--positive); } .stat-delta.is-bad{ color: var(--negative); }
-  .stat-breakdown{ margin-top: var(--sp-6); padding-top: var(--sp-6); border-top:1px solid var(--line); display:flex; flex-direction:column; gap: var(--sp-4); }
-  .stat-breakdown-row{ display:grid; grid-template-columns: minmax(0,1fr) 100px auto; align-items:center; gap: var(--sp-6); font-size: var(--fs-sm); }
-  .bd-label{ color: var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .bd-bar{ position:relative; height:5px; border-radius:2px; background: var(--line); overflow:hidden; }
-  .bd-bar i{ position:absolute; inset:0 auto 0 0; border-radius:2px; background: var(--negative); }
-  .bd-value{ font-weight:700; font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .label { font-size: var(--fs-3xs); font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing: var(--track-caps); }
+  .value { font-size: var(--fs-2xl); font-weight:700; letter-spacing:-0.02em; font-variant-numeric: tabular-nums; }
 
   /* ---------- charts are primary citizens ---------------------------------- */
   .chart-box{
@@ -741,8 +705,6 @@
     .row-action svg{ width:16px; height:16px; }
   }
   .row-action-bar{ display:flex; flex-wrap:wrap; align-items:center; gap: var(--sp-5); }
-  .has-action-row td{ border-bottom:0; }
-  .loan-payment-tr td{ padding-top:0; }
   .loan-payment-row{ display:flex; align-items:center; gap: var(--sp-5); flex-wrap:wrap; }
   .loan-payment-link{ display:inline-flex; align-items:center; gap: var(--sp-4); background: var(--raised); border:1px solid var(--line); border-radius: var(--r-sm); padding: var(--sp-3) var(--sp-5); color: var(--accent); font:inherit; font-size: var(--fs-3xs); font-weight:700; cursor:pointer; }
   .loan-summary{ font-size: var(--fs-sm); color: var(--ink-soft); }
@@ -762,7 +724,6 @@
   .filter-chip{ display:inline-flex; align-items:center; gap: var(--sp-4); padding:2px var(--sp-5); border-radius: var(--r-pill); border:1px solid var(--accent-deep); background: var(--accent-light); color: var(--ink); font:inherit; font-size: var(--fs-3xs); font-weight:600; cursor:pointer; }
   .filter-chip.is-clear{ border-color: var(--line); background:transparent; color: var(--ink-soft); }
   .fc-key{ color: var(--ink-dim); } .fc-val{ color: var(--ink); } .fc-x{ color: var(--ink-dim); }
-  .filter-chips-count{ margin-left:auto; padding-left: var(--sp-6); font-size: var(--fs-3xs); font-weight:700; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space:nowrap; }
   .filter-status{ display:flex; align-items:center; gap: var(--sp-6); margin-bottom: var(--sp-6); font-size: var(--fs-sm); }
   .filter-status-count{ color: var(--accent); font-weight:700; }
   .filter-status-clear{ background:transparent; border:1px solid var(--line); border-radius: var(--r-sm); color: var(--ink-soft); font:inherit; font-size: var(--fs-3xs); font-weight:700; padding:1px var(--sp-5); cursor:pointer; }
@@ -778,8 +739,7 @@
   input::placeholder{ color: var(--ink-dim); }
   select{ appearance:none; -webkit-appearance:none; padding-right: var(--sp-9); }
   input[type=checkbox]{ width:15px; height:15px; accent-color: var(--accent); cursor:pointer; }
-  label, .field-label, .sf-label{ display:block; margin-bottom: var(--sp-3); font-size: var(--fs-3xs); font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing: var(--track-caps); }
-  .sf-value{ font-size: var(--fs-sm); }
+  label { display:block; margin-bottom: var(--sp-3); font-size: var(--fs-3xs); font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing: var(--track-caps); }
   .form-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: var(--sp-7); }
   .form-actions{ display:flex; gap: var(--sp-5); margin-top: var(--sp-8); flex-wrap:wrap; }
   .checkbox-row{ display:flex; align-items:center; gap: var(--sp-5); }
@@ -797,8 +757,6 @@
   .btn-danger-text{ background:transparent; border-color:transparent; color: var(--negative-note); }
   @media (hover: hover){ .btn:hover{ background: var(--over); } .btn-primary:hover{ background: var(--accent-dark); } .btn-ghost:hover{ color: var(--ink); background: var(--raised); } }
   button:disabled, button[aria-disabled="true"]{ opacity:1; color: var(--ink-dim); background: var(--sunken); border-color: var(--line); cursor:default !important; }
-  button.is-loading{ color: var(--ink-soft); cursor:progress !important; }
-  button.is-loading::after{ content:""; width:12px; height:12px; margin-left: var(--sp-4); border:2px solid currentColor; border-right-color:transparent; border-radius: var(--r-pill); display:inline-block; vertical-align:-2px; animation: spendly-spin 700ms linear infinite; }
   /* CONCENTRIC: the outer radius is the inner radius plus the padding between
      them, or the pills look wedged into the corners. 4px buttons + 6px of tray
      = 10px, which is --r-lg. It was --r-md (6) around --sp-2 (4) around 4. */
@@ -904,7 +862,6 @@
   .empty-state-sub{ font-size: var(--fs-sm); margin-top: var(--sp-3); }
   .empty-state-action{ margin-top: var(--sp-7); background:transparent; border:1px solid var(--line); border-radius: var(--r-md); color: var(--accent); font:inherit; font-size: var(--fs-3xs); font-weight:700; padding: var(--sp-4) var(--sp-7); cursor:pointer; }
   #side-panel{ display:none; }
-  .rsz-handle, .rsz-shield{ display:none; }
   .savings-list{ display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap: var(--sp-7); }
   .savings-account{ padding: var(--sp-7); background: var(--raised); border:1px solid var(--line); border-radius: var(--r-md); }
   .sa-head{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-6); margin-bottom: var(--sp-5); }
@@ -912,19 +869,12 @@
   .sa-fields{ display:grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: var(--sp-6); }
   .sa-field{ min-width:0; }
   .sa-inline{ display:flex; align-items:center; gap: var(--sp-5); }
-  .sa-foot{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap: var(--sp-6); margin-top: var(--sp-6); }
   .sa-share, .share-row, .share-row-top{ display:flex; align-items:center; gap: var(--sp-6); }
-  .sa-share-track, .share-track, .br-track, .op-track{ position:relative; flex:1; height:5px; border-radius:2px; background: var(--line); overflow:hidden; }
-  .sa-share-fill, .share-fill, .br-fill, .op-fill{ position:absolute; inset:0 auto 0 0; border-radius:2px; background: var(--accent); }
-  .sa-share-pct, .share-label, .share-amount, .br-pct{ font-size: var(--fs-3xs); color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .sa-share-track, .share-track, .op-track { position:relative; flex:1; height:5px; border-radius:2px; background: var(--line); overflow:hidden; }
+  .sa-share-fill, .share-fill, .op-fill { position:absolute; inset:0 auto 0 0; border-radius:2px; background: var(--accent); }
+  .share-label, .share-amount { font-size: var(--fs-3xs); color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space:nowrap; }
   .sa-auto, .sa-auto-text{ font-size: var(--fs-3xs); color: var(--ink-dim); }
   .sa-tier{ display:flex; gap: var(--sp-6); flex-wrap:wrap; align-items:flex-end; }
-  .budget-row{ display:flex; align-items:center; gap: var(--sp-6); padding: var(--sp-5) 0; border-bottom:1px solid var(--line); }
-  .budget-row .name{ min-width:110px; font-size: var(--fs-sm); }
-  .budget-progress{ flex:1; }
-  .budget-ring{ position:relative; width:30px; height:30px; flex:0 0 auto; }
-  .budget-ring svg{ width:30px; height:30px; }
-  .budget-caption{ font-size: var(--fs-3xs); color: var(--ink-dim); }
   .inv-count-toggle, .collapsible-body{ font-size: var(--fs-sm); }
   .add-more-toggle{ background:transparent; border:0; color: var(--accent); cursor:pointer; font:inherit; font-size: var(--fs-3xs); font-weight:700; padding:0; }
   .is-collapsed{ display:none; }
@@ -933,15 +883,9 @@
   .insight{ display:flex; align-items:flex-start; gap: var(--sp-5); padding: var(--sp-6); background: var(--raised); border:1px solid var(--line); border-radius: var(--r-md); }
   .insight-icon svg{ width:16px; height:16px; }
   .insight-text{ font-size: var(--fs-sm); color: var(--ink-soft); min-width:0; }
-  .recap-head{ font-size: var(--fs-3xs); font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing: var(--track-caps); }
-  .recap-list{ display:flex; flex-direction:column; gap: var(--sp-5); }
   .recurring-list{ display:flex; flex-direction:column; }
   .recurring-item{ display:flex; align-items:center; gap: var(--sp-6); padding: var(--sp-5) 0; border-bottom:1px solid var(--line); font-size: var(--fs-sm); }
   .recurring-day{ font-size: var(--fs-3xs); color: var(--ink-dim); font-variant-numeric: tabular-nums; }
-  .recent-tx-item{ display:flex; align-items:center; gap: var(--sp-6); padding: var(--sp-5) 0; border-bottom:1px solid var(--line); }
-  .recent-tx-desc{ flex:1; min-width:0; font-size: var(--fs-sm); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .recent-tx-meta{ font-size: var(--fs-3xs); color: var(--ink-dim); white-space:nowrap; }
-  .recent-tx-amount{ font-weight:700; font-variant-numeric: tabular-nums; white-space:nowrap; }
   /* Setup is over. !important because the rail also writes this element's
      display and there must be no question which fact wins. */
   #welcome-card[data-setup-done]{ display: none !important; }
@@ -960,34 +904,9 @@
   .dot{ width:7px; height:7px; border-radius: var(--r-pill); display:inline-block; }
   .full{ width:100%; } .is-aside{ opacity:.85; } .is-supporting{ color: var(--ink-soft); } .is-total{ font-weight:800; }
   .sync-tok{ font-family: ui-monospace, monospace; font-size: var(--fs-3xs); word-break:break-all; }
-  .side-currency-item, .side-upcoming-item{ display:flex; align-items:center; gap: var(--sp-6); padding: var(--sp-5) 0; border-bottom:1px solid var(--line); }
-  .side-currency-info, .side-upcoming-info{ min-width:0; flex:1; }
-  .side-currency-code, .side-upcoming-who{ font-size: var(--fs-sm); font-weight:700; }
-  .side-currency-name, .side-currency-updated, .side-upcoming-when{ font-size: var(--fs-3xs); color: var(--ink-dim); }
-  .side-currency-value, .side-upcoming-amt, .side-figures, .side-currency-rate{ font-size: var(--fs-sm); font-weight:700; font-variant-numeric: tabular-nums; white-space:nowrap; }
-  .side-currency-badge{ width:26px; height:26px; flex:0 0 auto; border-radius: var(--r-sm); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; background: var(--raised); color: var(--ink-soft); }
-  .side-currency-spark{ flex:0 0 auto; }
   .side-panel-head, .side-panel-head-row h2{ margin: var(--sp-8) 0 var(--sp-5); font-size: var(--fs-3xs); font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing: var(--track-caps); }
   .side-panel-head-row{ display:flex; align-items:center; justify-content:space-between; gap: var(--sp-6); }
-  .ui-badge{ position:absolute; top:-5px; right:-5px; min-width:17px; height:17px; padding:0 4px; display:inline-flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; font-variant-numeric: tabular-nums; border-radius: var(--r-pill); background: var(--negative); color: var(--on-fill); box-shadow:0 0 0 2px var(--surface); pointer-events:none; }
-  .ui-dot{ position:absolute; top:-1px; right:-1px; width:7px; height:7px; border-radius: var(--r-pill); box-shadow:0 0 0 2px var(--surface); }
-  .ui-dot.is-ok{ background: var(--positive); } .ui-dot.is-act{ background: var(--negative); }
-  .has-badge{ position:relative; overflow:visible; }
-  .set-changed{ display:inline-block; width:5px; height:5px; margin-left: var(--sp-4); border-radius: var(--r-pill); background: var(--accent); }
-  .set-reset{ margin-left: var(--sp-5); padding:0 var(--sp-4); font-size:10px; font-weight:700; background:transparent; border:1px solid var(--line); border-radius: var(--r-sm); color: var(--ink-soft); cursor:pointer; }
-  .danger-zone{ margin-top: var(--sp-11); padding: var(--sp-8); border:1px solid color-mix(in srgb, var(--negative) 40%, var(--line)); border-radius: var(--r-md); }
-  .danger-zone h3{ margin:0 0 var(--sp-3); font-size: var(--fs-3xs); font-weight:700; text-transform:uppercase; letter-spacing: var(--track-caps); color: var(--negative); }
   .field-invalid{ padding-left: var(--sp-6); border-left:2px solid var(--negative); }
-  .field-error{ display:block; margin-top: var(--sp-3); font-size: var(--fs-3xs); font-weight:700; color: var(--negative); }
-  .kebab-menu{ position:fixed; z-index:9990; min-width:180px; padding: var(--sp-3); background: var(--over); border:1px solid var(--line-strong); border-radius: var(--r-md); box-shadow: var(--elev-3); }
-  .kebab-menu button{ display:flex; align-items:center; gap: var(--sp-5); width:100%; padding: var(--sp-4) var(--sp-5); background:transparent; border:0; border-radius: var(--r-sm); color: var(--ink); font:inherit; font-size: var(--fs-sm); text-align:left; cursor:pointer; }
-  .kebab-menu button:hover{ background: var(--raised); }
-  .kebab-menu button.is-danger{ color: var(--negative); }
-  .kebab-sep{ height:1px; margin: var(--sp-3) var(--sp-4); background: var(--line); }
-  .kebab-group-label{ padding: var(--sp-3) var(--sp-5) var(--sp-2); font-size:10px; font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing: var(--track-caps); }
-  .ptr-track{ position:fixed; top:0; left:0; right:0; height:0; display:flex; align-items:flex-end; justify-content:center; overflow:hidden; z-index:60; pointer-events:none; }
-  .ptr-ring{ width:20px; height:20px; margin-bottom:6px; border:2px solid var(--line); border-top-color: var(--accent); border-radius: var(--r-pill); }
-  .ptr-ring.is-running{ animation: spendly-spin 700ms linear infinite; }
 
   /* ---------- motion (L5 Emil) ---------------------------------------------- */
   @keyframes spendly-spin{ to{ transform: rotate(360deg); } }
@@ -1196,7 +1115,6 @@
     font-size: var(--fs-3xs); color: var(--ink-dim);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .panel-head.is-toolbar .section-head-row{ margin: 0; margin-left: auto; flex: 0 0 auto; }
 
 
   /* ---------- the entry split: form and live preview -------------------------
@@ -1419,37 +1337,6 @@
     color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 
   /* ---------- budgets as cards with pace ----------------------------------- */
-  .bg-head{ display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--sp-6); padding-bottom: var(--sp-7); margin-bottom: var(--sp-7);
-    border-bottom:1px solid var(--line); }
-  .bg-h-cell{ display:flex; flex-direction:column; gap:2px; min-width:0; }
-  .bg-h-k{ font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.05em; color: var(--ink-dim); }
-  .bg-h-v{ font-size: var(--fs-lg); font-weight:700; font-variant-numeric: tabular-nums; }
-  .bg-h-v.is-good{ color: var(--positive); } .bg-h-v.is-bad{ color: var(--negative); }
-  .bg-h-s{ font-size: var(--fs-3xs); color: var(--ink-faint); }
-  .bg-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: var(--sp-6); }
-  .bg-card{ display:flex; flex-direction:column; gap: var(--sp-5); padding: var(--sp-6);
-    background: var(--sunken); border:1px solid var(--line); border-radius: var(--r-md); }
-  .bg-card.is-near{ border-color: var(--warn); }
-  .bg-card.is-over{ border-color: var(--negative); }
-  .bg-card-top{ display:grid; grid-template-columns: 40px 1fr 84px; gap: var(--sp-5); align-items:center; }
-  .bg-ring{ position:relative; width:40px; height:40px; display:grid; place-items:center; }
-  .bg-ring svg{ width:40px; height:40px; transform: rotate(-90deg); }
-  .bg-ring .br-track{ fill:none; stroke: var(--line); stroke-width:4; }
-  .bg-ring .br-fill{ fill:none; stroke: var(--accent); stroke-width:4; stroke-linecap:round; }
-  .bg-card.is-near .br-fill{ stroke: var(--warn); }
-  .bg-card.is-over .br-fill{ stroke: var(--negative); }
-  .bg-ring-pct{ position:absolute; font-size: 9px; font-weight:700; font-variant-numeric: tabular-nums; }
-  .bg-id{ display:flex; flex-direction:column; min-width:0; }
-  .bg-name{ font-size: var(--fs-2xs); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .bg-sub{ font-size: var(--fs-3xs); color: var(--ink-dim); font-variant-numeric: tabular-nums; }
-  .bg-card input[data-budget-input]{ width:100%; height:30px; text-align:right;
-    font-size: var(--fs-2xs); font-variant-numeric: tabular-nums; }
-  .bg-foot{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-4);
-    font-size: var(--fs-3xs); font-variant-numeric: tabular-nums; }
-  .bg-left{ color: var(--ink-soft); } .bg-left.is-bad{ color: var(--negative); font-weight:700; }
-  .bg-pace.is-good{ color: var(--positive); } .bg-pace.is-even{ color: var(--ink-dim); }
-  .bg-pace.is-bad{ color: var(--negative); font-weight:700; }
 
   /* ---------- the week broken out ------------------------------------------ */
   .wk-cells{ display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -1591,7 +1478,7 @@
   .filter-chip.is-active{ background: var(--accent); border-color: var(--accent);
     color: var(--on-accent); font-weight:700; }
   .filter-chip.is-active .fc-key{ opacity:.72; }
-  .filter-chip:disabled, .filter-chip.is-disabled{ opacity:.4; border-color: var(--line); cursor:default; }
+  .filter-chip:disabled { opacity:.4; border-color: var(--line); cursor:default; }
   @media (hover: hover){ .filter-chip.is-active:hover{ background: var(--accent-dark); } }
   .fc-check{ font-size: 9px; }
   .fc-x{ font-size: 12px; opacity:.8; }
@@ -1661,10 +1548,6 @@
   .sync-state.is-off .sync-dot{ background: var(--warn); }
   .sync-state-k{ font-size: var(--fs-2xs); font-weight:700; }
   .sync-state-s{ font-size: var(--fs-3xs); color: var(--ink-dim); }
-  .ct-chev{ margin-right: var(--sp-3); }
-  .ct-count{ margin-left: var(--sp-4); padding: 0 var(--sp-4); border-radius: var(--r-pill);
-    background: var(--sunken); font-size: var(--fs-3xs); color: var(--ink-dim);
-    font-variant-numeric: tabular-nums; }
   .onboard-step.is-next{ background: var(--sunken); border-radius: var(--r-md); }
   .onboard-next{ margin-left: var(--sp-4); padding: 0 var(--sp-4); border-radius: var(--r-pill);
     background: var(--accent); color: var(--on-accent); font-size: 9px; font-weight:700;
@@ -1848,10 +1731,8 @@
   }
   .pl-name{ min-width: 0; }
   /* A five-pixel burst from a toolbar row that cannot wrap. */
-  .section-head-row{ flex-wrap: wrap; row-gap: var(--sp-4); }
 
 
-  .section-head-row > *{ min-width: 0; }
 
 
   /* Tinted state chips sit on a darkened ground of their own colour, so the
@@ -1905,13 +1786,11 @@
 
   /* The strips that fade instead. A bar here would be a second explanation of
      something the fade has already said. */
-  #places-body, .ref-list, .fold, .sticky-top,
-  .rail-sections, .nav-contents{
+  #places-body, .fold, .sticky-top, .nav-contents {
     scrollbar-width: none;
   }
-  #places-body::-webkit-scrollbar, .ref-list::-webkit-scrollbar,
-  .fold::-webkit-scrollbar, .sticky-top::-webkit-scrollbar,
-  .rail-sections::-webkit-scrollbar, .nav-contents::-webkit-scrollbar{
+  #places-body::-webkit-scrollbar,
+  .fold::-webkit-scrollbar, .sticky-top::-webkit-scrollbar, .nav-contents::-webkit-scrollbar {
     width: 0; height: 0;
   }
 
@@ -1993,13 +1872,6 @@
   }
   .nav-contents-label{ flex: 0 1 auto; min-width: 0; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; }
-  nav.tabs .nav-all{
-    width: auto; height: auto; min-height: 0; flex: 0 0 auto;
-    padding: 0; margin: 0; background: none; border: 0; cursor: pointer;
-    font: inherit; font-size: var(--fs-3xs); font-weight: 700;
-    text-transform: none; letter-spacing: 0; color: var(--accent);
-    text-decoration: underline; text-underline-offset: 2px; white-space: nowrap;
-  }
   .nav-item{ display: flex; flex-direction: column; }
 
   /* Every control in this rail is a <button>, and nav.tabs has a rule for its
@@ -2055,40 +1927,7 @@
   /* ---------- where the money is -------------------------------------------- */
   /* The same shape as a destination, because it is the same idea: a heading
      with what is inside it folded underneath. */
-  .rail-places{ margin-top: var(--sp-6); padding-top: var(--sp-5);
-    border-top: 1px solid var(--line); }
-  nav.tabs .rail-total{
-    display: grid; grid-template-columns: minmax(0, 1fr) auto 14px;
-    align-items: baseline; gap: 2px var(--sp-5);
-    width: 100%; height: auto; min-height: 0;
-    padding: var(--sp-4) var(--sp-6); margin: 0;
-    background: none; border: 0; border-radius: var(--r-md);
-    font: inherit; text-align: left; cursor: pointer;
-  }
-  @media (hover: hover){ nav.tabs .rail-total:hover{ background: var(--hover); } }
-  .rail-total-k{
-    font-size: var(--fs-3xs); font-weight: 700; text-transform: uppercase;
-    letter-spacing: var(--track-caps); color: var(--ink-dim);
-  }
-  .rail-total-v{
-    grid-column: 1 / 3; grid-row: 2;
-    font-size: var(--fs-xl); font-weight: 700; color: var(--ink);
-    font-variant-numeric: tabular-nums;
-  }
-  .rail-total-sub{
-    grid-column: 3 / -1; grid-row: 1; justify-self: end;
-    font-size: var(--fs-3xs); color: var(--ink-dim); white-space: nowrap;
-  }
-  .rail-total-caret{
-    grid-column: 3; grid-row: 2; justify-self: end; align-self: center;
-    width: 8px; height: 8px; border-right: 1.5px solid var(--ink-dim);
-    border-bottom: 1.5px solid var(--ink-dim);
-    transform: rotate(45deg) translate(-2px, -2px);
-    transition: transform var(--dur-slow) var(--ease-out);
-  }
-  .rail-total[aria-expanded="true"] .rail-total-caret{
-    transform: rotate(225deg) translate(-2px, -2px);
-  }
+  @media (hover: hover){ }
 
   /* Indented under the total, which is what makes them read as its parts. */
   .rail-place-list{
@@ -2141,7 +1980,7 @@
 
   /* On a phone the rail is a bottom bar; none of this belongs in a 64px strip. */
   @media (max-width: 1000px){
-    .rail-places, .nav-back, .nav-contents-fold{ display: none; }
+    .nav-back, .nav-contents-fold { display: none; }
     .rail-scroll{ flex-direction: row; padding: 0; gap: 0; overflow: visible; }
   }
 
@@ -2179,10 +2018,6 @@
 
   /* Where the money is leads the rail, so it wears the rule under it rather
      than above it. */
-  .rail-places{
-    margin: 0 0 var(--sp-5); padding: 0 0 var(--sp-5);
-    border-top: 0; border-bottom: 1px solid var(--line);
-  }
 
 
   /* ---------- the panel beside the page ------------------------------------ */
@@ -2407,26 +2242,12 @@
     color: var(--on-accent);
     display: flex; align-items: center; justify-content: center;
   }
-  .brand .mark .mark-p{
-    font-size: var(--fs-2xl); font-weight: 800; line-height: 1;
-    transition: opacity var(--dur-base) var(--ease-out);
-  }
-  .brand .mark .mark-sync{
-    position: absolute; width: 19px; height: 19px; opacity: 0;
-    transition: opacity var(--dur-base) var(--ease-out);
-  }
   /* It says what it does when you reach for it, and keeps the logo otherwise. */
   @media (hover: hover){
-    .brand .mark:hover .mark-p{ opacity: 0; }
-    .brand .mark:hover .mark-sync{ opacity: 1; }
   }
-  .brand .mark:focus-visible .mark-p{ opacity: 0; }
-  .brand .mark:focus-visible .mark-sync{ opacity: 1; }
-  .brand .mark.is-syncing .mark-p{ opacity: 0; }
-  .brand .mark.is-syncing .mark-sync{ opacity: 1; animation: mark-spin 900ms linear infinite; }
   .brand .mark.has-error{ background: var(--negative); }
   @keyframes mark-spin{ to{ transform: rotate(360deg); } }
-  @media (prefers-reduced-motion: reduce){ .brand .mark.is-syncing .mark-sync{ animation: none; } }
+  @media (prefers-reduced-motion: reduce){ }
 
   /* The figure, once, where the wordmark was. */
   .top-total{
@@ -4013,7 +3834,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21u";
+  const APP_BUILD = "2026-09-21v";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -19726,8 +19547,6 @@ if ("serviceWorker" in navigator &&
   .loan-card.is-closed .status-select[disabled]{
     opacity: .6; cursor: not-allowed; border-style: dashed;
   }
-  .loan-card.is-unlocked::after{ opacity: .18; }
-  .loan-card.is-unlocked > *{ opacity: 1; }
 
   @media (prefers-reduced-motion: reduce){
     .loan-card.is-closed::after{ transition: none; }
@@ -19791,7 +19610,6 @@ if ("serviceWorker" in navigator &&
     outline-offset: 2px; }
   .loan-card.is-editing::after{ opacity: .15; }
   .loan-card.is-editing > *{ opacity: 1; filter: none; }
-  .loan-finish{ flex: 0 0 auto; }
 
   /* ---------- a board that was only ever its form ------------------------- */
   /* Savings had the form on one card and the accounts on the next, so the page
@@ -20435,11 +20253,6 @@ if ("serviceWorker" in navigator &&
      row: the title block kept its content width, so Add and Collapse were
      pushed onto a line of their own. The title block takes the slack instead,
      and the two buttons stay where they were. */
-  .section-head-row:has(.loan-summary.is-headline){ align-items: flex-start; }
-  .section-head-row:has(.loan-summary.is-headline) > div:first-child{
-    flex: 1 1 340px; min-width: 0;
-  }
-  .section-head-row:has(.loan-summary.is-headline) > .btn{ flex: 0 0 auto; }
   /* Heading on one line, figure under it, rather than the figure trying to sit
      beside a heading that is already using the width. */
   .panel-head.is-toolbar:has(> .loan-summary.is-headline){
@@ -20535,8 +20348,6 @@ if ("serviceWorker" in navigator &&
   }
   .loan-card.is-closed:focus-within > *{ opacity: 1; }
   .loan-card.is-closed:focus-within::after{ opacity: .2; }
-  .loan-card.is-unlocked::after{ opacity: .2; }
-  .loan-card.is-unlocked > *{ opacity: 1; }
 
   /* ---------- the layout controls, where they can be found ----------------- */
   .nav-tools{
@@ -20788,12 +20599,6 @@ if ("serviceWorker" in navigator &&
   body.list-as-rows .loan-row-actions{ justify-self: end; margin-left: 0; }
   /* wireNotes rebuilds this button with its label inside, and in a 28px box a
      label is not a thing that fits. */
-  .loan-note-btn{ position: relative; }
-  .loan-note-btn .act-lbl{
-    position: absolute; width: 1px; height: 1px;
-    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
-  }
-  .loan-note-btn svg{ width: 14px; height: 14px; }
 
   /* The same tooltip the action bar has, because these are now the same kind of
      button doing the same job. */
@@ -20833,7 +20638,7 @@ if ("serviceWorker" in navigator &&
     .loan-remove:hover{
       background: var(--negative); border-color: var(--negative); color: var(--bg);
     }
-    .loan-edit:hover, .loan-note-btn:hover{
+    .loan-edit:hover {
       background: var(--accent); border-color: var(--accent); color: var(--bg);
     }
   }
@@ -20868,8 +20673,7 @@ if ("serviceWorker" in navigator &&
      that reports no hover, this one included. */
   .loan-card.is-closed:hover > *{ filter: none; }
   .loan-card.is-closed:focus-within > *,
-  .loan-card.is-closed.is-editing > *,
-  .loan-card.is-unlocked > *{ filter: none; }
+  .loan-card.is-closed.is-editing > * { filter: none; }
   /* The buttons are not part of the record and are never out of focus. */
   .loan-card.is-closed .row-action-bar,
   .loan-card.is-closed > [data-payment-for] > .collapsible-body{ filter: none; }
@@ -20882,8 +20686,6 @@ if ("serviceWorker" in navigator &&
      out of edit mode this button had nothing to offer that was not already
      there. It is how you CHANGE the note, and changing is what the pencil is
      for. */
-  .loan-card.is-closed .loan-note-btn{ display: none; }
-  .loan-card.is-closed.is-editing .loan-note-btn{ display: inline-flex; }
 
   /* ---------- appearance: accent ------------------------------------------- */
   /* One token, redefined. Everything downstream - buttons, chips, the rail mark,
@@ -21184,11 +20986,105 @@ if ("serviceWorker" in navigator &&
   .savings-list{ padding-top: var(--sp-4); }
 
   /* ---------- the phone ---------------------------------------------------- */
-  /* Charts is four canvases and a sortable table. On 375px it is a screen you
-     pinch at, and every figure on it is somewhere else in the app as a number
-     you can read. */
+  /* CHARTS IS BACK. It was hidden here because it was "four canvases and a
+     sortable table", which it was - before the page was split into Spending,
+     Net worth and Categories. Each group is one chart now, and the strip that
+     does the splitting is the same one the dashboard uses. The reason the tab
+     was dropped is the reason that strip exists.
+
+     The period strip and the group strip sit side by side on a desktop and
+     stack here, which is the right way round: the period is the outer question
+     and on a narrow screen an outer question belongs on its own line. */
+
   @media (max-width: 720px){
-    nav.tabs button[data-tab="charts"]{ display: none; }
+    /* A LABEL AND A FIGURE IS A ROW, NOT A TILE.
+
+       The KPI row is `flex: 1 1 190px`, and 190 is a desktop basis: at 293px of
+       usable width exactly one tile fits per line, so the row silently becomes a
+       column - 463px of summary on Charts with the chart starting at y=781, and
+       661px of it on Highlights. In an 812px window that is a Charts page with
+       no chart on it.
+
+       Shrinking the tiles instead was measured and rejected: three across at
+       90px each painted "₱33,269.43" 24px outside its own tile.
+
+       So the secondary tiles become list rows - badge, label, figure at the
+       right edge, basis underneath - which is the shape the "not in this total"
+       list already uses on the Total money card. Measured after: 661 -> 388 and
+       463 -> 273, the chart at y=590, nothing bleeding, and every figure landing
+       13px off the right edge on every row. */
+    #money-overview-row > *,
+    #stat-row > *{ flex: 1 1 100%; }
+
+    .kpi:not(.is-primary){
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      grid-template-areas: "badge label value"
+                           ".     basis delta";
+      align-items: center;
+      column-gap: var(--sp-5);
+      row-gap: 2px;
+      padding: var(--sp-5) var(--sp-6);
+    }
+    /* The head is a wrapper for layout, not a thing in itself, so it steps out
+       of the way and lets the badge and the label take their own cells. */
+    .kpi:not(.is-primary) .kpi-head{ display: contents; }
+    .kpi:not(.is-primary) .kpi-badge{ grid-area: badge; }
+    .kpi:not(.is-primary) .kpi-label{ grid-area: label; }
+    .kpi:not(.is-primary) .kpi-basis{ grid-area: basis; }
+    .kpi:not(.is-primary) .kpi-delta{ grid-area: delta; justify-self: end; }
+    .kpi:not(.is-primary) .kpi-value{
+      grid-area: value; text-align: right; font-size: var(--fs-lg);
+    }
+    /* A sparkline is for a tile with width to spare. In a row it is a smear. */
+    .kpi:not(.is-primary) .kpi-trend{ display: none; }
+
+    /* The primary keeps its tile - it carries the gauge, and it is the figure
+       the card is about. It loses only the sparkline, which on this page is a
+       34px copy of the chart drawn a few hundred pixels below it. */
+    .kpi.is-primary{ padding: var(--sp-6); }
+    .kpi.is-primary .kpi-trend{ display: none; }
+
+    /* 28px of badge is a tenth of the line here. */
+    .kpi-badge{ width: 22px; height: 22px; }
+    .kpi-badge svg{ width: 12px; height: 12px; }
+
+    /* ---- Category profile: the bar goes under the line it measures ------- */
+    /* Both row types are grids of columns with hard minimums - a minmax floor
+       is a floor, not a preference - so at 293px of usable width they refuse to
+       fit and the figure on the end is pushed out of the card. 130 + 90 + 66
+       and two gaps is 306 in a 293px box, measured.
+
+       This was invisible until Charts came back to the phone: the card lived on
+       the one tab a phone did not have, so no sweep had ever measured it narrow.
+
+       The bar is what does not need a column of its own. It measures the line
+       it sits on, so it goes under that line and takes the full width, where it
+       is a longer and more readable bar than it was as a squeezed third column,
+       and the words and the figure keep the whole line to themselves. */
+    .cp-band{
+      grid-template-columns: 1fr auto;
+      grid-template-areas: "key  value"
+                           "rail rail";
+      row-gap: var(--sp-3);
+    }
+    .cp-band-k{ grid-area: key; min-width: 0; }
+    .cp-band-v{ grid-area: value; }
+    .cp-band-rail{ grid-area: rail; }
+
+    .cp-in-row{
+      grid-template-columns: 1fr auto auto;
+      grid-template-areas: "name n    value"
+                           "rail rail rail";
+      row-gap: var(--sp-3);
+    }
+    /* min-width:0 is what lets the ellipsis it already carries actually fire:
+       a grid item defaults to min-content, which for a nowrap name is the whole
+       name, and the column would push the figure out again. */
+    .cp-in-name{ grid-area: name; min-width: 0; }
+    .cp-in-n{ grid-area: n; }
+    .cp-in-v{ grid-area: value; }
+    .cp-in-rail{ grid-area: rail; }
   }
 
   /* ---------- the two actions take opposite ends --------------------------- */
@@ -21241,7 +21137,7 @@ if ("serviceWorker" in navigator &&
   #savings-table-wrap .pagination-bar,
   #investments-table-wrap .pagination-bar,
   [id$="-table-wrap"] .pagination-bar{ padding-top: var(--sp-7); }
-  .savings-list, .inv-cards, .loan-cards{ padding-bottom: var(--sp-3); }
+  .savings-list, .loan-cards { padding-bottom: var(--sp-3); }
 
   /* ---------- the page controls are how you move through forty-four loans --- */
   .pagination-bar{ padding-top: var(--sp-7); gap: var(--sp-6); }
@@ -21929,12 +21825,11 @@ if ("serviceWorker" in navigator &&
        per-tab contents and the layout tools. */
     nav.tabs .nav-back,
     nav.tabs .nav-tools,
-    nav.tabs .rail-places,
     nav.tabs .nav-contents,
     nav.tabs .nav-contents-fold,
     nav.tabs .rail-fold,
     nav.tabs .rail-resize,
-    nav.tabs .nav-key{ display: none !important; }
+    nav.tabs .nav-key { display: none !important; }
     /* The label under the glyph, small enough that five fit a 390px screen. */
     nav.tabs button[data-tab] .tab-label{
       font-size: 9px; line-height: 1.15; max-width: 100%;
