@@ -3,14 +3,33 @@
 A self-contained personal finance app. **One HTML file, no build step, no dependencies to install.**
 Open `index.html` in a browser and it runs.
 
-- **~9,140 lines total** — ~2,720 CSS, ~5,770 JS, ~645 HTML (602 KB)
-- **203 functions**, all in one inline `<script>`
+- **22,607 lines total** — 6,715 CSS, 14,795 JS, 1,097 HTML (1,331 KB)
+- **465 functions**, all in one inline `<script>`
 - **Only external dependency:** Chart.js, lazy-loaded from CDN on first visit to Charts
 - **All data lives in `localStorage` on the user's device.** Nothing is sent anywhere
   *unless you explicitly turn on device sync* (Settings → Sync), which is off by default.
   When on, records go to one **private gist on your own GitHub account** — no third-party
   server. The token is stored on that device only and is deliberately excluded from every
   backup, so an exported file never carries a credential.
+
+---
+
+## Layout
+
+```
+index.html              the app. This IS the source - edit it directly.
+sw.js                   service worker; bump VERSION to push an update
+manifest.webmanifest    
+icon-180.png icon.svg   
+.nojekyll               stops GitHub Pages mangling the files
+
+tools/                  13 scripts. Nothing here ships; see Verification.
+backup/                 OLD-ORIGINAL and old session notes. Kept, not worked on.
+```
+
+The top level is what a browser asks for and nothing else. There is no build
+step and nothing generates `index.html` - it was produced from a four-variant
+design lab that has since been removed, and it is now edited in place.
 
 ---
 
@@ -171,7 +190,7 @@ cached — handing back a stale copy of your own records is the one thing this m
 ### The gates — run all five after every edit batch, and never pipe them
 
 ```bash
-node verify.js
+node tools/verify.js
 ```
 
 Scripts parse, CSS braces and `<div>`s balance, no undefined CSS variables, and
@@ -179,26 +198,26 @@ Scripts parse, CSS braces and `<div>`s balance, no undefined CSS variables, and
 one-liner and the greps that used to live here.
 
 ```bash
-node sync-audit.js
+node tools/sync-audit.js
 ```
 
 37 checks. Two devices merge without duplicating or losing a record.
 
 ```bash
-node audit-round2.js
+node tools/audit-round2.js
 ```
 
 34 checks. Budgets, categories and deletions survive a sync; a repaint cannot land
 on a field being typed in; a logged entry reaches the screen.
 
 ```bash
-node balance-audit.js
+node tools/balance-audit.js
 ```
 
 33 checks. Account arithmetic — no money created, no spend counted twice.
 
 ```bash
-node sync-devices-audit.js
+node tools/sync-devices-audit.js
 ```
 
 23 checks. The loan payment-ledger merge, against records the app itself wrote.

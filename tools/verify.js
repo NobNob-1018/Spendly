@@ -2,7 +2,7 @@
 // piping `node --check` to head/tail swallows the status and prints a reassuring
 // "OK" over a genuine parse error, which is how a dead app once looked healthy.
 const fs = require("fs"), vm = require("vm");
-const F = "C:/Users/Tim Salinas/Desktop/Repository/spend-tracker/index.html";
+const F = require("path").join(__dirname, "..", "index.html");
 const s = fs.readFileSync(F, "utf8");
 let bad = 0;
 

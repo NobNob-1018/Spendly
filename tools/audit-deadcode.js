@@ -20,8 +20,7 @@
 const fs = require("fs");
 /* index.html by default - it is the build, and there is nothing else to point
    at now. Any other HTML file can be passed as an argument. */
-const F = process.argv[2] ||
-  "C:/Users/Tim Salinas/Desktop/Repository/spend-tracker/index.html";
+const F = process.argv[2] || require("path").join(__dirname, "..", "index.html");
 const SRC = fs.readFileSync(F, "utf8");
 
 /* Comments hide false positives in both directions: a name mentioned in a

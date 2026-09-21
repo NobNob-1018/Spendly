@@ -2,7 +2,7 @@
    index.html, so a fix in the file changes this test with it. Scenarios are the
    ones two devices actually produce, not the ones that are easy to write. */
 const fs = require("fs");
-const SRC = fs.readFileSync("C:/Users/Tim Salinas/Desktop/Repository/spend-tracker/index.html", "utf8");
+const SRC = fs.readFileSync(require("path").join(__dirname, "..", "index.html"), "utf8");
 
 function grab(name){
   const start = SRC.indexOf("function " + name + "(");

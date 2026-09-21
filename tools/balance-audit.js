@@ -2,7 +2,7 @@
    Runs the REAL functions out of index.html: the ledger arithmetic, the migration,
    and the same union merge sync uses. */
 const fs = require("fs");
-const SRC = fs.readFileSync("C:/Users/Tim Salinas/Desktop/Repository/spend-tracker/index.html", "utf8");
+const SRC = fs.readFileSync(require("path").join(__dirname, "..", "index.html"), "utf8");
 
 function grab(name){
   const start = SRC.indexOf("function " + name + "(");

@@ -33,7 +33,7 @@ const fs = require("fs");
 const args = process.argv.slice(2);
 const WRITE = args.indexOf("--write") !== -1;
 const F = args.filter(a => a.indexOf("--") !== 0)[0] ||
-  "C:/Users/Tim Salinas/Desktop/Repository/spend-tracker/index.html";
+  require("path").join(__dirname, "..", "index.html");
 const SRC = fs.readFileSync(F, "utf8");
 
 /* ---- 1. which classes are worn ------------------------------------------- */
