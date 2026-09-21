@@ -17,6 +17,18 @@ function grab(name){
   throw new Error("unterminated " + name);
 }
 
+/* mergeRecords merges a loan's payments[] rather than replacing it, which needs
+   mergeLedger and the table naming which stores carry a ledger. Pulled from the
+   file like everything else here - and its absence is a failure in itself, since
+   without it two devices repaying one loan silently lose a payment. */
+const ledgerAt = SRC.indexOf("const LEDGER_FIELD = {");
+if (ledgerAt < 0) throw new Error("LEDGER_FIELD is gone - loans merge by whole record again");
+const LEDGER_FIELD = eval("(" +
+  SRC.slice(SRC.indexOf("{", ledgerAt), SRC.indexOf("};", ledgerAt) + 1) + ")");
+eval(grab("mergeLedger"));
+eval(grab("round2"));
+
+
 const store = {};
 global.localStorage = {
   getItem: k => (k in store ? store[k] : null),
@@ -247,9 +259,35 @@ console.log("\n--- a sync cannot pull live UI out from under the user ---");
   check("something releases the held repaint",
         SRC.indexOf("refreshHeldForEditing") > 0 && SRC.indexOf("focusout") > 0,
         "held and never released means the table stops updating altogether");
+  /* Both guards live in the shared repaint now, because a sync merge is not the
+     only thing that redraws a table - logging an entry does too, and used not to. */
+  const repaintAt = SRC.indexOf("function repaintVisibleTables(");
+  const repaint = repaintAt < 0 ? "" : SRC.slice(repaintAt, SRC.indexOf("\n  }", repaintAt));
+  check("the shared repaint exists", repaintAt > 0,
+        "without it every writer spells out its own guards and one of them forgets");
   check("it only repaints the tab on screen",
-        body.indexOf("onScreen(\"tab-history\")") > 0,
+        repaint.indexOf("onScreen(\"tab-history\")") > 0,
         "rebuilding tables nobody is looking at, every twelve seconds, on a phone");
+  check("it refuses to repaint over a field being typed in",
+        repaint.indexOf("editingATableField()") > 0,
+        "a rebuild mid-edit replaces the row under the caret");
+  check("the sync merge goes through it",
+        body.indexOf("repaintVisibleTables()") > 0,
+        "a merge that draws its own tables drifts from the one that does it properly");
+  /* The bug this audit found: addExpense and addIncome saved the record and then
+     refreshed the welcome card and the money bar and nothing else. The row did not
+     appear in History and "This month" kept reading the old figure to the peso. */
+  const writerAt = SRC.indexOf("function afterEntryWritten(");
+  const writer = writerAt < 0 ? "" : SRC.slice(writerAt, SRC.indexOf("\n  }", writerAt));
+  check("a logged entry repaints the tables on screen",
+        writer.indexOf("repaintVisibleTables") > 0,
+        "logging while looking at History saved the record and drew no row");
+  check("and refreshes the derived figures too",
+        writer.indexOf("scheduleDerivedRefresh()") > 0,
+        "the dashboard kept the old month total after an expense was logged");
+  check("both entry writers call it",
+        (SRC.match(/afterEntryWritten\(\);/g) || []).length === 2,
+        "expense and income are the two; one of them forgetting is how this started");
   check("rebuilding the category list keeps the chosen category",
         SRC.indexOf("if (chosen && activeList.indexOf(chosen) !== -1)") > 0,
         "replacing a select's options selects its first entry, which is Food");

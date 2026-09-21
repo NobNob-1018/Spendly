@@ -4013,7 +4013,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21t";
+  const APP_BUILD = "2026-09-21u";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4382,9 +4382,6 @@
   function loadCorrections(){ return correctionsStore.load(); }
   function saveCorrections(obj){ stampMap("corrections", obj); correctionsStore.save(obj); }
 
-  function getLastBackup(){
-    return localStorage.getItem(BACKUP_KEY);
-  }
   function setLastBackup(){
     localStorage.setItem(BACKUP_KEY, new Date().toISOString());
   }
@@ -4894,6 +4891,17 @@
 
   function round2(n){
     return Math.round(n * 100) / 100;
+  }
+
+  /* The middle value, which is what "typical" means for money: one ₱40,000
+     rent does not drag it the way it drags an average. Lives here beside round2
+     because the three workspace modules that want it had a copy each, identical
+     to the character, and they already draw on this scope for round2 itself. */
+  function median(nums){
+    if (!nums || !nums.length) return 0;
+    const sorted = nums.slice().sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : round2((sorted[mid - 1] + sorted[mid]) / 2);
   }
 
   // "Total money" shown persistently in the header, updated the instant any relevant
@@ -6663,7 +6671,7 @@
     document.getElementById("recurring-day-row").style.display = "none";
     document.getElementById("add-hint").textContent = "";
     clearDraft();
-    renderQuickStats();
+    updateWelcomeCard();
     const originalNote = originalCurrency ? ` (${originalAmount} ${originalCurrency})` : "";
     // Budgets were passive — you only discovered you'd blown one by opening
     // Settings later. Warn at the moment the expense is logged instead.
@@ -6679,6 +6687,7 @@
         budgetNote = ` ${fmtMoney(budgetForCat - spentThisMonth)} left in your ${entry.category} budget.`;
       }
     }
+    afterEntryWritten();
     if (withdrawResult && !withdrawResult.ok){
       showToast(`Added ${fmtMoney(entry.amount)}${originalNote} to ${entry.category}, but ${withdrawResult.reason}.`);
     } else {
@@ -6986,7 +6995,7 @@
       expenses.unshift(entry);
       saveExpenses(expenses);
     }
-    renderQuickStats();
+    updateWelcomeCard();
     // Handed back so the loan can point at the row it just made.
     return entry.id;
   }
@@ -7086,18 +7095,12 @@
     document.getElementById("recurring-day-row").style.display = "none";
     document.getElementById("add-hint").textContent = "";
     clearDraft();
-    renderQuickStats();
+    updateWelcomeCard();
+    afterEntryWritten();
     const originalNote = originalCurrency ? ` (${originalAmount} ${originalCurrency})` : "";
     showToast(`Added ${fmtMoney(entry.amount)}${originalNote} income from ${entry.category}${bank ? ` · deposited to ${bank}` : ""}${isRecurring ? " · will repeat monthly" : ""}`);
   }
 
-  // The Quick Stats card this used to render was retired when the Dashboard was
-  // restructured (its info is now covered by the 7-day summary). Kept as a thin
-  // function — rather than touching every one of its many call sites — so it still
-  // does the one thing that still matters: keeping the welcome card in sync.
-  function renderQuickStats(){
-    updateWelcomeCard();
-  }
 
   const WELCOME_DISMISSED_KEY = "spendly_welcome_dismissed_v1";
   function updateWelcomeCard(){
@@ -8372,7 +8375,7 @@
         selectedExpenseIds.delete(id);
         saveExpenses(expenses);
         renderHistory();
-        renderQuickStats();
+        updateWelcomeCard();
         if (snapshot.bank) depositToSavings(snapshot.bank, snapshot.amount);
         showUndoToast(
           snapshot.bank
@@ -8384,7 +8387,7 @@
             // Re-apply the withdrawal that deleting had reversed
             if (snapshot.bank) withdrawFromSavings(snapshot.bank, snapshot.amount);
             renderHistory();
-            renderQuickStats();
+            updateWelcomeCard();
             showToast("Restored.");
           }
         );
@@ -8475,7 +8478,7 @@
     selectedExpenseIds.clear();
     saveExpenses(expenses);
     renderHistory();
-    renderQuickStats();
+    updateWelcomeCard();
     renderDashboardSummary();
     renderCharts();
     let restored = 0;
@@ -8493,7 +8496,7 @@
       });
       saveExpenses(expenses);
       renderHistory();
-      renderQuickStats();
+      updateWelcomeCard();
       renderDashboardSummary();
       renderCharts();
       showToast(`Restored ${count} expense(s).`);
@@ -8698,7 +8701,7 @@
         selectedIncomeIds.delete(id);
         saveIncomes(incomes);
         renderIncomeHistory();
-        renderQuickStats();
+        updateWelcomeCard();
         let msg = "Income entry removed.";
         if (snapshot.bank){
           const result = withdrawFromSavings(snapshot.bank, snapshot.amount);
@@ -8711,7 +8714,7 @@
           saveIncomes(incomes);
           if (snapshot.bank) depositToSavings(snapshot.bank, snapshot.amount);
           renderIncomeHistory();
-          renderQuickStats();
+          updateWelcomeCard();
           showToast("Restored.");
         });
       });
@@ -8739,7 +8742,7 @@
     selectedIncomeIds.clear();
     saveIncomes(incomes);
     renderIncomeHistory();
-    renderQuickStats();
+    updateWelcomeCard();
     let reversed = 0, shortfalls = 0;
     snapshots.forEach(item=>{
       if (!item.bank) return;
@@ -8756,7 +8759,7 @@
       });
       saveIncomes(incomes);
       renderIncomeHistory();
-      renderQuickStats();
+      updateWelcomeCard();
       showToast(`Restored ${count} income entr${count>1?"ies":"y"}.`);
     });
   });
@@ -10697,7 +10700,7 @@
       renderTotalMoneyBar();
       if (visible("tab-dashboard")) renderDashboardSummary();
       if (visible("tab-charts")) renderCharts();
-      renderQuickStats();
+      updateWelcomeCard();
       renderSideContext(document.querySelector(".tab-panel.is-active")
         ? document.querySelector(".tab-panel.is-active").id.replace(/^tab-/, "") : "dashboard");
     }), 220);
@@ -11877,13 +11880,80 @@
   // edit stays gone. A record with no updatedAt (written before sync existed) loses
   // to one that has a timestamp, which is the safe direction — it means the device
   // that has actually been edited recently wins.
+  /* Which records carry an append-only ledger inside them, and under what name.
+
+     A loan's payments[] is written by one device at a time and never edited, so
+     two devices that each logged a repayment before they met hold two HALVES of
+     one list - not two versions of one value. Picking a whole record by updatedAt
+     is right for every other field a loan has and wrong for this one: it throws a
+     half away, and with it the money that half accounted for.
+
+     It is a list rather than a flag because anything added here changes how a
+     record merges, and that should be a decision somebody wrote down. payments[]
+     is currently the only array inside a record that is appended to. */
+  const LEDGER_FIELD = {
+    "spendly_loans_given_v1": "payments",
+    "spendly_loans_taken_v1": "payments"
+  };
+
+  /* Both halves of the ledger, and an outstanding figure worked out from them.
+
+     The balance is recomputed rather than taken from the winner because the
+     winner only ever knew about its own payments - the laptop that paid 2,000
+     off 8,000 saved 6,000, and that figure is wrong the moment the phone's 3,000
+     joins it. The principal is the original amount if either side recorded one,
+     and is otherwise reconstructed from what that device still had outstanding
+     plus what it had already taken off. */
+  function mergeLedger(winner, loser, field){
+    const listOf = (rec) => Array.isArray(rec && rec[field]) ? rec[field] : [];
+    const union = {};
+    listOf(loser).forEach(p => { if (p && p.id) union[p.id] = p; });
+    listOf(winner).forEach(p => { if (p && p.id) union[p.id] = p; });
+    const all = Object.keys(union).map(k => union[k]);
+    // Nothing to reconcile: the winner already holds everything the loser did.
+    if (all.length === listOf(winner).length) return winner;
+
+    const principalOf = (rec) => {
+      if (rec && rec.originalAmount != null) return +rec.originalAmount || 0;
+      const paid = listOf(rec).reduce((t, p) => t + (+(p && p.amount) || 0), 0);
+      return round2((+(rec && rec.amount) || 0) + paid);
+    };
+    const principal = Math.max(principalOf(winner), principalOf(loser));
+    const paid = all.reduce((t, p) => t + (+(p && p.amount) || 0), 0);
+
+    const out = Object.assign({}, winner);
+    // Newest first, the order logLoanPayment writes them in and the order the
+    // card reads them back in.
+    out[field] = all.slice().sort((x, y) =>
+      String(y.date || "").localeCompare(String(x.date || "")) ||
+      String(y.id || "").localeCompare(String(x.id || "")));
+    out.originalAmount = principal;
+    out.amount = round2(Math.max(0, principal - paid));
+    if (out.amount <= 0.01){
+      out.amount = 0;
+      out.status = "repaid";
+      out.repaidOn = winner.repaidOn || loser.repaidOn || out.repaidOn || null;
+    } else if (out.status === "repaid"){
+      /* One device called it settled on its own half of the ledger. With both
+         halves in hand it is not, and the pill has to say so or the loan is off
+         the list with money still on it. */
+      out.status = "outstanding";
+      out.repaidOn = null;
+    }
+    return out;
+  }
+
   function mergeRecords(key, mine, theirs, tomb){
     const byId = {};
+    const ledger = LEDGER_FIELD[key];
     (Array.isArray(mine) ? mine : []).forEach(r=>{ if (r && r.id) byId[r.id] = r; });
     (Array.isArray(theirs) ? theirs : []).forEach(r=>{
       if (!r || !r.id) return;
       const ex = byId[r.id];
-      if (!ex || String(r.updatedAt || "") > String(ex.updatedAt || "")) byId[r.id] = r;
+      if (!ex){ byId[r.id] = r; return; }
+      const theirsIsNewer = String(r.updatedAt || "") > String(ex.updatedAt || "");
+      const winner = theirsIsNewer ? r : ex;
+      byId[r.id] = ledger ? mergeLedger(winner, theirsIsNewer ? ex : r, ledger) : winner;
     });
     const graves = (tomb && tomb[key]) || {};
     Object.keys(graves).forEach(id=>{
@@ -12197,13 +12267,44 @@
     }
   }
 
+  /* THE TABLES ON SCREEN, AFTER SOMETHING CHANGED THEM.
+
+     Switching to a tab re-renders that tab's own tables (see activateTab), so
+     rebuilding tables nobody is looking at buys nothing - it is DOM work and
+     battery every twelve seconds, on a phone, for rows that are not on screen.
+
+     The guard is the point of sharing this. A repaint that lands while somebody
+     is part way through typing in a cell replaces the row under them, so a write
+     from anywhere - a sync merge, a logged entry - has to ask the same question
+     first. Spelling that out per caller is how the last one came to be missing it.
+
+     The dashboard is not here: it is derived rather than tabular, both callers
+     want it debounced, and it must not be rendered twice for one save. */
+  function repaintVisibleTables(){
+    if (editingATableField()) return false;
+    const onScreen = (id)=>{ const el = document.getElementById(id); return el && el.style.display !== "none"; };
+    if (onScreen("tab-history")){ renderHistory(); renderIncomeHistory(); }
+    if (onScreen("tab-savings")) renderSavingsList();
+    if (onScreen("tab-loans")){ renderLoansGiven(); renderLoansTaken(); renderInvestments(); }
+    return true;
+  }
+
+  /* A WRITTEN ENTRY HAS TO REACH THE SCREEN.
+
+     addExpense and addIncome used to end at updateWelcomeCard(), which is a
+     one-line alias for the welcome card, plus the money bar that saveExpenses
+     refreshes on its way past. Everything else waited for the tab to be left and
+     come back to: logging while looking at History saved the record and drew no
+     row, and logging while looking at the Dashboard left "This month" reading the
+     old figure to the peso. Both measured on a seeded page. */
+  function afterEntryWritten(){
+    keepingScroll(repaintVisibleTables);
+    scheduleDerivedRefresh();
+  }
+
   function refreshAfterSync(){
     if (editingATableField()){ refreshHeldForEditing = true; return; }
     refreshHeldForEditing = false;
-    // Switching to a tab re-renders that tab's own tables (see activateTab), so
-    // rebuilding tables nobody is looking at buys nothing - it is DOM work and battery
-    // every twelve seconds, on a phone, for rows that are not on screen. Same test
-    // scheduleDerivedRefresh already uses.
     const onScreen = (id)=>{ const el = document.getElementById(id); return el && el.style.display !== "none"; };
 
     keepingScroll(() => {
@@ -12215,9 +12316,7 @@
       renderRecurringList(); renderCryptoList();
 
       if (onScreen("tab-dashboard")) renderDashboardSummary();
-      if (onScreen("tab-history")){ renderHistory(); renderIncomeHistory(); }
-      if (onScreen("tab-savings")) renderSavingsList();
-      if (onScreen("tab-loans")){ renderLoansGiven(); renderLoansTaken(); renderInvestments(); }
+      repaintVisibleTables();
     });
   }
 
@@ -12723,7 +12822,7 @@
     renderLoansTaken();
     renderInvestments();
     renderSideUpcoming();
-    renderQuickStats();
+    updateWelcomeCard();
 
     // Anything restored from a backup that predates the ledger arrives with a balance
     // and no opening figure, so adopt one for it; then every balance is worked out
@@ -12781,7 +12880,7 @@
     renderHistory();
     renderDashboardSummary();
     renderCharts();
-    renderQuickStats();
+    updateWelcomeCard();
     showToast(`Imported ${count} expense(s).`);
   }
 
@@ -12902,7 +13001,7 @@
   renderRecurringList();
   renderHistory();
   renderIncomeHistory();
-  renderQuickStats();
+  updateWelcomeCard();
   populateSavingsProviders();
   populateInvestmentCategories();
   // The first panel is visible straight from the markup, so activateTab() never
@@ -13326,33 +13425,13 @@
 
     /* ======================================================================
        ANALYTICAL FEATURES — /ui workspace
-       Three things a workspace has and a page does not: saved views you can
-       name and come back to, a comparison against the previous period, and a
-       way to open one category up and see what is inside it.
+       What a workspace has and a page does not: a way to open one category up
+       and see what is inside it, without leaving the screen you are on.
        ====================================================================== */
     (function workspaceFeatures(){
       "use strict";
 
-      /* ---------- 2. compare against the previous period -------------------
-         A number on its own is not an observation. The comparison is what makes
-         it one, so the workspace states it rather than leaving the reader to
-         hold last month in their head. */
-      function monthKeyOffset(n){
-        const d = new Date();
-        d.setDate(1);
-        d.setMonth(d.getMonth() - n);
-        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
-      }
-      function totalsFor(key){
-        const inMonth = list => (list || []).filter(r => String(r.date || "").slice(0, 7) === key);
-        const sum = list => round2(list.reduce((t, r) => t + (Number(r.amount) || 0), 0));
-        const exp = inMonth(expenses);
-        const byCat = {};
-        exp.forEach(e => { byCat[e.category] = round2((byCat[e.category] || 0) + e.amount); });
-        return { spent: sum(exp), earned: sum(inMonth(incomes)), count: exp.length, byCat };
-      }
-
-      /* ---------- 3. category drill-down -----------------------------------
+      /* ---------- category drill-down --------------------------------------
          Clicking a category anywhere should open what is inside it. The chart
          and the table already agree on the totals; this shows the rows behind
          one of them without leaving the screen. */
@@ -13597,13 +13676,6 @@
          of its own category, over the last six months, with at least four
          comparable entries. Median rather than mean, so one large purchase does
          not raise the bar enough to hide the next one. */
-      function median(nums){
-        if (!nums.length) return 0;
-        const s = nums.slice().sort((a, b) => a - b);
-        const mid = Math.floor(s.length / 2);
-        return s.length % 2 ? s[mid] : round2((s[mid - 1] + s[mid]) / 2);
-      }
-
       function findOutliers(){
         const cutoff = new Date();
         cutoff.setMonth(cutoff.getMonth() - 6);
@@ -13728,13 +13800,6 @@
           out.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"));
         }
         return out;
-      }
-
-      function median(nums){
-        if (!nums.length) return 0;
-        const s = nums.slice().sort((a, b) => a - b);
-        const m = Math.floor(s.length / 2);
-        return s.length % 2 ? s[m] : round2((s[m - 1] + s[m]) / 2);
       }
 
       // Rounded to a figure a person would actually name. A limit of ₱4,187.50
@@ -14072,13 +14137,6 @@
       const shortMonth = k => MON[Number(String(k).slice(5, 7)) - 1];
 
       let chosen = null;
-
-      function median(nums){
-        if (!nums.length) return 0;
-        const s = nums.slice().sort((a, b) => a - b);
-        const m = Math.floor(s.length / 2);
-        return s.length % 2 ? s[m] : round2((s[m - 1] + s[m]) / 2);
-      }
 
       function monthsBack(n){
         const out = [];
@@ -21035,7 +21093,11 @@ if ("serviceWorker" in navigator &&
        width costs no height, the control was already 40px, and each option
        becomes a third of the row to hit rather than a word. */
     .pref-row > .range-tabs{ flex: 1 0 100%; }
-    .pref-row > .range-tabs button{ flex: 1 1 0; justify-content: center; min-width: 0; }
+    /* max-content, not 0: equal thirds are the aim, but a segment that is
+       narrower than its own label paints the label outside the pill. "Match my
+       system" needs 136px and was being given 89. Where the labels fit, which is
+       every other control on this card, they still divide the row equally. */
+    .pref-row > .range-tabs button{ flex: 1 1 0; justify-content: center; min-width: max-content; }
     /* Five swatches, so 3 + 2 by arrangement rather than by whatever fits. */
     .pref-row > .accent-row{
       flex: 1 0 100%;

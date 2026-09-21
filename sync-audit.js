@@ -17,6 +17,18 @@ function grab(name){
   throw new Error("unterminated " + name);
 }
 
+/* mergeRecords merges a loan's payments[] rather than replacing it, which needs
+   mergeLedger and the table naming which stores carry a ledger. Pulled from the
+   file like everything else here - and its absence is a failure in itself, since
+   without it two devices repaying one loan silently lose a payment. */
+const ledgerAt = SRC.indexOf("const LEDGER_FIELD = {");
+if (ledgerAt < 0) throw new Error("LEDGER_FIELD is gone - loans merge by whole record again");
+const LEDGER_FIELD = eval("(" +
+  SRC.slice(SRC.indexOf("{", ledgerAt), SRC.indexOf("};", ledgerAt) + 1) + ")");
+eval(grab("mergeLedger"));
+eval(grab("round2"));
+
+
 eval(["mergeRecords","mergeTombstones","fingerprint","mergeByKey"].map(grab).join("\n"));
 
 let pass = 0, fail = 0;
