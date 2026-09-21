@@ -453,9 +453,35 @@
       margin: 0 calc(var(--sp-7) * -1) calc(var(--sp-7) * -1);
       padding: var(--sp-6) var(--sp-7); align-items:flex-start;
     }
-    /* Stacked, the hairline is a rule between rows rather than between columns. */
+    /* STACKED, EVERY ROW IS A ROW.
+
+       The hairline becomes a rule between rows rather than between columns -
+       and that has to include the budget, which is not a `.tmw-item +
+       .tmw-item` and so kept its desktop treatment: `margin-left:auto` pushed
+       it 53px right of the three rows above it and `border-left` drew a rule
+       down its side. Measured on a phone at 390px.
+
+       It is still set apart, because it is still a different kind of fact - it
+       is what is left of a decision rather than money you hold. Set apart
+       upward, the way a stacked list does it. */
+    .tmw-outside{ flex-direction: column; align-items: stretch; gap: var(--sp-5); }
+    .tmw-items{ width: 100%; flex-direction: column; align-items: stretch; gap: 0; }
     .tmw-item + .tmw-item{ border-left:0; }
-    .tmw-items{ gap: var(--sp-3) var(--sp-6); }
+
+    /* And the figures line up. Inline label-value pairs ended wherever the
+       label left them - 229, 238 and 177 across three stacked rows - which is a
+       column of numbers that does not read as one. Full width, figure at the
+       right edge: the same shape the KPI rows on this screen already use. */
+    .tmw-item{
+      width: 100%; justify-content: space-between;
+      padding-left: var(--sp-6); padding-right: var(--sp-6);
+    }
+    .tmw-item.is-budget{
+      width: 100%; margin-left: 0; padding-left: var(--sp-6);
+      border-left: 0;
+      border-top: 1px solid var(--line-strong);
+      margin-top: var(--sp-4); padding-top: var(--sp-5);
+    }
   }
 
   /* ---------- a budget bar ----------------------------------------------- */
@@ -879,7 +905,14 @@
   .add-more-toggle{ background:transparent; border:0; color: var(--accent); cursor:pointer; font:inherit; font-size: var(--fs-3xs); font-weight:700; padding:0; }
   .is-collapsed{ display:none; }
   .pl-figure{ font-weight:700; font-variant-numeric: tabular-nums; }
-  .insights-strip{ display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--sp-6); }
+  /* min(240px, 100%), not 240px. A minmax floor is a FLOOR: on a 320px screen
+     this card is 238px wide inside its padding and the column stayed 240, so
+     every insight painted 2px outside the card. min() lets the floor give way
+     to a container narrower than itself, which is the whole intent of the
+     auto-fit - 240 where there is room, the container where there is not. */
+  .insights-strip{ display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    gap: var(--sp-6); }
   .insight{ display:flex; align-items:flex-start; gap: var(--sp-5); padding: var(--sp-6); background: var(--raised); border:1px solid var(--line); border-radius: var(--r-md); }
   .insight-icon svg{ width:16px; height:16px; }
   .insight-text{ font-size: var(--fs-sm); color: var(--ink-soft); min-width:0; }
@@ -1114,6 +1147,16 @@
     margin: 0; flex: 1 1 200px; min-width: 0;
     font-size: var(--fs-3xs); color: var(--ink-dim);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* One line beside a heading is right until the heading is above it rather
+     than beside it. On a phone these had the width to themselves and still cut:
+     "Five yes-or-no questions, all off to begin with" wanted 524px of 278, so
+     the reader got four words and an ellipsis. A second line costs ~18px. */
+  @media (max-width: 720px){
+    .panel-head.is-toolbar .sub{
+      flex: 1 1 100%;
+      white-space: normal; overflow: visible; text-overflow: clip;
+    }
   }
 
 
@@ -1601,7 +1644,12 @@
   .wc-row:last-child{ border-bottom:0; }
   /* The name and its flag on one line: the flag was its own shouted caps line,
      and on five rows of six a warning on almost everything is not a warning. */
+  /* The flag wraps under the name when the column cannot hold both. At 320px
+     "Shopping" plus a 64px "unusual" chip wants 127px of a 116px column, and the
+     chip left the box. Only wraps when it has to, so a wide column still reads
+     as one line. */
   .wc-name{ grid-area: name; display:flex; align-items:baseline; gap: var(--sp-4);
+    flex-wrap: wrap;
     font-size: var(--fs-sm); font-weight:600; min-width:0; }
   .wc-flag{ flex:0 0 auto; padding: 1px var(--sp-4); border-radius: var(--r-pill);
     font-size: 9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
@@ -2067,6 +2115,9 @@
     touch-action: pan-x;
   }
   .rd-tabs::-webkit-scrollbar{ display: none; }
+  /* The second strip is a choice WITHIN the tab above it, so it sits closer to
+     it than the tab row does to the title, and reads as belonging to it. */
+  .rd-dir{ margin-top: var(--sp-3); }
   .rd-tabs > .rd-tab{ flex: 0 0 auto; }
   .rd-tab{
     padding: var(--sp-4) var(--sp-6);
@@ -2618,7 +2669,7 @@
       <button data-tab="charts" aria-label="Charts" data-tip="Charts"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="7"/><line x1="16" y1="20" x2="16" y2="10"/><line x1="20" y1="20" x2="20" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span><span class="tab-label">Charts</span></button>
       <button data-tab="history" aria-label="History" data-tip="History"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg></span><span class="tab-label">History</span></button>
       <button data-tab="savings" aria-label="Savings" data-tip="Savings"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,3 21,9 3,9"/><line x1="5" y1="9" x2="5" y2="19"/><line x1="10" y1="9" x2="10" y2="19"/><line x1="14" y1="9" x2="14" y2="19"/><line x1="19" y1="9" x2="19" y2="19"/><line x1="3" y1="21" x2="21" y2="21"/></svg></span><span class="tab-label">Savings</span></button>
-      <button data-tab="loans" aria-label="Loans & Invest" data-tip="Loans & Invest"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span><span class="tab-label">Loans & Invest</span></button>
+      <button data-tab="loans" aria-label="Loans & Invest" data-tip="Loans & Invest"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 22 3 18 7 14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></span><span class="tab-label">Loans<span class="tab-label-rest"> &amp; Invest</span></span></button>
       <button data-tab="settings" aria-label="Settings" data-tip="Settings"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="11" cy="18" r="2" fill="currentColor" stroke="none"/></svg></span><span class="tab-label">Settings</span></button>
   </nav>
 
@@ -3834,7 +3885,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21v";
+  const APP_BUILD = "2026-09-21w";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -12867,6 +12918,30 @@
     };
     if (mq.addEventListener) mq.addEventListener("change", onWidth);
     else if (mq.addListener) mq.addListener(onWidth);
+
+    /* Charts is hidden under 360px, where its canvas is 212px wide and the
+       chart itself starts below the fold. If the screen arrives there while
+       Charts is the tab on screen, the panel would stay open with nothing in
+       the bar pointing at it - and stepTab works from the list of VISIBLE tabs,
+       so a swipe would be indexing a tab that is not in its list. */
+    const tiny = window.matchMedia("(max-width: 359px)");
+    const leaveAHiddenTab = () => {
+      const open = [...document.querySelectorAll(".tab-panel")]
+        .find(p => p.style.display !== "none");
+      if (!open) return;
+      const btn = document.querySelector(
+        'nav.tabs button[data-tab="' + open.id.replace(/^tab-/, "") + '"]');
+      if (btn && getComputedStyle(btn).display === "none") activateTab("dashboard");
+    };
+    /* Both, deliberately. A rotation raises the pair, so the second listener
+       costs nothing on a device - and a resize can be dispatched by hand, which
+       is the only way to prove this handler runs: the preview pane changes the
+       emulated viewport without raising either event. Two DOM reads and one
+       computed style, and running twice does nothing running once did not. */
+    if (tiny.addEventListener) tiny.addEventListener("change", leaveAHiddenTab);
+    else if (tiny.addListener) tiny.addListener(leaveAHiddenTab);
+    window.addEventListener("resize", leaveAHiddenTab);
+    leaveAHiddenTab();
   }
 
   applySettingsGroup(pref("settingsGroup", "appearance"));
@@ -16746,27 +16821,74 @@
         { key: "borrowed",   label: "Borrowed",   log: "loans-taken-body" },
         { key: "investment", label: "Investment", log: "investments-body" }
       ];
+      /* A PHONE GETS FOUR. The five want 380px of a 289px strip at 360px wide,
+         so Investment sits off the end of a row most people will not notice
+         scrolls - and two of the five are the same subject. A loan is a loan;
+         which way it went is its most important field, not its category. */
+      const ADD_TABS_PHONE = [
+        { key: "expense",    label: "Expense", mode: "expense" },
+        { key: "income",     label: "Income",  mode: "income" },
+        { key: "loans",      label: "Loans",   log: "loans-given-body", dirs: true },
+        { key: "investment", label: "Invest",  log: "investments-body" }
+      ];
+      const LOAN_DIRS = [
+        { key: "lent",     label: "Lent",     log: "loans-given-body",
+          title: "Log a loan you gave" },
+        { key: "borrowed", label: "Borrowed", log: "loans-taken-body",
+          title: "Log a loan you took" }
+      ];
+      const addTabList = () => onPhone() ? ADD_TABS_PHONE : ADD_TABS;
+
       const ADD_TITLE = {
         expense: "Add an expense", income: "Add income",
         lent: "Log a loan you gave", borrowed: "Log a loan you took",
-        investment: "Log an investment"
+        investment: "Log an investment", loans: "Log a loan"
       };
 
       /* Painted AFTER whatever opened the drawer, because openPanelBeside and
          openLog both clear #rd-tabs on their way in - which is what keeps the
          strip off every other thing that uses this drawer. */
-      function paintAddTabs(key){
+      function paintAddTabs(key, dirKey){
         const tabs = document.getElementById("rd-tabs");
         if (!tabs) return;
-        tabs.innerHTML = ADD_TABS.map(t =>
+        const list = addTabList();
+        tabs.innerHTML = list.map(t =>
           '<button type="button" class="rd-tab' + (t.key === key ? " is-on" : "") +
           '" data-add-tab="' + t.key + '">' + escapeHtml(t.label) + '</button>').join("");
         tabs.onclick = ev => {
           const hit = ev.target.closest("[data-add-tab]");
           if (hit) openAdd(hit.dataset.addTab);
         };
+
+        /* The direction, under the tab that has one. In the HEAD beside the tab
+           strip, never in the form: changing direction swaps the whole body for
+           a different form with different fields, so a control living in the
+           body would be carried off by the thing it was switching. */
+        const here = list.find(x => x.key === key);
+        const onDir = LOAN_DIRS.find(d => d.key === dirKey) || LOAN_DIRS[0];
+        let dirRow = document.getElementById("rd-dir");
+        if (here && here.dirs){
+          if (!dirRow){
+            dirRow = document.createElement("nav");
+            dirRow.id = "rd-dir";
+            dirRow.className = "rd-tabs rd-dir";
+            dirRow.setAttribute("aria-label", "Which way the money went");
+            tabs.insertAdjacentElement("afterend", dirRow);
+          }
+          dirRow.innerHTML = LOAN_DIRS.map(d =>
+            '<button type="button" class="rd-tab' + (d.key === onDir.key ? " is-on" : "") +
+            '" data-add-dir="' + d.key + '">' + escapeHtml(d.label) + '</button>').join("");
+          dirRow.onclick = ev => {
+            const hit = ev.target.closest("[data-add-dir]");
+            if (hit) openAdd(key, hit.dataset.addDir);
+          };
+        } else if (dirRow){
+          dirRow.remove();
+        }
+
         const title = document.getElementById("rd-title");
-        if (title) title.textContent = ADD_TITLE[key] || "Add";
+        if (title) title.textContent =
+          (here && here.dirs ? onDir.title : ADD_TITLE[key]) || "Add";
         const kick = document.getElementById("rd-kicker");
         if (kick) kick.textContent = "What are you adding?";
         /* After the row exists and has a width, or there is nothing to measure
@@ -16778,8 +16900,22 @@
 
       /* One way in, from the + and from every caller that used to go through
          the menu. Expense unless asked otherwise. */
-      function openAdd(key){
-        const t = ADD_TABS.find(x => x.key === key) || ADD_TABS[0];
+      function openAdd(key, dirKey){
+        /* "lent" and "borrowed" are still the keys on a wide screen, and still
+           what an older caller would ask for. On a phone they are not tabs any
+           more, so they arrive as a direction instead of falling through to
+           the first tab in the list, which is Expense. */
+        if (onPhone() && (key === "lent" || key === "borrowed")){
+          return openAdd("loans", key);
+        }
+        const list = addTabList();
+        const t = list.find(x => x.key === key) || list[0];
+        if (t.dirs){
+          const d = LOAN_DIRS.find(x => x.key === dirKey) || LOAN_DIRS[0];
+          openLog(d.log);
+          paintAddTabs(t.key, d.key);
+          return;
+        }
         if (t.log){
           openLog(t.log);
         } else {
@@ -20996,6 +21132,34 @@ if ("serviceWorker" in navigator &&
      stack here, which is the right way round: the period is the outer question
      and on a narrow screen an outer question belongs on its own line. */
 
+  /* CHARTS NEEDS A CHART ON THE SCREEN. It came back to the phone because the
+     group strip made it one chart at a time, and that holds down to 360px:
+     canvas 252x274, with 118px of it on the first screen. At 320 the canvas is
+     212 wide and the chart starts at y=640 in a 640px window - two scrolling
+     strips, three rows of figures, and no chart at all until you scroll. Below
+     360 it is not a chart, it is a promise of one, and every figure on it is
+     somewhere else in the app as a number you can read.
+
+     A tab that vanishes under the active panel would strand the reader there,
+     so the width is watched; see tinyScreen below. */
+  @media (max-width: 359px){
+    nav.tabs button[data-tab="charts"]{ display: none; }
+  }
+
+  /* ---------- what a thumb can hit --------------------------------------- */
+  /* Measured on the Loans filter bar: Cards/List is 30x24 and the range select
+     and Filters button are 28 high. 36 rather than the ideal 44, because the
+     app's own segmented controls are 34 by design and a 44px row beside them
+     would tower; 24 is a thumb missing. Keyed on the pointer rather than the
+     width - a touch laptop has the same thumb. */
+  @media (pointer: coarse){
+    .seg.is-icons > button{ min-height: 36px; min-width: 36px; }
+    .table-filter-bar .btn-sm,
+    .table-filter-bar select,
+    .range-inline select,
+    .list-per-page{ min-height: 36px; }
+  }
+
   @media (max-width: 720px){
     /* A LABEL AND A FIGURE IS A ROW, NOT A TILE.
 
@@ -21830,7 +21994,13 @@ if ("serviceWorker" in navigator &&
     nav.tabs .rail-fold,
     nav.tabs .rail-resize,
     nav.tabs .nav-key { display: none !important; }
-    /* The label under the glyph, small enough that five fit a 390px screen. */
+    /* The label under the glyph. This was sized when there were five tabs;
+       Charts came back and made it six, and "Loans & Invest" then needed 63px
+       in a 56px cell on every screen. Shrinking the type further would have
+       cost all six their legibility to fix one, so that label carries a short
+       form and drops the rest of itself here. The button's aria-label is still
+       the whole name. */
+    nav.tabs button[data-tab] .tab-label-rest{ display: none; }
     nav.tabs button[data-tab] .tab-label{
       font-size: 9px; line-height: 1.15; max-width: 100%;
       letter-spacing: 0;

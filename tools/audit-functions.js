@@ -82,6 +82,32 @@
       (n.textContent || "").includes(text)) || null;
   };
 
+  /* ASK FOR AN ADD FORM THE WAY A PERSON DOES.
+
+     The drawer shows five tabs on a wide screen and four on a phone, where Lent
+     and Borrowed are one "Loans" tab with the direction on a strip underneath.
+     Press the tab if it is there; otherwise press the tab that holds it and
+     then the direction. Both shapes, one call, so the checks below do not each
+     need to know which screen they are on. */
+  const openAddTab = async (label, dir) => {
+    const tabs = () => [...document.querySelectorAll("#rd-tabs .rd-tab")];
+    const byName = (n) => tabs().find(b => b.textContent.trim() === n);
+    const direct = byName(label);
+    if (direct){ await press(direct, 420); return "tab"; }
+    /* Folded away: the phone shape. */
+    const holder = byName("Loans");
+    if (holder && dir){
+      await press(holder, 420);
+      const d = document.querySelector('#rd-dir [data-add-dir="' + dir + '"]');
+      if (d){ await press(d, 420); return "folded"; }
+    }
+    /* Or simply renamed to fit - "Investment" is "Invest" on a phone. */
+    const short = tabs().find(b => label.indexOf(b.textContent.trim()) === 0 ||
+                                   b.textContent.trim().indexOf(label) === 0);
+    if (short){ await press(short, 420); return "renamed"; }
+    return "missing";
+  };
+
   const uniq = (a) => new Set(a).size === a.length;
   const money = (n) => Math.round(n * 100) / 100;
 
@@ -98,9 +124,21 @@
     (g("rd-title") || {}).textContent === "Add an expense",
     (g("rd-title") || {}).textContent);
   ok("the expense fields are actually on screen", seen(g("in-desc")));
-  ok("all five add tabs are present",
-    document.querySelectorAll("#rd-tabs .rd-tab").length === 5,
-    document.querySelectorAll("#rd-tabs .rd-tab").length);
+  /* Five on a wide screen, four on a phone where Lent and Borrowed are folded
+     into one Loans tab. Asserting a flat 5 made this fail at 390px on a drawer
+     that was working exactly as designed. */
+  {
+    const n = document.querySelectorAll("#rd-tabs .rd-tab").length;
+    const phone = window.matchMedia("(max-width: 720px)").matches;
+    ok("the add drawer offers every way in, folded to fit the screen",
+      n === (phone ? 4 : 5),
+      n + " tabs at " + window.innerWidth + "px");
+    ok("and the strip holds them without scrolling",
+      (()=>{ const t=document.getElementById("rd-tabs");
+             return t.scrollWidth <= t.clientWidth + 1; })(),
+      (()=>{ const t=document.getElementById("rd-tabs");
+             return (t.scrollWidth - t.clientWidth) + "px off the end"; })());
+  }
   ok("both seeded accounts are offered",
     g("in-bank") && [...g("in-bank").options].map(o => o.value).includes("Test Bank"));
 
@@ -294,11 +332,10 @@
 
   const borrower = tag("-lent");
   await press(g("btn-fab-add"), 300);
-  const lentTab = [...document.querySelectorAll("#rd-tabs .rd-tab")]
-    .find(b => b.textContent.trim() === "Lent");
-  await press(lentTab, 420);
-  ok("the Lent tab opens the loan form", seen(g("lg-person")),
-    (g("rd-title") || {}).textContent);
+  const lentVia = await openAddTab("Lent", "lent");
+  ok("Lent reaches the loan form, whichever shape the drawer is in",
+    seen(g("lg-person")),
+    lentVia + " / " + (g("rd-title") || {}).textContent);
 
   type("lg-person", borrower);
   type("lg-amount", "8000");
@@ -425,10 +462,9 @@
   /* --- a loan taken -------------------------------------------------------- */
   const lender = tag("-borrowed");
   await press(g("btn-fab-add"), 300);
-  const borTab = [...document.querySelectorAll("#rd-tabs .rd-tab")]
-    .find(b => b.textContent.trim() === "Borrowed");
-  await press(borTab, 420);
-  ok("the Borrowed tab opens its own form", seen(g("lt-person")));
+  const borVia = await openAddTab("Borrowed", "borrowed");
+  ok("Borrowed reaches its own form, and it is not the Lent one",
+    seen(g("lt-person")) && !seen(g("lg-person")), borVia);
   type("lt-person", lender);
   type("lt-amount", "2500.50");
   await press(g("btn-add-loan-taken"), 380);
@@ -442,10 +478,8 @@
   /* --- an investment ------------------------------------------------------- */
   const invName = tag("-inv");
   await press(g("btn-fab-add"), 300);
-  const invTab = [...document.querySelectorAll("#rd-tabs .rd-tab")]
-    .find(b => b.textContent.trim() === "Investment");
-  await press(invTab, 420);
-  ok("the Investment tab opens its own form", seen(g("inv-name")));
+  const invVia = await openAddTab("Investment");
+  ok("Investment reaches its own form", seen(g("inv-name")), invVia);
   type("inv-name", invName);
   const invAmt = g("inv-amount") || g("inv-invested");
   if (invAmt){
