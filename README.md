@@ -160,22 +160,87 @@ cached — handing back a stale copy of your own records is the one thing this m
 - **#2 from an earlier list:** fixed column-width proportions across the five tables
   (currently auto-sized, so widths shift between pages).
 - Two spacing tokens (`--sp-1`, `--sp-6`) are defined but unused — intentional scale endpoints.
-- `migrateLegacyBalance` and `initRecurringDayOptions` are IIFEs — they look unused to
-  static analysis but are self-invoking. Don't delete them.
+- `migrateLegacyBalance` and `initRecurringDayOptions` are named IIFEs. `tools/audit-deadcode.js`
+  understands the difference between a declaration and a self-invoking expression, so it will
+  not report them — but a plain grep still will. Don't delete them.
 
-## Verification commands
+## Verification
 
-Useful sanity checks after edits:
+`index.html` is the build. There is no source it is generated from — edit it directly.
+
+### The gates — run all five after every edit batch, and never pipe them
 
 ```bash
-# Extract JS and syntax-check
-python3 -c "import re;h=open('index.html').read();open('/tmp/a.js','w').write(re.findall(r'<script>(.*?)</script>',h,re.S)[-1])"
-node -c /tmp/a.js
-
-# Tag/brace balance
-grep -c '<div' index.html; grep -c '</div>' index.html
-
-# Money symmetry (should be equal)
-grep -c 'depositToSavings(' index.html
-grep -c 'withdrawFromSavings(' index.html
+node verify.js
 ```
+
+Scripts parse, CSS braces and `<div>`s balance, no undefined CSS variables, and
+`depositToSavings` / `withdrawFromSavings` stay in step. This replaces the python
+one-liner and the greps that used to live here.
+
+```bash
+node sync-audit.js
+```
+
+37 checks. Two devices merge without duplicating or losing a record.
+
+```bash
+node audit-round2.js
+```
+
+34 checks. Budgets, categories and deletions survive a sync; a repaint cannot land
+on a field being typed in; a logged entry reaches the screen.
+
+```bash
+node balance-audit.js
+```
+
+33 checks. Account arithmetic — no money created, no spend counted twice.
+
+```bash
+node sync-devices-audit.js
+```
+
+23 checks. The loan payment-ledger merge, against records the app itself wrote.
+
+### The auditors in `tools/`
+
+Three run under plain `node`:
+
+```bash
+node tools/audit-wiring.js
+node tools/audit-deadcode.js
+node tools/prune-dead-css.js
+```
+
+Wiring proves every control reaches a live handler. The dead-code pass reports
+uncalled functions, unread ids and CSS classes nothing wears — candidates, not
+verdicts. The pruner removes dead rules and needs `--write` to do anything.
+
+Three run **inside the page**, because they measure what the browser actually did:
+
+```bash
+node tools/serve.js      # http://localhost:8899
+```
+
+Then, from the console on that page:
+
+```js
+eval(await fetch("/tools/audit-layout.js").then(r => r.text()))     // geometry
+eval(await fetch("/tools/audit-contrast.js").then(r => r.text()))   // WCAG AA
+eval(await fetch("/tools/audit-functions.js").then(r => r.text()))  // 61 checks
+```
+
+`audit-layout` finds overlapping text, collapsed grids and content painting outside
+its box. `audit-contrast` composites every background through alpha and checks the
+ratio. `audit-functions` presses the real controls — logs entries, records loan
+payments, checks interest — and asserts on what is visible; it needs
+`tools/audit-seed.js` run first, then a reload.
+
+> **`tools/audit-seed.js` WIPES the store for whatever origin it runs on.** The lab
+> that used to namespace these keys is gone. On localhost that is a throwaway dev
+> store; never point it at the deployed app.
+
+Sweep at 375, 768, 1024 and 1440 in both editions, over every tab and every page
+group. A collapsed viewport reports the whole app as broken, so `audit-layout`
+refuses below 320px rather than lying.
