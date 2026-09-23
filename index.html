@@ -3885,7 +3885,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-24a";
+  const APP_BUILD = "2026-09-24b";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -6872,6 +6872,85 @@
     return entry.id;
   }
 
+  /* ---- a History row and its loan payment come and go together ----------- */
+  /* Every payment carries the entryId of the row it wrote, and until now that
+     only drew an "in History" badge. It is the join, so it is what lets
+     deleting one undo the other. */
+  function loanPaymentFor(entryId){
+    if (!entryId) return null;
+    const hunt = (dir) => {
+      const list = LOAN_CONFIG[dir].list;
+      for (let i = 0; i < list.length; i++){
+        const pays = Array.isArray(list[i].payments) ? list[i].payments : [];
+        const at = pays.findIndex(p => p && p.entryId === entryId);
+        if (at >= 0) return { loan: list[i], dir: dir, at: at, payment: pays[at] };
+      }
+      return null;
+    };
+    return hunt("given") || hunt("taken");
+  }
+
+  /* Takes the payment off the loan and puts the money back where it came from.
+     Returns what it undid, so an undo can put all of it back. */
+  function detachLoanPayment(hit){
+    if (!hit) return null;
+    const loan = hit.loan, dir = hit.dir, pay = hit.payment;
+    const was = {
+      amount: loan.amount, status: loan.status, repaidOn: loan.repaidOn || null,
+      at: hit.at, payment: Object.assign({}, pay)
+    };
+    loan.payments.splice(hit.at, 1);
+    loan.amount = round2(loan.amount + (+pay.amount || 0));
+    /* A loan this payment had settled is outstanding again: it is only repaid
+       while the payments cover it, and one of them has just gone. */
+    if (loan.status === "repaid"){ loan.status = "outstanding"; loan.repaidOn = null; }
+    /* The mirror of logLoanPayment, which deposited for a loan given and
+       withdrew for one taken. */
+    if (loan.bank){
+      if (dir === "given") withdrawFromSavings(loan.bank, pay.amount);
+      else depositToSavings(loan.bank, pay.amount);
+    }
+    LOAN_CONFIG[dir].save();
+    renderLoans(dir);
+    renderSideUpcoming();
+    return { dir: dir, loanId: loan.id, person: loan.person, was: was };
+  }
+
+  function reattachLoanPayment(token){
+    if (!token) return;
+    const loan = LOAN_CONFIG[token.dir].list.find(l => l.id === token.loanId);
+    if (!loan) return;
+    const was = token.was;
+    if (!Array.isArray(loan.payments)) loan.payments = [];
+    loan.payments.splice(Math.min(was.at, loan.payments.length), 0, was.payment);
+    loan.amount = was.amount;
+    loan.status = was.status;
+    loan.repaidOn = was.repaidOn;
+    if (loan.bank){
+      if (token.dir === "given") depositToSavings(loan.bank, was.payment.amount);
+      else withdrawFromSavings(loan.bank, was.payment.amount);
+    }
+    LOAN_CONFIG[token.dir].save();
+    renderLoans(token.dir);
+    renderSideUpcoming();
+  }
+
+  /* What the toast should add when a delete also moved a loan.
+
+     Direction matters in the wording: on a loan you GAVE the other person owes
+     you, and on one you TOOK it is the other way round - "Carla owes ₱8,000
+     again" after undoing a payment to Carla is exactly backwards.
+
+     No escapeHtml: showUndoToast assigns this to textContent, so escaping here
+     would print "Ana &amp; Co" on the screen. */
+  function loanPaymentNote(token){
+    if (!token) return "";
+    const back = fmtMoney(token.was.amount + (+token.was.payment.amount || 0));
+    return token.dir === "given"
+      ? ` ${token.person} owes ${back} again.`
+      : ` You owe ${token.person} ${back} again.`;
+  }
+
   // Lets a loan's bank be changed after the fact — including loans that predate
   // this feature and have never been linked to any account at all. First undoes
   // whatever the OLD bank was reflecting for the loan's current status (a no-op if
@@ -8243,6 +8322,9 @@
         const item = expenses.find(x=>x.id === id);
         if (!item) return;
         const snapshot = { ...item };
+        /* Before the row goes: if it was written by a loan payment, that
+           payment comes off the loan too. One event, one undo. */
+        const loanUndo = detachLoanPayment(loanPaymentFor(id));
         expenses = expenses.filter(x=>x.id !== id);
         selectedExpenseIds.delete(id);
         saveExpenses(expenses);
@@ -8250,14 +8332,15 @@
         updateWelcomeCard();
         if (snapshot.bank) depositToSavings(snapshot.bank, snapshot.amount);
         showUndoToast(
-          snapshot.bank
+          (snapshot.bank
             ? `Expense removed — ${fmtMoney(snapshot.amount)} put back into ${snapshot.bank}.`
-            : "Expense removed.",
+            : "Expense removed.") + loanPaymentNote(loanUndo),
           ()=>{
             expenses.unshift(snapshot);
             saveExpenses(expenses);
             // Re-apply the withdrawal that deleting had reversed
             if (snapshot.bank) withdrawFromSavings(snapshot.bank, snapshot.amount);
+            reattachLoanPayment(loanUndo);
             renderHistory();
             updateWelcomeCard();
             showToast("Restored.");
@@ -8346,6 +8429,13 @@
     const count = selectedExpenseIds.size;
     const toRemove = expenses.filter(e=>selectedExpenseIds.has(e.id));
     const snapshots = toRemove.map(e=>({ ...e }));
+    /* Any of these may be the row a loan payment wrote. Detached before the
+       rows go, and put back by the undo - nobody reads five rows before
+       deleting them, so this is the case where a silent mismatch would go
+       unnoticed longest. */
+    const loanUndos = snapshots
+      .map(sn => detachLoanPayment(loanPaymentFor(sn.id)))
+      .filter(Boolean);
     expenses = expenses.filter(e=>!selectedExpenseIds.has(e.id));
     selectedExpenseIds.clear();
     saveExpenses(expenses);
@@ -8361,11 +8451,14 @@
     });
     let msg = `Deleted ${count} expense(s).`;
     if (restored) msg += ` Put ${restored} withdrawal${restored>1?"s":""} back into savings.`;
+    if (loanUndos.length)
+      msg += ` ${loanUndos.length} loan payment${loanUndos.length>1?"s were":" was"} undone too.`;
     showUndoToast(msg, ()=>{
       snapshots.forEach(s=>{
         expenses.unshift(s);
         if (s.bank) withdrawFromSavings(s.bank, s.amount);
       });
+      loanUndos.forEach(reattachLoanPayment);
       saveExpenses(expenses);
       renderHistory();
       updateWelcomeCard();
@@ -8569,6 +8662,9 @@
         const item = incomes.find(x=>x.id === id);
         if (!item) return;
         const snapshot = { ...item };
+        /* A payment on a loan you GAVE is filed as income, so this is the side
+           that carries most of them. */
+        const loanUndo = detachLoanPayment(loanPaymentFor(id));
         incomes = incomes.filter(x=>x.id !== id);
         selectedIncomeIds.delete(id);
         saveIncomes(incomes);
@@ -8581,10 +8677,11 @@
             ? `Income entry removed — ${fmtMoney(snapshot.amount)} withdrawn from ${snapshot.bank}.`
             : `Income entry removed, but ${result.reason}.`;
         }
-        showUndoToast(msg, ()=>{
+        showUndoToast(msg + loanPaymentNote(loanUndo), ()=>{
           incomes.unshift(snapshot);
           saveIncomes(incomes);
           if (snapshot.bank) depositToSavings(snapshot.bank, snapshot.amount);
+          reattachLoanPayment(loanUndo);
           renderIncomeHistory();
           updateWelcomeCard();
           showToast("Restored.");
@@ -8610,6 +8707,11 @@
     const count = selectedIncomeIds.size;
     const toRemove = incomes.filter(i=>selectedIncomeIds.has(i.id));
     const snapshots = toRemove.map(i=>({ ...i }));
+    /* The income side carries payments on loans you GAVE, which is most of
+       them. Same treatment. */
+    const loanUndos = snapshots
+      .map(sn => detachLoanPayment(loanPaymentFor(sn.id)))
+      .filter(Boolean);
     incomes = incomes.filter(i=>!selectedIncomeIds.has(i.id));
     selectedIncomeIds.clear();
     saveIncomes(incomes);
@@ -8624,11 +8726,14 @@
     let msg = `Deleted ${count} income entr${count>1?"ies":"y"}.`;
     if (reversed) msg += ` Withdrew ${reversed} deposit${reversed>1?"s":""} back out of savings.`;
     if (shortfalls) msg += ` ${shortfalls} account${shortfalls>1?"s":""} didn't have enough left to fully reverse — check Savings.`;
+    if (loanUndos.length)
+      msg += ` ${loanUndos.length} loan payment${loanUndos.length>1?"s were":" was"} undone too.`;
     showUndoToast(msg, ()=>{
       snapshots.forEach(s=>{
         incomes.unshift(s);
         if (s.bank) depositToSavings(s.bank, s.amount);
       });
+      loanUndos.forEach(reattachLoanPayment);
       saveIncomes(incomes);
       renderIncomeHistory();
       updateWelcomeCard();

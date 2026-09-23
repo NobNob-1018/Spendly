@@ -486,6 +486,76 @@
     await press(document.querySelector('.seg.is-icons [data-layout="cards"]'), 620);
   }
 
+  /* --- deleting the row a payment wrote must undo the payment -------------- */
+  /* A logged payment is one event with three effects: a row in History, a
+     payment on the loan, and money moved. Deleting the row used to undo only
+     the first, so History said no payment had been made and the loan said one
+     had. */
+  {
+    const who = tag("-del");
+    const acct = "Test Bank";
+    await press(g("btn-fab-add"), 320);
+    await openAddTab("Lent", "lent");
+    type("lg-person", who);
+    type("lg-amount", "4000");
+    g("lg-bank").value = acct;
+    g("lg-bank").dispatchEvent(new Event("change", { bubbles: true }));
+    await press(g("btn-add-loan-given"), 420);
+
+    const bankOf = () => (S(SAV).find(a => a.provider === acct) || {}).amount;
+    const loanOf = () => S(LG).find(l => l.person === who) || {};
+
+    await goTab("loans");
+    await press(document.querySelector('.seg.is-icons [data-layout="cards"]'), 620);
+    const node = recordNode("loans-given-table-wrap", who);
+    const tog = node && (node.querySelector('[data-action="toggle-payment"]') ||
+      (node.nextElementSibling && node.nextElementSibling.querySelector('[data-action="toggle-payment"]')));
+    await press(tog, 420);
+    const box = node && node.querySelector('[data-field="payment"]');
+    if (box){
+      box.value = "1500";
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    const bankBefore = bankOf();
+    await press(node && node.querySelector('[data-action="log-payment"]'), 800);
+    const owedAfterPay = loanOf().amount;
+    ok("the payment reduced the loan before anything is deleted",
+      owedAfterPay === 2500, owedAfterPay);
+
+    /* Now delete the History row it wrote. A loan GIVEN files it as income. */
+    await goTab("history");
+    const incBtn = [...(g("history-mode-toggle") || document.createElement("div"))
+      .querySelectorAll("button")].find(b => /income/i.test(b.textContent));
+    await press(incBtn, 620);
+    const payRow = [...document.querySelectorAll("#income-history-table-wrap tbody tr")]
+      .find(tr => [...tr.querySelectorAll("input")].some(i => i.value.indexOf(who) >= 0));
+    ok("the payment left a row in History to find", !!payRow,
+      payRow ? "found" : "no row");
+    await press(payRow && payRow.querySelector('[data-action="delete"]'), 900);
+
+    ok("deleting it puts the loan back",
+      loanOf().amount === 4000, owedAfterPay + " -> " + loanOf().amount);
+    ok("and takes the payment off the ledger",
+      (loanOf().payments || []).length === 0,
+      JSON.stringify((loanOf().payments || []).map(p => p.amount)));
+    ok("and puts the money back where it came from",
+      money(bankOf()) === money(bankBefore),
+      bankBefore + " -> " + bankOf());
+
+    /* And undo has to return all of it, not just the row. */
+    const undoBtn = [...document.querySelectorAll("#toast button")]
+      .find(b => /undo/i.test(b.textContent));
+    await press(undoBtn, 900);
+    ok("undo restores the payment as well as the row",
+      loanOf().amount === 2500 && (loanOf().payments || []).length === 1,
+      loanOf().amount + " / " + (loanOf().payments || []).length + " payment(s)");
+
+    /* Back where the next section expects to be. This block ends on History,
+       and what follows reads the loans board - left here, it measured a panel
+       that was not on screen and called a visible loan invisible. */
+    await goTab("loans");
+  }
+
   /* --- a settled loan leaves a trace, it does not just disappear ----------- */
   /* The list filters to outstanding by default, so settling a loan takes it off
      the screen. That is fine ONLY because the strip says the list is being
@@ -514,7 +584,10 @@
     !!(strip && strip.querySelector("button")),
     strip && strip.querySelector("button") ? strip.querySelector("button").textContent : "no exit");
   const clearBtn = strip && strip.querySelector("button");
-  if (clearBtn) await press(clearBtn, 360);
+  /* Clearing a filter re-renders the board, and the repaint that follows a
+     setUiPref write is debounced - 360ms landed inside it, so the node was read
+     while the panel was between renders. */
+  if (clearBtn) await press(clearBtn, 900);
   ok("clearing the filter brings the settled loan back on screen",
     seen(recordNode("loans-given-table-wrap", borrower)),
     recordNode("loans-given-table-wrap", borrower) ? "back" : "still gone");
