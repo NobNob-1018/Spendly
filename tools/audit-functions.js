@@ -426,6 +426,66 @@
     S(LG).find(l => l.person === borrower).amount === owed,
     S(LG).find(l => l.person === borrower).amount + " vs " + owed);
 
+  /* --- and the same payment through the SHEET, which is a phone's only way -- */
+  /* The list view makes a row an index line and puts the controls in a sheet,
+     and the sheet MOVES them out of the row rather than copying them. Every
+     lookup the submit does at click time therefore has to survive the move. It
+     did not: `payRow.querySelector` returned null and the button did nothing,
+     silently, on the only path a phone offers. */
+  {
+    const rowsBtn = document.querySelector('.seg.is-icons [data-layout="list"]');
+    await press(rowsBtn, 620);
+    const listed = document.body.classList.contains("list-as-rows");
+    ok("the loans list can be shown as rows", listed, document.body.className);
+
+    const row = recordNode("loans-given-table-wrap", borrower);
+    await press(row, 700);
+    const sheet = document.querySelector(".drill-panel");
+    ok("tapping a row opens the sheet", seen(sheet));
+
+    /* The controls arrive behind Edit; the read view is deliberately read-only. */
+    const editBtn = sheet && [...sheet.querySelectorAll("button")]
+      .find(b => (b.getAttribute("aria-label") || "").trim() === "Edit");
+    await press(editBtn, 800);
+
+    const field = sheet && sheet.querySelector('[data-field="payment"]');
+    ok("the amount box is on screen in the sheet, already open",
+      seen(field), field ? "shown" : "missing");
+    ok("and the button that would only hide it is gone",
+      !seen(sheet && sheet.querySelector('[data-action="toggle-payment"]')),
+      "a sheet has no drawers to open");
+
+    const owedBefore = (S(LG).find(l => l.person === borrower) || {}).amount;
+    if (field){
+      field.value = "500";
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    await press(sheet && sheet.querySelector('[data-action="log-payment"]'), 900);
+    const owedAfter = (S(LG).find(l => l.person === borrower) || {}).amount;
+    ok("a payment logged from the sheet actually lands",
+      money(owedBefore - owedAfter) === 500,
+      owedBefore + " -> " + owedAfter);
+    ok("and it is written to the ledger like any other",
+      ((S(LG).find(l => l.person === borrower) || {}).payments || [])
+        .some(p => p.amount === 500));
+
+    /* An empty box must refuse WITHOUT leaving a record behind - the History row
+       used to be written before the amount was ever checked. */
+    const incBefore = S(INC).length;
+    const f2 = sheet && sheet.querySelector('[data-field="payment"]');
+    if (f2){ f2.value = ""; f2.dispatchEvent(new Event("input", { bubbles: true })); }
+    await press(sheet && sheet.querySelector('[data-action="log-payment"]'), 700);
+    ok("an empty amount leaves no half-written entry behind",
+      S(INC).length === incBefore && !S(INC).some(i => isNaN(i.amount)),
+      (S(INC).length - incBefore) + " rows added");
+
+    const closeBtn = sheet && [...sheet.querySelectorAll("button")]
+      .find(b => /close|done/i.test(b.textContent));
+    await press(closeBtn, 600);
+    await press(document.querySelector('.seg.is-icons [data-layout="cards"]'), 620);
+  }
+
   /* --- a settled loan leaves a trace, it does not just disappear ----------- */
   /* The list filters to outstanding by default, so settling a loan takes it off
      the screen. That is fine ONLY because the strip says the list is being

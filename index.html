@@ -3885,7 +3885,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-21w";
+  const APP_BUILD = "2026-09-24a";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -9437,9 +9437,29 @@
       const btn = payRow.querySelector('[data-action="log-payment"]');
       if (!btn) return;
       btn.addEventListener("click", ()=>{
-        const input = payRow.querySelector('[data-field="payment"]');
+        /* ASK THE PANEL, NOT THE ROW. The sheet moves this panel out of the row
+           and into itself, so payRow.querySelector returns null there and
+           .value threw - the button did nothing, silently, which on a phone is
+           the only way in. The input and this button are siblings inside the
+           panel and travel together, so the panel is the thing to ask. */
+        const panel = btn.closest("[data-payment-panel]") || payRow;
+        const input = panel.querySelector('[data-field="payment"]');
         const item = cfg.list.find(x=>x.id===id);
+        if (!input || !item) return;
         const amt = parseFloat(input.value);
+        /* CHECKED BEFORE ANYTHING IS WRITTEN. logLoanPayment is what refuses an
+           empty box or more than is outstanding, and it used to be asked second
+           - after logLoanPaymentToHistory had already put a row in History. A
+           refused payment therefore left an entry behind, and an empty box left
+           one reading NaN. The same two questions, asked first. */
+        if (isNaN(amt) || amt <= 0){
+          showToast("Enter a payment amount greater than 0.");
+          return;
+        }
+        if (amt > item.amount + 0.01){
+          showToast(`That's more than the ${fmtMoney(item.amount)} still outstanding.`);
+          return;
+        }
         // The History row is written first so its id can go on the payment,
         // which is what joins the loan to the ledger.
         const entryId = logLoanPaymentToHistory(item, amt, dir, "");
@@ -10546,6 +10566,13 @@
   const FIGURE_LADDER = ["var(--fs-base)", "var(--fs-xs)", "var(--fs-2xs)"];
   function fitFigures(scope){
     (scope || document).querySelectorAll(".rcp-v").forEach(el => {
+      /* A figure in a group that is put away measures 0 by 0, and "0 fits in 0"
+         is true and useless: the ladder stops before it starts, no size is ever
+         written, and nothing measures it again when the group is shown. So it
+         keeps its natural size for good - ₱10,104,635.55 wanting 128px of 124,
+         measured on a phone. A box with no width has not been measured; it is
+         left for the pass that can see it. See applyPageGroup, which runs one. */
+      if (!el.clientWidth) return;
       el.style.fontSize = "";
       for (let i = 0; i < FIGURE_LADDER.length; i++){
         if (el.scrollWidth <= el.clientWidth + 1) return;
@@ -14695,6 +14722,10 @@
           const here = mine.has(sec.id) || (isFirst && !named.has(sec.id));
           sec.block.classList.toggle("is-off-group", !here);
         });
+        /* The figures in the group just revealed have a width for the first
+           time. Until this ran, anything fitted while its group was put away
+           had been measured at 0 by 0 and left at its natural size. */
+        if (typeof fitFigures === "function") fitFigures();
       }
 
       function idOf(block, head){
@@ -17871,7 +17902,18 @@
         node.classList.remove("is-collapsed");
         return node;
       }
+      /* A control the sheet silenced rather than borrowed. Tracked separately
+         because it is put back by removing one class, not by being moved. */
+      let muted = [];
+      function muteInSheet(btn){
+        if (!btn) return;
+        btn.classList.add("sheet-mute");
+        muted.push(btn);
+      }
+
       function giveBack(){
+        muted.forEach(b => b.classList.remove("sheet-mute"));
+        muted = [];
         borrowed.slice().reverse().forEach(b => {
           b.node.classList.remove("sheet-ctl");
           if (b.wasCollapsed) b.node.classList.add("is-collapsed");
@@ -17970,7 +18012,20 @@
         const foot = document.createElement("div");
         foot.className = "sheet-foot";
         const bar = row.querySelector(".row-action-bar");
-        if (bar) foot.appendChild(borrow(bar));
+        if (bar){
+          foot.appendChild(borrow(bar));
+          /* A panel lifted out as its own field arrives OPEN - borrow() takes
+             is-collapsed off, because in here it is a field and not a drawer.
+             The button that used to reveal it came along in this bar and can no
+             longer reveal anything; all it can do is collapse the field, which
+             is what "Log a payment" did to the amount box the moment anybody
+             pressed it. Silenced only when its panel really did travel. */
+          const lifted = (sel) => !!body.querySelector(sel + ".sheet-ctl");
+          if (lifted("[data-payment-panel]"))
+            muteInSheet(bar.querySelector('[data-action="toggle-payment"]'));
+          if (lifted("[data-note-panel]"))
+            muteInSheet(bar.querySelector('[data-action="toggle-note"]'));
+        }
         /* A history row keeps its two buttons in a cell of their own. */
         row.querySelectorAll(".cell-actions .row-action:not(.row-action-danger)")
           .forEach(b => foot.appendChild(borrow(b)));
@@ -22447,6 +22502,9 @@ if ("serviceWorker" in navigator &&
     order: 0 !important;
   }
   .drill-body .sheet-ctl.row-action-danger{ width: auto !important; flex: 0 0 auto !important; }
+  /* A control the sheet has nothing for. See muteInSheet: its panel is already
+     a field in here, so this button could only hide it. */
+  .item-sheet .sheet-mute{ display: none !important; }
   .drill-body .sheet-field .sa-field{ display: flex; flex-direction: column; gap: var(--sp-3); }
   .sheet-foot{
     display: flex; align-items: center; justify-content: space-between;
