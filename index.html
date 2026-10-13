@@ -3885,7 +3885,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-09-24b";
+  const APP_BUILD = "2026-10-13a";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -21428,12 +21428,22 @@ if ("serviceWorker" in navigator &&
   /* space-between put Mark unpaid wherever the note happened to end, so it sat
      in a different place on every card in the grid. The note takes the width
      the fields take and the button lands under the pencil and the X. */
+  /* WRAP, because there can be three. This was nowrap for two: Mark unpaid and
+     the note, which is hidden on a settled card anyway in favour of the
+     read-only line above it. A loan that was PAID DOWN before being settled
+     carries a third - the payment trail - and 137px + 109px + a 10px gap does
+     not fit a 247px bar, so Mark unpaid painted 5px outside it. Measured by the
+     layout auditor at 1280. Two still share one line, because two still fit. */
   .loan-card.is-closed .row-action-bar{
-    justify-content: flex-start; flex-wrap: nowrap; align-items: center;
+    justify-content: flex-start; flex-wrap: wrap; align-items: center;
     gap: var(--sp-5);
   }
   .loan-card.is-closed .loan-note-act{ order: 1; flex: 1 1 auto; justify-content: center; }
+  /* Never narrower than its own label on the cards where it IS shown. */
+  .loan-card.is-closed .loan-note-act{ min-width: max-content; }
   .loan-card.is-closed [data-action="unsettle"]{ order: 2; flex: 0 0 auto; }
+  /* The trail is a fact, not a control that should fight for room. */
+  .loan-card.is-closed [data-action="toggle-trail"]{ flex: 0 0 auto; }
   /* The one control on a settled card is not part of the record behind the
      mark: it comes forward with the stamp, and it is sharp. */
   .loan-card.is-closed .row-action-bar{ position: relative; z-index: 4; filter: none; }

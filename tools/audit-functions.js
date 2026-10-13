@@ -15,6 +15,22 @@
 (async function(){
   "use strict";
 
+  /* NOTHING MEANINGFUL COMES OUT OF A COLLAPSED PANE.
+
+     Measured twice now: the preview pane can lose its size, innerWidth goes to
+     0, and then every width query matches, every box is 2px wide and the add
+     strip reports 170px of overflow. audit-layout.js has refused this for weeks;
+     these two had no such guard and reported a healthy app as broken.
+
+     Refused rather than annotated, for the same reason: the findings look
+     specific and plausible, and the one number that gives it away is the one
+     such a report never prints. */
+  if (!window.innerWidth || window.innerWidth < 320 || !window.innerHeight){
+    return { refused: "viewport is " + window.innerWidth + "x" + window.innerHeight +
+      " - too small to measure; nothing below 320px wide is real",
+      total: 0, passed: 0, failed: 0, failures: [], all: [] };
+  }
+
   const R = [];
   const ok = (name, pass, detail) => {
     R.push({ name, pass: !!pass, detail: detail === undefined ? "" : String(detail) });
