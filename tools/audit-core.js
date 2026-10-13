@@ -73,10 +73,22 @@
      instead of the app's. */
   const takeBackup = async () => {
     const realCreate = URL.createObjectURL;
+    const realClick = HTMLAnchorElement.prototype.click;
     let grabbed = null;
     URL.createObjectURL = function(blob){ grabbed = blob; return realCreate.call(URL, blob); };
+    /* The export runs for real - that is the check - but the <a download> it
+       hands the file to must not reach the browser's download manager, or every
+       audit run drops a backup on whoever is watching the pane. Buttons are not
+       anchors, so pressing the control is unaffected. */
+    HTMLAnchorElement.prototype.click = function(){
+      if (this.hasAttribute("download")) return;
+      return realClick.apply(this, arguments);
+    };
     try { await press(g("btn-export-json"), 600); }
-    finally { URL.createObjectURL = realCreate; }
+    finally {
+      URL.createObjectURL = realCreate;
+      HTMLAnchorElement.prototype.click = realClick;
+    }
     if (!grabbed) return null;
     return await grabbed.text();
   };

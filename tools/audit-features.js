@@ -402,9 +402,21 @@
 
   /* ================================================ 7. THE SPREADSHEET OUT */
   const realCreate = URL.createObjectURL;
+  const realClick = HTMLAnchorElement.prototype.click;
   let blob = null;
   URL.createObjectURL = function(b){ blob = b; return realCreate.call(URL, b); };
-  try { await press(g("btn-export-csv"), 900); } finally { URL.createObjectURL = realCreate; }
+  /* Same reason as audit-core: run the export, capture what it produced, and do
+     not let the <a download> reach the download manager. A sweep must not leave
+     files behind on the machine it was run on. */
+  HTMLAnchorElement.prototype.click = function(){
+    if (this.hasAttribute("download")) return;
+    return realClick.apply(this, arguments);
+  };
+  try { await press(g("btn-export-csv"), 900); }
+  finally {
+    URL.createObjectURL = realCreate;
+    HTMLAnchorElement.prototype.click = realClick;
+  }
   const csv = blob ? await blob.text() : null;
   ok("the spreadsheet export produces a file", !!csv, csv ? csv.length + " bytes" : "nothing");
   if (csv){
