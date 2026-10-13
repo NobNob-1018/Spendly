@@ -1,11 +1,20 @@
 /* WHAT IS IN THE FILE AND NOT USED.
  *
- * Four questions, each asked of combined.html:
+ * Four questions, each asked of index.html:
  *
  *   1. functions declared and never called
  *   2. element ids written in the markup that nothing ever reads
  *   3. functions that are now one line wrapping another function
  *   4. the same helper written out more than once
+ *
+ * WHAT IT CANNOT SEE: a rule that is matched and then entirely overridden. The
+ * first filter-chip design sat at the top of the sheet long after the second one
+ * replaced it further down; every selector in it was worn by something on screen,
+ * so nothing here and nothing in prune-dead-css.js had a reason to object - and
+ * three of its declarations were still winning, because they sat on the element
+ * while the live rule only reached it by inheritance. Dead CSS that still applies
+ * is invisible to both passes. The browser is the only honest witness: compare
+ * the computed style against what the live rule intended.
  *
  * All four are approximations and the output SAYS SO, because this app builds
  * markup from template strings and reads ids out of variables. Anything listed

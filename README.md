@@ -3,8 +3,8 @@
 A self-contained personal finance app. **One HTML file, no build step, no dependencies to install.**
 Open `index.html` in a browser and it runs.
 
-- **22,607 lines total** — 6,715 CSS, 14,795 JS, 1,097 HTML (1,331 KB)
-- **465 functions**, all in one inline `<script>`
+- **22,996 lines total** — 6,859 CSS, 15,040 JS, 1,097 HTML (1,351 KB)
+- **469 functions**, all in one inline `<script>`
 - **Only external dependency:** Chart.js, lazy-loaded from CDN on first visit to Charts
 - **All data lives in `localStorage` on the user's device.** Nothing is sent anywhere
   *unless you explicitly turn on device sync* (Settings → Sync), which is off by default.
@@ -23,7 +23,7 @@ manifest.webmanifest
 icon-180.png icon.svg   
 .nojekyll               stops GitHub Pages mangling the files
 
-tools/                  13 scripts. Nothing here ships; see Verification.
+tools/                  15 scripts. Nothing here ships; see Verification.
 backup/                 OLD-ORIGINAL and old session notes. Kept, not worked on.
 ```
 
@@ -247,14 +247,34 @@ Then, from the console on that page:
 ```js
 eval(await fetch("/tools/audit-layout.js").then(r => r.text()))     // geometry
 eval(await fetch("/tools/audit-contrast.js").then(r => r.text()))   // WCAG AA
-eval(await fetch("/tools/audit-functions.js").then(r => r.text()))  // 61 checks
+eval(await fetch("/tools/audit-functions.js").then(r => r.text()))  // 78 checks
+eval(await fetch("/tools/audit-core.js").then(r => r.text()))       // 19 checks
 ```
+
+> **The service worker will hand you yesterday's file.** Its shell cache is
+> stale-while-revalidate matched with `{ ignoreSearch: true }`, so a `?t=` buster
+> is matched to the cached copy and ignored — the first fetch of a tool you just
+> edited returns the old bytes. Right for a PWA, fatal for an audit loop. Empty
+> the caches so the fetch is a miss, then check the text is the version you meant
+> before you eval it:
+>
+> ```js
+> const fresh = async (p) => {
+>   for (const k of await caches.keys()) await caches.delete(k);
+>   return fetch(p, { cache: "reload" }).then(r => r.text());
+> };
+> ```
 
 `audit-layout` finds overlapping text, collapsed grids and content painting outside
 its box. `audit-contrast` composites every background through alpha and checks the
 ratio. `audit-functions` presses the real controls — logs entries, records loan
 payments, checks interest — and asserts on what is visible; it needs
-`tools/audit-seed.js` run first, then a reload.
+`tools/audit-seed.js` run first, then a reload. `audit-core` covers the money
+paths the others never named: backup and restore through the real file input,
+lending and deleting, settling and un-settling.
+
+**Run each sweep once, on a fresh seed.** A second run inherits the writes of the
+first, and every failure it then reports is the fixture's, not the app's.
 
 > **`tools/audit-seed.js` WIPES the store for whatever origin it runs on.** The lab
 > that used to namespace these keys is gone. On localhost that is a throwaway dev

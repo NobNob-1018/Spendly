@@ -743,13 +743,25 @@
 
   /* ---------- filters ------------------------------------------------------- */
   .table-filter-bar, .history-toolbar{ display:flex; align-items:center; gap: var(--sp-5); flex-wrap:wrap; margin-bottom: var(--sp-6); }
-  .filter-chips{ display:flex; flex-wrap:nowrap; align-items:center; gap: var(--sp-4); margin-bottom: var(--sp-6); overflow-x:auto; scrollbar-width:none; -webkit-mask-image: linear-gradient(90deg,#000 calc(100% - 24px),transparent); mask-image: linear-gradient(90deg,#000 calc(100% - 24px),transparent); }
-  .filter-chips::-webkit-scrollbar{ display:none; }
-  .filter-chips > *{ flex:0 0 auto; }
-  .filter-chips-label{ font-size: var(--fs-3xs); font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing: var(--track-caps); }
-  .filter-chip{ display:inline-flex; align-items:center; gap: var(--sp-4); padding:2px var(--sp-5); border-radius: var(--r-pill); border:1px solid var(--accent-deep); background: var(--accent-light); color: var(--ink); font:inherit; font-size: var(--fs-3xs); font-weight:600; cursor:pointer; }
-  .filter-chip.is-clear{ border-color: var(--line); background:transparent; color: var(--ink-soft); }
-  .fc-key{ color: var(--ink-dim); } .fc-val{ color: var(--ink); } .fc-x{ color: var(--ink-dim); }
+  /* The first filter-chip design lived here: a tinted pill with its own colours
+     for the key, the value and the x. The strip was rebuilt further down the
+     sheet - filled chip, dark text on the accent - but this block was never
+     removed, and three of its rules outlived it in the worst way.
+
+     .fc-key, .fc-val and .fc-x sit ON the spans. An inherited colour loses to
+     any rule that targets the element itself, whatever the specificity either
+     side, so .filter-chip.is-active's --on-accent reached the check mark and
+     nothing else. Measured on the teal: the key 1.34:1, the value 1.77:1, the x
+     1.39:1 - the "white on teal" that was impossible to read. The check mark,
+     the one part with no rule of its own, was 8.13:1 the whole time.
+
+     .filter-chips also kept an overflow and a trailing-edge mask here, which
+     faded the last 24px of the strip. Clear all sits flush with that edge.
+     The exit was being erased by a leftover.
+
+     Nothing is carried forward but the two things that were load-bearing:
+     font:inherit on the chip, now on the live rule, because a <button> falls
+     back to the UA font without it; and font-weight:700 on the label. */
   .filter-status{ display:flex; align-items:center; gap: var(--sp-6); margin-bottom: var(--sp-6); font-size: var(--fs-sm); }
   .filter-status-count{ color: var(--accent); font-weight:700; }
   .filter-status-clear{ background:transparent; border:1px solid var(--line); border-radius: var(--r-sm); color: var(--ink-soft); font:inherit; font-size: var(--fs-3xs); font-weight:700; padding:1px var(--sp-5); cursor:pointer; }
@@ -1504,33 +1516,63 @@
 
   /* ---------- the filter strip (layer-4 rule) --------------------------------- */
   .filter-chips{ display:flex; align-items:center; gap: var(--sp-5); padding: var(--sp-5) 0;
-    min-width:0; }
+    margin-bottom: var(--sp-6); min-width:0; }
   .filter-chips-label{ display:flex; flex-direction:column; gap:1px; flex:none;
-    font-size: var(--fs-3xs); text-transform:uppercase; letter-spacing:.06em; color: var(--ink-dim); }
-  .fc-logic{ font-size: 9px; letter-spacing:.08em; color: var(--ink-faint); }
-  /* Rule 5: one scrolling row with a faded trailing edge, never a wall of rows. */
+    font-size: var(--fs-3xs); font-weight:700; line-height:1.25; text-transform:uppercase;
+    letter-spacing:.06em; color: var(--ink-dim); }
+  .fc-logic{ font-size: 9px; font-weight:600; letter-spacing:.08em; color: var(--ink-faint); }
+  /* Rule 5: one scrolling row with a faded trailing edge, never a wall of rows.
+     It shrinks when crowded and does NOT grow. flex:1 1 auto stretched it across
+     the whole strip, so one 124px chip sat in a 707px box and the count that
+     answers it was parked 583px away, with the chips at one end of the row and
+     "7 shown  Clear all" at the other. The count belongs next to what it counts. */
   .fc-scroller{ display:flex; gap: var(--sp-4); overflow-x:auto; overflow-y:hidden;
-    flex:1 1 auto; min-width:0; padding-bottom:2px; scrollbar-width:none;
+    flex:0 1 auto; min-width:0; padding-bottom:2px; scrollbar-width:none;
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
     mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
   .fc-scroller::-webkit-scrollbar{ display:none; }
   .filter-chip{ display:inline-flex; align-items:center; gap: var(--sp-3); flex:none;
     border:1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface);
-    padding: 3px var(--sp-5); font-size: var(--fs-3xs); color: var(--ink-soft); cursor:pointer; }
+    font: inherit; padding: 3px var(--sp-5); font-size: var(--fs-3xs); color: var(--ink-soft);
+    cursor:pointer; }
   /* Rule 1: chosen must not look like not-chosen. Filled, with a check. */
   .filter-chip.is-active{ background: var(--accent); border-color: var(--accent);
     color: var(--on-accent); font-weight:700; }
-  .filter-chip.is-active .fc-key{ opacity:.72; }
+  /* Label and value separate by WEIGHT, not by fading one of them out. The key
+     was dimmed to .72 on top of its own grey; even dimming --on-accent that far
+     lands at 4.44:1, under AA. At full strength both are 8.13:1 and the hierarchy
+     is still legible, because "Category" is lighter than "Yu-Gi-Oh!" rather than
+     half-erased. */
+  .filter-chip.is-active .fc-key{ font-weight:500; }
+  .filter-chip.is-active .fc-val{ font-weight:700; }
   .filter-chip:disabled { opacity:.4; border-color: var(--line); cursor:default; }
   @media (hover: hover){ .filter-chip.is-active:hover{ background: var(--accent-dark); } }
   .fc-check{ font-size: 9px; }
-  .fc-x{ font-size: 12px; opacity:.8; }
+  /* .8 put the x at 4.48:1 on the light theme's deeper accent - under AA by two
+     hundredths, which is still under it. It is the only thing on the chip that
+     says the chip can be dismissed, so it is dimmed to recede, not to vanish. */
+  .fc-x{ font-size: 12px; opacity:.9; }
   .fc-count{ flex:none; font-size: var(--fs-3xs); color: var(--ink-dim); }
   .fc-count b{ color: var(--ink); font-variant-numeric: tabular-nums; }
   .fc-dir{ margin-left: var(--sp-4); font-weight:700; }
   .fc-dir.is-wider{ color: var(--positive); } .fc-dir.is-tighter{ color: var(--warn); }
-  .filter-chip.is-clear{ background: var(--sunken); border-style:dashed; color: var(--ink-dim); }
+  /* Rule 4: the exit is always in the same place. Pinned to the right edge
+     whatever the chips in front of it are doing, and no longer under a mask. */
+  .filter-chip.is-clear{ margin-left:auto; background: var(--sunken); border-style:dashed;
+    color: var(--ink-dim); }
   .filter-chip.is-clear b{ color: var(--ink); }
+  /* On a phone the label, the count and the exit took the row first and left the
+     scroller about 165px for a 190px chip, so the trailing fade landed in the
+     middle of the VALUE - "Search inve", "Category Yu-..." - which is the one
+     word on the chip that says what is being filtered. Still one scrolling row,
+     per rule 5; it just gets the full width and the fixed furniture sits above
+     it. Nothing wraps into a wall of rows. */
+  @media (max-width: 640px){
+    .filter-chips{ flex-wrap: wrap; row-gap: var(--sp-4); }
+    .fc-count{ order: 1; margin-left: auto; }
+    .filter-chip.is-clear{ order: 2; margin-left: 0; }
+    .fc-scroller{ order: 3; flex: 1 0 100%; }
+  }
   .filter-status{ display:flex; align-items:center; gap: var(--sp-5); font-size: var(--fs-3xs);
     color: var(--ink-dim); }
   .filter-status-clear{ border:1px solid var(--line-strong); border-radius: var(--r-pill);
@@ -1543,8 +1585,12 @@
   .th-sort.is-active{ color: var(--ink); font-weight:700; box-shadow: inset 0 -2px 0 var(--accent); }
   .th-sort.is-active .th-sort-arrow{ color: var(--accent); }
   .th-filter-wrap{ position:relative; display:inline-block; }
-  .th-filter-wrap.is-active::after{ content:""; position:absolute; top:-1px; right:-3px;
-    width:5px; height:5px; border-radius:50%; background: var(--accent); }
+  /* Centred on the control, not hung off its top-right corner. A header select
+     is taller than the uppercase label inside it, so a top-anchored dot floated
+     clear of the text and read as a stray speck above the column name. The loan
+     filter bar already corrected this for itself; the base rule now matches. */
+  .th-filter-wrap.is-active::after{ content:""; position:absolute; top:50%; right:0;
+    margin-top:-2.5px; width:5px; height:5px; border-radius:50%; background: var(--accent); }
   .th-filter{ border:0; border-radius: var(--r-sm); background:none; padding: 1px var(--sp-4) 1px 0;
     font-size: var(--fs-3xs); color: var(--ink-dim); }
   .th-filter.is-active{ color: var(--ink); font-weight:700; }
@@ -3885,7 +3931,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-10-13a";
+  const APP_BUILD = "2026-10-13b";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -8125,9 +8171,9 @@
             <th><span class="sr-only">Select</span><input type="checkbox" id="expense-select-all" ${checked ? "checked" : ""}></th>
             ${buildSortableTh("exp-s-date", "Date", "date", expenseSort)}
             ${buildSortableTh("exp-s-desc", "Description", "description", expenseSort)}
-            <th>Note</th>
             <th class="th-dual">${buildThFilter("exp-f-cat", "Category", categories, expenseCat, "Filter by category")}<button class="th-sort th-sort-cat${expenseSort.key === "category" ? " active" : ""}" id="exp-s-cat" title="Sort by category" aria-label="Sort by category">${expenseSort.key === "category" ? (expenseSort.dir === "asc" ? "\u25B2" : "\u25BC") : "\u21C5"}</button></th>
             ${buildSortableTh("exp-s-amount", "Amount", "amount", expenseSort)}
+            <th>Note</th>
             <th>Actions</th>
           </tr>`;
 
@@ -8140,7 +8186,7 @@
         // is persisted in uiPrefs, so a reload came straight back to the same dead
         // end. The controls that produced a state have to survive it.
         wrap.innerHTML = `${expStatusBar}
-          <table${sortColClass(expenseSort)}><thead>${expHeaderRowHtml(false)}</thead></table>
+          <table><thead>${expHeaderRowHtml(false)}</thead></table>
           ${emptyStateHtml("search", "No expenses match these filters", "Change the date or category above, or press Clear all.")}`;
         wireHistoryHeader(wrap, "expense");
         wireFilterChips(wrap, expChipDefs, renderHistory);
@@ -8204,9 +8250,9 @@
           <td class="cell-select" data-label=""><input type="checkbox" class="row-select" ${selectedExpenseIds.has(e.id) ? "checked" : ""}></td>
           <td data-label="Date" data-short="${escapeHtml(fmtDate(e.date))}"><input type="date" value="${e.date}" data-field="date" style="width:150px;"></td>
           <td data-label="Description"><input type="text" value="${escapeHtml(e.description)}" data-field="description"></td>
-          <td class="note-cell" data-label="Note" data-note="${escapeHtml(noteOf(e))}"><input type="text" value="${escapeHtml(noteOf(e))}" data-field="notes" placeholder="—"></td>
           <td data-label="Category"><select class="status-select" data-field="category">${catOptions}</select></td>
           <td class="num" data-label="Amount" data-short="${escapeHtml(fmtMoney(e.amount))}"><span class="hist-amt" aria-hidden="true">${fmtMoneyRich(e.amount)}</span><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(e.amount)}" data-field="amount" data-money="1"></div>${e.originalCurrency ? `<div class="hint">${e.originalAmount} ${e.originalCurrency}</div>` : ""}</td>
+          <td class="note-cell" data-label="Note" data-note="${escapeHtml(noteOf(e))}"><input type="text" value="${escapeHtml(noteOf(e))}" data-field="notes" placeholder="—"></td>
           <td class="cell-actions" data-label=""  style="white-space:nowrap;">
             <button class="row-action" data-action="duplicate" aria-label="Copy into a new entry" title="Copy into a new entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="row-action row-action-danger" data-action="delete" aria-label="Remove this entry" title="Remove this entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
@@ -8216,7 +8262,7 @@
 
     wrap.innerHTML = `
       ${expStatusBar}
-      <table${sortColClass(expenseSort)}${groupByDay ? ' data-grouped="day"' : ""}>
+      <table${groupByDay ? ' data-grouped="day"' : ""}>
         <thead>${expHeaderRowHtml(allVisibleSelected)}</thead>
         <tbody>${rows}</tbody>
       </table>
@@ -8512,9 +8558,9 @@
             <th><span class="sr-only">Select</span><input type="checkbox" id="income-select-all" ${checked ? "checked" : ""}></th>
             ${buildSortableTh("inc-s-date", "Date", "date", incomeSort)}
             ${buildSortableTh("inc-s-desc", "Source", "description", incomeSort)}
-            <th>Note</th>
             <th>${buildThFilter("inc-f-cat", "Category", INCOME_CATEGORIES, incomeCat, "Filter by category")}</th>
             ${buildSortableTh("inc-s-amount", "Amount", "amount", incomeSort)}
+            <th>Note</th>
             <th>Actions</th>
           </tr>`;
 
@@ -8522,7 +8568,7 @@
       const isFiltered = rangeVal !== "all" || !!filterCat || !!search;
       if (isFiltered){
         wrap.innerHTML = `${incStatusBar}
-          <table${sortColClass(incomeSort)}><thead>${incHeaderRowHtml(false)}</thead></table>
+          <table><thead>${incHeaderRowHtml(false)}</thead></table>
           ${emptyStateHtml("search", "No income matches these filters", "Change the date or category above, or press Clear all.")}`;
         wireHistoryHeader(wrap, "income");
         wireFilterChips(wrap, incChipDefs, renderIncomeHistory);
@@ -8564,9 +8610,9 @@
           <td class="cell-select" data-label=""><input type="checkbox" class="row-select" ${selectedIncomeIds.has(i.id) ? "checked" : ""}></td>
           <td data-label="Date" data-short="${escapeHtml(fmtDate(i.date))}"><input type="date" value="${i.date}" data-field="date" style="width:150px;"></td>
           <td data-label="Description"><input type="text" value="${escapeHtml(i.description)}" data-field="description"></td>
-          <td class="note-cell" data-label="Note" data-note="${escapeHtml(noteOf(i))}"><input type="text" value="${escapeHtml(noteOf(i))}" data-field="notes" placeholder="—"></td>
           <td data-label="Category"><select class="status-select" data-field="category">${catOptions}</select></td>
           <td class="num" data-label="Amount" data-short="${escapeHtml(fmtMoney(i.amount))}"><span class="hist-amt" aria-hidden="true">${fmtMoneyRich(i.amount)}</span><div class="amount-cell"><span class="amount-cur" aria-hidden="true">₱</span><input type="text" inputmode="decimal" value="${fmtAmountField(i.amount)}" data-field="amount" data-money="1"></div>${i.originalCurrency ? `<div class="hint">${i.originalAmount} ${i.originalCurrency}</div>` : ""}</td>
+          <td class="note-cell" data-label="Note" data-note="${escapeHtml(noteOf(i))}"><input type="text" value="${escapeHtml(noteOf(i))}" data-field="notes" placeholder="—"></td>
           <td class="cell-actions" data-label=""  style="white-space:nowrap;">
             <button class="row-action" data-action="duplicate" aria-label="Copy into a new entry" title="Copy into a new entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="row-action row-action-danger" data-action="delete" aria-label="Remove this entry" title="Remove this entry"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
@@ -8576,7 +8622,7 @@
 
     wrap.innerHTML = `
       ${incStatusBar}
-      <table${sortColClass(incomeSort)}${groupByDay ? ' data-grouped="day"' : ""}>
+      <table${groupByDay ? ' data-grouped="day"' : ""}>
         <thead>${incHeaderRowHtml(allVisibleSelected)}</thead>
         <tbody>${rows}</tbody>
       </table>
@@ -8786,11 +8832,11 @@
   // Which column the table is ordered by is a property of the whole column, so the
   // column is what carries the mark. Both history tables share this order:
   // 1 select, 2 date, 3 description/source, 4 note, 5 category, 6 amount, 7 actions.
-  const SORT_COL_INDEX = { date: 2, description: 3, amount: 6 };
-  function sortColClass(sort){
-    const idx = SORT_COL_INDEX[sort && sort.key];
-    return idx ? ` class="sorted-col-${idx}"` : "";
-  }
+  /* sortColClass used to stamp class="sorted-col-N" on every history table so a
+     stylesheet could tint the sorted column. That stylesheet is gone - a walk of
+     all 1,853 live rules finds no selector matching sorted-col - but the function
+     stayed, numbering columns by hand on every render of all four tables. Being
+     dead is why moving Note did not have to renumber it. */
 
   function buildSortableTh(id, label, sortKey, sort){
     const isActive = sort.key === sortKey;

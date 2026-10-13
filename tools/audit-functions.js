@@ -255,6 +255,64 @@
     pager ? pageRows.length <= S(EXP).length : pageRows.length === S(EXP).length,
     pageRows.length + " rows / " + S(EXP).length + " records" + (pager ? " (paged)" : ""));
 
+  /* ------------------ 5b. the active-filter chip is legible on its own fill    */
+  /* This exists because the chip shipped unreadable and no sweep could have seen
+     it. A chip only exists while a filter is ON, and every contrast run until now
+     had been taken of a view with no filter set - so the one component whose text
+     sits on a saturated fill was the one component never measured. Three colour
+     rules from a superseded chip design sat directly on the spans, which beats an
+     inherited colour whatever the specificity either side: the label measured
+     1.34:1 and the value 1.77:1 against the teal, while the check mark - the only
+     part with no rule of its own - was 8.13:1 the whole time.
+
+     Turning the filter on is the whole point of the check. */
+  /* Brings its own material: the chip is on History, and a check that assumed
+     whatever tab the run happened to leave showing failed on its second pass
+     with the chip sitting right there in the detail string. */
+  await goTab("history");
+  const fSearch = g("filter-search");
+  if (fSearch){
+    fSearch.value = "a";
+    fSearch.dispatchEvent(new Event("input", { bubbles: true }));
+    await wait(340);
+    const chip = document.querySelector("#tab-history .filter-chip.is-active");
+    ok("turning a filter on puts a chip on screen saying so",
+      !!chip && chip.checkVisibility(),
+      chip ? chip.textContent.replace(/\s+/g, " ") : "no chip");
+    if (chip){
+      const lum = ([r, gg, b]) => {
+        const f = (c) => { c /= 255; return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); };
+        return .2126 * f(r) + .7152 * f(gg) + .0722 * f(b);
+      };
+      const rgb = (v) => (String(v).match(/\d+/g) || [0, 0, 0]).slice(0, 3).map(Number);
+      const fill = rgb(getComputedStyle(chip).backgroundColor);
+      /* Measured against the chip's OWN fill, flattening each span's opacity into
+         it - dimming text on a coloured pill is exactly how this went wrong. */
+      const against = (sel) => {
+        const el = chip.querySelector(sel);
+        if (!el) return 0;
+        const cs = getComputedStyle(el);
+        const a = parseFloat(cs.opacity);
+        const fg = rgb(cs.color).map((c, i) => Math.round(c * a + fill[i] * (1 - a)));
+        const pair = [lum(fg), lum(fill)].sort((p, q) => q - p);
+        return +((pair[0] + .05) / (pair[1] + .05)).toFixed(2);
+      };
+      const key = against(".fc-key"), val = against(".fc-val"), x = against(".fc-x");
+      ok("every word on that chip clears AA against the fill behind it",
+        key >= 4.5 && val >= 4.5 && x >= 4.5,
+        "label " + key + ":1  value " + val + ":1  x " + x + ":1");
+    }
+    /* Rule 4: there is always an exit, and it is not under a mask. */
+    const exit = document.querySelector("#tab-history .filter-chip.is-clear");
+    ok("and a Clear all that is actually opaque where it sits",
+      !!exit && seen(exit) && getComputedStyle(exit).opacity === "1" &&
+        getComputedStyle(exit.parentElement).maskImage === "none",
+      exit ? "mask " + getComputedStyle(exit.parentElement).maskImage : "no exit");
+    fSearch.value = "";
+    fSearch.dispatchEvent(new Event("input", { bubbles: true }));
+    await wait(340);
+  }
+
   /* ------------------------- 6. logging while ON History updates History       */
   const liveDesc = tag("-live");
   await press(g("btn-fab-add"), 420);

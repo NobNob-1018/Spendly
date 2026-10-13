@@ -39,9 +39,24 @@
  * HOW TO RUN IT. It is an expression, not a module: fetch it and eval it inside
  * the page you want to audit. From a driver page on the same origin:
  *
- *   const SRC = await fetch("/design-lab/audit-layout.js").then(r => r.text());
- *   // ...load a variant in an iframe, click a tab, wait for it to settle...
- *   const report = iframe.contentWindow.eval(SRC);
+ *   const SRC = await fetch("/tools/audit-layout.js").then(r => r.text());
+ *   // ...switch to a tab, wait for it to settle...
+ *   const report = await eval(SRC);
+ *
+ * THE SERVICE WORKER WILL LIE TO YOU. index.html registers one, and its shell
+ * strategy is stale-while-revalidate matched with { ignoreSearch: true } - so a
+ * ?t=${Date.now()} buster is matched to the cached copy and ignored, and the
+ * first fetch of a file you just edited returns yesterday's bytes while the new
+ * ones are fetched in the background. That is correct for a PWA and fatal for an
+ * audit loop. Empty the caches first, so the fetch is a miss:
+ *
+ *   const fresh = async (p) => {
+ *     for (const k of await caches.keys()) await caches.delete(k);
+ *     return fetch(p, { cache: "reload" }).then(r => r.text());
+ *   };
+ *
+ * Then assert the text contains something you just wrote before you eval it. A
+ * sweep that silently runs the previous version of itself reports on nothing.
  *
  * Sweep every variant x every tab x {420, 900, 1400, 1900} before calling a
  * design pass done. It found eleven real defects on its first run.

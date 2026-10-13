@@ -24,8 +24,30 @@
  * HOW TO RUN IT. It is an expression, not a module: fetch it and eval it inside
  * the page being audited, exactly like audit-layout.js.
  *
- *   const SRC = await fetch("/design-lab/audit-contrast.js").then(r => r.text());
- *   const report = iframe.contentWindow.eval(SRC);
+ *   const SRC = await fetch("/tools/audit-contrast.js").then(r => r.text());
+ *   const report = await eval(SRC);
+ *
+ * THE SERVICE WORKER WILL LIE TO YOU. index.html registers one, and its shell
+ * strategy is stale-while-revalidate matched with { ignoreSearch: true } - so a
+ * ?t=${Date.now()} buster is matched to the cached copy and ignored, and the
+ * first fetch of a file you just edited returns yesterday's bytes while the new
+ * ones are fetched in the background. That is correct for a PWA and fatal for an
+ * audit loop. Empty the caches first, so the fetch is a miss:
+ *
+ *   const fresh = async (p) => {
+ *     for (const k of await caches.keys()) await caches.delete(k);
+ *     return fetch(p, { cache: "reload" }).then(r => r.text());
+ *   };
+ *
+ * Then assert the text contains something you just wrote before you eval it. A
+ * sweep that silently runs the previous version of itself reports on nothing.
+ *
+ * IT ONLY SEES WHAT IS ON SCREEN. That sounds obvious and was not: the active
+ * filter chip - the one component in the app with text on a saturated fill -
+ * went unmeasured for weeks because a chip exists only while a filter is ON, and
+ * every sweep had been taken of a view with no filter set. Its label was at
+ * 1.34:1. Drive the app into the state first, then measure. audit-functions.js
+ * now turns a filter on and checks the chip as part of its own run.
  *
  * Sweep every variant x every tab x every theme. A variant with a light and a
  * dark edition has to pass in both; the accents that work on paper are the ones
