@@ -678,6 +678,23 @@
     text-transform:uppercase; letter-spacing: var(--track-caps);
     background: var(--raised); border-bottom:1px solid var(--line);
   }
+  /* A COLUMN HEADER BELONGS OVER THE VALUE, not over the box that holds it.
+     thead th carries 12px of padding; the field inside the td carries 12px of
+     its own on top of the td's 12px. So every label landed 12.7px to the left of
+     the first character it names - Date, Description, Category and Note all by
+     the same amount, and Amount overhanging its digits by 12.6px the other way.
+     A uniform offset on every column is exactly what reads as a header row that
+     does not line up. Measured, not guessed.
+
+     The select-all checkbox and the action buttons are already flush with the
+     cells beneath them, so they keep the plain inset. */
+  #tab-history thead th{ padding-left: calc(var(--sp-6) * 2); }
+  #tab-history thead th.th-select,
+  #tab-history thead th.th-actions{ padding-left: var(--sp-6); }
+  #tab-history thead th.num{ padding-left: var(--sp-6); padding-right: calc(var(--sp-6) * 2); }
+  /* The buttons under it are right-aligned and the word above them was not. */
+  #tab-history thead th.th-actions{ text-align: right; }
+
   tbody tr{ height: var(--row-h); border-bottom:1px solid var(--line); transition: background-color var(--dur-fast) var(--ease-out); }
   tbody tr:last-child{ border-bottom:0; }
   @media (hover: hover){ tbody tr:hover{ background: var(--raised); } }
@@ -1515,8 +1532,13 @@
 
 
   /* ---------- the filter strip (layer-4 rule) --------------------------------- */
-  .filter-chips{ display:flex; align-items:center; gap: var(--sp-5); padding: var(--sp-5) 0;
-    margin-bottom: var(--sp-6); min-width:0; }
+  /* Horizontal padding so "Filtered by" and "Clear all" are not jammed against
+     the card's inner edge. Everything else on this card is a bordered box whose
+     text sits 12px inside it; the strip is bare text and a pill, so without this
+     its first and last characters touched the card wall. 12px puts the label on
+     the same vertical as the search placeholder above it. */
+  .filter-chips{ display:flex; align-items:center; gap: var(--sp-5);
+    padding: var(--sp-5) var(--sp-6); margin-bottom: var(--sp-6); min-width:0; }
   .filter-chips-label{ display:flex; flex-direction:column; gap:1px; flex:none;
     font-size: var(--fs-3xs); font-weight:700; line-height:1.25; text-transform:uppercase;
     letter-spacing:.06em; color: var(--ink-dim); }
@@ -2827,6 +2849,10 @@
         <select id="exp-range-filter" aria-label="Filter by date range"></select>
         <input type="date" id="filter-expense-from" style="display:none; width:auto;">
         <input type="date" id="filter-expense-to" style="display:none; width:auto;">
+        <div class="list-controls">
+          <span class="list-controls-k">Show</span>
+          <select class="history-per-page" aria-label="How many entries to show per page"></select>
+        </div>
       </div>
       <div class="bulk-bar" id="expense-bulk-bar" style="display:none;">
         <span id="expense-bulk-count"></span>
@@ -2850,6 +2876,10 @@
         <select id="inc-range-filter" aria-label="Filter by date range"></select>
         <input type="date" id="filter-income-from" style="display:none; width:auto;">
         <input type="date" id="filter-income-to" style="display:none; width:auto;">
+        <div class="list-controls">
+          <span class="list-controls-k">Show</span>
+          <select class="history-per-page" aria-label="How many entries to show per page"></select>
+        </div>
       </div>
       <div class="bulk-bar" id="income-bulk-bar" style="display:none;">
         <span id="income-bulk-count"></span>
@@ -3931,7 +3961,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-10-13b";
+  const APP_BUILD = "2026-10-13d";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -4573,6 +4603,16 @@
     if (PAGE_SIZES.indexOf(n) < 0) return 5;
     return n === 0 ? 1e9 : n;
   }
+  /* History pages at ten, which is what it has always used, and the toolbar can
+     now say otherwise. Deliberately NOT loanPageSize: a loan row carries a second
+     row of buttons beneath it, so the two lists do not want the same count on
+     screen, and sharing the preference would make one of them wrong. */
+  function historyPageSize(){
+    const n = +(uiPrefs && uiPrefs.histPageSize);
+    if (PAGE_SIZES.indexOf(n) < 0) return HISTORY_PAGE_SIZE;
+    return n === 0 ? 1e9 : n;
+  }
+
   /* A phone is 375px wide. A grid of cards on it is one card per screen, which
      is a list with more scrolling - so a list is what it opens as, until
      somebody says otherwise. The pair of buttons in the toolbar still says
@@ -8168,13 +8208,13 @@
     const expStatusBar = filterChipsHtml(expChipDefs) + archivedNoteHtml("expense", expArchivedHidden);
     const expHeaderRowHtml = (checked)=>`
           <tr>
-            <th><span class="sr-only">Select</span><input type="checkbox" id="expense-select-all" ${checked ? "checked" : ""}></th>
+            <th class="th-select"><span class="sr-only">Select</span><input type="checkbox" id="expense-select-all" ${checked ? "checked" : ""}></th>
             ${buildSortableTh("exp-s-date", "Date", "date", expenseSort)}
             ${buildSortableTh("exp-s-desc", "Description", "description", expenseSort)}
             <th class="th-dual">${buildThFilter("exp-f-cat", "Category", categories, expenseCat, "Filter by category")}<button class="th-sort th-sort-cat${expenseSort.key === "category" ? " active" : ""}" id="exp-s-cat" title="Sort by category" aria-label="Sort by category">${expenseSort.key === "category" ? (expenseSort.dir === "asc" ? "\u25B2" : "\u25BC") : "\u21C5"}</button></th>
             ${buildSortableTh("exp-s-amount", "Amount", "amount", expenseSort)}
             <th>Note</th>
-            <th>Actions</th>
+            <th class="th-actions">Actions</th>
           </tr>`;
 
     if (list.length === 0){
@@ -8201,7 +8241,7 @@
       return;
     }
 
-    const paged = paginate(list, expensePage);
+    const paged = paginate(list, expensePage, historyPageSize());
     expensePage = paged.safePage;
     const pageList = paged.slice;
 
@@ -8555,13 +8595,13 @@
     const incStatusBar = filterChipsHtml(incChipDefs);
     const incHeaderRowHtml = (checked)=>`
           <tr>
-            <th><span class="sr-only">Select</span><input type="checkbox" id="income-select-all" ${checked ? "checked" : ""}></th>
+            <th class="th-select"><span class="sr-only">Select</span><input type="checkbox" id="income-select-all" ${checked ? "checked" : ""}></th>
             ${buildSortableTh("inc-s-date", "Date", "date", incomeSort)}
             ${buildSortableTh("inc-s-desc", "Source", "description", incomeSort)}
             <th>${buildThFilter("inc-f-cat", "Category", INCOME_CATEGORIES, incomeCat, "Filter by category")}</th>
             ${buildSortableTh("inc-s-amount", "Amount", "amount", incomeSort)}
             <th>Note</th>
-            <th>Actions</th>
+            <th class="th-actions">Actions</th>
           </tr>`;
 
     if (list.length === 0){
@@ -8585,7 +8625,7 @@
       return;
     }
 
-    const paged = paginate(list, incomePage);
+    const paged = paginate(list, incomePage, historyPageSize());
     incomePage = paged.safePage;
     const pageList = paged.slice;
 
@@ -9662,6 +9702,33 @@
     });
     document.body.classList.toggle("list-as-rows", layout === "list");
   }
+
+  /* Options built from PAGE_SIZES so there is one definition of what is offered,
+     and painted from the preference so both toolbars agree whichever was used. */
+  function paintHistoryPerPage(){
+    const n = +(uiPrefs && uiPrefs.histPageSize);
+    const current = PAGE_SIZES.indexOf(n) >= 0 ? n : HISTORY_PAGE_SIZE;
+    document.querySelectorAll(".history-per-page").forEach(sel => {
+      if (!sel.options.length){
+        sel.innerHTML = PAGE_SIZES.map(v =>
+          '<option value="' + v + '">' + (v === 0 ? "All" : v) + '</option>').join("");
+      }
+      sel.value = String(current);
+    });
+  }
+  document.addEventListener("change", ev => {
+    const sel = ev.target.closest && ev.target.closest(".history-per-page");
+    if (!sel) return;
+    setUiPref("histPageSize", +sel.value);
+    /* Back to the first page. Staying on page 7 of a list that is now three pages
+       long lands on nothing; paginate clamps it silently, which moves you without
+       saying so. */
+    expensePage = 1;
+    incomePage = 1;
+    paintHistoryPerPage();
+    renderHistory();
+    renderIncomeHistory();
+  });
 
   function repaintLists(){
     if (typeof renderLoansGiven === "function") renderLoansGiven();
@@ -17755,6 +17822,7 @@
         renderInvestments = function(){ _inv(); paintListControls(); };
       }
       paintListControls();
+      paintHistoryPerPage();
     })();
 
     /* ======================================================================
@@ -19741,7 +19809,7 @@ if ("serviceWorker" in navigator &&
   @media (hover: hover){
     .list-controls .seg button:not(.active):hover{ color: var(--ink); }
   }
-  .list-per-page{ width: auto; max-width: 90px; }
+  .list-per-page, .history-per-page{ width: auto; max-width: 90px; }
   @media (max-width: 720px){
     .list-controls{ margin-left: 0; width: 100%; }
   }
