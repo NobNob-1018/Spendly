@@ -23,7 +23,7 @@ manifest.webmanifest
 icon-180.png icon.svg   
 .nojekyll               stops GitHub Pages mangling the files
 
-tools/                  15 scripts. Nothing here ships; see Verification.
+tools/                  16 scripts. Nothing here ships; see Verification.
 backup/                 OLD-ORIGINAL and old session notes. Kept, not worked on.
 ```
 
@@ -249,6 +249,7 @@ eval(await fetch("/tools/audit-layout.js").then(r => r.text()))     // geometry
 eval(await fetch("/tools/audit-contrast.js").then(r => r.text()))   // WCAG AA
 eval(await fetch("/tools/audit-functions.js").then(r => r.text()))  // 78 checks
 eval(await fetch("/tools/audit-core.js").then(r => r.text()))       // 19 checks
+eval(await fetch("/tools/audit-features.js").then(r => r.text()))   // 42 checks
 ```
 
 > **The service worker will hand you yesterday's file.** Its shell cache is
@@ -275,6 +276,12 @@ lending and deleting, settling and un-settling.
 
 **Run each sweep once, on a fresh seed.** A second run inherits the writes of the
 first, and every failure it then reports is the fixture's, not the app's.
+
+`audit-features` covers what the others never named: budgets, archive, the bulk
+bar, undo, categories, recurring, currency conversion and the CSV export. It needs
+**both widths to run in full** — bulk selection is a desktop affordance and the
+archive button lives in a sheet that only opens at 720px and under, so each run
+skips the other half and says which, by name.
 
 > **`tools/audit-seed.js` WIPES the store for whatever origin it runs on.** The lab
 > that used to namespace these keys is gone. On localhost that is a throwaway dev
