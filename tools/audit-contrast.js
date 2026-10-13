@@ -53,12 +53,35 @@
  * dark edition has to pass in both; the accents that work on paper are the ones
  * that vanish at night.
  *
+ * IT FREEZES TRANSITIONS FIRST, and it has to. The browser pane does not
+ * composite while it is unfocused, so a CSS transition never advances: an 80ms
+ * colour fade was still sitting on its start value two seconds later. Measured
+ * right after a theme flip, every transitioned colour therefore reported as the
+ * theme you just LEFT - span.tab-label at 2.1:1 and the segmented buttons at
+ * 2.64:1, all three of which snap to 8.6:1 the instant the transition is gone.
+ * Three failures, none of them real, every one of them plausible enough to spend
+ * an afternoon on. The stylesheet below is injected before the walk and removed
+ * after, so what is measured is where the colour is GOING, which is the only
+ * value a person ever actually looks at.
+ *
  * KNOWN LIMIT. It measures against the composited background COLOUR. Text laid
  * over an image or a gradient reports against whichever flat colour is behind
  * that, so anything in .hero or a chart needs an eye as well as this.
  */
 (function(){
   const out = { fail: [], unmeasurable: [], checked: 0, skipped: 0 };
+
+  /* Settle every in-flight transition onto its end value. See the header: in an
+     unfocused pane they do not advance on their own, so without this the sweep
+     reports the colours of the state the app has just left. Removed in a finally
+     so a throw cannot leave the app without its motion. */
+  const freeze = document.createElement("style");
+  freeze.setAttribute("data-audit-freeze", "1");
+  freeze.textContent =
+    "*, *::before, *::after { transition: none !important; animation: none !important; }";
+  document.head.appendChild(freeze);
+  void document.body.offsetWidth;   // force the reflow that lands the end values
+  try {
 
   function parse(str){
     if (!str) return null;
@@ -178,4 +201,7 @@
 
   out.fail.sort((a, b) => a.got - b.got);
   return out;
+  } finally {
+    freeze.remove();
+  }
 })()

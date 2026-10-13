@@ -2710,7 +2710,7 @@
     </div>
     <div style="display:flex; align-items:center; gap: var(--sp-5);">
       <div id="save-status"><span class="dot"></span><span id="save-status-text">Saved</span></div>
-      <button id="btn-theme" class="ico" type="button" title="Switch edition">
+      <button id="btn-theme" class="ico" type="button" title="Switch between light and dark mode">
         <svg class="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
         <svg class="theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
       </button>
@@ -3453,24 +3453,24 @@
     <div data-settings-group="appearance" class="card">
       <header class="panel-head is-toolbar">
         <h2><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.6-1.4-.3-.3-.5-.8-.5-1.3 0-1.1.9-2 2-2h1.6A4.5 4.5 0 0 0 21 9.8C21 6 17 3 12 3z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16.5" cy="10.5" r="1"/></svg></span><span class="h-text">What it looks like</span></h2>
-        <p class="sub">The edition, the one colour that runs through everything, and the seven the charts use.</p>
+        <p class="sub">Light or dark mode, the one colour that runs through everything, and the seven the charts use.</p>
       </header>
       <div class="pref-rows">
         <div class="pref-row">
           <span class="pref-k">
-            <span class="pref-name">Edition</span>
-            <span class="pref-why">Day, night, or whichever this machine is set to. The moon in the top bar flips between the first two.</span>
+            <span class="pref-name">Appearance</span>
+            <span class="pref-why">Light, dark, or whichever this machine is set to. The moon in the top bar flips between the first two.</span>
           </span>
           <div class="range-tabs" id="edition-toggle" style="display:inline-flex;">
-            <button data-edition="light">Day</button>
-            <button data-edition="dark">Night</button>
+            <button data-edition="light">Light Mode</button>
+            <button data-edition="dark">Dark Mode</button>
             <button data-edition="system">Match my system</button>
           </div>
         </div>
         <div class="pref-row">
           <span class="pref-k">
             <span class="pref-name">Accent colour</span>
-            <span class="pref-why">One colour runs through every button, chip, rail mark and chart line. All five keep their contrast in both editions.</span>
+            <span class="pref-why">One colour runs through every button, chip, rail mark and chart line. All five keep their contrast in both modes.</span>
           </span>
           <div class="accent-row" id="accent-toggle">
             <button type="button" data-accent="teal"   aria-label="Teal"><span class="accent-dot" style="background:#37c8b8"></span>Teal</button>
@@ -3961,7 +3961,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-10-13d";
+  const APP_BUILD = "2026-10-13e";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -13309,7 +13309,7 @@
       } catch (e){}
       applyEdition(mode);
       showToast(mode === "system" ? "Following this machine."
-        : mode === "light" ? "Day edition." : "Night edition.");
+        : mode === "light" ? "Light Mode." : "Dark Mode.");
     });
   });
   document.querySelectorAll("#accent-toggle button").forEach(btn=>{
@@ -14501,7 +14501,7 @@
 
       function paint(){
         const now = current();
-        const next = now === "light" ? "the night edition" : "the day edition";
+        const next = now === "light" ? "dark mode" : "light mode";
         btn.setAttribute("title", "Switch to " + next);
         btn.setAttribute("aria-label", "Switch to " + next);
         // The bar the phone paints around the page follows the ground.
@@ -14517,7 +14517,7 @@
         // Canvases hold the old ink until they are drawn again.
         try { if (typeof renderCharts === "function") renderCharts(); } catch (e){}
         if (typeof showToast === "function"){
-          showToast(next === "light" ? "Day edition." : "Night edition.");
+          showToast(next === "light" ? "Light Mode." : "Dark Mode.");
         }
       });
 
