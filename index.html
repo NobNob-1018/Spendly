@@ -3961,7 +3961,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-10-26a";
+  const APP_BUILD = "2026-10-26b";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -7029,6 +7029,17 @@
 
      No escapeHtml: showUndoToast assigns this to textContent, so escaping here
      would print "Ana &amp; Co" on the screen. */
+  /* "in History" is a claim about another store, so it is checked against that
+     store rather than inferred from the payment holding an id. A payment keeps
+     its entryId after the row it points at is gone - deleted on another device
+     and synced here, or written before the two were joined at all - and the
+     badge then sent you to History to look for something that is not there. */
+  function historyRowExists(entryId){
+    if (!entryId) return false;
+    return incomes.some(e => e && e.id === entryId) ||
+           expenses.some(e => e && e.id === entryId);
+  }
+
   function loanPaymentNote(token){
     if (!token) return "";
     const back = fmtMoney(token.was.amount + (+token.was.payment.amount || 0));
@@ -9247,7 +9258,7 @@
             <span class="pay-date">${fmtDate(p.date)}</span>
             <span class="pay-amt num">${fmtMoney(p.amount)}</span>
             ${p.note ? `<span class="pay-note">${escapeHtml(p.note)}</span>` : ""}
-            ${p.entryId ? `<span class="pay-link" title="Also recorded in History">in History</span>` : ""}
+            ${historyRowExists(p.entryId) ? `<span class="pay-link" title="Also recorded in History">in History</span>` : ""}
           </li>`).join("")}</ol>
         </div>` : "";
     const actionBar = `
@@ -20018,12 +20029,23 @@ if ("serviceWorker" in navigator &&
     color: var(--warn-note, var(--warn)); }
 
   /* ---------- the payments trail ------------------------------------------ */
+  /* It sat flush against the action bar - measured gap 0 - so it read as text
+     that had fallen off the buttons rather than a list belonging to the card.
+     A rule and some room above make it a section. */
+  [data-trail-panel]:not(.is-collapsed){ margin-top: var(--sp-6); padding-top: var(--sp-6);
+    border-top: 1px solid var(--line); }
   .pay-trail{ list-style: none; margin: 0; padding: 0; width: 100%;
-    display: flex; flex-direction: column; gap: var(--sp-3); }
-  .pay-trail li{ display: flex; align-items: baseline; gap: var(--sp-5);
+    display: flex; flex-direction: column; gap: var(--sp-4); }
+  /* COLUMNS, not a row of words. "Oct 9" and "Oct 26" are different widths, so
+     every figure under them started at a different x - 386 against 393 - and the
+     badges after them were ragged too. A fixed date column and a right-aligned
+     figure put the decimal points over each other. */
+  .pay-trail li{ display: grid; grid-template-columns: 4.5em minmax(5em, auto) 1fr auto;
+    align-items: baseline; gap: var(--sp-5);
     font-size: var(--fs-2xs); color: var(--ink-dim); }
-  .pay-date{ flex: 0 0 auto; }
-  .pay-amt{ flex: 0 0 auto; font-weight: 700; color: var(--ink); }
+  .pay-date{ flex: 0 0 auto; white-space: nowrap; }
+  .pay-amt{ flex: 0 0 auto; font-weight: 700; color: var(--ink);
+    text-align: right; font-variant-numeric: tabular-nums; }
   .pay-note{ flex: 1 1 auto; min-width: 0; overflow: hidden;
     text-overflow: ellipsis; white-space: nowrap; }
   .pay-link{ flex: 0 0 auto; font-size: var(--fs-3xs); color: var(--ink-faint); }
