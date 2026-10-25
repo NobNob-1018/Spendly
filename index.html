@@ -920,6 +920,43 @@
   .savings-list{ display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap: var(--sp-7); }
   .savings-account{ padding: var(--sp-7); background: var(--raised); border:1px solid var(--line); border-radius: var(--r-md); }
   .sa-head{ display:flex; align-items:baseline; justify-content:space-between; gap: var(--sp-6); margin-bottom: var(--sp-5); }
+  .sa-head-acts{ display:inline-flex; align-items:center; gap: var(--sp-3); flex:0 0 auto; }
+
+  /* THE CARD IS A SUMMARY, NOT A FORM.
+     The fields stay REAL inputs because the sheet borrows these very nodes
+     rather than rebuilding them - so the refusal is scoped to the card, and
+     moving a field into the sheet changes its ancestor and takes the refusal
+     off again. Nothing here is disabled or readonly: an attribute would travel
+     with the node and the sheet would inherit a form you cannot type in. */
+  .savings-account [data-field],
+  .savings-account .sa-auto{ pointer-events: none; }
+  /* The card prints the figure the way every other figure in this app is
+     printed. The input is still there, carrying the raw value the sheet needs -
+     it is just not what you are looking at. Showing the field itself gave you
+     "500000" where the rest of the page says ₱500,000.00. */
+  .savings-account .sa-field[data-read] > .amount-wrap,
+  .savings-account .sa-field[data-read] > .sa-inline{ display: none; }
+  .savings-account .sa-field[data-read]::after{
+    content: attr(data-read); display: block; color: var(--ink); font-weight: 650;
+    font-variant-numeric: tabular-nums; font-size: var(--fs-sm);
+  }
+  .savings-account .sa-tier input{
+    background: transparent; border-color: transparent; box-shadow: none;
+    padding-left: 0; color: var(--ink); font-weight: 650;
+  }
+  .savings-account .sa-auto input[type="checkbox"]{ opacity: .5; }
+  /* Borrowed into the sheet, they are a form again. */
+  .item-sheet [data-field],
+  .item-sheet .sa-auto{ pointer-events: auto; }
+  /* Borrowed into the sheet the block is a field again, and the printed copy
+     the card showed has no business following it there. */
+  .item-sheet .sa-field[data-read] > .amount-wrap,
+  .item-sheet .sa-field[data-read] > .sa-inline{ display: flex; }
+  .item-sheet .sa-field[data-read]::after{ content: none; }
+  .item-sheet .sa-fields input,
+  .item-sheet .sa-tier input{
+    background: var(--sunken); border-color: var(--line); padding-left: var(--sp-6);
+  }
   .sa-name{ font-size: var(--fs-lg); font-weight:700; }
   .sa-fields{ display:grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: var(--sp-6); }
   .sa-field{ min-width:0; }
@@ -3961,7 +3998,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-10-26b";
+  const APP_BUILD = "2026-10-26c";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -10296,7 +10333,10 @@
           <div class="sa-head">
             <span class="sa-grip" aria-hidden="true" title="Drag to reorder"></span>
             <span class="sa-name">${escapeHtml(a.provider)}</span>
-            <button class="row-action row-action-danger" data-action="delete" title="Remove" aria-label="Remove">✕</button>
+            <span class="sa-head-acts">
+              <button class="row-action" data-action="edit-row" title="Edit this account" aria-label="Edit this account"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+              <button class="row-action row-action-danger" data-action="delete" title="Remove" aria-label="Remove">✕</button>
+            </span>
           </div>
           <div class="sv-metric">
             <span class="sv-metric-value">${fmtMoneyRich(a.amount)}</span>
@@ -10308,9 +10348,9 @@
             <div class="sv-kpi"><span class="label">Effective</span><span class="value">${effectiveAnnualRate.toFixed(2)}%</span></div>
           </div>
           <div class="sa-fields">
-            <div class="sa-field"><label>Balance</label><div class="amount-wrap"><span>₱</span><input type="number" min="0" step="0.01" value="${a.amount}" data-field="amount"></div></div>
-            <div class="sa-field"><label>Rate</label><div class="sa-inline"><input type="number" min="0" step="0.01" value="${a.rate || 0}" data-field="rate"><span>%</span></div></div>
-            <div class="sa-field"><label>Tax</label><div class="sa-inline"><input type="number" min="0" max="100" step="0.01" value="${taxRate}" data-field="taxRate"><span>%</span></div></div>
+            <div class="sa-field" data-read="${escapeHtml(fmtMoney(a.amount))}"><label>Balance</label><div class="amount-wrap"><span>₱</span><input type="number" min="0" step="0.01" value="${a.amount}" data-field="amount"></div></div>
+            <div class="sa-field" data-read="${(a.rate || 0)}%"><label>Rate</label><div class="sa-inline"><input type="number" min="0" step="0.01" value="${a.rate || 0}" data-field="rate"><span>%</span></div></div>
+            <div class="sa-field" data-read="${taxRate}%"><label>Tax</label><div class="sa-inline"><input type="number" min="0" max="100" step="0.01" value="${taxRate}" data-field="taxRate"><span>%</span></div></div>
           </div>
           ${a.tiered ? `<div class="sa-tier"><span>Up to</span><div class="amount-wrap"><span>₱</span><input type="number" min="0" step="0.01" value="${a.tierCap || 0}" data-field="tierCap"></div><span>then</span><div class="sa-inline"><input type="number" min="0" step="0.01" value="${a.tierOverRate || 0}" data-field="tierOverRate"><span>%</span></div></div>` : ""}
           ${(a.rate || 0) > 0 ? `<label class="sa-auto"><input type="checkbox" data-field="autoInterest" ${a.autoInterest ? "checked" : ""}><span class="sa-auto-text">Post interest automatically${a.autoInterest && a.lastInterestMonth ? ` · to ${escapeHtml(a.lastInterestMonth)}` : ""}</span></label>` : ""}
@@ -10490,9 +10530,17 @@
     wrap.querySelectorAll(".savings-account").forEach(card=>{
       const id = card.dataset.id;
       wireNotes(card, id, savings, saveSavings, renderSavingsList, "data-note-field");
+      /* EDITS COME FROM THE SHEET, NOT THE CARD. pointer-events:none stops a
+         finger and nothing else - a label still forwards a programmatic click,
+         and a stray script or an assistive tool would walk straight past it. The
+         card refuses in CSS so it does not look editable, and refuses here so it
+         is not. A control borrowed into the sheet has the sheet as an ancestor,
+         which is what makes the same node editable there. */
+      const fromSheet = (el) => !!(el && el.closest && el.closest("#item-sheet"));
       const autoBox = card.querySelector('[data-field="autoInterest"]');
       if (autoBox){
         autoBox.addEventListener("change", ()=>{
+          if (!fromSheet(autoBox)){ autoBox.checked = !autoBox.checked; return; }
           const item = savings.find(x=>x.id===id);
           if (!item) return;
           item.autoInterest = autoBox.checked;
@@ -10509,6 +10557,7 @@
       }
       card.querySelectorAll('[data-field]:not([type=checkbox])').forEach(input=>{
         input.addEventListener("change", ()=>{
+          if (!fromSheet(input)) return;
           const item = savings.find(x=>x.id===id);
           if (!item) return;
           const v = parseFloat(input.value);
@@ -10536,6 +10585,11 @@
       card.querySelector('[data-action="delete"]').addEventListener("click", ()=>{
         const item = savings.find(x=>x.id===id);
         if (!item) return;
+        /* An account is the largest single thing in this app - the balance, the
+           rate, and every movement charged against it. The undo toast is still
+           there, but it is a few seconds long and this is not a row. */
+        if (!confirm("Remove " + item.provider + " (" + fmtMoney(item.amount) + ")?\n\n" +
+                     "Its balance stops counting towards Total Money. You can undo this straight after.")) return;
         const snapshot = { ...item };
         savings = savings.filter(x=>x.id!==id);
         saveSavings(savings);
@@ -18101,6 +18155,11 @@
 
       /* ---------- the overlay ---------------------------------------------- */
       let sheet = null, openRow = null, openId = "", editing = false;
+      /* Opened by the pencil rather than by tapping the row. syncRows() closes a
+         sheet whose row is no longer a lean one, which is right for a list that
+         switched back to cards underneath it - and wrong for a sheet somebody
+         asked for from a card, which it shut the instant it opened. */
+      let openedByRequest = false;
       let borrowed = [], returnFocusTo = null, watcher = null, settle = 0;
 
       function build(){
@@ -18349,12 +18408,13 @@
         sheet.classList.toggle("is-editing", editing);
       }
 
-      function open(row){
+      function open(row, startEditing){
         build();
         returnFocusTo = document.activeElement;
         openRow = row;
         openId = row.dataset.id || "";
-        editing = false;
+        editing = !!startEditing;
+        openedByRequest = !!startEditing;
         paint();
         sheet.classList.add("show");
         lockPage(true);
@@ -18367,6 +18427,7 @@
         // would free the page while another overlay is still in front.
         if (!sheet.classList.contains("show")) return;
         lockPage(false);
+        openedByRequest = false;
         /* A touch screen still synthesises a click after the gesture that closed
            this, and by then there is no scrim left to absorb it. */
         notAClickUntil = Date.now() + 400;
@@ -18441,6 +18502,20 @@
         open(row);
       });
 
+      /* An explicit way in, which a card needs because tapping the card itself
+         only opens the sheet while the list is a LIST. A savings card is a
+         summary in both layouts now, so the pencil has to work in both - and it
+         opens straight into edit, because that is what it was pressed for. */
+      document.addEventListener("click", ev => {
+        const btn = ev.target.closest && ev.target.closest('[data-action="edit-row"]');
+        if (!btn) return;
+        const row = btn.closest(ROW_SEL);
+        if (!row) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        open(row, true);
+      });
+
       /* A row is a way in only while the list is a list. */
       function syncRows(){
         document.querySelectorAll(ROW_SEL).forEach(row => {
@@ -18455,6 +18530,7 @@
             row.removeAttribute("aria-haspopup");
           }
         });
+        if (openedByRequest) return;
         if (openRow && !isLean(openRow) && sheet && sheet.classList.contains("show")) close();
       }
       syncRows();
