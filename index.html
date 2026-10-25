@@ -3961,7 +3961,7 @@
   /* Which build this file is. Bumped on release; the update check compares it with
      whatever the server is serving, so it is what makes "am I current?" answerable
      rather than a guess. */
-  const APP_BUILD = "2026-10-13e";
+  const APP_BUILD = "2026-10-26a";
 
   const DEFAULT_CATEGORIES = ["Food", "Transport", "Entertainment", "Bills", "Shopping", "Health", "Other"];
   // "Loan repayment" is written BY the app when a loan comes back, so leaving it out
@@ -12315,11 +12315,48 @@
      the new rows are drawn the moment the field is done with. */
   let refreshHeldForEditing = false;
 
+  /* A press that has begun and not yet produced its click. A deferred repaint
+     must not land inside one: it would rebuild the control under the pointer,
+     mouseup would land on a different element, and the browser would never
+     deliver the click. See the press-in-flight block below. */
+  let pressInFlight = false;
+
   function editingATableField(){
+    if (pressInFlight) return true;
     const el = document.activeElement;
     // Every editable cell in every table carries data-field; nothing outside one does.
     return !!(el && el.getAttribute && el.getAttribute("data-field") !== null);
   }
+
+  /* THE OTHER HALF OF THE SAME GUARD.
+
+     Holding the repaint while a field has focus was only half the job, and the
+     missing half is what "log payment does nothing, sometimes" was. Pressing the
+     button moves focus OFF the amount box, so focusout fires on mousedown and
+     releases the hold; its 0ms timer then lands about 70ms later - inside a
+     normal 80-150ms human press - and rebuilds the card mid-press. Measured:
+     mousedown 18880ms, focusout 18882ms, mouseup 18891ms, click 18929ms, timer
+     18951ms. A fast synthetic click beats it; a finger does not.
+
+     Released on CLICK rather than pointerup, so the click the press is about to
+     deliver is handled before anything is allowed to redraw. The timer is what
+     makes that safe: it runs after the current task, and the app's own click
+     handler is in that task. */
+  function releasePress(){
+    if (!pressInFlight) return;
+    pressInFlight = false;
+    setTimeout(()=>{
+      if (refreshHeldForEditing && !editingATableField()) refreshAfterSync();
+    }, 0);
+  }
+  document.addEventListener("pointerdown", ()=>{ pressInFlight = true; }, true);
+  document.addEventListener("click", releasePress, true);
+  document.addEventListener("pointercancel", releasePress, true);
+  /* A press dragged off its control produces no click, so it would hold the
+     repaint for ever. This is the only timer here with a number in it, and it is
+     a backstop rather than a race: by the time it runs, any click there was to
+     deliver has been. */
+  document.addEventListener("pointerup", ()=>{ setTimeout(releasePress, 250); }, true);
 
   document.addEventListener("focusout", ()=>{
     if (!refreshHeldForEditing) return;

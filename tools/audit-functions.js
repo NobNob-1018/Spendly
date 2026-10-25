@@ -54,6 +54,30 @@
     await wait(settle === undefined ? 260 : settle);
     return true;
   };
+
+  /* AND SOMETIMES THAT IS NOT ENOUGH. el.click() dispatches a click and NO
+     pointer events, and it takes no time: mousedown and mouseup are the same
+     instant. A finger is 80-150ms apart and moves focus on the way down. Every
+     sweep in this folder had been exercising a path no person takes, which is
+     how "log payment does nothing, sometimes" survived 78 passing checks.
+
+     This presses the way a hand does: focus leaves first, the button is held,
+     and the click arrives at the end. */
+  const pressSlowly = async (el, heldMs) => {
+    if (!el) return false;
+    const opts = { bubbles: true, cancelable: true, composed: true };
+    el.dispatchEvent(new PointerEvent("pointerdown", opts));
+    el.dispatchEvent(new MouseEvent("mousedown", opts));
+    /* What mousedown does natively, and the reason the bug existed: the field
+       being submitted loses focus BEFORE the click is delivered. */
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    await wait(heldMs === undefined ? 140 : heldMs);
+    el.dispatchEvent(new PointerEvent("pointerup", opts));
+    el.dispatchEvent(new MouseEvent("mouseup", opts));
+    el.dispatchEvent(new MouseEvent("click", opts));
+    await wait(420);
+    return true;
+  };
   /* Typing, with the events a real keystroke would fire - the category guess,
      the draft save and the currency preview all hang off `input`. */
   const type = (id, v) => {
@@ -254,6 +278,49 @@
   ok("the row count matches the record count when nothing is filtered",
     pager ? pageRows.length <= S(EXP).length : pageRows.length === S(EXP).length,
     pageRows.length + " rows / " + S(EXP).length + " records" + (pager ? " (paged)" : ""));
+
+  /* --------------- 4c. a payment survives a press that is held like a hand's   */
+  /* Reported as "log payment does nothing, sometimes it works, sometimes it
+     doesn't", on a loan that already had one payment. Pressing the button moves
+     focus off the amount box; focusout releases the repaint guard and queues
+     refreshAfterSync on a 0ms timer that lands ~70ms later - inside the press.
+     repaintVisibleTables rebuilt the loans list, the button being held was
+     detached, and the browser never fired click at all.
+
+     el.click() could never catch it: no pointer events, and no time between
+     down and up. This check holds the button for 140ms and asserts the payment
+     still lands. */
+  await goTab("loans");
+  {
+    const card = document.querySelector(".loan-card");
+    if (card){
+      const id = card.dataset.id;
+      const dirOf = (lid) => S(LG).find(l => l.id === lid) ? LG : LT;
+      const key = dirOf(id);
+      const recBefore = S(key).find(l => l.id === id);
+      if (recBefore && recBefore.amount > 60){
+        const panel = card.querySelector("[data-payment-panel]");
+        if (panel && panel.classList.contains("is-collapsed"))
+          await press(card.querySelector('[data-action="toggle-payment"]'), 420);
+        const amt = card.querySelector('input[data-field="payment"]');
+        const btn = card.querySelector('[data-action="log-payment"]');
+        if (amt && btn){
+          amt.focus();
+          amt.value = "50";
+          amt.dispatchEvent(new Event("input", { bubbles: true }));
+          await wait(150);
+          const before = S(key).find(l => l.id === id).amount;
+          await pressSlowly(btn, 140);
+          const after = S(key).find(l => l.id === id).amount;
+          ok("a payment survives the button being HELD, not just tapped by script",
+            Math.abs((before - after) - 50) < 0.005, before + " -> " + after + " (wanted -50)");
+          ok("and the button it was pressed on is still the one on screen",
+            document.contains(btn) || !!document.querySelector('[data-action="log-payment"]'),
+            document.contains(btn) ? "same node" : "rebuilt, but present");
+        }
+      }
+    }
+  }
 
   /* ------------------ 5b. the active-filter chip is legible on its own fill    */
   /* This exists because the chip shipped unreadable and no sweep could have seen
