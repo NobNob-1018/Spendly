@@ -1,29 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- The home-screen mark. Maskable icons get cropped to a circle on Android, so the
-       glyph sits inside the safe zone (the middle 80%) and the teal runs edge to edge
-       rather than floating on a transparent field.
-
-       The glyph is drawn, not typed. It used to be a <text> element asking for Inter —
-       but an SVG used as an icon renders in an isolated document, so it can never reach
-       the @font-face the page embeds. It fell back to whatever the launcher had, at a
-       weight that may not exist, which is a different mark on every device. Geometry
-       depends on nothing.
-
-       And it is a peso sign now. Every figure in this app is ₱; the mark was a $. -->
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2DD4BF"/>
-      <stop offset="1" stop-color="#14B8A6"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" fill="url(#g)"/>
-  <g fill="none" stroke="#0B0D10" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Stem and bowl of the P, stroked so weight is explicit rather than inherited. -->
-    <path d="M206 148 V378" stroke-width="46"/>
-    <path d="M206 148 H252 a62 62 0 0 1 0 124 H206" stroke-width="46"/>
-    <!-- The two bars that make it a peso. They cross the stem and run clear of it on
-         the left, which is what separates ₱ from a plain P at small sizes. -->
-    <path d="M150 196 H300" stroke-width="24"/>
-    <path d="M150 240 H300" stroke-width="24"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3A9BFF"/><stop offset="1" stop-color="#0052D6"/></linearGradient>
+<linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+<rect width="100" height="100" rx="22" fill="url(#g)"/>
+<path d="M22.0 66.0 L40.0 49.0 L54.0 58.0 L78.0 33.0 L78 80 L22 80 Z" fill="url(#a)"/>
+<path d="M22.0 66.0 L40.0 49.0 L54.0 58.0 L78.0 33.0" fill="none" stroke="#fff" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="78" cy="33" r="6.2" fill="#fff"/>
 </svg>
