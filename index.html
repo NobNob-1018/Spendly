@@ -1351,6 +1351,46 @@ form[data-form="loan"]:not(:has([name="dir"][value="borrowed"]:checked)) .dir-bo
 .tabbar [data-act="more"][aria-expanded="true"] .ic{ transform:rotate(90deg); }
 :root[data-motion="reduce"] .more-pop .mb{ transition:opacity .15s !important; transform:none !important; }
 @media (prefers-reduced-motion:reduce){ :root:not([data-motion="full"]) .more-pop .mb{ transition:opacity .15s !important; transform:none !important; } }
+/* Loans & investments on a phone: the totals in one row, each loan or item in one slim row that opens in place. */
+.cx-sum{ display:grid; grid-template-columns:1fr 1fr; padding:0; overflow:hidden; }
+.cx-sum a{ display:block; min-width:0; padding:12px 16px; color:inherit; text-decoration:none; }
+.cx-sum a + a{ border-left:1px solid var(--sep); }
+.cx-sum .k{ color:var(--ink-3); font-size:13px; }
+.cx-sum .v{ font:700 20px/1.25 var(--display); letter-spacing:-.015em; font-variant-numeric:tabular-nums; }
+.cx-sum .s{ margin-top:1px; color:var(--ink-3); font-size:12.5px; }
+.cx-list{ padding:0; overflow:hidden; }
+.cx-item + .cx-item{ border-top:1px solid var(--sep); }
+.cx-row{ display:block; padding:10px 14px 9px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.cx-row:focus-visible{ outline:3px solid var(--focus); outline-offset:-3px; border-radius:var(--r-card); }
+.cx-top{ display:grid; grid-template-columns:32px minmax(0,1fr) auto 16px; align-items:center; gap:0 10px; }
+.cx-top .avatar{ width:32px; height:32px; font-size:14px; }
+.cx-mid{ min-width:0; }
+.cx-name{ margin:0; font-size:15px; font-weight:600; line-height:1.3; letter-spacing:0; }
+.cx-sub{ color:var(--ink-3); font-size:12.5px; line-height:1.35; }
+.cx-amt{ text-align:right; font-size:15px; font-weight:700; line-height:1.3; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.cx-amt small{ display:block; color:var(--ink-3); font-size:12px; font-weight:400; }
+.cx-top > .ic{ color:var(--ink-3); transition:transform .22s cubic-bezier(.23,1,.32,1); }
+.cx-item.open .cx-top > .ic{ transform:rotate(90deg); }
+.cx-meter{ height:3px; margin:8px 0 0 42px; overflow:hidden; border-radius:2px; background:var(--fill); }
+.cx-meter i{ display:block; height:100%; border-radius:2px; background:var(--accent); }
+.cx-meter.pos i{ background:var(--pos-fill); } .cx-meter.neg i{ background:var(--neg-fill); }
+.cx-more{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .24s cubic-bezier(.23,1,.32,1); }
+.cx-item.open .cx-more{ grid-template-rows:1fr; }
+.cx-more > div{ overflow:hidden; }
+.cx-item:not(.open) .cx-more > div{ visibility:hidden; transition:visibility 0s .24s; }
+.cx-in{ padding:2px 14px 14px 56px; }
+.cx-in .facts{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px 12px; margin:6px 0 12px; padding:0; border:0; }
+.cx-in .facts > div{ display:block; padding:0; border:0; }
+.cx-in .facts dt{ color:var(--ink-3); font-size:12px; text-align:left; }
+.cx-in .facts dd{ margin:0; font-size:14px; font-weight:500; text-align:left; white-space:normal; overflow-wrap:anywhere; }
+.cx-in .facts dd .link{ max-width:100%; padding:0; }
+.cx-in .facts dd .link .truncate{ min-width:0; }
+.cx-in .acct-f{ display:flex; gap:8px; margin:0; padding:0; border:0; }
+.cx-in .acct-f .btn{ flex:1 1 0; }
+.cx-in .acct-f .cx-edit{ flex:0 0 44px; padding:0; }
+.arch-list.cx-list{ margin-top:12px; }
+:root[data-motion="reduce"] :is(.cx-more, .cx-top > .ic){ transition:none; }
+@media (prefers-reduced-motion:reduce){ :root:not([data-motion="full"]) :is(.cx-more, .cx-top > .ic){ transition:none; } }
 </style>
 </head>
 <body>
@@ -2310,6 +2350,17 @@ const CARD_PER = [["6", "6 per page"], ["12", "12 per page"], ["24", "24 per pag
 const cardPer = () => { const p = +S.settings.loanPer; return [6, 12, 24, 48].includes(p) ? p : 0; };
 function vLoans(){
   const tab = LOAN_TABS.includes(ui.loanTab) ? ui.loanTab : "lent", invest = tab === "holding" || tab === "sold";
+  /* On a phone a card is too tall to see more than one at a time, so each loan
+     or item is one slim row: its name, one line about it, the figure that
+     matters and a thin bar. A tap opens its details and buttons in place, one
+     at a time. The details and buttons are the card's own. */
+  const compact = phone();
+  const noteFact = (act, id, note) => `<div><dt>Note</dt><dd><button class="link" data-act="${act}" data-id="${id}"><span class="truncate">${note ? esc(String(note).split("\n")[0]) : "Add a note"}</span>${icon("chevron", 13)}</button></dd></div>`;
+  const slim = (id, mark, name, sub, amt, meter, fill, aria, facts, acts) => `<div class="cx-item${ui.openRow === id ? " open" : ""}" data-id="${id}">
+      <div class="cx-row" role="button" tabindex="0" data-act="row-open" data-id="${id}" aria-expanded="${ui.openRow === id}">
+        <div class="cx-top">${mark}<div class="cx-mid"><h2 class="cx-name truncate">${esc(name)}</h2><div class="cx-sub truncate">${sub}</div></div><div class="cx-amt">${amt}</div>${icon("chevron", 14)}</div>
+        <div class="cx-meter ${meter}" role="img" aria-label="${aria}"><i style="width:${fill}%"></i></div></div>
+      <div class="cx-more"><div><div class="cx-in">${facts}<div class="acct-f">${acts}</div></div></div></div></div>`;
   const addLoan = `<button class="btn btn-primary" data-act="new-loan">${icon("plus", 15)}Record a loan</button>`, addItem = `<button class="btn btn-primary" data-act="new-item">${icon("plus", 15)}Add an item</button>`;
   if (!S.loans.length && !(S.items || []).length) return `<section class="panel">${empty("loans", "Nothing here yet", "Money you lend or borrow is tracked here until the last payment, and things you buy to sell until they are sold.", `<div class="empty-acts">${addLoan}${addItem.replace("btn btn-primary", "btn")}</div>`)}</section>`;
   const every = S.loans.map(l => ({ l, paid: loanPaid(l), due: loanDue(l) }));
@@ -2320,22 +2371,32 @@ function vLoans(){
     return d < 0 ? `<span class="neg">${-d} ${d === -1 ? "day" : "days"} overdue</span>` : d === 0 ? `<span class="warn">today</span>` : d <= 7 ? `<span class="warn">in ${d} ${d === 1 ? "day" : "days"}</span>` : ""; };
   const lead = (list, none) => { if (!list.length) return none; const n = list.find(x => x.l.due);
     return list.length + " open" + (n ? " · next " + esc(n.l.person) + ", " + (late(n.l) || fmtDate(n.l.due)) : ""); };
-  const card = ({ l, paid, due }) => { const li = loanInterest(l), pct = l.principal + li ? Math.round(paid / (l.principal + li) * 100) : 0, out = l.dir === "lent";
+  const card = ({ l, paid, due }) => { const li = loanInterest(l), all = l.principal + li, pct = all ? Math.round(paid / all * 100) : 0, out = l.dir === "lent";
     const entries = S.tx.filter(t => t.loanId === l.id).sort((a, b) => a.date < b.date ? 1 : -1), back = entries.filter(t => t.kind === "lend_repay" || t.kind === "borrow_repay");
-    return `<article class="panel acct loan">
-      <header class="acct-h"><span class="avatar">${esc((l.person || "?").slice(0, 1).toUpperCase())}</span><div class="grow"><h2 class="truncate">${esc(l.person)}</h2><div class="desc-sub truncate">${l.note ? esc(l.note) : out ? "Owes you" : "You owe"}</div></div>
-        <button class="icon-btn" data-act="edit-loan" data-id="${l.id}" title="Edit" data-label="Edit" aria-label="Edit the loan with ${esc(l.person)}">${icon("edit", 18)}</button></header>
-      <div class="loan-top"><div><div class="acct-v">${figc("loan:" + l.id, due)}</div>
-        <div class="acct-ch">${due === 0 ? `<span class="pos">Settled</span><span class="muted">${money(l.principal + li)} in full</span>` : `<span class="muted">left of ${money(l.principal + li)}${li ? " · " + money(li) + " interest" : ""}</span>`}</div></div>
-        <div class="lent-on"><span>${out ? "Lent on" : "Borrowed on"}</span><b>${fmtDate(l.date, true)}</b></div></div>
-      <div class="meter ${due === 0 ? "pos" : "acc"}" role="img" aria-label="${pct}% repaid"><i style="width:${Math.min(100, pct)}%"></i></div>
-      <dl class="facts">
+    const facts = `<dl class="facts">
         <div><dt>Due</dt><dd>${due === 0 ? "—" : l.due ? fmtDate(l.due) + (late(l) ? " · " + late(l) : "") : "No date set"}</dd></div>
         <div><dt>Repaid</dt><dd class="num">${paid ? money(paid) + " · " + pct + "%" : "Nothing yet"}</dd></div>
         <div><dt>Last payment</dt><dd>${back.length ? dayName(back[0].date) : "—"}</dd></div>
         <div><dt>Entries</dt><dd><button class="link" data-act="loan-sheet" data-id="${l.id}">${entries.length + (entries.length === 1 ? " entry" : " entries")}${icon("chevron", 13)}</button></dd></div>
-      </dl>
-      <footer class="acct-f">${due > 0 ? `<button class="btn btn-sm btn-tint" data-act="pay-loan" data-id="${l.id}">Log payment</button><button class="btn btn-sm" data-act="settle-loan" data-id="${l.id}">Mark as paid</button>` : `<button class="btn btn-sm" data-act="loan-archive" data-id="${l.id}">${l.archived ? "Restore" : "Archive"}</button>`}<button class="btn btn-sm" data-act="loan-notes" data-id="${l.id}">Notes</button></footer>
+        ${compact && li ? `<div><dt>Interest so far</dt><dd class="num">${money(li)}</dd></div>` : ""}
+        ${compact ? noteFact("loan-notes", l.id, l.note) : ""}
+      </dl>`;
+    const acts = due > 0 ? `<button class="btn btn-sm btn-tint" data-act="pay-loan" data-id="${l.id}">Log payment</button><button class="btn btn-sm" data-act="settle-loan" data-id="${l.id}">Mark as paid</button>` : `<button class="btn btn-sm" data-act="loan-archive" data-id="${l.id}">${l.archived ? "Restore" : "Archive"}</button>`;
+    const notes = `<button class="btn btn-sm" data-act="loan-notes" data-id="${l.id}">Notes</button>`;
+    if (compact){
+      const sub = due === 0 ? "Settled · " + money(all, { round: all % 100 === 0 }) + " in full" : (late(l) || (l.due ? "Due " + fmtDate(l.due) : "No due date")) + " · " + (out ? "lent " : "borrowed ") + fmtDate(l.date);
+      return slim(l.id, `<span class="avatar">${esc((l.person || "?").slice(0, 1).toUpperCase())}</span>`, l.person, sub,
+        `<span class="cx-v num">${money(due === 0 ? all : due)}</span><small>${due === 0 ? "repaid" : "of " + money(all, { round: all % 100 === 0 })}</small>`, due === 0 ? "pos" : "", due === 0 ? 100 : Math.min(100, pct), pct + "% repaid", facts,
+        acts + `<button class="btn btn-sm cx-edit" data-act="edit-loan" data-id="${l.id}" aria-label="Edit the loan with ${esc(l.person)}" data-label="Edit">${icon("edit", 15)}</button>`); }
+    return `<article class="panel acct loan">
+      <header class="acct-h"><span class="avatar">${esc((l.person || "?").slice(0, 1).toUpperCase())}</span><div class="grow"><h2 class="truncate">${esc(l.person)}</h2><div class="desc-sub truncate">${l.note ? esc(l.note) : out ? "Owes you" : "You owe"}</div></div>
+        <button class="icon-btn" data-act="edit-loan" data-id="${l.id}" title="Edit" data-label="Edit" aria-label="Edit the loan with ${esc(l.person)}">${icon("edit", 18)}</button></header>
+      <div class="loan-top"><div><div class="acct-v">${figc("loan:" + l.id, due)}</div>
+        <div class="acct-ch">${due === 0 ? `<span class="pos">Settled</span><span class="muted">${money(all)} in full</span>` : `<span class="muted">left of ${money(all)}${li ? " · " + money(li) + " interest" : ""}</span>`}</div></div>
+        <div class="lent-on"><span>${out ? "Lent on" : "Borrowed on"}</span><b>${fmtDate(l.date, true)}</b></div></div>
+      <div class="meter ${due === 0 ? "pos" : "acc"}" role="img" aria-label="${pct}% repaid"><i style="width:${Math.min(100, pct)}%"></i></div>
+      ${facts}
+      <footer class="acct-f">${acts}${notes}</footer>
     </article>`; };
   /* An item's card is built like a loan's: the same frame, four rows, and the
      same three buttons in the same places (Add cost, Mark as sold, Notes). */
@@ -2345,41 +2406,52 @@ function vLoans(){
   const itemCard = ({ it, p, cost }) => { const paid = p.buy ? p.buy.amount : 0, extra = cost - paid, bought = boughtOn({ p }), heldFor = bought ? daysBetween(bought, today()) : 0;
     const top = `<header class="acct-h"><span class="avatar item-mark" aria-hidden="true">${icon("item", 18)}</span><div class="grow"><h2 class="truncate">${esc(it.name)}</h2><div class="desc-sub truncate">${it.note ? esc(it.note) : p.sale ? "Sold" : !bought ? "Held" : heldFor < 1 ? "Bought today" : "Held " + heldFor + (heldFor === 1 ? " day" : " days")}</div></div>
         <button class="icon-btn" data-act="edit-item" data-id="${it.id}" title="Edit" data-label="Edit" aria-label="Edit ${esc(it.name)}">${icon("edit", 18)}</button></header>`;
-    const own = `<div><dt>Entries</dt><dd><button class="link" data-act="item-sheet" data-id="${it.id}">${p.n + (p.n === 1 ? " entry" : " entries")}${icon("chevron", 13)}</button></dd></div>`;
+    const own = `<div><dt>Entries</dt><dd><button class="link" data-act="item-sheet" data-id="${it.id}">${p.n + (p.n === 1 ? " entry" : " entries")}${icon("chevron", 13)}</button></dd></div>` + (compact ? noteFact("item-notes", it.id, it.note) : "");
+    const mark = `<span class="avatar item-mark" aria-hidden="true">${icon("item", 16)}</span>`, edit = `<button class="btn btn-sm cx-edit" data-act="edit-item" data-id="${it.id}" aria-label="Edit ${esc(it.name)}" data-label="Edit">${icon("edit", 15)}</button>`;
+    const notes = `<button class="btn btn-sm" data-act="item-notes" data-id="${it.id}">Notes</button>`;
     if (!p.sale){ const gain = it.expect ? expNet(it) - cost : 0, fill = it.expect ? Math.min(100, Math.round(cost / it.expect * 100)) : 0;
-      return `<article class="panel acct loan item">${top}
-        <div class="loan-top"><div><div class="acct-v">${figc("item:" + it.id, cost)}</div>
-          <div class="acct-ch"><span class="muted">in it · ${it.expect ? "expect " + money(it.expect, { round: it.expect % 100 === 0 }) : "no price yet"}</span></div></div>
-          <div class="lent-on"><span>Bought on</span><b>${bought ? fmtDate(bought, true) : "—"}</b></div></div>
-        <div class="meter ${it.expect && cost > it.expect ? "neg" : "acc"}" role="img" aria-label="${it.expect ? "What is in it is " + fill + "% of the price expected" : "No price expected yet"}"><i style="width:${fill}%"></i></div>
-        <dl class="facts">
+      const facts = `<dl class="facts">
           <div><dt>Expect to sell for</dt><dd class="num">${it.expect ? money(it.expect) + (it.feePct ? " · less " + it.feePct + "%" : "") : "Not set"}</dd></div>
           <div><dt>Expected profit</dt><dd class="num">${it.expect ? `<span class="${gain < 0 ? "neg" : "pos"}">${money(gain, { plus: true })}</span> · ${pctTxt(gain, cost)}` : "—"}</dd></div>
           <div><dt>Extra costs</dt><dd class="num truncate">${extra ? money(extra) + " · " + p.costs.map(t => esc((t.desc || "cost").toLowerCase())).join(", ") : "None"}</dd></div>
           ${own}
-        </dl>
-        <footer class="acct-f"><button class="btn btn-sm btn-tint" data-act="item-cost" data-id="${it.id}">Add cost</button><button class="btn btn-sm" data-act="sell-item" data-id="${it.id}">Mark as sold</button><button class="btn btn-sm" data-act="item-notes" data-id="${it.id}">Notes</button></footer>
+        </dl>`;
+      const acts = `<button class="btn btn-sm btn-tint" data-act="item-cost" data-id="${it.id}">Add cost</button><button class="btn btn-sm" data-act="sell-item" data-id="${it.id}">Mark as sold</button>`;
+      const aria = it.expect ? "What is in it is " + fill + "% of the price expected" : "No price expected yet";
+      if (compact) return slim(it.id, mark, it.name, (!bought ? "Held" : heldFor < 1 ? "Bought today" : "Held " + heldFor + (heldFor === 1 ? " day" : " days")) + (it.expect ? "" : " · no price yet"),
+        `<span class="cx-v num">${money(cost)}</span><small>${it.expect ? `<span class="${gain < 0 ? "neg" : "pos"}">${money(gain, { plus: true, round: true })}</span> expected` : "in it"}</small>`, it.expect && cost > it.expect ? "neg" : "", fill, aria, facts, acts + edit);
+      return `<article class="panel acct loan item">${top}
+        <div class="loan-top"><div><div class="acct-v">${figc("item:" + it.id, cost)}</div>
+          <div class="acct-ch"><span class="muted">in it · ${it.expect ? "expect " + money(it.expect, { round: it.expect % 100 === 0 }) : "no price yet"}</span></div></div>
+          <div class="lent-on"><span>Bought on</span><b>${bought ? fmtDate(bought, true) : "—"}</b></div></div>
+        <div class="meter ${it.expect && cost > it.expect ? "neg" : "acc"}" role="img" aria-label="${aria}"><i style="width:${fill}%"></i></div>
+        ${facts}
+        <footer class="acct-f">${acts}${notes}</footer>
       </article>`; }
     const profit = p.sale.amount - cost, vs = it.expect ? p.sale.amount - expNet(it) : 0, price = p.sale.amount + (p.sale.fees || 0), fill = p.sale.amount > 0 ? Math.min(100, Math.round(cost / p.sale.amount * 100)) : 100;
-    return `<article class="panel acct loan item">${top}
-      <div class="loan-top"><div><div class="acct-v ${profit < 0 ? "neg" : profit > 0 ? "pos" : ""}">${figc("item:" + it.id, profit, { plus: true })}</div>
-        <div class="acct-ch"><span class="${profit < 0 ? "neg" : "pos"}">${profit < 0 ? "Loss" : "Profit"} · ${pctTxt(profit, cost)}</span><span class="muted">sold for ${money(price, { round: price % 100 === 0 })}</span></div></div>
-        <div class="lent-on"><span>Sold on</span><b>${fmtDate(p.sale.date, true)}</b></div></div>
-      <div class="meter ${profit < 0 ? "neg" : "pos"}" role="img" aria-label="Its cost was ${fill}% of what the sale brought in"><i style="width:${fill}%"></i></div>
-      <dl class="facts">
+    const facts = `<dl class="facts">
         <div><dt>Bought for</dt><dd class="num">${money(cost)}${extra ? " · with " + money(extra, { round: extra % 100 === 0 }) + " extra" : ""}</dd></div>
         <div><dt>Expected</dt><dd class="num">${it.expect ? money(it.expect) : "Not set"}</dd></div>
         <div><dt>Against expected</dt><dd class="num">${!it.expect ? "—" : vs === 0 ? "As expected" : `<span class="${vs > 0 ? "pos" : "neg"}">${money(vs, { plus: true })}</span> · ${vs > 0 ? "better" : "under"}`}${p.sale.fees ? ", after " + money(p.sale.fees, { round: p.sale.fees % 100 === 0 }) + " fees" : ""}</dd></div>
         ${own}
-      </dl>
-      <footer class="acct-f"><button class="btn btn-sm" data-act="item-archive" data-id="${it.id}">${it.archived ? "Restore" : "Archive"}</button><button class="btn btn-sm" data-act="item-notes" data-id="${it.id}">Notes</button></footer>
+      </dl>`;
+    const arch = `<button class="btn btn-sm" data-act="item-archive" data-id="${it.id}">${it.archived ? "Restore" : "Archive"}</button>`, aria = "Its cost was " + fill + "% of what the sale brought in";
+    if (compact) return slim(it.id, mark, it.name, "Sold " + fmtDate(p.sale.date) + " · " + (profit < 0 ? "loss " : "profit ") + pctTxt(profit, cost),
+      `<span class="cx-v num ${profit < 0 ? "neg" : profit > 0 ? "pos" : ""}">${money(profit, { plus: true })}</span><small>sold for ${money(price, { round: price % 100 === 0 })}</small>`, profit < 0 ? "neg" : "pos", fill, aria, facts, arch + edit);
+    return `<article class="panel acct loan item">${top}
+      <div class="loan-top"><div><div class="acct-v ${profit < 0 ? "neg" : profit > 0 ? "pos" : ""}">${figc("item:" + it.id, profit, { plus: true })}</div>
+        <div class="acct-ch"><span class="${profit < 0 ? "neg" : "pos"}">${profit < 0 ? "Loss" : "Profit"} · ${pctTxt(profit, cost)}</span><span class="muted">sold for ${money(price, { round: price % 100 === 0 })}</span></div></div>
+        <div class="lent-on"><span>Sold on</span><b>${fmtDate(p.sale.date, true)}</b></div></div>
+      <div class="meter ${profit < 0 ? "neg" : "pos"}" role="img" aria-label="${aria}"><i style="width:${fill}%"></i></div>
+      ${facts}
+      <footer class="acct-f">${arch}${notes}</footer>
     </article>`; };
   /* Lent, Borrowed, Settled, then Holding and Sold: tabs, each at its own address (#/loans/sold). */
   const settledAll = done.sort((a, b) => a.l.date < b.l.date ? 1 : -1), settled = settledAll.filter(x => !x.l.archived), archL = settledAll.filter(x => x.l.archived);
   const shown = { lent: () => lent.map(card), borrowed: () => owed.map(card), settled: () => settled.map(card), holding: () => held.map(itemCard), sold: () => sold.map(itemCard) }[tab]();
   /* Archived cards are kept out of the tab and its count; one link shows them, and Restore brings one back. */
   const arch = tab === "settled" ? archL.map(card) : tab === "sold" ? archI.map(itemCard) : [];
-  const archBlock = !arch.length ? "" : `<div class="arch-row"><button type="button" class="link" data-act="show-arch">${ui.showArch ? "Hide" : "Show"} ${arch.length} archived</button></div>` + (ui.showArch ? `<div class="acct-grid loan-grid arch-list">${arch.join("")}</div>` : "");
+  const archBlock = !arch.length ? "" : `<div class="arch-row"><button type="button" class="link" data-act="show-arch">${ui.showArch ? "Hide" : "Show"} ${arch.length} archived</button></div>` + (ui.showArch ? (compact ? `<section class="panel cx-list arch-list">${arch.join("")}</section>` : `<div class="acct-grid loan-grid arch-list">${arch.join("")}</div>`) : "");
   const per = cardPer() || Math.max(1, shown.length), pages = Math.max(1, Math.ceil(shown.length / per));
   ui.loanPage = Math.min(Math.max(1, ui.loanPage || 1), pages);
   const page = shown.slice((ui.loanPage - 1) * per, ui.loanPage * per);
@@ -2397,10 +2469,14 @@ function vLoans(){
       <a href="#/loans/lent"><div class="hero-k">Owed to you</div><div class="hero-v">${figc("lent", sum(lent))}</div><div class="hero-s"><span class="muted">${lead(lent, "Nobody owes you")}</span></div></a>
       <a href="#/loans/borrowed"><div class="hero-k">You owe</div><div class="hero-v">${figc("owed", sum(owed))}</div><div class="hero-s"><span class="muted">${lead(owed, "You owe nobody")}</span></div></a>
     </section>`;
+  const heroC = invest ? `<section class="panel cx-sum"><a href="#/loans/holding"><div class="k">In items</div><div class="v">${figc("items", inItems)}</div><div class="s">${held.length ? held.length + " held" : "Nothing held"}</div></a>
+      <a href="#/loans/sold"><div class="k">Made from sales</div><div class="v ${made < 0 ? "neg" : made > 0 ? "pos" : ""}">${figc("made", made, { plus: true })}</div><div class="s">${soldAll.length ? soldAll.length + " sold" : "Nothing sold yet"}</div></a></section>`
+    : `<section class="panel cx-sum"><a href="#/loans/lent"><div class="k">Owed to you</div><div class="v">${figc("lent", sum(lent))}</div><div class="s">${lent.length ? lent.length + " open" : "Nobody owes you"}</div></a>
+      <a href="#/loans/borrowed"><div class="k">You owe</div><div class="v">${figc("owed", sum(owed))}</div><div class="s">${owed.length ? owed.length + " open" : "You owe nobody"}</div></a></section>`;
   return `<div class="stack">
-    ${hero}
+    ${compact ? heroC : hero}
     <nav class="seg tabs" aria-label="Loans and investments">${tabs.map(([k, label, n]) => (k === "holding" ? `<span class="tab-gap" role="separator"></span>` : "") + `<a href="#/loans/${k}" ${k === tab ? 'aria-current="page"' : ""}>${label}<span class="count">${n}</span></a>`).join("")}</nav>
-    <div class="loan-body">${shown.length ? `<div class="acct-grid loan-grid">${page.join("")}</div>${pager}` : arch.length ? "" : `<section class="panel">${empty(invest ? "item" : "loans", none[0], none[1], tab === "settled" || tab === "sold" ? "" : invest ? addItem : addLoan)}</section>`}${archBlock}</div>
+    <div class="loan-body">${shown.length ? (compact ? `<section class="panel cx-list">${page.join("")}</section>` : `<div class="acct-grid loan-grid">${page.join("")}</div>`) + pager : arch.length ? "" : `<section class="panel">${empty(invest ? "item" : "loans", none[0], none[1], tab === "settled" || tab === "sold" ? "" : invest ? addItem : addLoan)}</section>`}${archBlock}</div>
   </div>`;
 }
 
@@ -3087,7 +3163,7 @@ const Fx = (() => {
       const c = { m };
       if (ui.route === "transactions" && (m === "flip" || m === "period")) c.rows = grab("#view [data-row]", rowKey);
       if (ui.route === "overview" && m === "period"){ c.hero = hero(); c.split = split(); }
-      if (ui.route === "loans" && settled){ c.cards = grab("#view .loan", cardKey); c.counts = counts(); }
+      if (ui.route === "loans" && settled){ c.cards = grab("#view .loan, #view .cx-item", cardKey); c.counts = counts(); }
       return c;
     },
     after(c){
@@ -3099,7 +3175,7 @@ const Fx = (() => {
       if (c.split) moveSplit(c.split);
       if (m === "period") fadeFigures();
       /* Behind a closing sheet the fold waits for it to go. */
-      if (c.cards){ const wait = dlg.open ? 440 : 0; flip(c.cards, "#view .loan", cardKey, { fold: true, delay: wait }); rollCounts(c.counts, wait); }
+      if (c.cards){ const wait = dlg.open ? 440 : 0; flip(c.cards, "#view .loan, #view .cx-item", cardKey, { fold: true, delay: wait }); rollCounts(c.counts, wait); }
     }
   };
 })();
@@ -3845,7 +3921,7 @@ const fxFrom = f => { const g = n => (f.querySelector(`[name="${n}"]`) || {}).va
    They rise from the More button in a gentle curve, nearest first, each a
    round mark with its name beside it, the page you are on filled in. A tap
    outside, Esc, or More again puts them away. */
-const MORE_PAGES = [["settings", "Settings", "settings"], ["rates", "Rates", "rates"], ["budgets", "Budgets", "budgets"], ["reports", "Reports", "reports"], ["loans", "Loans & investments", "loans"]];
+const MORE_PAGES = [["settings", "Settings", "settings"], ["rates", "Rates", "rates"], ["budgets", "Budgets", "budgets"], ["loans", "Loans & investments", "loans"]];
 function openMore(btn){
   let p = $("#morepop");
   if (!p){ p = document.createElement("div"); p.id = "morepop"; p.className = "more-pop"; p.setAttribute("popover", ""); p.setAttribute("role", "menu"); p.setAttribute("aria-label", "More pages"); document.body.appendChild(p);
@@ -3853,7 +3929,7 @@ function openMore(btn){
     p.addEventListener("click", ev => { if (ev.target.closest(".mb") && popOpen(p)) p.hidePopover(); }); }
   if (popPressed === btn){ popPressed = null; return; }
   if (popOpen(p)){ p.hidePopover(); return; }
-  p._by = btn; const n = MORE_PAGES.length, bend = [12, 30, 38, 30, 12];
+  p._by = btn; const n = MORE_PAGES.length, bend = [14, 32, 32, 14];
   p.innerHTML = MORE_PAGES.map(([id, label, ic], i) => `<a class="mb" role="menuitem" href="#/${id}" style="--i:${n - 1 - i};--x:${bend[i] || 12}px" ${ui.route === id ? 'aria-current="page"' : ""}><span class="mb-l">${esc(label)}</span><span class="mb-c">${icon(ic, 22)}</span></a>`).join("");
   p.showPopover();
 }
@@ -4802,6 +4878,11 @@ const ACT = {
   "item-archive": el => { const it = itemOf(el.dataset.id); if (!it || !itemParts(it).sale) return; const to = !it.archived;
     commit(it.name + (to ? " archived. Its money is unchanged." : " restored"), s => { s.items.find(x => x.id === it.id).archived = to; }); },
   "show-arch": () => { ui.showArch = !ui.showArch; render(); },
+  "row-open": el => { const id = el.dataset.id, item = el.closest(".cx-item"), was = ui.openRow === id;
+    $$("#view .cx-item.open").forEach(x => { x.classList.remove("open"); const h = x.querySelector(".cx-row"); if (h) h.setAttribute("aria-expanded", "false"); });
+    ui.openRow = was ? null : id;
+    if (!was && item){ item.classList.add("open"); el.setAttribute("aria-expanded", "true");
+      setTimeout(() => { if (item.isConnected) item.scrollIntoView({ block: "nearest", behavior: reduceMotion() ? "auto" : "smooth" }); }, 250); } },
   "items-count": () => setSetting("itemsOut", !S.settings.itemsOut),
   "more": el => openMore(el),
   "rec-open": el => { const r = (S.recurring || []).find(x => x.id === el.dataset.id); if (!r) return; const last = S.tx.filter(t => t.recur === r.id).sort((a, b) => a.date < b.date ? 1 : -1)[0];
@@ -5273,6 +5354,8 @@ addEventListener("resize", () => { clearTimeout(resizing); resizing = setTimeout
   if (Math.abs(w - drawnAt) >= 24 && !typing && !dlg.open && !pal.open){ drawnAt = w; render(); } }, 160); });
 matchMedia("(max-width:820px)").addEventListener("change", () => { drawnAt = document.documentElement.clientWidth; render(); });
 window.addEventListener("hashchange", route);
+document.addEventListener("keydown", ev => { const r = ev.target.classList && ev.target.classList.contains("cx-row") ? ev.target : null;
+  if (r && (ev.key === "Enter" || ev.key === " ")){ ev.preventDefault(); ACT["row-open"](r); } });
 /* Coming back online fetches fresh rates; going offline says the figures are the last ones kept. */
 addEventListener("online", () => { if (ui.route === "rates") Rates.refresh(false); });
 addEventListener("offline", () => { if (ui.route === "rates") Rates.refresh(false); });
@@ -5370,7 +5453,7 @@ Object.defineProperty(window, "__opus", { value: Object.freeze({ merge: mergeBoo
 /* The build, stamped. The earlier build's Settings › About › "Check for a
    newer version" reads this line from the server and reloads when it differs,
    which is how a phone still on that build is brought onto this one. */
-var APP_BUILD = "opus-20261118-1137";
+var APP_BUILD = "opus-20261118-1259";
 /* Offline: the service worker keeps a copy of this page, so it opens with no
    signal, and fetches any newer copy in the background for next time. A
    worker cannot register from file://, which is how this file is opened on a
