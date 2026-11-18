@@ -1305,6 +1305,52 @@ form[data-form="loan"]:not(:has([name="dir"][value="borrowed"]:checked)) .dir-bo
 .form-live b{ color:var(--ink); font-variant-numeric:tabular-nums; }
 .form-live b.pos{ color:var(--pos); } .form-live b.neg{ color:var(--neg); }
 .empty-acts{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+/* Below zero: said in the form, in the warning colour, never blocking. */
+.over-line{ display:flex; align-items:flex-start; gap:8px; margin:12px 0 0; padding:10px 12px; border-radius:12px; background:color-mix(in srgb, var(--warn) 12%, transparent); color:var(--warn); font-size:14px; line-height:1.45; }
+.over-line:empty{ display:none; }
+.over-line .ic{ flex:none; margin-top:2px; }
+.over-line b{ font-variant-numeric:tabular-nums; }
+.import-say{ margin:14px 0 0; color:var(--ink-2); font-size:14px; line-height:1.5; }
+/* Advanced options: one row in the form says what is set; its panel turns in beside the sheet. */
+.adv-at{ grid-column:1 / -1; }
+.adv-btn{ width:100%; height:44px; justify-content:flex-start; gap:10px; padding:0 12px 0 14px; border-radius:12px; font-weight:500; }
+.adv-btn .adv-v{ margin-left:auto; color:var(--ink-3); font-weight:400; font-variant-numeric:tabular-nums; }
+.adv-btn > .ic:last-child{ color:var(--ink-3); }
+.adv-pop .seg{ display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); margin-bottom:14px; }
+.adv-pop .calc-grid{ grid-template-columns:minmax(0,1fr); }
+.adv-pop:not(:has([name="ik"][value="flat"]:checked)) .ik-amt{ display:none; }
+.adv-pop:not(:has([name="ik"][value="once"]:checked)):not(:has([name="ik"][value="monthly"]:checked)) .ik-pct{ display:none; }
+.adv-pop .calc-out b{ color:var(--ink); font-variant-numeric:tabular-nums; }
+.adv-pop:has([name="rep"][value=""]:checked) .rep-until{ display:none; }
+.adv-pop:has([name="fxCur"] option[value=""]:checked) .fx-on{ display:none; }
+.li.rec{ gap:10px; }
+.li.rec .rec-amt{ font-weight:600; white-space:nowrap; }
+@media (max-width:620px){ .li.rec{ flex-wrap:wrap; } .li.rec .grow{ flex-basis:100%; } .li.rec .rec-amt{ margin-right:auto; } }
+/* Archived cards: out of the tab, a link away, a little quieter. */
+.arch-row{ display:flex; justify-content:center; margin:14px 0 4px; }
+.arch-list{ margin-top:12px; opacity:.72; }
+@media (max-width:820px){ .tx-kpis{ display:none; } }
+/* More, on a phone: bubbles rising from the button. */
+.more-pop{ position:fixed; inset:auto calc(10px + env(safe-area-inset-right)) calc(74px + env(safe-area-inset-bottom)) auto; margin:0; padding:0; border:0; background:none; color:inherit; overflow:visible;
+  transition:display .2s allow-discrete, overlay .2s allow-discrete; }
+.more-pop:popover-open{ display:flex; flex-direction:column; align-items:flex-end; gap:12px; }
+.more-pop .mb{ display:flex; align-items:center; gap:12px; margin-right:var(--x); color:var(--ink); text-decoration:none; transform-origin:100% 50%;
+  transition:transform .26s cubic-bezier(.23,1,.32,1) calc(var(--i) * 28ms), opacity .18s cubic-bezier(.23,1,.32,1) calc(var(--i) * 28ms); }
+@starting-style{ .more-pop:popover-open .mb{ opacity:0; transform:translateY(14px) scale(.7); } }
+.more-pop:not(:popover-open) .mb{ opacity:0; transform:translateY(8px) scale(.85); transition-duration:.14s; transition-delay:0s; }
+.more-pop::backdrop{ background:rgba(0,0,0,.32); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); transition:background .2s, backdrop-filter .2s, display .2s allow-discrete, overlay .2s allow-discrete; }
+:root[data-theme="dark"] .more-pop:popover-open::backdrop{ background:rgba(0,0,0,.52); }
+@starting-style{ .more-pop:popover-open::backdrop{ background:rgba(0,0,0,0); -webkit-backdrop-filter:blur(0); backdrop-filter:blur(0); } }
+.more-pop:not(:popover-open)::backdrop{ background:rgba(0,0,0,0); -webkit-backdrop-filter:blur(0); backdrop-filter:blur(0); }
+.more-pop .mb-l{ padding:8px 14px; border-radius:999px; background:var(--card); box-shadow:0 4px 16px rgba(0,0,0,.18), 0 0 0 1px var(--sep); font-size:15px; font-weight:600; white-space:nowrap; }
+.more-pop .mb-c{ display:grid; place-items:center; width:52px; height:52px; border-radius:50%; background:var(--card); color:var(--accent-ink); box-shadow:0 6px 20px rgba(0,0,0,.22), 0 0 0 1px var(--sep); transition:transform .12s ease-out; }
+.more-pop .mb:active .mb-c{ transform:scale(.94); }
+.more-pop .mb[aria-current="page"] .mb-c{ background:var(--accent); color:#fff; }
+.tabbar [data-act="more"] .ic{ transition:transform .22s cubic-bezier(.23,1,.32,1); }
+.tabbar [data-act="more"][aria-expanded="true"]{ color:var(--accent-ink); }
+.tabbar [data-act="more"][aria-expanded="true"] .ic{ transform:rotate(90deg); }
+:root[data-motion="reduce"] .more-pop .mb{ transition:opacity .15s !important; transform:none !important; }
+@media (prefers-reduced-motion:reduce){ :root:not([data-motion="full"]) .more-pop .mb{ transition:opacity .15s !important; transform:none !important; } }
 </style>
 </head>
 <body>
@@ -1430,7 +1476,7 @@ const TYPE_ICON = { bank:"bank", cash:"cash", wallet:"phone", investment:"growth
 const blank = () => ({
   v: 1,
   settings: { theme:"system", density:"comfortable", currency:"PHP", period:"this-month", accent:"blue", bg:"plain", cardAlpha:100, edges:"none", corners:"round", textSize:100, motion:"system", perPage:50 },
-  accounts: [], categories: DEFAULT_CATS.map(c => ({ ...c })), tx: [], loans: [], items: [], budgets: {},
+  accounts: [], categories: DEFAULT_CATS.map(c => ({ ...c })), tx: [], loans: [], items: [], recurring: [], budgets: {},
   meta: { created: new Date().toISOString(), sample: false }
 });
 function load(){
@@ -1447,7 +1493,7 @@ function load(){
    leaves a grave in S.gone, or the other device would hand it straight back.
    This sits above the loading of the books because priming runs the moment
    they are loaded: a device that primes late reads every record as just edited. */
-const SYNCED = ["accounts", "categories", "tx", "loans", "items"];
+const SYNCED = ["accounts", "categories", "tx", "loans", "items", "recurring"];
 let sigs = new Map();
 const sigOf = r => JSON.stringify(r, (k, v) => k === "u" ? undefined : v);
 function primeSigs(){
@@ -1497,7 +1543,7 @@ const cached = (k, fn) => { if (!memo.has(k)) memo.set(k, fn()); return memo.get
    the log. Undoing an older one from the log is itself a change, which marks
    the old one undone and can be undone in turn. */
 const past = [], future = [], log = [];
-const JOURNAL = "opus.generated.journal", COLS = ["accounts", "tx", "loans", "categories", "items"];
+const JOURNAL = "opus.generated.journal", COLS = ["accounts", "tx", "loans", "categories", "items", "recurring"];
 const recSig = r => JSON.stringify(r, (k, v) => k === "u" ? undefined : v);
 const keepRec = (c, r) => !(c === "tx" && r.auto === "interest");   /* interest is worked out again anyway */
 const findRec = (c, id) => (S[c] || []).find(r => r.id === id);
@@ -1630,7 +1676,9 @@ function moneyNote(p){
   /* A loan with no account linked moves only what is owed; saying nothing
      there reads as if the money was lost on the way. */
   if (!says.length && p.tx.some(([, b, a]) => { const t = a || b; return t && (t.loanId || t.itemId) && !t.accountId; })) return " · no account moved";
-  return says.length ? " · " + says.slice(0, 2).join(", ") + (says.length > 2 ? "…" : "") : "";
+  /* And it says when an account it took money from is now below zero. */
+  const low = [...m].filter(([k, v]) => v < 0 && accOf(k) && balanceOf(k) < 0).map(([k]) => accOf(k).name + " is now " + money(balanceOf(k)));
+  return (says.length ? " · " + says.slice(0, 2).join(", ") + (says.length > 2 ? "…" : "") : "") + (low.length ? " · " + low.join(", ") : "");
 }
 /* What an entry does to each account it touches: a transfer to two of them. */
 const txEffects = t => { const m = new Map([[t.accountId, effect(t)]]); if (t.kind === "transfer" && t.toAccountId) m.set(t.toAccountId, (m.get(t.toAccountId) || 0) + t.amount); m.delete(""); m.delete(undefined); return m; };
@@ -1649,7 +1697,27 @@ function balancesAt(date){
 const balanceOf = id => balancesAt(null).get(id) || 0;
 const loanPaid = (l, date) => S.tx.reduce((s, t) =>
   t.loanId === l.id && (t.kind === "lend_repay" || t.kind === "borrow_repay") && (!date || t.date <= date) ? s + t.amount : s, 0);
-const loanDue = (l, date) => (date && l.date > date) ? 0 : Math.max(0, l.principal - loanPaid(l, date));
+const loanDue = (l, date) => (date && l.date > date) ? 0 : Math.max(0, l.principal + loanInterest(l, date) - loanPaid(l, date));
+/* Interest on a loan makes what is owed grow; it moves no money until it is
+   paid. Fixed: an amount, added once. "% once": a share of the loan, added
+   once. "% a month": a share of what is still owed, added on the loan's day
+   each month; a payment made on or before that day is counted first. */
+const monthOn = (d, k) => { const [y, m, dd] = d.split("-").map(Number), t = new Date(y, m - 1 + k, 1), last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate(); return iso(new Date(t.getFullYear(), t.getMonth(), Math.min(dd, last))); };
+function loanInterest(l, date){
+  const i = l && l.interest; if (!i || !(i.value > 0)) return 0;
+  const end = date || today(); if (l.date > end) return 0;
+  if (i.kind === "flat") return Math.round(i.value);
+  if (i.kind === "once") return Math.round(l.principal * i.value / 100);
+  if (i.kind !== "monthly") return 0;
+  return cached(["li", l.id, end, l.principal, i.kind, i.value, l.date].join(":"), () => {
+    const pays = S.tx.filter(t => t.loanId === l.id && (t.kind === "lend_repay" || t.kind === "borrow_repay"));
+    let sum = 0;
+    for (let k = 1; k <= 600; k++){ const at = monthOn(l.date, k); if (at > end) break;
+      const owed = l.principal + sum - pays.reduce((n, t) => t.date <= at ? n + t.amount : n, 0);
+      if (owed <= 0) break; sum += Math.round(owed * i.value / 100); }
+    return sum; });
+}
+const intText = i => !i || !(i.value > 0) ? "None" : i.kind === "flat" ? money(i.value) + " added once" : i.kind === "once" ? i.value + "% added once" : i.value + "% a month";
 /* An item bought to sell is a record (its name, the price hoped for, a note)
    with entries of its own: what was paid for it, costs added since, and the
    sale. Until it is sold it counts in net worth at what it cost, so buying
@@ -1660,6 +1728,8 @@ const itemParts = it => cached("item:" + it.id, () => { const own = S.tx.filter(
   return { buy: own.find(t => t.kind === "buy"), costs: own.filter(t => t.kind === "item_cost").sort((a, b) => a.date < b.date ? -1 : 1), sale: own.find(t => t.kind === "sell"), n: own.length }; });
 const itemCost = (it, date) => S.tx.reduce((s, t) => t.itemId === it.id && (t.kind === "buy" || t.kind === "item_cost") && (!date || t.date <= date) ? s + t.amount : s, 0);
 const itemHeld = (it, date) => { const sale = itemParts(it).sale; return sale && (!date || sale.date <= date) ? 0 : itemCost(it, date); };
+/* What an item is expected to bring in: the price hoped for, less its selling fee. */
+const expNet = it => it.expect ? it.expect - Math.round(it.expect * (Number(it.feePct) || 0) / 100) : 0;
 const pctTxt = (a, b) => { const n = b ? Math.round(a / b * 100) : 0; return (n < 0 ? "−" : "") + Math.abs(n) + "%"; };
 /* Lending moves money out of an account and into a receivable, so net worth
    does not move; it moves when the loan is written off, never when it is made. */
@@ -1668,7 +1738,7 @@ function netWorthAt(date){
     let n = 0;
     balancesAt(date).forEach(v => { n += v; });
     for (const l of S.loans) n += (l.dir === "lent" ? 1 : -1) * loanDue(l, date);
-    for (const it of S.items || []) n += itemHeld(it, date);
+    if (!S.settings.itemsOut) for (const it of S.items || []) n += itemHeld(it, date);
     return n;
   });
 }
@@ -1984,6 +2054,9 @@ const PERIOD_ROUTES = new Set(["overview", "transactions", "reports"]);
 /* Reports is a page of wide charts and tables. A phone does not offer it at all:
    no link, no menu entry, and its address opens Overview instead. */
 const phone = () => matchMedia("(max-width:820px)").matches;
+/* A touch screen with no pointer that hovers: a phone or a tablet. There a
+   window opening must not raise the keyboard; it comes when a field is tapped. */
+const touchOnly = () => matchMedia("(hover: none) and (pointer: coarse)").matches;
 const offered = id => !(id === "reports" && phone());
 const ui = { route: "overview", f: { q: "", kind: "all", account: "", category: "" }, sort: { key: "date", dir: -1 },
              page: 1, per: 50, sel: new Set(), selecting: false, setTab: "appearance", connecting: false, syncErr: "", lastDir: "lent", loanTab: "lent", month: today().slice(0, 7), sheet: null, unfold: "" };
@@ -2037,7 +2110,7 @@ function vWelcome(){
    goes down while net worth stays put; this line shows both. */
 function worthMix(bal){
   const inAcc = [...bal.values()].reduce((s, v) => s + v, 0), owed = S.loans.filter(l => l.dir === "lent").reduce((s, l) => s + loanDue(l), 0), owe = S.loans.filter(l => l.dir !== "lent").reduce((s, l) => s + loanDue(l), 0);
-  const held = (S.items || []).reduce((s, it) => s + itemHeld(it), 0);
+  const held = S.settings.itemsOut ? 0 : (S.items || []).reduce((s, it) => s + itemHeld(it), 0);
   if (!owed && !owe && !held) return "";
   return `<div class="hero-mix"><span><span class="num">${money(inAcc, { round: true })}</span> in accounts</span>${owed ? `<span>+ <span class="num">${money(owed, { round: true })}</span> owed to you</span>` : ""}${held ? `<span>+ <span class="num">${money(held, { round: true })}</span> in items</span>` : ""}${owe ? `<span>− <span class="num">${money(owe, { round: true })}</span> you owe</span>` : ""}` +
     info("Net worth", "Net worth counts money you have lent as still yours, since it is owed back. Lending takes it out of the account and puts it under “owed to you”, so the account goes down and net worth stays the same. A repayment moves it back into the account. Things you bought to sell count at what you paid for them until they are sold; the price you hope for does not count.") + "</div>";
@@ -2134,7 +2207,7 @@ function txRow(t, o = {}){
                      : `<span class="glyph k" aria-hidden="true">${icon(GLYPH[t.kind] || "tx", 18)}</span>`;
   /* In a loan's sheet a row says where the money went: from or into which account. */
   const about = (o.loan ? [dayName(t.date), (["lend", "borrow_repay", "buy", "item_cost"].includes(t.kind) ? "from " : "into ") + (accOf(t.accountId) ? accOf(t.accountId).name : "no account"), t.note || ""]
-    : [o.dated ? dayName(t.date) : "", filed ? (c ? c.name : "Uncategorised") : t.kind === "transfer" ? "" : KIND_LABEL[t.kind], txAccountText(t), t.note || ""]).filter(Boolean).map(esc).join(" · ");
+    : [o.dated ? dayName(t.date) : "", filed ? (c ? c.name : "Uncategorised") : t.kind === "transfer" ? "" : KIND_LABEL[t.kind], txAccountText(t), t.fx ? fmtCur(t.fx.cur, t.fx.amt) : "", t.recur && ruleOf(t) ? "Repeats" : "", t.note || ""]).filter(Boolean).map(esc).join(" · ");
   return `<div class="txr ${on ? "sel" : ""}${t.id === ui.landed ? " landed" : ""}" tabindex="0" data-row data-act="edit-tx" data-id="${t.id}">${o.pick ? (t.auto ? `<span class="cb-gap" aria-hidden="true"></span>` : `<input type="checkbox" class="cb" data-act="sel" data-id="${t.id}" ${on ? "checked" : ""} aria-label="Select ${esc(title)}">`) : ""}${mark}<div class="what"><b>${esc(title)}</b><span>${about}</span></div>${amountCell(t)}</div>`;
 }
 const txList = (list, o = {}) => `<div class="txl ${o.pick ? "picking" : ""}">${list.map(t => txRow(t, o)).join("")}</div>`;
@@ -2179,7 +2252,7 @@ function vTransactions(){
       <select class="input select-sm" data-change="f-category" data-on="${!!ui.f.category}" aria-label="Category">${options(S.categories.map(c => [c.id, c.name]), ui.f.category, { blank: "All categories" })}</select>
     </div>
     <div class="stack">
-      <div class="grid g-kpi g-kpi-3">
+      <div class="grid g-kpi g-kpi-3 tx-kpis">
         <a class="panel kpi drill" href="#/transactions?kind=income" data-act="f-kind" data-key="income"><div class="k">Money in${icon("chevron", 12)}</div><div class="v">${fig(inc)}</div><div class="s"><span>${n(nIn, "entry", "entries")}</span></div></a>
         <a class="panel kpi drill" href="#/transactions?kind=expense" data-act="f-kind" data-key="expense"><div class="k">Money out${icon("chevron", 12)}</div><div class="v">${fig(exp)}</div><div class="s"><span>${n(nOut, "entry", "entries")}</span></div></a>
         <a class="panel kpi drill" href="#/transactions" data-act="f-kind" data-key="all"><div class="k">Net${icon("chevron", 12)}</div><div class="v ${inc - exp < 0 ? "neg" : ""}">${fig(inc - exp, { plus: true })}</div><div class="s"><span>${n(all.length, "entry", "entries")} in all${ui.f.q ? " matching “" + esc(ui.f.q) + "”" : ""}</span></div></a>
@@ -2247,13 +2320,13 @@ function vLoans(){
     return d < 0 ? `<span class="neg">${-d} ${d === -1 ? "day" : "days"} overdue</span>` : d === 0 ? `<span class="warn">today</span>` : d <= 7 ? `<span class="warn">in ${d} ${d === 1 ? "day" : "days"}</span>` : ""; };
   const lead = (list, none) => { if (!list.length) return none; const n = list.find(x => x.l.due);
     return list.length + " open" + (n ? " · next " + esc(n.l.person) + ", " + (late(n.l) || fmtDate(n.l.due)) : ""); };
-  const card = ({ l, paid, due }) => { const pct = l.principal ? Math.round(paid / l.principal * 100) : 0, out = l.dir === "lent";
+  const card = ({ l, paid, due }) => { const li = loanInterest(l), pct = l.principal + li ? Math.round(paid / (l.principal + li) * 100) : 0, out = l.dir === "lent";
     const entries = S.tx.filter(t => t.loanId === l.id).sort((a, b) => a.date < b.date ? 1 : -1), back = entries.filter(t => t.kind === "lend_repay" || t.kind === "borrow_repay");
     return `<article class="panel acct loan">
       <header class="acct-h"><span class="avatar">${esc((l.person || "?").slice(0, 1).toUpperCase())}</span><div class="grow"><h2 class="truncate">${esc(l.person)}</h2><div class="desc-sub truncate">${l.note ? esc(l.note) : out ? "Owes you" : "You owe"}</div></div>
         <button class="icon-btn" data-act="edit-loan" data-id="${l.id}" title="Edit" data-label="Edit" aria-label="Edit the loan with ${esc(l.person)}">${icon("edit", 18)}</button></header>
       <div class="loan-top"><div><div class="acct-v">${figc("loan:" + l.id, due)}</div>
-        <div class="acct-ch">${due === 0 ? `<span class="pos">Settled</span><span class="muted">${money(l.principal)} in full</span>` : `<span class="muted">left of ${money(l.principal)}</span>`}</div></div>
+        <div class="acct-ch">${due === 0 ? `<span class="pos">Settled</span><span class="muted">${money(l.principal + li)} in full</span>` : `<span class="muted">left of ${money(l.principal + li)}${li ? " · " + money(li) + " interest" : ""}</span>`}</div></div>
         <div class="lent-on"><span>${out ? "Lent on" : "Borrowed on"}</span><b>${fmtDate(l.date, true)}</b></div></div>
       <div class="meter ${due === 0 ? "pos" : "acc"}" role="img" aria-label="${pct}% repaid"><i style="width:${Math.min(100, pct)}%"></i></div>
       <dl class="facts">
@@ -2262,32 +2335,32 @@ function vLoans(){
         <div><dt>Last payment</dt><dd>${back.length ? dayName(back[0].date) : "—"}</dd></div>
         <div><dt>Entries</dt><dd><button class="link" data-act="loan-sheet" data-id="${l.id}">${entries.length + (entries.length === 1 ? " entry" : " entries")}${icon("chevron", 13)}</button></dd></div>
       </dl>
-      <footer class="acct-f">${due > 0 ? `<button class="btn btn-sm btn-tint" data-act="pay-loan" data-id="${l.id}">Log payment</button><button class="btn btn-sm" data-act="settle-loan" data-id="${l.id}">Mark as paid</button>` : ""}<button class="btn btn-sm" data-act="loan-notes" data-id="${l.id}">Notes</button></footer>
+      <footer class="acct-f">${due > 0 ? `<button class="btn btn-sm btn-tint" data-act="pay-loan" data-id="${l.id}">Log payment</button><button class="btn btn-sm" data-act="settle-loan" data-id="${l.id}">Mark as paid</button>` : `<button class="btn btn-sm" data-act="loan-archive" data-id="${l.id}">${l.archived ? "Restore" : "Archive"}</button>`}<button class="btn btn-sm" data-act="loan-notes" data-id="${l.id}">Notes</button></footer>
     </article>`; };
   /* An item's card is built like a loan's: the same frame, four rows, and the
      same three buttons in the same places (Add cost, Mark as sold, Notes). */
   const items = (S.items || []).map(it => ({ it, p: itemParts(it), cost: itemCost(it) }));
   const boughtOn = x => (x.p.buy || {}).date || "";
-  const held = items.filter(x => !x.p.sale).sort((a, b) => boughtOn(a) < boughtOn(b) ? 1 : -1), sold = items.filter(x => x.p.sale).sort((a, b) => a.p.sale.date < b.p.sale.date ? 1 : -1);
+  const held = items.filter(x => !x.p.sale).sort((a, b) => boughtOn(a) < boughtOn(b) ? 1 : -1), soldAll = items.filter(x => x.p.sale).sort((a, b) => a.p.sale.date < b.p.sale.date ? 1 : -1), sold = soldAll.filter(x => !x.it.archived), archI = soldAll.filter(x => x.it.archived);
   const itemCard = ({ it, p, cost }) => { const paid = p.buy ? p.buy.amount : 0, extra = cost - paid, bought = boughtOn({ p }), heldFor = bought ? daysBetween(bought, today()) : 0;
     const top = `<header class="acct-h"><span class="avatar item-mark" aria-hidden="true">${icon("item", 18)}</span><div class="grow"><h2 class="truncate">${esc(it.name)}</h2><div class="desc-sub truncate">${it.note ? esc(it.note) : p.sale ? "Sold" : !bought ? "Held" : heldFor < 1 ? "Bought today" : "Held " + heldFor + (heldFor === 1 ? " day" : " days")}</div></div>
         <button class="icon-btn" data-act="edit-item" data-id="${it.id}" title="Edit" data-label="Edit" aria-label="Edit ${esc(it.name)}">${icon("edit", 18)}</button></header>`;
     const own = `<div><dt>Entries</dt><dd><button class="link" data-act="item-sheet" data-id="${it.id}">${p.n + (p.n === 1 ? " entry" : " entries")}${icon("chevron", 13)}</button></dd></div>`;
-    if (!p.sale){ const gain = it.expect ? it.expect - cost : 0, fill = it.expect ? Math.min(100, Math.round(cost / it.expect * 100)) : 0;
+    if (!p.sale){ const gain = it.expect ? expNet(it) - cost : 0, fill = it.expect ? Math.min(100, Math.round(cost / it.expect * 100)) : 0;
       return `<article class="panel acct loan item">${top}
         <div class="loan-top"><div><div class="acct-v">${figc("item:" + it.id, cost)}</div>
           <div class="acct-ch"><span class="muted">in it · ${it.expect ? "expect " + money(it.expect, { round: it.expect % 100 === 0 }) : "no price yet"}</span></div></div>
           <div class="lent-on"><span>Bought on</span><b>${bought ? fmtDate(bought, true) : "—"}</b></div></div>
         <div class="meter ${it.expect && cost > it.expect ? "neg" : "acc"}" role="img" aria-label="${it.expect ? "What is in it is " + fill + "% of the price expected" : "No price expected yet"}"><i style="width:${fill}%"></i></div>
         <dl class="facts">
-          <div><dt>Expect to sell for</dt><dd class="num">${it.expect ? money(it.expect) : "Not set"}</dd></div>
+          <div><dt>Expect to sell for</dt><dd class="num">${it.expect ? money(it.expect) + (it.feePct ? " · less " + it.feePct + "%" : "") : "Not set"}</dd></div>
           <div><dt>Expected profit</dt><dd class="num">${it.expect ? `<span class="${gain < 0 ? "neg" : "pos"}">${money(gain, { plus: true })}</span> · ${pctTxt(gain, cost)}` : "—"}</dd></div>
           <div><dt>Extra costs</dt><dd class="num truncate">${extra ? money(extra) + " · " + p.costs.map(t => esc((t.desc || "cost").toLowerCase())).join(", ") : "None"}</dd></div>
           ${own}
         </dl>
         <footer class="acct-f"><button class="btn btn-sm btn-tint" data-act="item-cost" data-id="${it.id}">Add cost</button><button class="btn btn-sm" data-act="sell-item" data-id="${it.id}">Mark as sold</button><button class="btn btn-sm" data-act="item-notes" data-id="${it.id}">Notes</button></footer>
       </article>`; }
-    const profit = p.sale.amount - cost, vs = it.expect ? p.sale.amount - it.expect : 0, price = p.sale.amount + (p.sale.fees || 0), fill = p.sale.amount > 0 ? Math.min(100, Math.round(cost / p.sale.amount * 100)) : 100;
+    const profit = p.sale.amount - cost, vs = it.expect ? p.sale.amount - expNet(it) : 0, price = p.sale.amount + (p.sale.fees || 0), fill = p.sale.amount > 0 ? Math.min(100, Math.round(cost / p.sale.amount * 100)) : 100;
     return `<article class="panel acct loan item">${top}
       <div class="loan-top"><div><div class="acct-v ${profit < 0 ? "neg" : profit > 0 ? "pos" : ""}">${figc("item:" + it.id, profit, { plus: true })}</div>
         <div class="acct-ch"><span class="${profit < 0 ? "neg" : "pos"}">${profit < 0 ? "Loss" : "Profit"} · ${pctTxt(profit, cost)}</span><span class="muted">sold for ${money(price, { round: price % 100 === 0 })}</span></div></div>
@@ -2299,11 +2372,14 @@ function vLoans(){
         <div><dt>Against expected</dt><dd class="num">${!it.expect ? "—" : vs === 0 ? "As expected" : `<span class="${vs > 0 ? "pos" : "neg"}">${money(vs, { plus: true })}</span> · ${vs > 0 ? "better" : "under"}`}${p.sale.fees ? ", after " + money(p.sale.fees, { round: p.sale.fees % 100 === 0 }) + " fees" : ""}</dd></div>
         ${own}
       </dl>
-      <footer class="acct-f"><button class="btn btn-sm" data-act="item-notes" data-id="${it.id}">Notes</button></footer>
+      <footer class="acct-f"><button class="btn btn-sm" data-act="item-archive" data-id="${it.id}">${it.archived ? "Restore" : "Archive"}</button><button class="btn btn-sm" data-act="item-notes" data-id="${it.id}">Notes</button></footer>
     </article>`; };
   /* Lent, Borrowed, Settled, then Holding and Sold: tabs, each at its own address (#/loans/sold). */
-  const settled = done.sort((a, b) => a.l.date < b.l.date ? 1 : -1);
+  const settledAll = done.sort((a, b) => a.l.date < b.l.date ? 1 : -1), settled = settledAll.filter(x => !x.l.archived), archL = settledAll.filter(x => x.l.archived);
   const shown = { lent: () => lent.map(card), borrowed: () => owed.map(card), settled: () => settled.map(card), holding: () => held.map(itemCard), sold: () => sold.map(itemCard) }[tab]();
+  /* Archived cards are kept out of the tab and its count; one link shows them, and Restore brings one back. */
+  const arch = tab === "settled" ? archL.map(card) : tab === "sold" ? archI.map(itemCard) : [];
+  const archBlock = !arch.length ? "" : `<div class="arch-row"><button type="button" class="link" data-act="show-arch">${ui.showArch ? "Hide" : "Show"} ${arch.length} archived</button></div>` + (ui.showArch ? `<div class="acct-grid loan-grid arch-list">${arch.join("")}</div>` : "");
   const per = cardPer() || Math.max(1, shown.length), pages = Math.max(1, Math.ceil(shown.length / per));
   ui.loanPage = Math.min(Math.max(1, ui.loanPage || 1), pages);
   const page = shown.slice((ui.loanPage - 1) * per, ui.loanPage * per);
@@ -2312,11 +2388,11 @@ function vLoans(){
   const none = { lent: ["Nobody owes you", "Money you lend shows here until it has all come back."], borrowed: ["You owe nobody", "Money you borrow shows here until you have paid it all back."], settled: ["Nothing settled yet", "A loan moves here once the last of it is paid."],
     holding: ["Nothing held", "Things you buy to sell are kept here, at what you paid, until they are sold."], sold: ["Nothing sold yet", "An item moves here once you mark it as sold, with what it made."] }[tab];
   const tabs = [["lent", "Lent", lent.length], ["borrowed", "Borrowed", owed.length], ["settled", "Settled", settled.length], ["holding", "Holding", held.length], ["sold", "Sold", sold.length]];
-  const inItems = held.reduce((s, x) => s + x.cost, 0), priced = held.filter(x => x.it.expect), gain = priced.reduce((s, x) => s + x.it.expect - x.cost, 0), unpriced = held.length - priced.length;
-  const made = sold.reduce((s, x) => s + x.p.sale.amount - x.cost, 0), judged = sold.filter(x => x.it.expect), vs = judged.reduce((s, x) => s + x.p.sale.amount - x.it.expect, 0);
+  const inItems = held.reduce((s, x) => s + x.cost, 0), priced = held.filter(x => x.it.expect), gain = priced.reduce((s, x) => s + expNet(x.it) - x.cost, 0), unpriced = held.length - priced.length;
+  const made = soldAll.reduce((s, x) => s + x.p.sale.amount - x.cost, 0), judged = soldAll.filter(x => x.it.expect), vs = judged.reduce((s, x) => s + x.p.sale.amount - expNet(x.it), 0);
   const hero = invest ? `<section class="panel duo">
       <a href="#/loans/holding"><div class="hero-k">In items</div><div class="hero-v">${figc("items", inItems)}</div><div class="hero-s"><span class="muted">${held.length ? held.length + " held" + (priced.length ? ` · expected profit <span class="${gain < 0 ? "neg" : "pos"}">${money(gain, { plus: true, round: true })}</span>` : "") + (unpriced ? " · " + unpriced + " with no price yet" : "") : "Nothing held"}</span></div></a>
-      <a href="#/loans/sold"><div class="hero-k">Made from sales</div><div class="hero-v ${made < 0 ? "neg" : made > 0 ? "pos" : ""}">${figc("made", made, { plus: true })}</div><div class="hero-s"><span class="muted">${sold.length ? sold.length + " sold" + (!judged.length ? "" : vs === 0 ? " · as expected" : ` · <span class="${vs < 0 ? "neg" : "pos"}">${money(Math.abs(vs), { round: true })}</span> ${vs < 0 ? "under" : "over"} what you expected`) : "Nothing sold yet"}</span></div></a>
+      <a href="#/loans/sold"><div class="hero-k">Made from sales</div><div class="hero-v ${made < 0 ? "neg" : made > 0 ? "pos" : ""}">${figc("made", made, { plus: true })}</div><div class="hero-s"><span class="muted">${soldAll.length ? soldAll.length + " sold" + (!judged.length ? "" : vs === 0 ? " · as expected" : ` · <span class="${vs < 0 ? "neg" : "pos"}">${money(Math.abs(vs), { round: true })}</span> ${vs < 0 ? "under" : "over"} what you expected`) : "Nothing sold yet"}</span></div></a>
     </section>` : `<section class="panel duo">
       <a href="#/loans/lent"><div class="hero-k">Owed to you</div><div class="hero-v">${figc("lent", sum(lent))}</div><div class="hero-s"><span class="muted">${lead(lent, "Nobody owes you")}</span></div></a>
       <a href="#/loans/borrowed"><div class="hero-k">You owe</div><div class="hero-v">${figc("owed", sum(owed))}</div><div class="hero-s"><span class="muted">${lead(owed, "You owe nobody")}</span></div></a>
@@ -2324,7 +2400,7 @@ function vLoans(){
   return `<div class="stack">
     ${hero}
     <nav class="seg tabs" aria-label="Loans and investments">${tabs.map(([k, label, n]) => (k === "holding" ? `<span class="tab-gap" role="separator"></span>` : "") + `<a href="#/loans/${k}" ${k === tab ? 'aria-current="page"' : ""}>${label}<span class="count">${n}</span></a>`).join("")}</nav>
-    <div class="loan-body">${shown.length ? `<div class="acct-grid loan-grid">${page.join("")}</div>${pager}` : `<section class="panel">${empty(invest ? "item" : "loans", none[0], none[1], tab === "settled" || tab === "sold" ? "" : invest ? addItem : addLoan)}</section>`}</div>
+    <div class="loan-body">${shown.length ? `<div class="acct-grid loan-grid">${page.join("")}</div>${pager}` : arch.length ? "" : `<section class="panel">${empty(invest ? "item" : "loans", none[0], none[1], tab === "settled" || tab === "sold" ? "" : invest ? addItem : addLoan)}</section>`}${archBlock}</div>
   </div>`;
 }
 
@@ -2377,7 +2453,7 @@ function vReports(){
 
 /* ---------- settings -------------------------------------------------------- */
 /* Seven parts, each at its own address (#/settings/budgets), so a link can open one. */
-const SET_TABS = [["appearance", "Appearance"], ["accessibility", "Accessibility"], ["categories", "Categories"], ["budgets", "Budgets"], ["sync", "Sync"], ["data", "Data"], ["keyboard", "Keyboard"]];
+const SET_TABS = [["appearance", "Appearance"], ["accessibility", "Accessibility"], ["categories", "Categories"], ["budgets", "Budgets"], ["recurring", "Repeating"], ["sync", "Sync"], ["data", "Data"], ["keyboard", "Keyboard"]];
 const setRow = (t, s, ctl) => `<div class="set-row"><div class="t"><b>${t}</b><span>${s}</span></div>${ctl}</div>`;
 const segBtn = (act, cur, list) => `<div class="seg">${list.map(([k, l]) => `<button type="button" data-act="${act}" data-key="${k}" aria-pressed="${cur === k}">${l}</button>`).join("")}</div>`;
 const limText = c => (c / 100).toLocaleString("en-US", { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
@@ -2421,6 +2497,13 @@ const SETTINGS = {
   categories: () => `<section class="panel"><header class="panel-h"><h2>Categories</h2><div class="aside"><button class="btn btn-sm" data-act="new-category">${icon("plus", 14)}Add category</button></div></header>
       <div class="cats">${S.categories.map(c => `<button class="chip" type="button" data-act="edit-category" data-id="${c.id}" style="--c:${c.color}"><i></i>${esc(c.name)}<span class="muted">${c.kind === "income" ? "· income" : ""}</span></button>`).join("")}</div></section>
     <p class="fine">Press a category to rename it or change its colour. One that is in use cannot be deleted.</p>`,
+  recurring: () => { const rs = (S.recurring || []).slice().sort((a, b) => (nextOf(a) || "9") < (nextOf(b) || "9") ? -1 : 1);
+    if (!rs.length) return `<section class="panel">${empty("sync", "Nothing repeats yet", "Choose Repeat on a new entry, and it is added again on its own every week, month or year.", "")}</section>`;
+    return `<section class="panel"><header class="panel-h"><h2>Repeating entries</h2></header><div class="list">${rs.map(r => { const nx = nextOf(r), a = accOf(r.accountId), c = catOf(r.category);
+      return `<div class="li rec"><span class="grow"><b class="truncate">${esc(r.desc || (c ? c.name : KIND_LABEL[r.kind] || "Entry"))}</b><span class="desc-sub">${repText(r.every, r.until)}${nx ? " · next " + fmtDate(nx, true) : " · finished"}${a ? " · " + esc(a.name) : ""}</span></span>
+        <span class="num rec-amt${r.kind === "income" ? " pos" : ""}">${r.kind === "transfer" ? money(r.amount) : money((r.kind === "income" ? 1 : -1) * r.amount, { plus: true })}</span>
+        <button class="btn btn-sm" data-act="rec-open" data-id="${r.id}">Edit</button><button class="btn btn-sm btn-ghost" data-act="rec-stop" data-id="${r.id}">Stop</button></div>`; }).join("")}</div></section>
+    <p class="fine">Each is added on its own when its day comes, and can then be changed or deleted like any entry. Edit opens its latest entry, where Repeat changes what comes next. Stop ends it and keeps the entries already made.</p>`; },
   budgets: () => { const m = today().slice(0, 7), f = flows(m + "-01", monthEnd(m)), cats = S.categories.filter(c => c.kind === "expense" && S.budgets[c.id] > 0), total = cats.reduce((s, c) => s + S.budgets[c.id], 0);
     if (!cats.length) return `<section class="panel">${empty("budgets", "No budgets yet", "A budget is a monthly limit on one kind of spending. Add one, and the Budgets page shows how each month is going.", `<button class="btn btn-primary" data-act="add-budget">${icon("plus", 15)}Add budget</button>`)}</section>`;
     return `<section class="panel"><header class="panel-h"><h2>Monthly budgets</h2><div class="aside"><span class="num">${money(total, { round: true })} a month</span><button class="btn btn-sm" data-act="add-budget">${icon("plus", 14)}Add budget</button></div></header>
@@ -2431,6 +2514,7 @@ const SETTINGS = {
     <p class="fine">A limit is saved when you leave its field. The pencil renames or removes a budget. <a class="link" href="#/budgets">See how this month is going</a></p>`; },
   sync: () => syncPanel(),
   data: () => `<section class="panel"><header class="panel-h"><h2>Money</h2></header>
+      ${setRow("Unsold items in net worth", "Things bought to sell count at what you paid until they are sold. Turn this off to leave them out, as money you cannot spend yet.", `<button type="button" class="switch" role="switch" data-act="items-count" aria-checked="${!S.settings.itemsOut}" aria-label="Count unsold items in net worth"></button>`)}
       ${setRow("Currency", "The symbol in front of every figure. Amounts are not converted.", `<select class="input select-sm" data-change="currency" aria-label="Currency">${options(Object.keys(SYMBOL).map(k => [k, k + "  " + SYMBOL[k]]), S.settings.currency)}</select>`)}
     </section>
     <section class="panel"><header class="panel-h"><h2>Your data</h2><div class="aside">${syncOn() ? "On this device and in your gist" : "Stored on this device only"}</div></header>
@@ -2495,6 +2579,8 @@ const Rates = (() => {
   async function refresh(force){
     read(); const b = base();
     if (data.base !== b) data = blank(b);
+    /* With no connection nothing is asked for: the last figures fetched stay, and say so. */
+    if (navigator.onLine === false){ errs.offline = true; paint(); return; } delete errs.offline;
     if (busy) return; busy = true; paint();
     const v = b.toLowerCase(), jobs = []; let got = false;
     if (force || stale(data.fiat, 6 * 36e5)) jobs.push(get("https://open.er-api.com/v6/latest/" + b).then(j => {
@@ -2526,6 +2612,7 @@ const Rates = (() => {
   const fmtOther = (v, c) => coinOf(c) ? (v >= 1 ? v.toFixed(6) : v.toPrecision(4)).replace(/\.?0+$/, "") : v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmtInv = x => x >= 100 ? Math.round(x).toLocaleString("en-US") : x >= 1 ? x.toFixed(2) : x.toPrecision(3);
   const ago2 = at => ago(at).replace(/^just now$/, "just now");
+  const lastAt = () => { const t = Math.max((data.fiat || {}).at || 0, (data.crypto || {}).at || 0); return t ? new Date(t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : ""; };
   function html(){
     read(); const b = base(), sb = sym().trim(), tracked = (S.settings.fx || FX_DEFAULT).filter(c => c !== b), f = fiat();
     const cv = ui.fx || (ui.fx = { amt: "1000", cur: tracked[0] || "USD" }); if (cv.cur === b) cv.cur = tracked[0] || "USD";
@@ -2536,8 +2623,8 @@ const Rates = (() => {
     const bits = [];
     if (data.fiat) bits.push("Currencies as of " + fmtDate(iso(new Date(data.fiat.as || data.fiat.at)), true));
     if (data.crypto) bits.push("crypto " + ago2(data.crypto.at) + (data.crypto.src === "Coinbase" ? " (from Coinbase)" : ""));
-    const failed = Object.keys(errs).filter(k => errs[k]);
-    const status = `<div class="fx-status"><span>${esc(bits.join(" · "))}</span>${failed.length ? `<span class="fx-warn">Could not refresh ${failed.includes("crypto") && failed.length === 1 ? "crypto" : "everything"} just now, so these are the last figures fetched.</span>` : ""}<span class="grow"></span>
+    const failed = Object.keys(errs).filter(k => errs[k] && k !== "offline");
+    const status = `<div class="fx-status"><span>${esc(bits.join(" · "))}</span>${errs.offline ? `<span class="fx-warn">You are offline. These are the last figures fetched${lastAt() ? ", on " + lastAt() : ""}, kept here for when there is no connection.</span>` : failed.length ? `<span class="fx-warn">Could not refresh ${failed.includes("crypto") && failed.length === 1 ? "crypto" : "everything"} just now, so these are the last figures fetched.</span>` : ""}<span class="grow"></span>
       <button type="button" class="btn btn-sm${busy ? " busy" : ""}" data-act="fx-refresh" ${busy ? "disabled" : ""}>${icon("sync", 14)}${busy ? "Updating…" : "Refresh"}</button></div>`;
     /* the converter: type on either side */
     const r = rateTo(cv.cur), amt = num(cv.amt), other = r && Number.isFinite(amt) ? fmtOther(amt * r, cv.cur) : "";
@@ -2582,7 +2669,7 @@ const Rates = (() => {
     if (t === a){ ui.fx.amt = a.value; const v = num(a.value); o.value = Number.isFinite(v) ? fmtOther(v * r, c) : ""; }
     else { const v = num(o.value); if (Number.isFinite(v)){ ui.fx.amt = (v / r).toFixed(2); a.value = ui.fx.amt; } else { a.value = ""; ui.fx.amt = ""; } }
   }
-  return { html, refresh, paint, typed, open(){ setTimeout(() => refresh(false), 0); } };
+  return { html, refresh, paint, typed, open(){ setTimeout(() => refresh(false), 0); }, rate: c => { read(); const p = per(c); return p ? { php: p, at: data.fiat && data.fiat.at } : null; } };
 })();
 /* The list of followed currencies; the default list is not stored, so it can change later. */
 const fxSet = list => setSetting("fx", list.join() === FX_DEFAULT.join() ? undefined : list);
@@ -3095,6 +3182,7 @@ function describe(p){
     else bits.push(esc(txTitle(a)) + (b.amount !== a.amount || b.kind !== a.kind ? " " + amtOf(b) + " → " + amtOf(a) : " edited")); });
   (p.loans || []).forEach(([id, b, a]) => { const l = a || b; if (!b || !a) bits.push((a ? "loan with " : "deleted the loan with ") + esc(l.person)); });
   (p.items || []).forEach(([id, b, a]) => { const it = a || b; if (!b || !a) bits.push((a ? "item " : "deleted the item ") + esc(it.name)); });
+  (p.recurring || []).forEach(([id, b, a]) => { const r = a || b; if (!b || !a) bits.push((a ? "repeats " : "stopped repeating ") + esc(r.desc || "an entry")); });
   return bits.slice(0, 2).join(", ") + (bits.length > 2 ? " and " + (bits.length - 2) + " more" : "");
 }
 const mlBody = () => `<p class="ml-sub">Every change to entries and loans, newest first. Undo one to take it back, even after other changes, as long as nothing has changed it since.</p>` +
@@ -3242,7 +3330,7 @@ function render(){
   /* The phone's tab bar follows the sidebar's order: Accounts, then Activity. */
   $("#tabbar").innerHTML = [["overview", "Overview", "overview"], ["accounts", "Accounts", "accounts"]].map(([id, l, ic]) => `<a href="#/${id}" ${id === route ? 'aria-current="page"' : ""}>${icon(ic, 22)}${l}</a>`).join("") +
     `<button type="button" class="add" data-act="new-tx" aria-label="New entry"><span>${icon("plus", 22)}</span></button>` +
-    `<a href="#/transactions" ${route === "transactions" ? 'aria-current="page"' : ""}>${icon("tx", 22)}Activity</a><button type="button" data-act="palette">${icon("more", 22)}More</button>`;
+    `<a href="#/transactions" ${route === "transactions" ? 'aria-current="page"' : ""}>${icon("tx", 22)}Activity</a><button type="button" data-act="more" data-pop="morepop" aria-haspopup="menu" aria-expanded="false">${icon("more", 22)}More</button>`;
   const per = $("#period"); per.hidden = !PERIOD_ROUTES.has(route);
   per.innerHTML = options(periodList(), S.settings.period);
   const any = S.accounts.length || S.loans.length, moved = any ? netWorthAt(null) - netWorthAt(addDays(today().slice(0, 7) + "-01", -1)) : 0;
@@ -3301,13 +3389,15 @@ function openDialog(html, cls){
   dlg.className = "dlg " + (cls || ""); dlg.innerHTML = html;
   /* One way out: a window with Cancel at its foot has no X at its head. One without keeps the X. */
   { const x = dlg.querySelector('.dlg-f [data-act="close"]') && dlg.querySelector('.dlg-h [data-act="close"]'); if (x) x.remove(); }
+  { const t0 = touchOnly(); dlg.toggleAttribute("autofocus", t0); if (t0){ dlg.tabIndex = -1; dlg.querySelectorAll("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }
   if (!dlg.open){ dlg.style.animation = morph ? "none" : ""; dlg.showModal(); }
   if (fresh) ui.morphRow = morph ? from.dataset.id : null;
   segsAfter(dlg, segs);
   if (morph) morphIn(dlg, from);
   const f = dlg.querySelector("[autofocus]") || dlg.querySelector("input:not([type=radio]), select, textarea");
   /* A figure is selected so typing replaces it; notes keep the caret at the end. */
-  if (f){ f.focus(); if (f.tagName === "TEXTAREA") f.setSelectionRange(f.value.length, f.value.length); else if (f.select && f.type !== "date") f.select(); }
+  if (f && !touchOnly()){ f.focus(); if (f.tagName === "TEXTAREA") f.setSelectionRange(f.value.length, f.value.length); else if (f.select && f.type !== "date") f.select(); }
+  overPaint(dlg.querySelector("form"));
   /* The address follows what is open. */
   Hist.push();
 }
@@ -3371,7 +3461,9 @@ function paintTx(){
               + field("Category", `<select class="input" name="category">${options(cats.map(c => [c.id, c.name]), cat)}</select>`) + field("Account", `<select class="input" name="accountId">${accountOptions(d.accountId)}</select>`)}
       ${field("Date", `<input class="input" type="date" name="date" value="${esc(d.date)}">`)}
       ${field("Note", `<input class="input" name="note" value="${esc(d.note)}" placeholder="Optional" autocomplete="off">`)}
-    </div><div class="err" role="alert"></div></div>
+      ${sideBtn("repeat", "sync", "Repeat", repText(d.rep || "", d.repUntil || ""))}
+      ${isT ? "" : sideBtn("fxpanel", "rates", "Another currency", d.fx ? fmtCur(d.fx.cur, d.fx.amt) + " at " + rateTxt(d.fx.rate) : "None")}
+    </div>${repeatPanel(d)}${isT ? "" : fxPanel(d)}<div class="err" role="alert"></div></div>
     ${foot(d.id ? "Save" : "Add", d.id ? `<button type="button" class="btn btn-ghost btn-danger" data-act="delete-tx" data-id="${d.id}">${icon("trash", 14)}Delete</button><button type="button" class="btn btn-ghost" data-act="dup-tx" data-id="${d.id}">${icon("copy", 14)}Duplicate</button>` : "")}</form>`);
 }
 function editTx(id){
@@ -3386,7 +3478,7 @@ function editTx(id){
   if (t.kind === "item_cost") return openCost(t.itemId, t);
   if (t.kind === "sell") return openSell(t.itemId, t);
   if (t.kind === "adjust") return openAdjust(t);
-  draft = { id: t.id, kind: t.kind, amount: fromCents(t.amount), desc: t.desc || "", category: t.category || "", accountId: t.accountId || "", toAccountId: t.toAccountId || "", date: t.date, note: t.note || "" };
+  draft = { id: t.id, kind: t.kind, amount: fromCents(t.amount), desc: t.desc || "", category: t.category || "", accountId: t.accountId || "", toAccountId: t.toAccountId || "", date: t.date, note: t.note || "", rep: ruleOf(t) ? ruleOf(t).every : "", repUntil: ruleOf(t) ? ruleOf(t).until || "" : "", fx: t.fx || null };
   paintTx();
 }
 function openAdjust(t){
@@ -3475,7 +3567,7 @@ function paintSheet(){
   if (isLoan){ const paid = loanPaid(l), due = loanDue(l), out = l.dir === "lent";
     mark = `<span class="avatar">${esc((l.person || "?").slice(0, 1).toUpperCase())}</span>`; title = esc(l.person);
     sub = (due ? (out ? "Owes you " : "You owe ") + `<span class="num">${money(due)}</span>` : "Settled") + " · " + (out ? "lent " : "borrowed ") + fmtDate(l.date, true);
-    sum = cell(out ? "Lent" : "Borrowed", money(l.principal)) + cell("Repaid", money(paid)) + cell("Left", money(due));
+    sum = cell(out ? "Lent" : "Borrowed", money(l.principal)) + (loanInterest(l) ? cell("Interest", money(loanInterest(l))) : "") + cell("Repaid", money(paid)) + cell("Left", money(due));
     foot = `<button type="button" class="btn btn-ghost" data-act="edit-loan" data-id="${l.id}">Edit loan</button><span class="grow"></span>${due > 0 ? `<button type="button" class="btn btn-primary" data-act="pay-loan" data-id="${l.id}">${icon("plus", 15)}Log payment</button>` : ""}`;
   } else if (isItem){ const p = itemParts(it), cost = itemCost(it), paid = p.buy ? p.buy.amount : 0;
     mark = `<span class="avatar item-mark" aria-hidden="true">${icon("item", 18)}</span>`; title = esc(it.name);
@@ -3554,22 +3646,23 @@ function openItem(id, o = {}){
       ${field("Bought on", `<input class="input" type="date" name="date" value="${esc(b ? b.date : o.date || today())}">`)}
       ${fromSel(acc, "Paid from")}
       ${field("Expect to sell for (optional)", moneyIn("expect", it && it.expect ? esc(fromCents(it.expect)) : ""), { full: true })}
+      ${sideBtn("itemfee", "calc", "Selling fee", it && it.feePct ? it.feePct + "% of the price" : "None")}
       ${field("Note", `<input class="input" name="note" value="${esc(it ? it.note || "" : o.note || "")}" placeholder="Optional" autocomplete="off">`, { full: true })}
-    </div>${liveLine()}<div class="err" role="alert"></div></div>
+    </div>${itemFeePanel(it)}${liveLine()}<div class="err" role="alert"></div></div>
     ${foot(id ? "Save" : "Add item", id ? `<button type="button" class="btn btn-ghost btn-danger" data-act="delete-item" data-id="${id}">${icon("trash", 14)}Delete</button>` : "")}</form>`);
   itemLive(dlg.querySelector("form"));
 }
 function openSell(id, t){
   const it = itemOf(id); if (!it) return; const p = itemParts(it);
   if (!t && p.sale) t = p.sale;   /* already sold: this edits the sale */
-  const cost = itemCost(it), price = t ? t.amount + (t.fees || 0) : it.expect, acc = t ? t.accountId : (p.buy && p.buy.accountId) || firstAccount();
-  openDialog(`<form data-form="sell" data-id="${id}" data-tx="${t ? t.id : ""}">${head(t ? "Edit sale" : "Mark as sold")}<div class="dlg-b">
+  const cost = itemCost(it), price = t ? t.amount + (t.fees || 0) : it.expect, acc = t ? t.accountId : (p.buy && p.buy.accountId) || firstAccount(), autoFee = !t && Number(it.feePct) > 0;
+  openDialog(`<form data-form="sell" data-id="${id}" data-tx="${t ? t.id : ""}"${autoFee ? ' data-autofee="1"' : ""}>${head(t ? "Edit sale" : "Mark as sold")}<div class="dlg-b">
     <p class="muted">${esc(it.name)} cost you <b class="num" style="color:var(--ink)">${money(cost)}</b>${it.expect ? `, and you expected <b class="num" style="color:var(--ink)">${money(it.expect)}</b> for it` : ""}.</p>
     ${amountBox(price ? fromCents(price) : "", { label: "Sold for" })}
     <div class="fields">
       ${field("Sold on", `<input class="input" type="date" name="date" value="${esc(t ? t.date : today())}">`)}
       ${fromSel(acc, "Paid into")}
-      ${field("Fees on the sale (optional)", moneyIn("fees", t && t.fees ? esc(fromCents(t.fees)) : ""), { help: "Platform or delivery fees. They come off what goes into the account." })}
+      ${field("Fees on the sale (optional)", moneyIn("fees", t && t.fees ? esc(fromCents(t.fees)) : autoFee && price ? esc(fromCents(Math.round(price * it.feePct / 100))) : ""), { help: autoFee ? it.feePct + "% of the price, as set for this item. Type over it if this sale's fee differs." : "Platform or delivery fees. They come off what goes into the account." })}
       ${field("Note", `<input class="input" name="note" value="${esc(t ? t.note || "" : "")}" placeholder="Optional" autocomplete="off">`)}
     </div>${liveLine()}<div class="err" role="alert"></div></div>
     ${foot(t ? "Save" : "Mark as sold", t ? `<button type="button" class="btn btn-ghost btn-danger" data-act="delete-tx" data-id="${t.id}">${icon("trash", 14)}Delete</button>` : "")}</form>`);
@@ -3602,19 +3695,225 @@ function itemLive(f){
   const g = n => (f.querySelector(`[name="${n}"]`) || {}).value || "", acc = id => accOf(id) ? accOf(id).name : "", a = toCents(g("amount")), it = f.dataset.id ? itemOf(f.dataset.id) : null;
   const moves = (id, c) => id ? esc(acc(id)) + " " + money(c, { plus: c > 0 }) : "No account moves";
   const tone = c => c < 0 ? "neg" : "pos";
-  if (f.dataset.form === "item"){ const e = toCents(g("expect")), extra = it ? itemCost(it) - ((itemParts(it).buy || {}).amount || 0) : 0, cost = (a > 0 ? a : 0) + extra;
+  if (f.dataset.form === "item"){ const fee = parseFloat(g("feePct")) || 0, e0 = toCents(g("expect")), e = e0 > 0 ? e0 - Math.round(e0 * fee / 100) : e0, extra = it ? itemCost(it) - ((itemParts(it).buy || {}).amount || 0) : 0, cost = (a > 0 ? a : 0) + extra;
     out.innerHTML = !(a > 0) ? "Enter what you paid. It comes out of the account below, and net worth does not move: the money is now in the item, at what you paid."
-      : moves(g("accountId"), -a) + ". " + (e > 0 ? `Expected profit <b class="${tone(e - cost)}">${money(e - cost, { plus: true })}</b> · ${pctTxt(e - cost, cost)} on ${extra ? money(cost) + " with extras" : "what you paid"}.` : "Add the price you expect, and the card shows the profit it would make.");
+      : moves(g("accountId"), -a) + ". " + (e > 0 ? `Expected profit <b class="${tone(e - cost)}">${money(e - cost, { plus: true })}</b> · ${pctTxt(e - cost, cost)} on ${extra ? money(cost) + " with extras" : "what you paid"}${fee > 0 ? ", after the " + fee + "% selling fee" : ""}.` : "Add the price you expect, and the card shows the profit it would make.");
     return; }
   if (!it) return;
-  if (f.dataset.form === "sell"){ const cost = itemCost(it), fees = toCents(g("fees")) || 0, net = a - fees, p = net - cost, vs = it.expect ? net - it.expect : null;
+  if (f.dataset.form === "sell"){ if (f.dataset.autofee === "1"){ const fx = f.querySelector('[name="fees"]'); if (fx) fx.value = a > 0 ? fromCents(Math.round(a * (Number(it.feePct) || 0) / 100)) : ""; } const cost = itemCost(it), fees = toCents(g("fees")) || 0, net = a - fees, p = net - cost, vs = it.expect ? net - expNet(it) : null;
     out.innerHTML = !(a > 0) ? "Enter what it sold for." : moves(g("accountId"), net) + `. ${p < 0 ? "Loss" : "Profit"} <b class="${tone(p)}">${money(p, { plus: true })}</b> · ${pctTxt(p, cost)} on ${money(cost)}`
       + (vs === null ? "." : vs === 0 ? ", as you expected." : `, <b class="${tone(vs)}">${money(Math.abs(vs))}</b> ${vs > 0 ? "more" : "less"} than you expected.`) + ` Net worth moves by the ${p < 0 ? "loss" : "profit"}.`;
     return; }
   if (f.dataset.form === "itemcost"){ const old = f.dataset.tx ? ((S.tx.find(t => t.id === f.dataset.tx) || {}).amount || 0) : 0, total = itemCost(it) - old + (a > 0 ? a : 0), sale = itemParts(it).sale;
     out.innerHTML = (a > 0 ? moves(g("accountId"), -a) + ". " : "") + `It will have cost you <b>${money(total)}</b>`
-      + (sale ? `, so the profit becomes <b class="${tone(sale.amount - total)}">${money(sale.amount - total, { plus: true })}</b>.` : it.expect ? `, so the expected profit becomes <b class="${tone(it.expect - total)}">${money(it.expect - total, { plus: true })}</b>.` : ".");
+      + (sale ? `, so the profit becomes <b class="${tone(sale.amount - total)}">${money(sale.amount - total, { plus: true })}</b>.` : it.expect ? `, so the expected profit becomes <b class="${tone(expNet(it) - total)}">${money(expNet(it) - total, { plus: true })}</b>.` : ".");
   }
+}
+
+/* ---- advanced options, beside the sheet ----
+   Some choices are needed now and then, not every time: interest on a loan,
+   a fee taken from a sale. Each sits behind one row in its form that says
+   what is set. Pressing it turns a panel in beside the sheet, the way the
+   rate's working-out does: with room, the sheet steps left and the panel
+   turns in on its right, the two centred together; on a phone it opens over
+   the sheet. Its fields belong to the form, so Save keeps them. */
+const sideBtn = (pop, ic, label, value) => `<div class="field full adv-at"><button type="button" class="btn adv-btn" data-act="side-open" data-pop="${pop}" aria-haspopup="dialog">${icon(ic, 16)}<span>${label}</span><span class="adv-v">${esc(value)}</span>${icon("chevron", 14)}</button></div>`;
+const sidePanel = (pop, title, sub, body) => `<div class="pop calc-pop adv-pop" id="${pop}" popover role="dialog" aria-labelledby="${pop}-t"><b id="${pop}-t">${title}</b><p class="calc-sub">${sub}</p>${body}<p class="calc-out" role="status"></p><div class="calc-f"><button type="button" class="btn btn-primary btn-sm" data-act="side-done">Done</button></div></div>`;
+function openSide(el, p, paint, o = {}){
+  const d = el.closest("dialog"), W = d.getBoundingClientRect().width, C = 360, G = 20, side = !phone() && innerWidth >= W + C + G + 48;
+  p.classList.toggle("side", side);
+  /* Closing is the opening in reverse, in two beats: the panel folds back on
+     its edge first, and the sheet glides home a moment later. */
+  if (!p._wired){ p._wired = true; p.addEventListener("toggle", ev => {
+    if (ev.newState === "closed" && p.classList.contains("adv-pop")) sideSum(p.closest("form"));
+    if (ev.newState !== "closed" || !d.style.translate) return;
+    d.style.transition = reduceMotion() ? "" : "translate .52s cubic-bezier(.65,0,.35,1) .16s"; d.style.translate = "";
+    clearTimeout(d._home); d._home = setTimeout(() => { d.style.transition = ""; }, 760); }); }
+  clearTimeout(d._home); d.style.transition = "";
+  if (!openPop(p, el, paint, side ? { side: true } : { at: o.at || el, align: "start", w: C, h: o.h || 380 })) return false;
+  /* Its height from layout, not from the screen: while it turns, its tilt makes it look taller than it is. */
+  if (side){ const z = zoomNow(), x0 = (innerWidth - (W + G + C)) / 2, ph = p.offsetHeight * z;
+    Object.assign(p.style, { left: (x0 + W + G) / z + "px", right: "auto", top: Math.max(8, (innerHeight - ph) / 2) / z + "px", bottom: "auto", translate: "none", transformOrigin: "0 50%" });
+    d.style.translate = (-(G + C) / 2 / z).toFixed(1) + "px 0";
+    if (!reduceMotion() && !document.hidden) p.animate([{ transform: "perspective(1100px) rotateY(-78deg)", opacity: 0 }, { transform: "perspective(1100px) rotateY(0deg)", opacity: 1 }], { duration: 460, delay: 40, easing: "cubic-bezier(.23,1,.32,1)", fill: "backwards" }); }
+  if (!touchOnly()) setTimeout(() => { const x = o.focus ? p.querySelector(o.focus) : [...p.querySelectorAll("input:not([type=radio])")].find(i => i.offsetParent) || p.querySelector("input:checked"); if (x) x.focus(); }, 0);
+  return true;
+}
+/* Each panel says what its choice will do, and its row in the form says what is set. */
+const SIDE = {
+  repeat: {
+    sum: f => repText((f.querySelector('[name="rep"]:checked') || {}).value || "", (f.querySelector('[name="repUntil"]') || {}).value || ""),
+    paint(f){ const every = (f.querySelector('[name="rep"]:checked') || {}).value || "", until = (f.querySelector('[name="repUntil"]') || {}).value || "";
+      if (!every) return "It is added once.";
+      const t = draft && draft.id ? S.tx.find(x => x.id === draft.id) : null, r0 = ruleOf(t);
+      const r = r0 ? { ...r0, every, until } : { every, until, start: (f.querySelector('[name="date"]') || {}).value || today() }; r.last = r0 ? r0.last : r.start;
+      if (until && until < r.start) return "The day it ends is before the entry's own date.";
+      const nx = nextOf(r), when = { week: "every " + ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][parse(r.start).getDay()], month: "on day " + Number(r.start.slice(8, 10)) + " of every month", year: "every " + fmtDate(r.start) }[every];
+      let missed = 0; if (!r0) for (let k = 1; k <= 2000; k++){ const at = occOf(r, k); if (at > today() || (until && at > until)) break; missed++; }
+      return (nx ? `Next on <b>${fmtDate(nx, true)}</b>, then ${when}` : "It has no day left to come round") + (until ? ", until " + fmtDate(until, true) : "") + "."
+        + (missed ? ` Its date is past, so the ${missed === 1 ? "one" : missed} since then ${missed === 1 ? "is" : "are"} added too.` : ""); } },
+  fxpanel: {
+    sum: f => { const x = fxFrom(f); return x ? fmtCur(x.cur, x.amt) + " at " + rateTxt(x.rate) : "None"; },
+    paint(f){ const cur = (f.querySelector('[name="fxCur"]') || {}).value || "", rIn = f.querySelector('[name="fxRate"]'), p = f.querySelector("#fxpanel");
+      if (!cur) return "The entry is in pesos.";
+      if (rIn && (rIn.dataset.cur !== cur || !rIn.value)){ const live = Rates.rate(cur), last = (S.settings.fxLast || {})[cur], v = live ? live.php : last;
+        rIn.dataset.cur = cur; rIn.dataset.src = v ? (live ? "live" : "last") : ""; rIn.value = v ? String(Math.round(v * 10000) / 10000) : "";
+        if (!live && !rIn.dataset.asked){ rIn.dataset.asked = "1"; Rates.refresh(false).then(() => { if (p && p.isConnected && rIn.dataset.cur === cur && rIn.dataset.src !== "typed"){ rIn.value = ""; sidePaint(p); } }); } }
+      const amt = parseFloat(String((f.querySelector('[name="fxAmt"]') || {}).value || "").replace(/,/g, "")), rate = parseFloat(String(rIn ? rIn.value : "").replace(/,/g, ""));
+      if (!(rate > 0)) return `There is no rate for ${cur} yet, with no connection. Enter the pesos one ${cur} is worth.`;
+      const src = rIn.dataset.src === "live" ? (Date.now() - ((Rates.rate(cur) || {}).at || 0) < 864e5 ? " Today's rate." : " The last rate fetched, kept from when there was a connection.") : rIn.dataset.src === "last" ? " The rate you used last time." : "";
+      if (!(amt > 0)) return `One ${cur} is ${rateTxt(rate)}.${src} Enter what it cost in ${cur}.`;
+      const pesos = Math.round(amt * rate * 100), box = f.querySelector('[name="amount"]'); if (box){ box.value = fromCents(pesos); overPaint(f); }
+      return `${fmtCur(cur, amt)} at ${rateTxt(rate)} each is <b>${money(pesos)}</b>, now the entry's amount.${src}`; } },
+  loanint: {
+    sum: f => intText(intFrom(f)),
+    paint(f){ const P = toCents((f.querySelector('[name="amount"]') || {}).value || ""), i = intFrom(f), l = f.dataset.id && S.loans.find(x => x.id === f.dataset.id);
+      if (!i) return "No interest: what is owed is what was lent.";
+      if (!(P > 0)) return "Enter the loan's amount to see what the interest comes to.";
+      if (i.kind === "flat") return `${money(i.value)} is added once, so <b>${money(P + i.value)}</b> is owed in all.`;
+      if (i.kind === "once"){ const x = Math.round(P * i.value / 100); return `${i.value}% of ${money(P)} is ${money(x)}, added once, so <b>${money(P + x)}</b> is owed in all.`; }
+      let owed = P; for (let k = 0; k < 12; k++) owed += Math.round(owed * i.value / 100);
+      const day = Number(((f.querySelector('[name="date"]') || {}).value || today()).slice(8, 10));
+      return `${i.value}% of what is still owed is added on day ${day} of each month. Left unpaid for a year, ${money(P)} grows to <b>${money(owed)}</b>.`
+        + (l ? " So far: " + money(loanInterest({ ...l, principal: P, interest: i, date: (f.querySelector('[name="date"]') || {}).value || l.date })) + "." : ""); } },
+  itemfee: {
+    sum: f => { const v = parseFloat((f.querySelector('[name="feePct"]') || {}).value) || 0; return v > 0 ? v + "% of the price" : "None"; },
+    paint(f){ const e = toCents((f.querySelector('[name="expect"]') || {}).value || ""), v = parseFloat((f.querySelector('[name="feePct"]') || {}).value) || 0;
+      if (!(v > 0)) return "No fee: what it sells for is what you get.";
+      if (!(e > 0)) return v + "% comes off the price when it sells. Add the price you expect to see what you would get.";
+      const fee = Math.round(e * v / 100); return `On the ${money(e)} you expect, ${v}% is ${money(fee)}, so you would get <b>${money(e - fee)}</b>.`; } }
+};
+function intFrom(f){ const k = (f.querySelector('[name="ik"]:checked') || {}).value || ""; if (!k) return null;
+  const v = k === "flat" ? toCents((f.querySelector('[name="ivAmt"]') || {}).value || "") : parseFloat(String((f.querySelector('[name="ivPct"]') || {}).value || "").replace(/,/g, ""));
+  return v > 0 ? { kind: k, value: v } : null; }
+function sidePaint(p){ const f = p.closest("form"), s = SIDE[p.id]; if (!f || !s) return; const out = p.querySelector(".calc-out"); if (out) out.innerHTML = s.paint(f) || ""; sideSum(f); }
+function sideSum(f){ if (!f) return; f.querySelectorAll('[data-act="side-open"]').forEach(b => { const s = SIDE[b.dataset.pop], v = b.querySelector(".adv-v"); if (s && v) v.textContent = s.sum(f); }); }
+function loanIntPanel(l){ const i = l.interest || {}, k = i.kind || "";
+  return sidePanel("loanint", "Interest", "Interest makes what is owed grow. It moves no money until it is paid.",
+    `<div class="seg seg-sm" role="radiogroup" aria-label="Kind of interest">${[["", "None"], ["flat", "Fixed"], ["once", "% once"], ["monthly", "% a month"]].map(([v, t]) => `<label><input type="radio" name="ik" value="${v}" ${k === v ? "checked" : ""}><span>${t}</span></label>`).join("")}</div>
+    <div class="calc-grid"><div class="full ik-amt">${field("Amount added", moneyIn("ivAmt", k === "flat" ? esc(fromCents(i.value)) : ""))}</div>
+      <div class="full ik-pct">${field("Rate", suf(`<input class="input" name="ivPct" inputmode="decimal" value="${k && k !== "flat" ? esc(String(i.value)) : ""}" placeholder="0" autocomplete="off">`, "%"))}</div></div>`); }
+function itemFeePanel(it){
+  return sidePanel("itemfee", "Selling fee", "What a platform or courier keeps from each sale, as a share of the price. The expected profit counts it, and Mark as sold takes it off on its own.",
+    `<div class="calc-grid"><div class="full">${field("Fee", suf(`<input class="input" name="feePct" inputmode="decimal" value="${it && it.feePct ? esc(String(it.feePct)) : ""}" placeholder="0" autocomplete="off">`, "%"))}</div></div>`); }
+
+/* ---- repeating entries ----
+   A rule says what to add and how often (every week, month or year) from the
+   day of the entry it was made from, and until when. When a day comes round
+   the entry is added on its own: at start-up, on the timer and when the app
+   comes back into view, never inside a change, so undoing a change never
+   takes one away to have it come straight back. Each has an id made from its
+   rule and its day, so two devices adding the same one make one entry. Once
+   added it is an ordinary entry: change or delete it like any other. */
+const REPEATS = [["", "Never"], ["week", "Weekly"], ["month", "Monthly"], ["year", "Yearly"]];
+const occOf = (r, k) => r.every === "week" ? addDays(r.start, 7 * k) : monthOn(r.start, r.every === "year" ? 12 * k : k);
+const repText = (every, until) => !every ? "Never" : ({ week: "Every week", month: "Every month", year: "Every year" })[every] + (until ? ", until " + fmtDate(until, true) : "");
+function nextOf(r){ const after = r.last || r.start; for (let k = 1; k <= 2000; k++){ const at = occOf(r, k); if (r.until && at > r.until) return ""; if (at > after) return at; } return ""; }
+function repeatDue(s = S, only){
+  const t = today(), made = [];
+  for (const r of s.recurring || []){
+    if ((only && r.id !== only) || !r.start || !REPEATS.some(x => x[0] && x[0] === r.every)) continue;
+    for (let k = 1; k <= 2000; k++){ const at = occOf(r, k); if (at > t || (r.until && at > r.until)) break; if (at <= (r.last || r.start)) continue;
+      const id = "t_rep_" + r.id + "_" + at;
+      if (!s.tx.some(x => x.id === id)){ const e = { id, created: new Date().toISOString(), kind: r.kind, amount: r.amount, date: at, desc: r.desc || "", note: r.note || "", category: r.category || "", accountId: r.accountId || "", toAccountId: r.toAccountId || "", recur: r.id }; s.tx.push(e); made.push(e); }
+      r.last = at; } }
+  return made;
+}
+const sayRepeats = made => made.length === 1 ? "Added “" + txTitle(made[0]) + "”, which repeats" + moneyNote({ tx: [[made[0].id, null, made[0]]] })
+  : made.length + " repeating entries were added: " + made.slice(0, 3).map(txTitle).join(", ") + (made.length > 3 ? "…" : "");
+function repeatTick(){ const made = repeatDue(); if (!made.length) return false; stamp(); bump(); save(); toast(sayRepeats(made), { ms: 6000 }); return true; }
+const ruleOf = t => t && t.recur ? (S.recurring || []).find(r => r.id === t.recur) : null;
+function repeatPanel(d){ return sidePanel("repeat", "Repeat", "A repeating entry is added again on its own each time its day comes round, counted from the date above. Each one can then be changed or deleted on its own.",
+  `<div class="seg seg-sm" role="radiogroup" aria-label="How often">${REPEATS.map(([v, t]) => `<label><input type="radio" name="rep" value="${v}" ${(d.rep || "") === v ? "checked" : ""}><span>${t}</span></label>`).join("")}</div>
+  <div class="calc-grid rep-until">${field("Until (optional)", `<input class="input" type="date" name="repUntil" value="${esc(d.repUntil || "")}">`)}</div>`); }
+
+/* ---- paid in another currency ----
+   What it cost in that currency, and the pesos one unit is worth: today's
+   rate when there is one, the rate used last time when offline, and either
+   can be typed over with the bank's own. The pesos go into the amount. */
+const fmtCur = (c, v) => { try{ return new Intl.NumberFormat("en", { style: "currency", currency: c }).format(v); }catch(e){ return c + " " + v; } };
+const rateTxt = v => sym() + Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 });
+function fxPanel(d){ const x = d.fx || {}, list = [...new Set((S.settings.fx || FX_DEFAULT).concat(x.cur ? [x.cur] : []))];
+  return sidePanel("fxpanel", "Paid in another currency", "Enter what it cost in that currency. The rate is today's when there is one, or the one you used last time; type over it with your bank's if it differs.",
+    `<div class="calc-grid">${field("Currency", `<select class="input" name="fxCur"><option value="">None</option>${list.map(c => `<option value="${c}" ${x.cur === c ? "selected" : ""}>${c} · ${esc(curName(c))}</option>`).join("")}</select>`)}
+      <div class="fx-on">${field("Amount in it", `<input class="input" name="fxAmt" inputmode="decimal" value="${x.amt != null ? esc(String(x.amt)) : ""}" placeholder="0.00" autocomplete="off">`)}</div>
+      <div class="fx-on">${field("Rate", pre(`<input class="input" name="fxRate" inputmode="decimal" value="${x.rate ? esc(String(x.rate)) : ""}" data-cur="${x.cur || ""}" data-src="${x.rate ? "typed" : ""}" placeholder="0.00" autocomplete="off">`), { help: "Pesos for one unit of it." })}</div></div>`); }
+const fxFrom = f => { const g = n => (f.querySelector(`[name="${n}"]`) || {}).value || "", cur = g("fxCur"), amt = parseFloat(String(g("fxAmt")).replace(/,/g, "")), rate = parseFloat(String(g("fxRate")).replace(/,/g, ""));
+  return cur && amt > 0 && rate > 0 ? { cur, amt: Math.round(amt * 100) / 100, rate: Math.round(rate * 10000) / 10000 } : null; };
+
+/* ---- More, on a phone: the pages not in the tab bar, as bubbles ----
+   They rise from the More button in a gentle curve, nearest first, each a
+   round mark with its name beside it, the page you are on filled in. A tap
+   outside, Esc, or More again puts them away. */
+const MORE_PAGES = [["settings", "Settings", "settings"], ["rates", "Rates", "rates"], ["budgets", "Budgets", "budgets"], ["reports", "Reports", "reports"], ["loans", "Loans & investments", "loans"]];
+function openMore(btn){
+  let p = $("#morepop");
+  if (!p){ p = document.createElement("div"); p.id = "morepop"; p.className = "more-pop"; p.setAttribute("popover", ""); p.setAttribute("role", "menu"); p.setAttribute("aria-label", "More pages"); document.body.appendChild(p);
+    p.addEventListener("toggle", ev => { const b = $('#tabbar [data-act="more"]'); if (b) b.setAttribute("aria-expanded", String(ev.newState === "open")); });
+    p.addEventListener("click", ev => { if (ev.target.closest(".mb") && popOpen(p)) p.hidePopover(); }); }
+  if (popPressed === btn){ popPressed = null; return; }
+  if (popOpen(p)){ p.hidePopover(); return; }
+  p._by = btn; const n = MORE_PAGES.length, bend = [12, 30, 38, 30, 12];
+  p.innerHTML = MORE_PAGES.map(([id, label, ic], i) => `<a class="mb" role="menuitem" href="#/${id}" style="--i:${n - 1 - i};--x:${bend[i] || 12}px" ${ui.route === id ? 'aria-current="page"' : ""}><span class="mb-l">${esc(label)}</span><span class="mb-c">${icon(ic, 22)}</span></a>`).join("");
+  p.showPopover();
+}
+
+/* ---- a new payee, filed by its words ----
+   A payee used before keeps whatever it was filed under last time, so a
+   correction is remembered. One never used before is filed by the words in
+   it: one of your own category names first ("Pets" for "Pet food"), then a
+   list of common ones ("Grab" under Transport, "Meralco" under Utilities). A
+   category chosen by hand is never changed. */
+const KEYWORDS = [
+  ["dining", "restaurant,food,coffee,lunch,dinner,breakfast,snack,cafe,takeout,take out,pizza,burger,meal,milk tea,bubble tea,starbucks,mcdo,mcdonald,mcdonalds,jollibee,chowking,kfc,grabfood,grab food,foodpanda,bakery"],
+  ["groceries", "grocery,groceries,supermarket,market,puregold,savemore,palengke,7 eleven,alfamart"],
+  ["transport", "uber,lyft,taxi,gas,fuel,parking,transport,bus,train,mrt,lrt,grab,toll,jeep,jeepney,tricycle,gasoline,car wash,angkas,joyride,beep,autosweep,easytrip"],
+  ["travel", "flight,airfare,hotel,airbnb,agoda,booking,cebu pacific,airasia,philippine airlines"],
+  ["subscriptions", "netflix,spotify,disney,hbo,youtube premium,streaming,subscription,icloud,google one,prime video"],
+  ["utilities", "electricity,electric bill,meralco,water bill,maynilad,manila water,internet,wifi,pldt,globe,smart,converge,postpaid,load,phone bill,utility,utilities"],
+  ["housing", "rent,condo dues,association dues,mortgage"],
+  ["shopping", "amazon,shopping,clothes,clothing,shoes,mall,store,lazada,shopee,zara,uniqlo,electronics,gadget,ikea"],
+  ["health", "pharmacy,doctor,hospital,medicine,health,gym,dental,clinic,vitamins,checkup,therapy,fitness,mercury drug,watsons"],
+  ["leisure", "movie,movies,cinema,concert,game,games,amusement"],
+  ["education", "tuition,school,course,books,udemy"],
+  ["salary", "salary,payroll,sweldo"], ["business", "sales,client,invoice,freelance"], ["interest", "interest"], ["gifts", "gift,regalo"]
+];
+const words = v => " " + String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() + " ";
+function guessCat(desc, kind){
+  const w = words(desc); if (w.trim() === "") return "";
+  const own = S.categories.find(c => c.kind === kind && c.name.trim() && w.includes(words(c.name))); if (own) return own.id;
+  for (const [id, list] of KEYWORDS){ const c = catOf(id); if (!c || c.kind !== kind) continue;
+    if (list.split(",").some(k => w.includes(words(k)))) return id; }
+  return "";
+}
+
+/* ---- spending more than an account holds ----
+   The earlier version stopped an account at zero and dropped the rest, which
+   lost money silently. Here an account can go below zero, but never without
+   saying so: every form that takes money out of an account says, as it is
+   typed, which account it would take below zero and to what. */
+const OVER_FORMS = new Set(["tx", "loan", "pay", "item", "itemcost"]);
+function formMoves(f){
+  const g = n => (f.querySelector(`[name="${n}"]:checked`) || f.querySelector(`[name="${n}"]`) || {}).value || "";
+  const a = toCents(g("amount")), m = new Map(), add = (id, v) => { if (id && v) m.set(id, (m.get(id) || 0) + v); };
+  if (!(a > 0)) return m;
+  const kind = f.dataset.form, acc = g("accountId"); let old = null;
+  if (kind === "tx"){ const k = g("kind"); if (k === "expense") add(acc, -a); else if (k === "income") add(acc, a); else if (k === "transfer"){ add(acc, -a); add(g("toAccountId"), a); }
+    old = draft && draft.id ? S.tx.find(t => t.id === draft.id) : null; }
+  else if (kind === "loan"){ const l = f.dataset.id && S.loans.find(x => x.id === f.dataset.id), dir = l ? l.dir : g("dir") === "borrowed" ? "borrowed" : "lent";
+    add(acc, dir === "lent" ? -a : a); old = l ? S.tx.find(t => t.loanId === l.id && (t.kind === "lend" || t.kind === "borrow")) : null; }
+  else if (kind === "pay"){ const l = S.loans.find(x => x.id === f.dataset.id); if (l) add(acc, l.dir === "lent" ? a : -a); old = f.dataset.tx ? S.tx.find(t => t.id === f.dataset.tx) : null; }
+  else if (kind === "item"){ add(acc, -a); const it = f.dataset.id && itemOf(f.dataset.id); old = it ? itemParts(it).buy : null; }
+  else if (kind === "itemcost"){ add(acc, -a); old = f.dataset.tx ? S.tx.find(t => t.id === f.dataset.tx) : null; }
+  if (old) txEffects(old).forEach((v, k) => add(k, -v));
+  return m;
+}
+function overPaint(f){
+  if (!f || !OVER_FORMS.has(f.dataset.form)) return;
+  let o = f.querySelector(".over-line");
+  if (!o){ const e = f.querySelector(".err"); if (!e) return; o = document.createElement("p"); o.className = "over-line"; o.setAttribute("role", "status"); e.before(o); }
+  const below = [...formMoves(f)].filter(([id, v]) => v < 0 && accOf(id) && balanceOf(id) + v < 0).map(([id, v]) => esc(accOf(id).name) + ` to <b>${money(balanceOf(id) + v)}</b>`);
+  o.innerHTML = below.length ? icon("info", 15) + `<span>This takes ${below.join(" and ")}, below zero. It can still be saved.</span>` : "";
 }
 
 /* ---- a budget: a monthly limit on one spending category ---- */
@@ -3647,8 +3946,9 @@ function openLoan(id, pre = {}){
       ${field("Date", `<input class="input" type="date" name="date" value="${esc(l.date)}">`)}
       ${field("Due (optional)", `<input class="input" type="date" name="due" value="${esc(l.due || "")}">`)}
       ${field(`<span class="dir-lent">Lent from</span><span class="dir-borrowed">Borrowed into</span>`, `<select class="input" name="accountId">${accountOptions(l.accountId)}<option value="" ${l.accountId ? "" : "selected"}>No account: moves no money</option></select>`)}
+      ${sideBtn("loanint", "growth", "Interest", intText(l.interest))}
       ${field("Notes", `<textarea class="input" name="note" rows="2" placeholder="Optional">${esc(l.note || "")}</textarea>`, { full: true })}
-    </div><div class="err" role="alert"></div></div>
+    </div>${loanIntPanel(l)}<div class="err" role="alert"></div></div>
     ${foot(id ? "Save" : "Record loan", id ? `<button type="button" class="btn btn-ghost btn-danger" data-act="delete-loan" data-id="${id}">${icon("trash", 14)}Delete</button>` : "")}</form>`);
 }
 function openPay(loanId, t){
@@ -3686,15 +3986,17 @@ const FORMS = {
     if (!(amount > 0)) return fail(form, "Enter what you paid for it.");
     if (!name) return fail(form, "Say what the item is.");
     if (!(expect >= 0)) return fail(form, "Enter the price you expect as a number, or leave it empty.");
+    const fraw = String(fd.get("feePct") || "").trim(), feePct = fraw ? parseFloat(fraw.replace(/,/g, "")) : 0;
+    if (!(feePct >= 0) || feePct > 100) return fail(form, "Enter the selling fee as a share from 0 to 100%, or leave it empty.");
     const was = id && itemOf(id), sale = was && itemParts(was).sale, date = fd.get("date") || today();
     if (sale && date > sale.date) return fail(form, "It was sold on " + fmtDate(sale.date, true) + ", so it was bought before that.");
     const rec = { amount, date, accountId: String(fd.get("accountId") || "") }, note = String(fd.get("note") || "").trim(), now = new Date().toISOString();
     closeDialog(); commit(id ? "Item updated" : "Item added", s => {
       s.items = s.items || [];
-      if (id){ Object.assign(s.items.find(x => x.id === id), { name, expect, note });
+      if (id){ Object.assign(s.items.find(x => x.id === id), { name, expect, note, feePct });
         const b = s.tx.find(t => t.itemId === id && t.kind === "buy");
         if (b) Object.assign(b, rec); else s.tx.push({ id: uid("t"), created: now, kind: "buy", desc: "", note: "", category: "", toAccountId: "", itemId: id, ...rec }); }
-      else { const it = { id: uid("i"), name, expect, note, created: now }; s.items.push(it); ui.loanTab = "holding"; ui.loanPage = 1; if (ui.route === "loans") history.replaceState(null, "", "#/loans/holding");
+      else { const it = { id: uid("i"), name, expect, note, feePct, created: now }; s.items.push(it); ui.loanTab = "holding"; ui.loanPage = 1; if (ui.route === "loans") history.replaceState(null, "", "#/loans/holding");
         s.tx.push({ id: uid("t"), created: now, kind: "buy", desc: "", note: "", category: "", toAccountId: "", itemId: it.id, ...rec }); }
     });
   },
@@ -3718,6 +4020,8 @@ const FORMS = {
     closeDialog(); commit(txId ? "Cost updated" : "Cost added to " + it.name, s => { const old = txId && s.tx.find(t => t.id === txId);
       if (old) Object.assign(old, rec); else s.tx.push({ id: uid("t"), created: new Date().toISOString(), kind: "item_cost", note: "", category: "", toAccountId: "", itemId: it.id, ...rec }); });
   },
+  "import-how"(fd, form){ const p = pendingImport; pendingImport = null; closeDialog(); if (!p) return;
+    importApply(p.next, fd.get("how") === "merge" && !(S.meta && S.meta.sample) ? "merge" : "replace", p.what); },
   "item-notes"(fd, form){ const id = form.dataset.id, it = itemOf(id), note = String(fd.get("note") || "").trim();
     closeDialog(); if (!it || note === (it.note || "")) return;
     commit(note ? "Notes saved" : "Notes cleared", s => { s.items.find(x => x.id === id).note = note; }); },
@@ -3749,10 +4053,22 @@ const FORMS = {
     if (kind === "transfer" && to === accountId) return fail(form, "Choose two different accounts.");
     const rec = { kind, amount, date: fd.get("date") || today(), note: (fd.get("note") || "").trim(), accountId,
                   desc: kind === "transfer" ? "" : (fd.get("desc") || "").trim(), category: kind === "transfer" ? "" : fd.get("category") || "", toAccountId: kind === "transfer" ? to : "" };
+    const rep = REPEATS.some(x => x[0] && x[0] === fd.get("rep")) ? String(fd.get("rep")) : "", repUntil = rep ? String(fd.get("repUntil") || "") : "";
+    if (rep && repUntil && repUntil < rec.date) return fail(form, "The repeat ends before the entry's own date.");
+    const fx = kind === "transfer" ? null : fxFrom(form);
     const id = draft && draft.id; closeDialog();
     commit(id ? "Transaction updated" : "Transaction added", s => {
       s.settings.lastAccount = accountId;
+      if (fx) s.settings.fxLast = { ...(s.settings.fxLast || {}), [fx.cur]: fx.rate };
       ui.landed = id || uid("t"); if (id) Object.assign(s.tx.find(t => t.id === id), rec); else s.tx.push({ id: ui.landed, created: new Date().toISOString(), ...rec });
+      const e = s.tx.find(t => t.id === ui.landed); if (fx) e.fx = fx; else delete e.fx;
+      /* Repeat: a new rule from this entry (adding any days already past), an
+         existing one changed to match it, or ended when set back to Never. */
+      s.recurring = s.recurring || []; const r = e.recur && s.recurring.find(x => x.id === e.recur);
+      const tpl = { kind, amount, desc: rec.desc, category: rec.category, accountId, toAccountId: rec.toAccountId, note: rec.note };
+      if (rep && r) Object.assign(r, tpl, { every: rep, until: repUntil });
+      else if (rep){ const nr = { id: uid("r"), ...tpl, every: rep, until: repUntil, start: rec.date, last: rec.date }; s.recurring.push(nr); e.recur = nr.id; repeatDue(s, nr.id); }
+      else if (r) s.recurring = s.recurring.filter(x => x !== r);
     });
   },
   adjust(fd, form){
@@ -3784,9 +4100,13 @@ const FORMS = {
     const id = form.dataset.id, principal = toCents(fd.get("amount")), person = (fd.get("person") || "").trim();
     if (!(principal > 0)) return fail(form, "Enter the amount of the loan.");
     if (!person) return fail(form, "Say who the loan is with.");
+    const ik = String(fd.get("ik") || ""), iraw = ik === "flat" ? toCents(fd.get("ivAmt") || "") : parseFloat(String(fd.get("ivPct") || "").replace(/,/g, ""));
+    if (ik && !(iraw > 0)) return fail(form, "Enter the interest, or choose None.");
+    if (ik && ik !== "flat" && iraw > 100) return fail(form, "The interest rate cannot be more than 100%.");
+    const interest = ik ? { kind: ik, value: ik === "flat" ? iraw : Math.round(iraw * 1000) / 1000 } : null;
     const old = S.loans.find(l => l.id === id);
-    if (old && principal < loanPaid(old)) return fail(form, "That is less than the " + money(loanPaid(old)) + " already paid.");
-    const rec = { person, principal, date: fd.get("date") || today(), due: fd.get("due") || "", note: (fd.get("note") || "").trim(), accountId: fd.get("accountId") || "" };
+    if (old && principal + loanInterest({ ...old, principal, interest }) < loanPaid(old)) return fail(form, "That is less than the " + money(loanPaid(old)) + " already paid.");
+    const rec = { person, principal, date: fd.get("date") || today(), due: fd.get("due") || "", note: (fd.get("note") || "").trim(), accountId: fd.get("accountId") || "", interest };
     closeDialog(); commit(id ? "Loan updated" : "Loan recorded", s => {
       if (id){ const l = s.loans.find(x => x.id === id); Object.assign(l, rec);
         const origin = s.tx.find(t => t.loanId === id && (t.kind === "lend" || t.kind === "borrow"));
@@ -3895,13 +4215,17 @@ function fromSpendly(d){
   /* Investments: things bought to sell. */
   list(d.investments).forEach((v, i) => { const id = key("spv", v, i), u = stamp(v), paid = c(v.amount); if (!(paid > 0)) return;
     const bought = day(v.dateAdded || v.date) || today(), from = acc(v.bank), kind = str(v.category);
-    out.items.push({ id, name: str(v.name) || "Item", expect: v.projectedPrice != null ? Math.max(0, c(v.projectedPrice)) : 0,
+    out.items.push({ id, name: str(v.name) || "Item", expect: v.projectedPrice != null ? Math.max(0, c(v.projectedPrice)) : 0, feePct: Math.min(100, Math.max(0, Number(v.feePercent) || 0)),
       note: [str(v.notes), kind && kind !== "Other" ? "Kind: " + kind : ""].filter(Boolean).join("\n"), created: "", u });
     out.tx.push({ id: id + "_b", created: "", kind: "buy", amount: paid, date: bought, desc: "", note: "", category: "", accountId: from, toAccountId: "", itemId: id, u });
     if (v.actualSoldPrice != null){ const price = Math.max(0, c(v.actualSoldPrice)), fees = Math.round(price * Math.min(100, Math.max(0, Number(v.feePercent) || 0)) / 100);
       const at = u ? iso(new Date(u)) : bought, date = at < bought ? bought : at > today() ? today() : at;
       out.tx.push({ id: id + "_s", created: "", kind: "sell", amount: price - fees, fees, date, desc: "", note: "Date estimated: the earlier version did not record when it sold.", category: "", accountId: from, toAccountId: "", itemId: id, u }); } });
   Object.entries(d.budgets && typeof d.budgets === "object" && !Array.isArray(d.budgets) ? d.budgets : {}).forEach(([n, lim]) => { if (Number(lim) > 0) out.budgets[cat(n, "expense")] = c(lim); });
+  /* Recurring entries: monthly on their day, carrying on from the last one that version added. */
+  list(d.recurring).forEach((r, i) => { const amount = c(r.amount); if (!(amount > 0)) return; const kind = r.type === "income" ? "income" : "expense", last = day(r.lastAdded) || today();
+    const dom = Math.min(31, Math.max(1, Number(r.dayOfMonth) || Number(last.slice(8, 10)))), dim = new Date(+last.slice(0, 4), +last.slice(5, 7), 0).getDate(), start = last.slice(0, 8) + String(Math.min(dom, dim)).padStart(2, "0");
+    out.recurring.push({ id: key("spr", r, i), kind, amount, desc: str(r.description), category: cat(r.category, kind), accountId: acc(r.bank), toAccountId: "", note: "", every: "month", until: "", start, last: start, u: stamp(r) }); });
   /* Every account lands on the figure it was showing. */
   const moved = new Map();
   out.tx.forEach(t => { if (t.accountId) moved.set(t.accountId, (moved.get(t.accountId) || 0) + effect(t)); });
@@ -3922,11 +4246,46 @@ function importFile(file){
     if (d && d.v === 1 && Array.isArray(d.tx) && Array.isArray(d.accounts)){ const b = blank(); next = { ...b, ...d, settings: { ...b.settings, ...(d.settings || {}) } }; what = "this backup"; }
     else if (d && (Array.isArray(d.expenses) || Array.isArray(d.savings) || Array.isArray(d.incomes))){ next = fromSpendly(d); what = "this backup from the earlier version"; }
     if (!next){ toast("That file is not a backup this app understands.", { tone: "neg" }); return; }
-    const apply = () => { commit("Imported " + next.tx.length.toLocaleString() + " entries", () => { S = next; }); applyTheme(); go("overview"); };
-    if (!S.tx.length && !S.accounts.length) return apply();
-    confirmDialog({ title: "Replace what is here?", text: "Importing " + what + " replaces every account, entry, loan and budget currently on this device. You can undo it straight after." + (syncOn() ? " Records already in your sync gist come back on the next sync." : ""), action: "Replace", danger: true }, apply);
+    if (!S.tx.length && !S.accounts.length) return importApply(next, "replace", what);
+    importAsk(next, what);
   };
   r.readAsText(file);
+}
+
+/* Over books already here, a backup can be merged in (the default) or can
+   replace them. Merging follows the rules sync uses: a record in both keeps
+   whichever was changed last, a record deleted on one side stays deleted, and
+   nothing here goes unless the file says it was deleted. Two categories with
+   the same name become one. Sample figures are only ever replaced, never
+   mixed with real ones. */
+let pendingImport = null;
+function importAsk(next, what){
+  pendingImport = { next, what }; const sample = !!(S.meta && S.meta.sample), n = v => (v || []).length.toLocaleString();
+  openDialog(`<form data-form="import-how">${head("Bring in " + esc(what))}<div class="dlg-b">
+    <p class="muted">It holds ${n(next.accounts)} accounts, ${n(next.tx)} entries, ${n(next.loans)} loans and ${n(next.items)} items.</p>
+    <div class="seg" role="radiogroup" aria-label="How to bring it in"><label><input type="radio" name="how" value="merge" ${sample ? "disabled" : "checked"}><span>Merge</span></label><label><input type="radio" name="how" value="replace" ${sample ? "checked" : ""}><span>Replace</span></label></div>
+    <p class="import-say" role="status"></p>
+    <div class="err" role="alert"></div></div>${foot("Import")}</form>`);
+  importSay(dlg.querySelector("form"));
+}
+function importSay(f){ const how = (f.querySelector('[name="how"]:checked') || {}).value, sample = !!(S.meta && S.meta.sample);
+  f.querySelector(".import-say").textContent = how === "merge"
+    ? "Its records join what is here. One that is in both keeps whichever was changed last, and nothing here is removed unless the file says it was deleted. You can undo it straight after."
+    : (sample ? "What is here are sample figures, so they are replaced rather than merged. " : "") + "Every account, entry, loan, item and budget here is replaced by the file's. You can undo it straight after." + (syncOn() ? " Records already in your sync gist come back on the next sync." : ""); }
+function mergeImport(mine, theirs){
+  const m = mergeBooks(JSON.parse(JSON.stringify(mine)), theirs); m.settings = mine.settings; m.meta = mine.meta;
+  const keep = new Map(), remap = new Map();
+  m.categories = m.categories.filter(c => { const k = c.kind + "|" + String(c.name).trim().toLowerCase(), was = keep.get(k);
+    if (was && was !== c.id){ remap.set(c.id, was); return false; } keep.set(k, c.id); return true; });
+  if (remap.size){ m.tx.forEach(t => { if (remap.has(t.category)) t.category = remap.get(t.category); });
+    Object.keys(m.budgets).forEach(id => { if (!remap.has(id)) return; const to = remap.get(id); if (!(m.budgets[to] > 0)) m.budgets[to] = m.budgets[id]; delete m.budgets[id]; }); }
+  return m;
+}
+function importApply(next, how, what){
+  if (how === "merge"){ const m = mergeImport(S, next), added = m.tx.length - S.tx.length;
+    commit("Merged " + what + ": " + (added === 1 ? "1 new entry" : added.toLocaleString() + " new entries"), () => { S = m; }); }
+  else commit("Imported " + next.tx.length.toLocaleString() + " entries", () => { S = next; });
+  applyTheme(); go("overview");
 }
 
 /* Invented figures, the same every time, so a first look has something in it. */
@@ -3974,6 +4333,10 @@ function sampleData(){
   I("Mechanical keyboard", 4800, 35, 6000, chk, [[200, 34, "Shipping"]], [6500, 0, 16, ew], "");
   I("Phone, 128 GB", 14000, 61, 16000, chk, [], [15200, 300, 28, chk], "Sold on Marketplace");
   I("Desk lamp", 1200, 81, 1500, chk, [], [900, 0, 41, cash], "");
+  const R = (desc, cat, every) => { const own = d.tx.filter(t => t.desc === desc && t.kind === "expense").sort((a, b) => a.date < b.date ? -1 : 1); if (!own.length) return;
+    const r = { id: uid("r"), kind: "expense", amount: own[own.length - 1].amount, desc, category: cat, accountId: own[0].accountId, toAccountId: "", note: "", every, until: "", start: own[0].date, last: own[own.length - 1].date };
+    d.recurring.push(r); own.forEach(t => { t.recur = r.id; }); };
+  R("Harbour Residences", "housing", "month"); R("Fibre Internet", "subscriptions", "month");
   d.budgets = { groceries: 1600000, dining: 900000, transport: 550000, shopping: 900000, leisure: 450000, utilities: 550000, subscriptions: 300000 };
   return d;
 }
@@ -4344,27 +4707,12 @@ const ACT = {
     if (!bal.value){ const o = toCents(f.querySelector('[name="opening"]').value || ""); if (o > 0) bal.value = fromCents(o); }
     /* The rate's box is in sight before the panel opens beside it. */
     keepInView(el.closest(".fields"), true);
-    /* With room, the sheet steps left and the working-out turns in on its right,
-       the two centred together; without it, the panel opens over the sheet. */
-    const d = el.closest("dialog"), W = d.getBoundingClientRect().width, C = 360, G = 20, side = !phone() && innerWidth >= W + C + G + 48;
-    p.classList.toggle("side", side);
-    /* Closing is the opening in reverse, in two beats: the panel folds back on
-       its edge first, and the sheet glides home a moment later, so it never
-       races ahead of the panel. */
-    if (!p._wired){ p._wired = true; p.addEventListener("toggle", ev => { if (ev.newState !== "closed" || !d.style.translate) return;
-      d.style.transition = reduceMotion() ? "" : "translate .52s cubic-bezier(.65,0,.35,1) .16s"; d.style.translate = "";
-      clearTimeout(d._home); d._home = setTimeout(() => { d.style.transition = ""; }, 760); }); }
-    clearTimeout(d._home); d.style.transition = "";
-    if (!openPop(p, el, () => calcPaint(f), side ? { side: true } : { at: f.querySelector("#ac-rate").closest(".affix"), align: "start", w: 360, h: 340 })) return;
-    /* Its height from layout, not from the screen: while it turns, its tilt makes it look taller than it is, which is what lifted it on a second opening. */
-    if (side){ const z = zoomNow(), x0 = (innerWidth - (W + G + C)) / 2, ph = p.offsetHeight * z;
-      Object.assign(p.style, { left: (x0 + W + G) / z + "px", right: "auto", top: Math.max(8, (innerHeight - ph) / 2) / z + "px", bottom: "auto", translate: "none", transformOrigin: "0 50%" });
-      d.style.translate = (-(G + C) / 2 / z).toFixed(1) + "px 0";
-      if (!reduceMotion() && !document.hidden) p.animate([{ transform: "perspective(1100px) rotateY(-78deg)", opacity: 0 }, { transform: "perspective(1100px) rotateY(0deg)", opacity: 1 }], { duration: 460, delay: 40, easing: "cubic-bezier(.23,1,.32,1)", fill: "backwards" }); }
-    setTimeout(() => f.querySelector('[name="calcAmt"]').focus(), 0); },
+    openSide(el, p, () => calcPaint(f), { at: f.querySelector("#ac-rate").closest(".affix"), h: 340, focus: '[name="calcAmt"]' }); },
+  "side-open": el => { const f = el.closest("form"), p = f && f.querySelector("#" + el.dataset.pop); if (!p) return; keepInView(el, true); openSide(el, p, () => sidePaint(p)); },
+  "side-done": el => { const p = el.closest(".pop"), f = el.closest("form"); if (p && popOpen(p)) p.hidePopover(); sideSum(f); },
   "calc-close": el => { const p = el.closest(".pop"); if (p && popOpen(p)) p.hidePopover(); },
   "calc-use": el => { const f = el.closest("form"), c = calcRate(f); if (!c.r) return; const rate = f.querySelector('[name="rate"]'); rate.value = String(c.r);
-    const p = el.closest(".pop"); if (p && popOpen(p)) p.hidePopover(); rate.focus();
+    const p = el.closest(".pop"); if (p && popOpen(p)) p.hidePopover(); if (!touchOnly()) rate.focus();
     /* The figure lands in the field with a brief glow, so it is plain where it went. */
     if (!reduceMotion()) rate.animate([{ boxShadow: "0 0 0 4px color-mix(in srgb, var(--accent) 50%, transparent)" }, { boxShadow: "0 0 0 0 transparent" }], { duration: 900, easing: "cubic-bezier(.23,1,.32,1)" }); },
   "info": el => { const host = el.closest(".pop") || el.closest("dialog") || document.body; let p = document.getElementById("infopop");
@@ -4406,7 +4754,7 @@ const ACT = {
   /* While rows are being picked, pressing one picks it. */
   "edit-tx": el => { if (ui.selecting && ui.route === "transactions" && "row" in el.dataset){ const id = el.dataset.id; if (!el.querySelector(".cb")) return; ui.sel.has(id) ? ui.sel.delete(id) : ui.sel.add(id); return render(); } ui.morphFrom = "row" in el.dataset ? el : null; editTx(el.dataset.id); ui.morphFrom = null; },
   "delete-tx": el => removeTx([el.dataset.id]),
-  "dup-tx": el => { const t = S.tx.find(x => x.id === el.dataset.id); if (t){ draft = { ...draft, id: null, date: today() }; paintTx(); toast("Duplicated — check the date, then add."); } },
+  "dup-tx": el => { const t = S.tx.find(x => x.id === el.dataset.id); if (t){ draft = { ...draft, id: null, date: today(), rep: "", repUntil: "" }; paintTx(); toast("Duplicated — check the date, then add."); } },
   "sel": el => { if (el.checked) ui.sel.add(el.dataset.id); else ui.sel.delete(el.dataset.id); render(); },
   "sel-all": () => { const rows = $$("#view [data-row]").filter(r => r.querySelector(".cb")), whole = rows.every(r => ui.sel.has(r.dataset.id)); rows.forEach(r => whole ? ui.sel.delete(r.dataset.id) : ui.sel.add(r.dataset.id)); render(); },
   "select-mode": () => { ui.selecting = !ui.selecting; ui.sel.clear(); ui.unfold = ui.selecting ? "bulk" : ""; render(); },
@@ -4448,6 +4796,19 @@ const ACT = {
   "new-item": () => openItem(), "edit-item": el => openItem(el.dataset.id), "item-cost": el => openCost(el.dataset.id),
   "sell-item": el => openSell(el.dataset.id), "item-notes": el => openItemNotes(el.dataset.id),
   "item-sheet": el => openSheet("item", el.dataset.id, el.closest(".acct")),
+  /* Archiving moves no money: a settled loan or a sold item only leaves the tab. */
+  "loan-archive": el => { const l = S.loans.find(x => x.id === el.dataset.id); if (!l || loanDue(l) > 0) return; const to = !l.archived;
+    commit("Loan with " + l.person + (to ? " archived. Its money is unchanged." : " restored"), s => { s.loans.find(x => x.id === l.id).archived = to; }); },
+  "item-archive": el => { const it = itemOf(el.dataset.id); if (!it || !itemParts(it).sale) return; const to = !it.archived;
+    commit(it.name + (to ? " archived. Its money is unchanged." : " restored"), s => { s.items.find(x => x.id === it.id).archived = to; }); },
+  "show-arch": () => { ui.showArch = !ui.showArch; render(); },
+  "items-count": () => setSetting("itemsOut", !S.settings.itemsOut),
+  "more": el => openMore(el),
+  "rec-open": el => { const r = (S.recurring || []).find(x => x.id === el.dataset.id); if (!r) return; const last = S.tx.filter(t => t.recur === r.id).sort((a, b) => a.date < b.date ? 1 : -1)[0];
+    if (last) return editTx(last.id); toast("Its entries have all been deleted. Stop it here, or set a new one from New."); },
+  "rec-stop": el => { const r = (S.recurring || []).find(x => x.id === el.dataset.id); if (!r) return;
+    confirmDialog({ title: "Stop repeating?", text: "“" + (r.desc || "This entry") + "” is not added again. The entries already made stay as they are. You can undo it straight after.", action: "Stop repeating" },
+      () => commit("Stopped repeating " + (r.desc || "an entry"), s => { s.recurring = s.recurring.filter(x => x.id !== r.id); })); },
   "delete-item": el => { const id = el.dataset.id, it = itemOf(id); if (!it) return;
     confirmDialog({ title: "Delete this item?", text: it.name + " and every entry for it (what you paid" + (itemParts(it).costs.length ? ", the extra costs" : "") + (itemParts(it).sale ? ", the sale" : "") + ") are removed, and the account balances move back accordingly.", action: "Delete item", danger: true },
       () => commit(it.name + " deleted", s => { s.items = s.items.filter(x => x.id !== id); s.tx = s.tx.filter(t => t.itemId !== id); })); },
@@ -4506,6 +4867,9 @@ document.addEventListener("change", ev => {
   if (t.id === "period") return setPeriod(t.value);
   if (t.id === "file"){ if (t.files[0]) importFile(t.files[0]); t.value = ""; return; }
   if (t.form && ITEM_FORMS.has(t.form.dataset.form) && t.name !== "kind") itemLive(t.form);
+  if (t.form && t.name !== "kind") overPaint(t.form);
+  if (t.name === "how" && t.form && t.form.dataset.form === "import-how") return importSay(t.form);
+  if (t.name === "category" && t.form && t.form.dataset.form === "tx") t.form.dataset.catHand = "1";
   /* The sheet turns into the loan form and back without losing what was typed. */
   if (t.name === "kind" && t.form && t.form.dataset.form === "loan"){
     const fd = new FormData(t.form), keep = { amount: fd.get("amount") || "", date: fd.get("date") || today(), accountId: fd.get("accountId") || "", note: fd.get("note") || "" };
@@ -4519,7 +4883,7 @@ document.addEventListener("change", ev => {
   }
   if (t.name === "kind" && draft && t.form && t.form.dataset.form === "tx"){
     const fd = new FormData(t.form);
-    Object.assign(draft, { kind: t.value, amount: fd.get("amount") || "", desc: fd.get("desc") || draft.desc, date: fd.get("date") || draft.date, note: fd.get("note") || "", accountId: fd.get("accountId") || draft.accountId, category: "" });
+    Object.assign(draft, { kind: t.value, amount: fd.get("amount") || "", desc: fd.get("desc") || draft.desc, date: fd.get("date") || draft.date, note: fd.get("note") || "", accountId: fd.get("accountId") || draft.accountId, category: "", rep: fd.get("rep") || "", repUntil: fd.get("repUntil") || "", fx: t.value === "transfer" ? null : fxFrom(t.form) });
     return paintTx();
   }
   /* The payee decides the category far more often than the person does. If this
@@ -4530,6 +4894,7 @@ document.addEventListener("change", ev => {
     const seen = name && [...S.tx].reverse().find(x => x.kind === kind && x.category && (x.desc || "").toLowerCase() === name);
     const sel = t.form.querySelector('[name="category"]');
     if (seen && sel && catOf(seen.category)) sel.value = seen.category;
+    else if (sel && !t.form.dataset.catHand){ const g = guessCat(t.value, kind); if (g) sel.value = g; }
     return;
   }
   const c = t.closest("[data-change]"); if (c && CHANGE[c.dataset.change]) CHANGE[c.dataset.change](c);
@@ -4541,7 +4906,7 @@ document.addEventListener("submit", ev => {
 /* Card opacity follows the slider as it moves; it is saved when let go. */
 /* The converter answers as you type, on either side. */
 document.addEventListener("input", ev => { const t = ev.target; if (t.dataset && t.dataset.fx) Rates.typed(t); });
-document.addEventListener("input", ev => { const t = ev.target; if (t.form && ITEM_FORMS.has(t.form.dataset.form)) itemLive(t.form); });
+document.addEventListener("input", ev => { const t = ev.target; if (t.name === "fees" && t.form) t.form.dataset.autofee = "0"; if (t.name === "fxRate") t.dataset.src = "typed"; if (t.form && ITEM_FORMS.has(t.form.dataset.form)) itemLive(t.form); if (t.form) overPaint(t.form); });
 document.addEventListener("input", ev => { const t = ev.target;
   if (t.dataset && t.dataset.live === "cardAlpha"){ const v = +t.value, el = document.documentElement;
     el.style.setProperty("--panel-a", String(v)); el.dataset.glass = v < 100 ? "on" : "off";
@@ -4558,8 +4923,12 @@ pal.addEventListener("keydown", ev => {
 document.addEventListener("toggle", ev => { if (ev.target.classList && ev.target.classList.contains("dels")) ui.delsOpen = ev.target.open; }, true);
 /* In the working-out, typing works it out as you go, and Enter uses the rate
    rather than saving the account. */
-dlg.addEventListener("input", ev => { const p = ev.target.closest && ev.target.closest(".calc-pop"); if (p) calcPaint(p.closest("form")); });
-dlg.addEventListener("keydown", ev => { if (ev.key === "Enter" && ev.target.closest && ev.target.closest(".calc-pop")){ ev.preventDefault(); const b = dlg.querySelector('[data-act="calc-use"]'); if (b && !b.disabled) ACT["calc-use"](b); } });
+dlg.addEventListener("input", ev => { const p = ev.target.closest && ev.target.closest(".calc-pop:not(.adv-pop)"); if (p) calcPaint(p.closest("form")); });
+["input", "change"].forEach(e => dlg.addEventListener(e, ev => { const p = ev.target.closest && ev.target.closest(".adv-pop"); if (p) sidePaint(p); }));
+dlg.addEventListener("keydown", ev => { if (ev.key !== "Enter" || !ev.target.closest) return;
+  /* Enter in a panel finishes it rather than saving the whole form. */
+  const a = ev.target.closest(".adv-pop"); if (a){ ev.preventDefault(); const b = a.querySelector('[data-act="side-done"]'); if (b) ACT["side-done"](b); return; }
+  if (ev.target.closest(".calc-pop")){ ev.preventDefault(); const b = dlg.querySelector('[data-act="calc-use"]'); if (b && !b.disabled) ACT["calc-use"](b); } });
 /* Escape on an entry that grew from its row sends it back into the row. */
 dlg.addEventListener("cancel", ev => { if (ui.morphRow && sheetMoves() && !dlgClosing){ ev.preventDefault(); closeDialog(); } });
 /* On a phone a sheet follows a finger down from its top, and goes if it is
@@ -4904,6 +5273,9 @@ addEventListener("resize", () => { clearTimeout(resizing); resizing = setTimeout
   if (Math.abs(w - drawnAt) >= 24 && !typing && !dlg.open && !pal.open){ drawnAt = w; render(); } }, 160); });
 matchMedia("(max-width:820px)").addEventListener("change", () => { drawnAt = document.documentElement.clientWidth; render(); });
 window.addEventListener("hashchange", route);
+/* Coming back online fetches fresh rates; going offline says the figures are the last ones kept. */
+addEventListener("online", () => { if (ui.route === "rates") Rates.refresh(false); });
+addEventListener("offline", () => { if (ui.route === "rates") Rates.refresh(false); });
 matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => { if (S.settings.theme === "system"){ applyTheme(); render(); } });
 /* Moving in from the earlier version of this app. Its records sit on this
    device under its own keys. The first time this version opens here, with
@@ -4931,11 +5303,31 @@ function moveIn(){
   primeSigs(); bump();
   /* Counted the way that version counted them: its expenses and income, not the entries loans and items make here. */
   const n = v => Array.isArray(v) ? v.length : 0;
-  const said = { at: S.meta.moved, accounts: S.accounts.length, entries: n(d.expenses) + n(d.incomes), loans: S.loans.length, items: S.items.length, recurring: n(d.recurring) };
+  const said = { at: S.meta.moved, accounts: S.accounts.length, entries: n(d.expenses) + n(d.incomes), loans: S.loans.length, items: S.items.length, recurring: n(d.recurring), repeats: true };
   try{ localStorage.setItem(MOVED_KEY, JSON.stringify(said)); }catch(e){}
   return said;
 }
 const movedIn = moveIn();
+/* A device that moved in before repeating entries existed here brings the
+   earlier version's recurring ones across now, once. */
+function moveRepeatsIn(){
+  let m = null; try{ m = JSON.parse(localStorage.getItem(MOVED_KEY) || "null"); }catch(e){}
+  if (!m || m.repeats) return 0;
+  m.repeats = true; try{ localStorage.setItem(MOVED_KEY, JSON.stringify(m)); }catch(e){}
+  const g = k => { try{ return JSON.parse(localStorage.getItem(k) || "null"); }catch(e){ return null; } };
+  const old = g("spendly_recurring_v1"); if (!Array.isArray(old) || !old.length) return 0;
+  let t; try{ t = fromSpendly({ recurring: old, savings: g("spendly_savings_v1") || [] }); }catch(e){ return 0; }
+  S.recurring = S.recurring || []; let n = 0;
+  t.recurring.forEach(r => { if (S.recurring.some(x => x.id === r.id)) return;
+    const c0 = t.categories.find(c => c.id === r.category); let c = c0 && S.categories.find(x => x.kind === c0.kind && x.name.toLowerCase() === c0.name.toLowerCase());
+    if (c0 && !c){ c = { ...c0 }; S.categories.push(c); }
+    r.category = c ? c.id : ""; if (r.accountId && !accOf(r.accountId)) r.accountId = "";
+    S.recurring.push(r); n++; });
+  if (n){ bump(); stamp(); save(); }
+  return n;
+}
+const repeatsIn = moveRepeatsIn(), repeated = repeatDue();
+if (repeated.length){ stamp(); bump(); save(); }
 if (accrue()) save();
 /* The specks are placed once, the same every time, so the sky does not reshuffle. */
 { let seed = 11; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
@@ -4954,14 +5346,14 @@ if (accrue()) save();
 applyTheme(); route();
 if (movedIn) setTimeout(() => toast("Your records from the earlier version are here: " + [[movedIn.accounts, "account"], [movedIn.entries, "entry"], [movedIn.loans, "loan"], [movedIn.items, "item"]]
   .filter(([n]) => n).map(([n, w]) => n.toLocaleString() + " " + (n === 1 ? w : w === "entry" ? "entries" : w + "s")).join(", ") + "."
-  + (movedIn.recurring === 1 ? " The recurring entry set up there is not added automatically here; add it when it comes."
-    : movedIn.recurring > 1 ? " The " + movedIn.recurring + " recurring entries set up there are not added automatically here; add them when they come." : ""), { ms: 9000 }), 700);
+  + (movedIn.recurring === 1 ? " Its recurring entry goes on repeating here." : movedIn.recurring > 1 ? " Its " + movedIn.recurring + " recurring entries go on repeating here." : ""), { ms: 9000 }), 700);
+if (repeatsIn || repeated.length) setTimeout(() => toast(repeatsIn ? (repeatsIn === 1 ? "Your recurring entry from the earlier version repeats here now. It is under Settings › Repeating." : "Your " + repeatsIn + " recurring entries from the earlier version repeat here now. They are under Settings › Repeating.") : sayRepeats(repeated), { ms: 7000 }), movedIn ? 9800 : 700);
 /* A new size needs a new painting. The small pictures of the drawn scenes are made once, after the first paint. */
 { let t = 0; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => { try{ Scene.paint(); }catch(e){} }, 220); }); }
 setTimeout(() => { try{ Scene.previews(); }catch(e){} }, 400);
 /* A new day adds a new day's interest. */
-setInterval(() => { if (accrue()){ save(); bump(); render(); } }, 10 * 60 * 1000);
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && accrue()){ save(); bump(); render(); } });
+setInterval(() => { const a = accrue(), r = repeatTick(); if (a){ save(); bump(); } if (a || r) render(); }, 10 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState !== "visible") return; const a = accrue(), r = repeatTick(); if (a){ save(); bump(); } if (a || r) render(); });
 /* Sync runs itself once it is on: soon after a change, when this window comes
    back, when the connection does, and every few minutes while it is in view. */
 document.addEventListener("focusout", () => setTimeout(() => { if (stale && !typingInView()) freshen(); }, 0));
@@ -4978,7 +5370,7 @@ Object.defineProperty(window, "__opus", { value: Object.freeze({ merge: mergeBoo
 /* The build, stamped. The earlier build's Settings › About › "Check for a
    newer version" reads this line from the server and reloads when it differs,
    which is how a phone still on that build is brought onto this one. */
-var APP_BUILD = "opus-20261118-1003";
+var APP_BUILD = "opus-20261118-1137";
 /* Offline: the service worker keeps a copy of this page, so it opens with no
    signal, and fetches any newer copy in the background for next time. A
    worker cannot register from file://, which is how this file is opened on a
