@@ -1782,13 +1782,19 @@ function netWorthAt(date){
     return n;
   });
 }
-/* Interest is added every day. Each day an account with a rate earns its
-   balance at the start of that day times rate / 365. A month's interest is one
-   entry ("Interest") that grows by a day's worth each day and is dated the
-   last day counted; once the month is over it is finished and left alone.
-   It counts from the day the rate was set and is never backdated. Its id is
-   fixed per account and month, so two devices make the same entry, not two. */
-const interestId = (a, m) => "t_int_" + a.id + "_" + m;
+/* Interest is added every day, as banks such as Maya credit it: each day an
+   account with a rate earns its balance at the start of that day times
+   rate / 365, less tax, as an entry of its own ("Interest") dated that day. The
+   next day earns on it too, so it compounds daily, like the bank's. It counts
+   from the day after the rate was set and is never backdated.
+   This month's days are worked out again whenever the books change, so an entry
+   logged late corrects them. Each day keeps the rate it was first booked at, so
+   a new rate counts from the next day on. Once a month is over its days are
+   left alone. A day's id is fixed per account and day, so two devices make the
+   same entry, not two.
+   Before this, a month was one entry that grew each day. A month finished that
+   way keeps its one entry; a month still running is turned into days. */
+const interestId = (a, m) => "t_int_" + a.id + "_" + m;   /* m: a day, or a month booked the old way */
 /* A rate is a year's percentage, either flat or tiered: one rate on the
    balance up to an amount (cap) and another (rate2) on the part above it, as
    some savings accounts pay. 20% withholding tax comes off all interest, as
@@ -1798,8 +1804,10 @@ const earns = a => a.rate > 0 || (a.cap > 0 && a.rate2 > 0);
 const yearly = (a, b) => { b = Math.max(0, b); return a.cap > 0 ? (Math.min(b, a.cap) * (a.rate || 0) + Math.max(0, b - a.cap) * (a.rate2 || 0)) / 100 : b * (a.rate || 0) / 100; };
 const rateText = a => a.cap > 0 ? (a.rate || 0) + "% up to " + compact(a.cap) + ", " + (a.rate2 || 0) + "% above" : a.rate + "% a year";
 const afterTax = g => g - Math.round(g * TAX);
+const rateOf = a => ({ rate: a.rate || 0, cap: a.cap || 0, rate2: a.rate2 || 0 });
 function accrue(){
-  const t = today(), ym = t.slice(0, 7); let changed = false;
+  const t = today(), ym = t.slice(0, 7); let changed = false, dirty = false;
+  const drop = x => { S.tx = S.tx.filter(y => y !== x); changed = dirty = true; };
   for (const a of S.accounts){
     if (a.archived || !earns(a)) continue;
     /* The first day's interest is earned on the day after the rate is set, so
@@ -1807,26 +1815,44 @@ function accrue(){
     if (!a.interestFrom){ a.interestFrom = addDays(t, 1); changed = true; }
     if (a.interestFrom > t) continue;
     for (let m = a.interestFrom.slice(0, 7); m <= ym; m = addMonths(m, 1)){
-      const id = interestId(a, m), own = S.tx.find(x => x.id === id), last = m < ym ? monthEnd(m) : t;
-      if (m < ym && own && own.date === last){
-        /* A month finished before tax was taken off holds the gross figure, so
-           the tax comes off it once. It is not worked out again: a rate changed
-           since must not rewrite a month that has closed. */
-        if (own.tax == null){ const tax = Math.round(own.amount * TAX); Object.assign(own, { gross: own.amount, tax, amount: own.amount - tax, note: (own.note || "Interest") + ", less 20% tax" }); changed = true; bump(); }
-        continue; }
-      let sum = 0;
-      for (let d = a.interestFrom > m + "-01" ? a.interestFrom : m + "-01"; d <= last; d = addDays(d, 1)){
-        const prev = addDays(d, -1), start = (balancesAt(prev).get(a.id) || 0) - (own && own.date <= prev ? own.amount : 0);
-        sum += yearly(a, start) / 365;
+      const live = m === ym, first = a.interestFrom > m + "-01" ? a.interestFrom : m + "-01", last = live ? t : monthEnd(m);
+      const mine = S.tx.filter(x => x.auto === "interest" && x.accountId === a.id && x.date.slice(0, 7) === m);
+      const whole = mine.find(x => x.id === interestId(a, m)), days = new Map(mine.filter(x => x !== whole).map(x => [x.id, x]));
+      if (whole){
+        /* A month booked as one entry and finished stays as it was. One finished
+           before tax was taken off holds the gross figure, so the tax comes off
+           it once. A rate changed since must not rewrite a month that has closed. */
+        if (!live && whole.date === monthEnd(m) && !days.size){
+          if (whole.tax == null){ const tax = Math.round(whole.amount * TAX); Object.assign(whole, { gross: whole.amount, tax, amount: whole.amount - tax, note: (whole.note || "Interest") + ", less 20% tax" }); changed = dirty = true; }
+          continue; }
+        /* Still running (or made by a device that had not caught up while days
+           were already here): its days replace it. */
+        drop(whole); }
+      if (!live && days.size === daysBetween(first, last) + 1) continue;
+      if (dirty){ bump(); dirty = false; }
+      /* The balance each day starts with: the day before's close, with this
+         month's interest as worked out now rather than as it was stored. */
+      let bal = balancesAt(addDays(first, -1)).get(a.id) || 0;
+      const flow = new Map();
+      for (const x of S.tx){
+        if (x.date < first || x.date > last || (x.auto === "interest" && x.accountId === a.id)) continue;
+        const v = (x.accountId === a.id ? effect(x) : 0) + (x.kind === "transfer" && x.toAccountId === a.id ? x.amount : 0);
+        if (v) flow.set(x.date, (flow.get(x.date) || 0) + v); }
+      for (let d = first; d <= last; d = addDays(d, 1)){
+        const id = interestId(a, d), own = days.get(id); days.delete(id);
+        if (!live && own){ bal += (flow.get(d) || 0) + own.amount; continue; }
+        const at = own && own.at ? own.at : rateOf(a), gross = Math.round(yearly(at, bal) / 365), tax = Math.round(gross * TAX), amount = gross - tax, note = "At " + rateText(at) + ", less 20% tax";
+        bal += (flow.get(d) || 0) + Math.max(0, amount);
+        if (amount <= 0){ if (own) drop(own); continue; }
+        if (own){ if (own.amount !== amount || own.gross !== gross || own.tax !== tax || own.note !== note || !own.at){ Object.assign(own, { amount, gross, tax, note, at }); changed = dirty = true; } continue; }
+        S.tx.push({ id, created: new Date().toISOString(), kind: "income", amount, gross, tax, date: d, desc: "Interest", note, category: catOf("interest") ? "interest" : "", accountId: a.id, toAccountId: "", auto: "interest", at });
+        changed = dirty = true;
       }
-      const gross = Math.round(sum), tax = Math.round(gross * TAX), amount = gross - tax, note = "Added daily at " + rateText(a) + ", less 20% tax";
-      if (amount <= 0){ if (own){ S.tx = S.tx.filter(x => x !== own); changed = true; bump(); } continue; }
-      if (own && own.amount === amount && own.tax === tax && own.date === last && own.note === note) continue;
-      if (own) Object.assign(own, { amount, gross, tax, date: last, note });
-      else S.tx.push({ id, created: new Date().toISOString(), kind: "income", amount, gross, tax, date: last, desc: "Interest", note, category: catOf("interest") ? "interest" : "", accountId: a.id, toAccountId: "", auto: "interest" });
-      changed = true; bump();
+      /* A day outside the days that earn never earned. */
+      days.forEach(drop);
     }
   }
+  if (dirty) bump();
   if (changed) stamp();
   return changed;
 }
@@ -2325,7 +2351,7 @@ function vAccounts(){
       <dl class="facts">
         <div><dt>In this month</dt><dd class="num">${act.inc ? money(act.inc) : "—"}</dd></div>
         <div><dt>Out this month</dt><dd class="num">${act.out ? money(act.out) : "—"}</dd></div>
-        <div><dt>Interest this month</dt><dd>${!earns(a) ? "—" : a.interestFrom > today() ? "Starts " + dayName(a.interestFrom).toLowerCase() : `<span class="num">${money((S.tx.find(x => x.id === interestId(a, today().slice(0, 7))) || { amount: 0 }).amount)}</span> · added daily`}</dd></div>
+        <div><dt>Interest this month</dt><dd>${!earns(a) ? "—" : a.interestFrom > today() ? "Starts " + dayName(a.interestFrom).toLowerCase() : `<span class="num">${money(S.tx.reduce((n, x) => x.auto === "interest" && x.accountId === a.id && x.date.slice(0, 7) === today().slice(0, 7) ? n + x.amount : n, 0))}</span> · added daily`}</dd></div>
         <div><dt>Last activity</dt><dd class="truncate">${act.last ? dayName(act.last.date) + " · " + esc(txTitle(act.last)) : "Nothing yet"}</dd></div>
       </dl>
       <footer class="acct-f"><button class="btn btn-sm btn-tint" data-act="acct-sheet" data-id="${a.id}">Transactions</button><button class="btn btn-sm" data-act="transfer" data-id="${a.id}">Transfer</button><button class="btn btn-sm" data-act="reconcile" data-id="${a.id}">${a.type === "investment" ? "Update value" : "Reconcile"}</button></footer>
@@ -3546,7 +3572,9 @@ function editTx(id){
   const t = S.tx.find(x => x.id === id); if (!t) return;
   /* Interest is worked out, not typed, so it is explained rather than edited. */
   if (t.auto === "interest"){ const a = accOf(t.accountId);
-    return confirmDialog({ title: "Interest, " + fmtMonth(t.date.slice(0, 7)), text: (a ? a.name + " earns " + rateText(a) : "This account earns interest") + ", worked out on each day's balance and added every day. So far this month that is " + money(t.gross != null ? t.gross : t.amount) + " before tax, less " + money(t.tax || 0) + " withholding tax (20%), so " + money(t.amount) + " is added. Change the rate in the account to change it.", action: "Edit the account" }, () => { if (a) openAccount(a.id); }); }
+    const g = money(t.gross != null ? t.gross : t.amount), tx = money(t.tax || 0);
+    return confirmDialog(t.at ? { title: "Interest, " + fmtDate(t.date, true), text: (a ? a.name : "This account") + " earned " + rateText(t.at) + " on what it held at the start of the day: " + g + " before tax, less " + tx + " withholding tax (20%), so " + money(t.amount) + " was added. The next day earns on it too. A new rate counts from the day after it is set.", action: "Edit the account" }
+      : { title: "Interest, " + fmtMonth(t.date.slice(0, 7)), text: (a ? a.name : "This account") + " earned interest on each day's balance that month, booked as one entry: " + g + " before tax, less " + tx + " withholding tax (20%), so " + money(t.amount) + " was added.", action: "Edit the account" }, () => { if (a) openAccount(a.id); }); }
   ui.focusId = id; ui.recent.entries = [id].concat(ui.recent.entries.filter(x => x !== id)).slice(0, 5);
   if (t.kind === "lend" || t.kind === "borrow") return openLoan(t.loanId);
   if (t.kind === "lend_repay" || t.kind === "borrow_repay") return openPay(t.loanId, t);
@@ -5453,7 +5481,7 @@ Object.defineProperty(window, "__opus", { value: Object.freeze({ merge: mergeBoo
 /* The build, stamped. The earlier build's Settings › About › "Check for a
    newer version" reads this line from the server and reloads when it differs,
    which is how a phone still on that build is brought onto this one. */
-var APP_BUILD = "opus-20261118-1259";
+var APP_BUILD = "opus-20261119-1633";
 /* Offline: the service worker keeps a copy of this page, so it opens with no
    signal, and fetches any newer copy in the background for next time. A
    worker cannot register from file://, which is how this file is opened on a
